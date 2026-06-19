@@ -2,8 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics)
 }
 
 android {
@@ -28,9 +26,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            firebaseCrashlytics {
-                mappingFileUploadEnabled = false
-            }
+
         }
     }
     compileOptions {
@@ -75,9 +71,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.haze)
 
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.crashlytics)
-    implementation(libs.firebase.analytics)
+
 
     
     testImplementation(libs.junit)
