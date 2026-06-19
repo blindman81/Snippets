@@ -220,14 +220,26 @@ fun HistoryBottomSheet(
                             .height(200.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "No memories yet.",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSans,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Box(
+                            modifier = Modifier.size(100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                shape = com.android.snippets.ui.CookieShape,
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    2.dp,
+                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                                )
+                            ) {}
+                            Icon(
+                                imageVector = com.android.snippets.ui.NoMemoriesIcon(),
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                     }
                 } else {
                     Column(

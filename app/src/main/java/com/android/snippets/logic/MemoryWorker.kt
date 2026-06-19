@@ -107,7 +107,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : Worker(context,
         val (title, text) = notificationText(notificationType)
 
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_shutter_vector)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -126,7 +126,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : Worker(context,
 
     private fun summaryNotification(pendingIntent: PendingIntent) =
         NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_shutter_vector)
             .setContentTitle("Memories waiting")
             .setContentText("You have memories waiting to be viewed")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
