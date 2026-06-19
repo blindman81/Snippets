@@ -33,8 +33,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.material3.*
 import com.android.snippets.ui.components.LoadingIndicator
 import com.android.snippets.ui.components.HistoryBottomSheet
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+
 import androidx.compose.foundation.pager.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
@@ -60,7 +59,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.lazy.items
+
 import com.ln.android.snippets.R
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -162,13 +161,7 @@ fun LibraryScreen(
         viewModel.sortPhotos(filtered, currentTabSort)
     }
     
-    val grouped = remember(filteredFlatPhotos) {
-        filteredFlatPhotos.groupBy { photo ->
-            val monthFormat = java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault())
-            monthFormat.format(java.util.Date(photo.date))
-        }
-    }
-    val flatPhotos = remember(grouped) { grouped.values.flatten() }
+    val flatPhotos = filteredFlatPhotos
     
     LaunchedEffect(viewModel.activePhotoId, viewModel.currentScreen) {
         if (
@@ -183,7 +176,6 @@ fun LibraryScreen(
         }
     }
     val startIndex = 0
-    val showHeaders = false
 
     var isFabVisible by remember { mutableStateOf(true) }
     val nestedScrollConnection = remember {
@@ -395,12 +387,7 @@ Surface(
                                         }
                                         viewModel.sortPhotos(filtered, tabSortType)
                                     }
-                                    val pageGrouped = remember(pageFilteredPhotos) {
-                                        pageFilteredPhotos.groupBy { photo ->
-                                            val monthFormat = java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault())
-                                            monthFormat.format(java.util.Date(photo.date))
-                                        }
-                                    }
+
                                     val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
                                     Box(modifier = Modifier.fillMaxSize()) {
                                         if (pageFilteredPhotos.isEmpty()) {
@@ -428,104 +415,35 @@ Surface(
                                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                                 verticalItemSpacing = 4.dp
                                             ) {
-                                                if (showHeaders) {
-                                                    pageGrouped.forEach { (date, photoList) ->
-                                                        item(span = StaggeredGridItemSpan.FullLine, key = "header_$date", contentType = "header") {
-                                                            Row(
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .padding(top = 16.dp, bottom = 8.dp),
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                                            ) {
-                                                                Text(
-                                                                    text = date,
-                                                                    style = MaterialTheme.typography.bodyMedium,
-                                                                    fontWeight = FontWeight.SemiBold,
-                                                                    color = MaterialTheme.colorScheme.primary,
-                                                                    modifier = Modifier.padding(horizontal = 4.dp)
-                                                                )
-                                                                if (photoList.size > 1) {
-                                                                    Surface(
-                                                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                                        shape = CookieShape,
-                                                                        modifier = Modifier.size(24.dp)
-                                                                    ) {
-                                                                        Box(contentAlignment = Alignment.Center) {
-                                                                            Text(
-                                                                                text = photoList.size.toString(),
-                                                                                style = MaterialTheme.typography.labelMedium,
-                                                                                fontWeight = FontWeight.ExtraBold
-                                                                            )
-                                                                        }
-                                                                    }
+                                                items(pageFilteredPhotos, key = { it.id }) { photo ->
+                                                    PhotoMasonryItem(
+                                                        photo = photo,
+                                                        isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                                        selectionMode = viewModel.isSelectionMode,
+                                                        showFavoriteIcon = tabForPage != "Favorites",
+                                                        matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
+                                                        sharedTransitionScope = sharedTransitionScope,
+                                                        animatedVisibilityScope = animatedVisibilityScope,
+                                                        onClick = {
+                                                            if (viewModel.isSelectionMode) {
+                                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                viewModel.toggleSelection(photo.id)
+                                                            } else {
+                                                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                                if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                                                                    viewModel.activePhotoId = photo.id
+                                                                } else {
+                                                                    viewModel.openDetail(photo.id, Screen.Library)
                                                                 }
                                                             }
-                                                        }
-                                                        items(photoList, key = { it.id }) { photo ->
-                                                            PhotoMasonryItem(
-                                                                photo = photo,
-                                                                isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                                selectionMode = viewModel.isSelectionMode,
-                                                                showFavoriteIcon = tabForPage != "Favorites",
-                                                                matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
-                                                                sharedTransitionScope = sharedTransitionScope,
-                                                                animatedVisibilityScope = animatedVisibilityScope,
-                                                                onClick = {
-                                                                    if (viewModel.isSelectionMode) {
-                                                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                        viewModel.toggleSelection(photo.id)
-                                                                    } else {
-                                                                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                        if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                            viewModel.activePhotoId = photo.id
-                                                                        } else {
-                                                                            viewModel.openDetail(photo.id, Screen.Library)
-                                                                        }
-                                                                    }
-                                                                },
-                                                                onLongClick = {
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                    if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                                },
-                                                                fillCard = false,
-                                                                modifier = Modifier.fillMaxWidth()
-                                                            )
-                                                        }
-                                                    }
-                                                } else {
-                                                    val photosForPage = pageGrouped.values.flatten()
-                                                    items(photosForPage, key = { it.id }) { photo ->
-                                                        PhotoMasonryItem(
-                                                            photo = photo,
-                                                            isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                            selectionMode = viewModel.isSelectionMode,
-                                                            showFavoriteIcon = tabForPage != "Favorites",
-                                                            matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
-                                                            sharedTransitionScope = sharedTransitionScope,
-                                                            animatedVisibilityScope = animatedVisibilityScope,
-                                                            onClick = {
-                                                                if (viewModel.isSelectionMode) {
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                    viewModel.toggleSelection(photo.id)
-                                                                } else {
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                    if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                        viewModel.activePhotoId = photo.id
-                                                                    } else {
-                                                                        viewModel.openDetail(photo.id, Screen.Library)
-                                                                    }
-                                                                }
-                                                            },
-                                                            onLongClick = {
-                                                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                            },
-                                                            fillCard = false,
-                                                            modifier = Modifier.fillMaxWidth()
-                                                        )
-                                                    }
+                                                        },
+                                                        onLongClick = {
+                                                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                            if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                                        },
+                                                        fillCard = false,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
                                                 }
                                             }
                                         }
@@ -684,7 +602,7 @@ Surface(
 
                                 // Search
                                 val isSearchActive = viewModel.searchQuery.isNotEmpty()
-                                val searchIcon = if (isSearchActive && grouped.isNotEmpty()) SearchSuccessIcon() else Icons.Default.Search
+                                val searchIcon = if (isSearchActive && flatPhotos.isNotEmpty()) SearchSuccessIcon() else Icons.Default.Search
                                 AnimatedCookieButton(
                                     onClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)

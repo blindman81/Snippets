@@ -13,10 +13,7 @@ import com.android.snippets.viewmodel.SnippetsViewModel
 import androidx.compose.ui.layout.ContentScale
 
 
-data class PhotoPage(
-    val dateHeader: String?,
-    val photos: List<Photo>
-)
+
 
 fun getMatchingSnippetsCount(photo: Photo, viewModel: SnippetsViewModel): Int {
     return when {

@@ -530,7 +530,7 @@ fun SettingsCardItem(
                         } else {
                             MaterialTheme.typography.titleMedium
                         },
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         color = contentColor
                     )
                 }

@@ -33,7 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, DateHeaders, PhotosCarousel }
+enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, PhotosCarousel }
 enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
@@ -72,7 +72,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     var isInitialLoading by mutableStateOf(true)
         private set
-    var isMemoriesExpanded by mutableStateOf(false)
+
 
 
 
@@ -82,9 +82,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var currentScreen by mutableStateOf(Screen.Library)
     var previousScreen by mutableStateOf(Screen.Library)
         private set
-    var libraryPageIndex by mutableStateOf(0)
-    var favoritesPageIndex by mutableStateOf(0)
-    var collectionPageIndex by mutableStateOf(0)
+
     
     var libraryCurrentTab by mutableStateOf("Library")
     val libraryListStates = androidx.compose.runtime.mutableStateMapOf<String, androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState>()
@@ -200,10 +198,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var useDynamicColors by mutableStateOf(true)
         private set
     var showFilterSheet by mutableStateOf(false)
-    var showDateHeadersIn by mutableStateOf<Set<String>>(
-        prefs.getStringSet("show_date_headers_in", null) ?: setOf("Library")
-    )
-        private set
+
 
     var showCarouselsIn by mutableStateOf<Set<String>>(
         prefs.getStringSet("show_carousels_in", null) ?: emptySet()
@@ -223,10 +218,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         currentScreen = Screen.SelectIcon
     }
 
-    fun navigateDateHeaders() {
-        previousScreen = currentScreen
-        currentScreen = Screen.DateHeaders
-    }
+
 
     fun navigatePhotosCarousel() {
         previousScreen = currentScreen
@@ -284,16 +276,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit().putStringSet("show_counts_in", showCountsIn).apply()
     }
 
-    fun toggleDateHeaderVisibility(name: String) {
-        showDateHeadersIn = if (showDateHeadersIn.contains(name)) {
-            showCarouselsIn = showCarouselsIn - name
-            prefs.edit().putStringSet("show_carousels_in", showCarouselsIn).apply()
-            showDateHeadersIn - name
-        } else {
-            showDateHeadersIn + name
-        }
-        prefs.edit().putStringSet("show_date_headers_in", showDateHeadersIn).apply()
-    }
+
 
     fun toggleCarouselVisibility(name: String) {
         showCarouselsIn = if (showCarouselsIn.contains(name)) {
@@ -672,12 +655,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
         useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
         
-        // Migration from old boolean
-        if (!prefs.contains("show_date_headers_in") && prefs.contains("show_date_headers")) {
-            val oldVal = prefs.getBoolean("show_date_headers", true)
-            showDateHeadersIn = if (oldVal) setOf("Library") + userCollections.toSet() else emptySet()
-            prefs.edit().putStringSet("show_date_headers_in", showDateHeadersIn).apply()
-        }
+
 
         showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
         searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
@@ -860,9 +838,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val trimmed = name.trim()
         if (trimmed.isNotBlank() && userCollections.none { it.equals(trimmed, ignoreCase = true) }) {
             userCollections = userCollections + trimmed
-            // Enable date headers by default for new user collections
-            showDateHeadersIn = showDateHeadersIn + trimmed
-            prefs.edit().putStringSet("show_date_headers_in", showDateHeadersIn).apply()
+
             
             saveCollections()
             if (openAfterCreate) {
@@ -1434,7 +1410,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             Screen.Settings,
             Screen.About -> navigateLibrary()
             Screen.SelectIcon,
-            Screen.DateHeaders,
             Screen.PhotosCarousel -> {
                 currentScreen = previousScreen
             }

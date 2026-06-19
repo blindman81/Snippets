@@ -5,18 +5,18 @@ import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
+
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.ViewCarousel
+
+
 import androidx.compose.material3.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.ui.draw.alpha
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
@@ -126,19 +126,16 @@ fun PhotosCarouselScreen(viewModel: SnippetsViewModel) {
                 )
 
                 // Favorites
-                val isFavoritesHeaderEnabled = viewModel.showDateHeadersIn.contains("Favorites")
-                val isFavoritesSelected = viewModel.showCarouselsIn.contains("Favorites") && isFavoritesHeaderEnabled
+                val isFavoritesSelected = viewModel.showCarouselsIn.contains("Favorites")
                 DynamicCardContainer(
                     onClick = { 
-                        if (isFavoritesHeaderEnabled) {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.toggleCarouselVisibility("Favorites")
-                        }
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        viewModel.toggleCarouselVisibility("Favorites")
                     },
                     position = if (collections.isEmpty()) CardPosition.Single else CardPosition.First
                 ) {
                     Row(
-                        modifier = Modifier.padding(16.dp).fillMaxWidth().alpha(if (isFavoritesHeaderEnabled) 1f else 0.5f),
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         CollectionIcon(
@@ -163,19 +160,16 @@ fun PhotosCarouselScreen(viewModel: SnippetsViewModel) {
 
                 // Collections
                 collections.forEachIndexed { index, collectionName ->
-                    val isHeaderEnabled = viewModel.showDateHeadersIn.contains(collectionName)
-                    val isSelected = viewModel.showCarouselsIn.contains(collectionName) && isHeaderEnabled
+                    val isSelected = viewModel.showCarouselsIn.contains(collectionName)
                     DynamicCardContainer(
                         onClick = { 
-                            if (isHeaderEnabled) {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                viewModel.toggleCarouselVisibility(collectionName)
-                            }
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            viewModel.toggleCarouselVisibility(collectionName)
                         },
                         position = if (index == collections.size - 1) CardPosition.Last else CardPosition.Middle
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp).fillMaxWidth().alpha(if (isHeaderEnabled) 1f else 0.5f),
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             CollectionIcon(
