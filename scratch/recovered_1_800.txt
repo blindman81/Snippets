@@ -1,0 +1,63 @@
+﻿Created At: 2026-06-06T10:11:59Z
+Completed At: 2026-06-06T10:11:59Z
+File Path: `file:///c:/Users/mendu/Snippets/app/src/main/java/com/android/snippets/ui/DetailComponents.kt`
+Total Lines: 1089
+Total Bytes: 56929
+Showing lines 1 to 800
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: package com.android.snippets.ui
+2: import com.android.snippets.ui.components.*
+3: import androidx.compose.material3.ButtonGroup
+4: import androidx.compose.material3.ButtonGroupDefaults
+5: import kotlinx.coroutines.launch
+6: import androidx.compose.ui.layout.onGloballyPositioned
+7: import androidx.compose.ui.layout.boundsInWindow
+8: import androidx.compose.ui.layout.ContentScale
+9: import coil.compose.AsyncImage
+10: import androidx.compose.ui.res.vectorResource
+11: import androidx.compose.ui.input.pointer.pointerInput
+12: import androidx.compose.foundation.gestures.detectTapGestures
+13: import android.view.HapticFeedbackConstants
+14: import androidx.compose.animation.*
+15: import androidx.compose.animation.core.*
+16: import androidx.compose.foundation.BorderStroke
+17: import androidx.compose.foundation.background
+18: import androidx.compose.foundation.border
+19: import androidx.compose.foundation.clickable
+20: import androidx.compose.foundation.interaction.MutableInteractionSource
+21: import androidx.compose.foundation.layout.*
+22: import androidx.compose.ui.draw.clip
+23: import androidx.compose.foundation.lazy.LazyRow
+24: import androidx.compose.foundation.lazy.items
+25: import androidx.compose.foundation.lazy.grid.*
+26: import androidx.compose.foundation.layout.ExperimentalLayoutApi
+27: import androidx.compose.foundation.layout.FlowRow
+28: import androidx.compose.foundation.shape.CircleShape
+29: import androidx.compose.foundation.shape.RoundedCornerShape
+30: import androidx.compose.foundation.text.BasicTextField
+31: import androidx.compose.f
+<truncated 42567 bytes>
+          userScrollEnabled = true
+780:                                     ) {
+781:                                         item {
+782:                                             val isRandomSelected = selectedColor == -1
+783:                                             Box(
+784:                                                 contentAlignment = Alignment.Center,
+785:                                                 modifier = Modifier
+786:                                                     .size(60.dp)
+787:                                                     .clickable(
+788:                                                         interactionSource = remember { MutableInteractionSource() },
+789:                                                         indication = null
+790:                                                     ) {
+791:                                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+792:                                                         selectedColor = if (isRandomSelected) null else -1
+793:                                                     }
+794:                                             ) {
+795:                                                 Surface(
+796:                                                     modifier = Modifier.size(60.dp).aspectRatio(1f),
+797:                                                     shape = CircleShape,
+798:                                                     color = if (isRandomSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceContainerLowest,
+799:                                                     border = if (isRandomSelected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
+800:                                                 ) {
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+

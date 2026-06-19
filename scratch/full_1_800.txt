@@ -1,0 +1,71 @@
+﻿Created At: 2026-06-06T10:16:31Z
+Completed At: 2026-06-06T10:16:31Z
+File Path: `file:///c:/Users/mendu/Snippets/scratch/full_1_800.txt`
+Total Lines: 77
+Total Bytes: 4123
+Showing lines 1 to 77
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: Created At: 2026-06-06T10:13:33Z
+2: Completed At: 2026-06-06T10:13:33Z
+3: File Path: `file:///c:/Users/mendu/Snippets/scratch/extracted_responses.txt`
+4: Total Lines: 323
+5: Total Bytes: 18467
+6: Showing lines 1 to 323
+7: The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+8: 1: Created At: 2026-06-06T10:11:59Z
+9: 2: Completed At: 2026-06-06T10:11:59Z
+10: 3: File Path: `file:///c:/Users/mendu/Snippets/app/src/main/java/com/android/snippets/ui/DetailComponents.kt`
+11: 4: Total Lines: 1089
+12: 5: Total Bytes: 56929
+13: 6: Showing lines 1 to 800
+14: 7: The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+15: 8: 1: package com.android.snippets.ui
+16: 9: 2: import com.android.snippets.ui.components.*
+17: 10: 3: import androidx.compose.material3.ButtonGroup
+18: 11: 4: import androidx.compose.material3.ButtonGroupDefaults
+19: 12: 5: import kotlinx.coroutines.launch
+20: 13: 6: import androidx.compose.ui.layout.onGloballyPositioned
+21: 14: 7: import androidx.compose.ui.layout.boundsInWindow
+22: 15: 8: import androidx.compose.ui.layout.ContentScale
+23: 16: 9: import coil.compose.AsyncImage
+24: 17: 10: import androidx.compose.ui.res.vectorResource
+25: 18: 11: import androidx.compose.ui.input.pointer.pointerInput
+26: 19: 12:
+<truncated 843 bytes>
+file is mangled around line 297.
+44: 293: 41:     # We want to replace everything from `        else -> base\n    }\n}` onwards
+45: 294: 42:     # Actually, the file currently ends abruptly or is missing 650 lines.
+46: 295: 43:     # Let's just find the `    }\n}` and stitch it together.
+47: 296: 44:     import re
+48: 297: 45:     match = re.search(r'(?s)(.*?else -> base\s+?}\s+?})', current_content)
+49: 298: 46:     if match:
+50: 299: 47:         top_part = match.group(1)
+51: 300: 48:         
+52: 301: 49:         # The bottom part (unchanged lines) that the diff showed as remaining:
+53: 302: 50:         #                                 ),
+54: 303: 51:         #                                 label = "offset"
+55: 304: 52:         #                             )
+56: 305: 53:         # We need to find this in current_content.
+57: 306: 54:         bot_idx = current_content.find('                                ),\n                                label = "offset"\n                            )')
+58: 307: 55:         bottom_part = current_content[bot_idx:] if bot_idx != -1 else ""
+59: 308: 56: 
+60: 309: 57:         full_content = top_part + '\n' + '\n'.join(extracted)
+61: 310: 58:         # But wait! The extracted lines contain the top unchanged lines and bottom unchanged lines.
+62: 311: 59:         # The top unchanged lines are:
+63: 312: 60:         #         else -> base
+64: 313: 61:         #     }
+65: 314: 62:         # }
+66: 315: 63:         # And the bottom unchanged lines are:
+67: 316: 64:         #                                 ),
+68: 317: 65:         #                                 label = "offset"
+69: 318: 66:         #                             )
+70: 319: 67:         # Let's just combine carefully.
+71: 320: 68: 
+72: 321: The above content shows the entire, complete file contents of the requested file.
+73: 322: 
+74: 323: 
+75: The above content shows the entire, complete file contents of the requested file.
+76: 
+77: 
+The above content shows the entire, complete file contents of the requested file.
+

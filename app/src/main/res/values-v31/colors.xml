@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Use system dynamic colors for Monet theming -->
+    <color name="splash_cookie_color">@android:color/system_accent1_600</color>
+    <color name="splash_background">@android:color/system_neutral1_100</color>
+</resources>

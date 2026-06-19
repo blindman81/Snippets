@@ -1,0 +1,307 @@
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddSnippetsModal(
+    photo: com.android.snippets.model.Photo,
+    onAdd: (String, Int, com.android.snippets.viewmodel.SnippetStyle) -> Unit,
+    onClose: () -> Unit,
+    viewModel: com.android.snippets.viewmodel.SnippetsViewModel
+) {
+    val view = LocalView.current
+    var text by remember { mutableStateOf("") }
+    var selectedColor by remember { mutableStateOf<Int?>(null) }
+    var selectedStyle by remember { mutableStateOf(com.android.snippets.viewmodel.SnippetStyle.Default) }
+
+    var selectedIndex by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val options = listOf("Text", "Color", "Style")
+    
+    val snippetColorsPalette = remember {
+        listOf(
+            0xFFEF5350.toInt(), // Red
+            0xFFEC407A.toInt(), // Pink
+            0xFFAB47BC.toInt(), // Purple
+            0xFF42A5F5.toInt(), // Blue
+            0xFF26A69A.toInt(), // Teal
+            0xFF66BB6A.toInt(), // Green
+            0xFFFFEE58.toInt(), // Yellow
+            0xFFFFA726.toInt(), // Orange
+            0xFF8D6E63.toInt(), // Brown
+            0xFF78909C.toInt(), // Slate
+            0xFFD4E157.toInt()  // Lime
+        )
+    }
+
+    val localSnippetsCount = photo.snippets.size
+
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        scrimColor = BottomSheetDefaults.ScrimColor,
+        windowInsets = WindowInsets.ime
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Add a Snippet",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
+            ) {
+                options.forEachIndexed { index, label ->
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            selectedIndex = index
+                        },
+                        selected = index == selectedIndex
+                    ) {
+                        Text(label)
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier.fillMaxWidth().height(260.dp)
+            ) {
+                val motionScheme = MaterialTheme.motionScheme
+                androidx.compose.animation.AnimatedContent(
+                    targetState = selectedIndex,
+                    transitionSpec = {
+                        fadeIn(animationSpec = motionScheme.defaultEffectsSpec()) togetherWith
+                        fadeOut(animationSpec = motionScheme.fastEffectsSpec()) using
+                        SizeTransform(clip = false)
+                    },
+                    label = "StepTransition"
+                ) { step ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        when (step) {
+                            0 -> { // Text
+                                OutlinedTextField(
+                                    value = text,
+                                    onValueChange = { if (it.length <= 10) text = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    label = { Text("New Snippet", style = MaterialTheme.typography.labelMedium) },
+                                    placeholder = { Text("Type here...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                        cursorColor = MaterialTheme.colorScheme.primary
+                                    ),
+                                    supportingText = {
+                                        Text(
+                                            text = "${text.length}/10",
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.End,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (text.length >= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(
+                                        onDone = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        }
+                                    )
+                                )
+
+                                // Suggestions Menu
+                                val suggestions = remember(text, viewModel.allUniqueSnippets) {
+                                    if (text.isEmpty()) {
+                                        viewModel.allUniqueSnippets.take(5)
+                                    } else {
+                                        viewModel.allUniqueSnippets.filter { 
+                                            it.contains(text, ignoreCase = true) && !it.equals(text, ignoreCase = true)
+                                        }.take(8)
+                                    }
+                                }
+                                
+                                if (suggestions.isNotEmpty()) {
+                                    @OptIn(ExperimentalLayoutApi::class)
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        maxItemsInEachRow = 4
+                                    ) {
+                                        suggestions.forEach { suggestion ->
+                                            SuggestionChip(
+                                                onClick = { 
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                    text = suggestion 
+                                                },
+                                                label = { Text(suggestion, style = MaterialTheme.typography.labelMedium) },
+                                                shape = CircleShape,
+                                                colors = SuggestionChipDefaults.suggestionChipColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                ),
+                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                        }
+                                    }
+                                }
+                            }
+                            1 -> { // Color Step
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(4),
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    contentPadding = PaddingValues(8.dp),
+                                    userScrollEnabled = true
+                                ) {
+                                    item {
+                                        val isRandomSelected = selectedColor == -1
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(60.dp)
+                                                .clickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null
+                                                ) {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                    selectedColor = if (isRandomSelected) null else -1
+                                                }
+                                        ) {
+                                            Surface(
+                                                modifier = Modifier.size(60.dp).aspectRatio(1f),
+                                                shape = CircleShape,
+                                                color = if (isRandomSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceContainerLowest,
+                                                border = if (isRandomSelected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Shuffle,
+                                                        contentDescription = "Shuffle",
+                                                        modifier = Modifier.size(28.dp),
+                                                        tint = if (isRandomSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    items(snippetColorsPalette) { colorInt ->
+                                        val isSelected = selectedColor == colorInt
+                                        val color = Color(colorInt)
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(60.dp)
+                                                .clickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null
+                                                ) {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                    selectedColor = if (isSelected) null else colorInt
+                                                }
+                                        ) {
+                                            Surface(
+                                                modifier = Modifier.size(if (isSelected) 60.dp else 52.dp).aspectRatio(1f),
+                                                shape = CircleShape,
+                                                color = color,
+                                                border = if (isSelected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
+                                            ) {}
+                                        }
+                                    }
+                                }
+                            }
+                            2 -> { // Style Step
+                                @OptIn(ExperimentalLayoutApi::class)
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    maxItemsInEachRow = 3
+                                ) {
+                                    com.android.snippets.viewmodel.SnippetStyle.values().forEach { style ->
+                                        val isSelected = selectedStyle == style
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.padding(horizontal = 8.dp)
+                                        ) {
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = Modifier
+                                                    .size(60.dp)
+                                                    .clickable(
+                                                        interactionSource = remember { MutableInteractionSource() },
+                                                        indication = null
+                                                    ) {
+                                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                        selectedStyle = style
+                                                    }
+                                            ) {
+                                                Surface(
+                                                    modifier = Modifier.size(60.dp),
+                                                    shape = CircleShape,
+                                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLowest,
+                                                    border = if (isSelected) null else BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant)
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center) {
+                                                        Text(
+                                                            text = "S",
+                                                            style = getSnippetTextStyle(style, MaterialTheme.typography.titleLarge),
+                                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Text(
+                                                text = style.name,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(top = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                enabled = text.isNotBlank(),
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    val finalColor = if (selectedColor == null || selectedColor == -1) snippetColorsPalette.random() else selectedColor!!
+                    onAdd(text.trim(), finalColor, selectedStyle)
+                    onClose()
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Add Snippet ($localSnippetsCount/6)",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            }
+        }
+    }
+}
