@@ -1110,8 +1110,32 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun extractCaptureDate(uri: Uri): Long {
+        val context = getApplication<Application>()
+        var fallbackDate = 0L
+        
+        // Try to get the file's last modified date as a better fallback than current time
+        try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val dateModifiedIndex = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DATE_MODIFIED)
+                    if (dateModifiedIndex != -1) {
+                        val dateSeconds = cursor.getLong(dateModifiedIndex)
+                        if (dateSeconds > 0) fallbackDate = dateSeconds * 1000L
+                    }
+                    if (fallbackDate == 0L) {
+                        val docLastModIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                        if (docLastModIndex != -1) {
+                            val dateMs = cursor.getLong(docLastModIndex)
+                            if (dateMs > 0) fallbackDate = dateMs
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {}
+        
+        if (fallbackDate == 0L) fallbackDate = System.currentTimeMillis()
+
         return try {
-            val context = getApplication<Application>()
             context.contentResolver.openInputStream(uri)?.use { input ->
                 val exif = ExifInterface(input)
                 val dateTime = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
@@ -1119,14 +1143,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 
                 if (dateTime != null) {
                     val format = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
-                    format.parse(dateTime)?.time ?: System.currentTimeMillis()
+                    format.parse(dateTime)?.time ?: fallbackDate
                 } else {
-                    System.currentTimeMillis()
+                    fallbackDate
                 }
-            } ?: System.currentTimeMillis()
+            } ?: fallbackDate
         } catch (e: Exception) {
             e.printStackTrace()
-            System.currentTimeMillis()
+            fallbackDate
         }
     }
 

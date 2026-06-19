@@ -12,8 +12,8 @@ android {
         applicationId = "com.ln.android.snippets"
         minSdk = 24
         targetSdk = 37
-        versionCode = 5
-        versionName = "1.3.2"
+        versionCode = 6
+        versionName = "1.4.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
