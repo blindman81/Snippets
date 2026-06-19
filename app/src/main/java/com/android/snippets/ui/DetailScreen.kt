@@ -108,11 +108,26 @@ fun DetailScreen(
 ) {
     val view = LocalView.current
     
-    val photos = remember(viewModel.libraryCurrentTab, viewModel.filteredPhotos, viewModel.filteredFavoritesPhotos) {
-        when (viewModel.libraryCurrentTab) {
-            "Library" -> viewModel.filteredPhotos
-            "Favorites" -> viewModel.filteredFavoritesPhotos.values.flatten()
-            else -> viewModel.filteredPhotos
+    val photos = remember(
+        viewModel.libraryCurrentTab,
+        viewModel.filteredPhotos,
+        viewModel.filteredFavoritesPhotos,
+        viewModel.detailReturnScreen,
+        viewModel.curatedMemories,
+        viewModel.getPhotoSortTypeFor(viewModel.libraryCurrentTab)
+    ) {
+        if (viewModel.detailReturnScreen == Screen.Memory) {
+            viewModel.curatedMemories
+        } else {
+            when (viewModel.libraryCurrentTab) {
+                "Library" -> viewModel.filteredPhotos
+                "Favorites" -> viewModel.filteredFavoritesPhotos.values.flatten()
+                else -> {
+                    val collectionName = viewModel.libraryCurrentTab
+                    val filtered = viewModel.filteredPhotos.filter { it.collections.contains(collectionName) }
+                    viewModel.sortPhotos(filtered, viewModel.getPhotoSortTypeFor(collectionName))
+                }
+            }
         }
     }
 
