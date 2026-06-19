@@ -222,7 +222,10 @@ fun HistoryBottomSheet(
                     ) {
                         Text(
                             text = "No memories yet.",
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSans,
+                                fontWeight = FontWeight.Bold
+                            ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

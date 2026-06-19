@@ -18,23 +18,7 @@
             </InsightsFilterSettings>
           </value>
         </entry>
-        <entry key="Firebase Crashlytics">
-          <value>
-            <InsightsFilterSettings>
-              <option name="connection">
-                <ConnectionSetting>
-                  <option name="appId" value="com.ln.android.snippets" />
-                  <option name="mobileSdkAppId" value="1:1011997083953:android:0d28b7202e6f43d35d4810" />
-                  <option name="projectId" value="snippets-d2bc5ccf" />
-                  <option name="projectNumber" value="1011997083953" />
-                </ConnectionSetting>
-              </option>
-              <option name="signal" value="SIGNAL_UNSPECIFIED" />
-              <option name="timeIntervalDays" value="THIRTY_DAYS" />
-              <option name="visibilityType" value="ALL" />
-            </InsightsFilterSettings>
-          </value>
-        </entry>
+
       </map>
     </option>
   </component>

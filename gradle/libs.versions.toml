@@ -22,9 +22,6 @@ graphicsShapes = "1.1.0"
 material3 = "1.5.0-alpha01"
 coreSplashScreen = "1.0.1"
 haze = "1.7.2"
-googleServices = "4.4.2"
-firebaseCrashlyticsPlugin = "3.0.2"
-firebaseBom = "33.1.2"
 
 
 [libraries]
@@ -58,17 +55,9 @@ androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterfa
 androidx-graphics-shapes = { group = "androidx.graphics", name = "graphics-shapes", version.ref = "graphicsShapes" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashScreen" }
 haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
-firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
-firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
-firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
-firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
-firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
-firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
-firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }
 
