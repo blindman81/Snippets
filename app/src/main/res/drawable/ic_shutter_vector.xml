@@ -6,9 +6,10 @@
     <group
         android:name="shutter_group"
         android:pivotX="54"
-        android:pivotY="54"
-        android:scaleX="0.65"
-        android:scaleY="0.65">
+        android:pivotY="48.5"
+        android:translateY="5.5"
+        android:scaleX="0.8"
+        android:scaleY="0.8">
         <path
             android:name="shutter_path"
             android:fillColor="@color/splash_cookie_color"
