@@ -33,6 +33,10 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.graphics.drawable.BitmapDrawable
+import androidx.palette.graphics.Palette
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.clip
@@ -91,6 +95,33 @@ fun MemoryScreen(
 
     val context = LocalContext.current
     val view = LocalView.current
+    val activity = view.context as? androidx.activity.ComponentActivity
+    
+    val isDarkTheme = when (viewModel.themePreference) {
+        com.android.snippets.viewmodel.ThemePreference.LIGHT -> false
+        com.android.snippets.viewmodel.ThemePreference.DARK -> true
+        com.android.snippets.viewmodel.ThemePreference.SYSTEM -> isSystemInDarkTheme()
+    }
+
+    val photoLightnessMap = remember { mutableStateMapOf<Int, Boolean>() }
+
+    LaunchedEffect(pagerState.currentPage, photoLightnessMap[pagerState.currentPage]) {
+        activity?.window?.let { window ->
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+            val isLight = photoLightnessMap[pagerState.currentPage] ?: false
+            insetsController.isAppearanceLightStatusBars = isLight
+        }
+    }
+
+    DisposableEffect(isDarkTheme) {
+        onDispose {
+            activity?.window?.let { window ->
+                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.isAppearanceLightStatusBars = !isDarkTheme
+            }
+        }
+    }
+
     var showShareSheet by remember { mutableStateOf(false) }
 
     val uiAlpha by animateFloatAsState(
@@ -191,6 +222,22 @@ fun MemoryScreen(
                                 model = photo.uriString,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
+                                onSuccess = { state ->
+                                    val drawable = state.result.drawable
+                                    val bitmap = (drawable as? BitmapDrawable)?.bitmap
+                                    if (bitmap != null) {
+                                        val topHeight = (bitmap.height * 0.1f).toInt().coerceIn(1, bitmap.height)
+                                        Palette.from(bitmap)
+                                            .setRegion(0, 0, bitmap.width, topHeight)
+                                            .generate { palette ->
+                                                palette?.let { p ->
+                                                    val rgb = p.getDominantColor(android.graphics.Color.BLACK)
+                                                    val isLight = ColorUtils.calculateLuminance(rgb) > 0.5
+                                                    photoLightnessMap[pageIndex] = isLight
+                                                }
+                                            }
+                                    }
+                                },
                                 alignment = Alignment { size, space, _ ->
                                     val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
                                         (space.width - size.width).coerceAtMost(0),

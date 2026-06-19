@@ -104,10 +104,13 @@ class MainActivity : ComponentActivity() {
             val view = androidx.compose.ui.platform.LocalView.current
             val activity = view.context as androidx.activity.ComponentActivity
             
+            val currentScreen = viewModel.currentScreen
             androidx.compose.runtime.SideEffect {
                 val window = activity.window
                 val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.isAppearanceLightStatusBars = !isDarkTheme
+                if (currentScreen != com.android.snippets.viewmodel.Screen.Memory) {
+                    insetsController.isAppearanceLightStatusBars = !isDarkTheme
+                }
                 insetsController.isAppearanceLightNavigationBars = !isDarkTheme
             }
             
