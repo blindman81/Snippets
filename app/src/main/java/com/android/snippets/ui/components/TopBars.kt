@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.components
+package com.android.snippets.ui.components
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import kotlinx.coroutines.launch
@@ -93,7 +93,7 @@ fun SelectionToolbar(
     ) {
         Surface(
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = MaterialTheme.colorScheme.surfaceContainer,
             shadowElevation = 8.dp,
             tonalElevation = 8.dp,
             modifier = Modifier
