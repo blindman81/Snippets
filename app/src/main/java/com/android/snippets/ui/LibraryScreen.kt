@@ -255,7 +255,17 @@ Surface(
                                 PrimaryScrollableTabRow(
                                     selectedTabIndex = selectedTabIndex,
                                     edgePadding = 16.dp,
-                                    divider = {}
+                                    divider = {},
+                                    indicator = {
+                                        TabRowDefaults.PrimaryIndicator(
+                                            modifier = Modifier.tabIndicatorOffset(
+                                                selectedTabIndex = selectedTabIndex,
+                                                matchContentSize = true
+                                            ),
+                                            width = androidx.compose.ui.unit.Dp.Unspecified,
+                                            shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
+                                        )
+                                    }
                                 ) {
                                     allTabs.forEach { tabName ->
                                         val isSelected = tabName == currentTab
