@@ -1031,7 +1031,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             MemoryWorker.clearPostedNotificationState(getApplication(), photoId)
         }
         val reminderName = memoryReminderName(photoId)
-        val workRequest = OneTimeWorkRequestBuilder<MemoryWorker>()
+        val workRequestBuilder = OneTimeWorkRequestBuilder<MemoryWorker>()
             .setInitialDelay(delay, delayUnit)
             .setBackoffCriteria(
                 androidx.work.BackoffPolicy.LINEAR,
@@ -1045,8 +1045,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 )
             )
             .addTag(reminderName)
-            .build()
-            
+
+        // For resurfaced memories (zero delay), use expedited work to deliver immediately
+        if (delay == 0L) {
+            workRequestBuilder.setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        }
+        val workRequest = workRequestBuilder.build()
+
         WorkManager.getInstance(getApplication()).enqueueUniqueWork(
             reminderName,
             policy,
