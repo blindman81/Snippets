@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
@@ -114,8 +115,11 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
             divider = {},
             indicator = {
                 TabRowDefaults.PrimaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(selectedTabIndex),
-                    width = 24.dp,
+                    modifier = Modifier.tabIndicatorOffset(
+                        selectedTabIndex = selectedTabIndex,
+                        matchContentSize = true
+                    ),
+                    width = Dp.Unspecified,
                     shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
                 )
             }
