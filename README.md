@@ -5,6 +5,8 @@ A beautiful Material 3 Expressive app to write upto 10 letters of snippets to yo
 
 Relive your moments with memories that cycles photos every few days.
 
+Created with Antigravity, Codex, and Stitch (only in the early development stage).
+
 <table>
   <tr>
     <td width="25%"><img src="https://github.com/user-attachments/assets/ef970af9-415b-4a75-9851-907dc08c45f4" width="100%" /></td>
