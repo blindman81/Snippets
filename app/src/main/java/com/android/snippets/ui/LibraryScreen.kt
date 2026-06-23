@@ -900,7 +900,7 @@ Surface(
                                                 .clickable { option.action() }
                                         ) {
                                             ListItem(
-                                                headlineContent = { Text(option.name) },
+                                                headlineContent = { Text(option.name, fontWeight = FontWeight.Bold) },
                                                 leadingContent = { Icon(option.icon, contentDescription = null) },
                                                 colors = ListItemDefaults.colors(
                                                     containerColor = Color.Transparent,

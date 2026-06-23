@@ -94,7 +94,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                             modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Open source licenses", style = MaterialTheme.typography.bodyMedium) },
+                                text = { Text("Open source licenses", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) },
                                 onClick = {
                                     showMenu = false
                                     showLicenses = true
