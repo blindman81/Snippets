@@ -1,3 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?>
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@mipmap/ic_launcher_monochrome" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Chat Bubble / Snippet Note (Top-Left/Center) -->
+    <group
+        android:translateX="54"
+        android:translateY="54">
+        <group
+            android:translateX="-18.24"
+            android:translateY="-18.24"
+            android:scaleX="0.038"
+            android:scaleY="0.038">
+            <group android:translateY="960">
+                <path
+                    android:fillColor="#FFFFFF"
+                    android:pathData="M200-200h560v-367L567-760H200v560Zm0 80q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h400l240 240v400q0 33-23.5 56.5T760-120H200Zm80-160h400v-80H280v80Zm0-160h400v-80H280v80Zm0-160h280v-80H280v80Zm-80 400v-560 560Z" />
+            </group>
+        </group>
+    </group>
+</vector>

@@ -3,10 +3,34 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#26A69A"
-        android:pathData="M54,20 C35.2,20 20,35.2 20,54 C20,72.8 35.2,88 54,88 C72.8,88 88,72.8 88,54 C88,35.2 72.8,20 54,20 Z M54,80 C39.6,80 28,68.4 28,54 C28,39.6 39.6,28 54,28 C68.4,28 80,39.6 80,54 C80,68.4 68.4,80 54,80 Z" />
-    <path
-        android:fillColor="#26A69A"
-        android:pathData="M54,40 C46.3,40 40,46.3 40,54 C40,61.7 46.3,68 54,68 C61.7,68 68,61.7 68,54 C68,46.3 61.7,40 54,40 Z" />
+    <!-- 12-sided Cookie Shape Background -->
+    <group
+        android:name="cookie_group"
+        android:pivotX="54"
+        android:pivotY="48.5"
+        android:translateY="5.5"
+        android:scaleX="0.8"
+        android:scaleY="0.8">
+        <path
+            android:name="cookie_path"
+            android:fillColor="#E65100"
+            android:pathData="M54,6 C57.7,6 60.3,10.8 63.8,11.8 C67.4,12.7 72.1,9.8 75.2,11.7 C78.4,13.5 78.3,19 80.9,21.6 C83.5,24.2 89,24.1 90.8,27.2 C92.7,30.4 89.8,35.1 90.7,38.7 C91.7,42.2 96.5,44.8 96.5,48.5 C96.5,52.2 91.7,54.8 90.7,58.3 C89.8,61.9 92.7,66.6 90.8,69.7 C89,72.9 83.5,72.8 80.9,75.4 C78.3,78 78.4,83.5 75.2,85.3 C72.1,87.2 67.4,84.3 63.8,85.2 C60.3,86.2 57.7,91 54,91 C50.3,91 47.7,86.2 44.2,85.2 C40.6,84.3 35.9,87.2 32.8,85.3 C29.6,83.5 29.7,78 27.1,75.4 C24.5,72.8 19,72.9 17.2,69.8 C15.3,66.6 18.2,61.9 17.3,58.3 C16.3,54.8 11.5,52.2 11.5,48.5 C11.5,44.8 16.3,42.2 17.3,38.7 C18.2,35.1 15.3,30.4 17.2,27.2 C19,24.1 24.5,24.2 27.1,21.6 C29.7,19 29.6,13.5 32.7,11.7 C35.9,9.8 40.6,12.7 44.2,11.8 C47.7,10.8 50.3,6 54,6 Z" />
+    </group>
+
+    <!-- Chat Bubble / Snippet Note (Top-Left/Center, scaled down slightly) -->
+    <group
+        android:translateX="54"
+        android:translateY="54">
+        <group
+            android:translateX="-18.24"
+            android:translateY="-18.24"
+            android:scaleX="0.038"
+            android:scaleY="0.038">
+            <group android:translateY="960">
+                <path
+                    android:fillColor="#FFFFFF"
+                    android:pathData="M200-200h560v-367L567-760H200v560Zm0 80q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h400l240 240v400q0 33-23.5 56.5T760-120H200Zm80-160h400v-80H280v80Zm0-160h400v-80H280v80Zm0-160h280v-80H280v80Zm-80 400v-560 560Z" />
+            </group>
+        </group>
+    </group>
 </vector>
