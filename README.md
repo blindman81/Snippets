@@ -1,9 +1,8 @@
 # Snippets
 
 <p align="center">
+  <img width="1024" height="1024" alt="Image" src="https://github.com/user-attachments/assets/d5209f07-96ed-4039-94bf-f3b6f728010f" />
 </p>
-
-<img width="108" height="108" alt="Image" src="https://github.com/user-attachments/assets/0748067d-b18e-460e-830a-373272e599ef" />
 
 A beautiful Material 3 Expressive app to write upto 10 letters of snippets to your photos and view them in a stylised way.
 
