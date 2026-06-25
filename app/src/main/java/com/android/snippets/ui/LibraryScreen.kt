@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
 import com.android.snippets.ui.components.LoadingIndicator
 import com.android.snippets.ui.components.HistoryBottomSheet
@@ -99,6 +100,7 @@ fun LibraryScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val view = LocalView.current
 
     var showMenuPopup by remember { mutableStateOf(false) }
     var showCollectionsPopup by remember { mutableStateOf(false) }
@@ -143,8 +145,14 @@ fun LibraryScreen(
     
     val currentTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
     
+    var isFirstTabLoad by remember { mutableStateOf(true) }
     LaunchedEffect(currentTab) {
         viewModel.libraryCurrentTab = currentTab
+        if (isFirstTabLoad) {
+            isFirstTabLoad = false
+        } else {
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
     }
     
     val flatPhotosRaw = viewModel.filteredPhotos
@@ -170,8 +178,12 @@ fun LibraryScreen(
         ) {
             val targetIndex = flatPhotos.indexOfFirst { it.id == viewModel.activePhotoId }
             if (targetIndex != -1) {
+                val gridState = listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
                 kotlinx.coroutines.delay(250)
-                listStates.getOrPut(currentTab) { LazyStaggeredGridState() }.scrollToItem(targetIndex)
+                val isVisible = gridState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
+                if (!isVisible) {
+                    gridState.scrollToItem(targetIndex)
+                }
             }
         }
     }
@@ -211,7 +223,6 @@ fun LibraryScreen(
     }
 
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    val view = LocalView.current
 
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
@@ -283,7 +294,6 @@ Surface(
                                                     if (pageIndex != -1) {
                                                         scope.launch { pagerState.animateScrollToPage(pageIndex) }
                                                     }
-                                                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                                                 }
                                             },
                                             modifier = Modifier.then(
@@ -300,7 +310,6 @@ Surface(
                                                                     scope.launch { pagerState.animateScrollToPage(pageIndex) }
                                                                 }
                                                             }
-                                                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                                                         },
                                                         onLongClick = {
                                                             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -364,13 +373,19 @@ Surface(
                                                         Text(
                                                             text = tabName,
                                                             style = MaterialTheme.typography.titleSmall.copy(
-                                                                fontFamily = if (isSelected) com.android.snippets.ui.theme.GoogleSansFlexTall else com.android.snippets.ui.theme.GoogleSans,
-                                                                fontSize = if (isSelected) 32.sp else 16.sp
+                                                                fontFamily = com.android.snippets.ui.theme.GoogleSans
                                                             ),
                                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                                         )
                                                         if (isSelected && tabName != "New Collection") {
-                                                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                            val isBottomSheetOpen = longPressedCollection == tabName
+                                                            Icon(
+                                                                painter = painterResource(
+                                                                    id = if (isBottomSheetOpen) R.drawable.ic_arrow_dropdown_filled else R.drawable.ic_arrow_dropdown
+                                                                ),
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(16.dp)
+                                                            )
                                                         }
                                                     }
                                                 }

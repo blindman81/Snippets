@@ -43,9 +43,16 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
     val pagerState = rememberPagerState(initialPage = selectedTabIndex, pageCount = { 2 })
     
     // Sync selectedTabIndex with pager state changes
+    var isFirstFilterTabLoad by remember { mutableStateOf(true) }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
-            selectedTabIndex = page
+            if (selectedTabIndex != page) {
+                selectedTabIndex = page
+                if (!isFirstFilterTabLoad) {
+                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                }
+            }
+            isFirstFilterTabLoad = false
         }
     }
     
@@ -129,7 +136,6 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                 Tab(
                     selected = selectedTabIndex == index,
                     onClick = { 
-                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(index)
                         }
@@ -141,12 +147,11 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                             verticalArrangement = Arrangement.spacedBy(if (isSelected) 2.dp else 4.dp)
                         ) {
                             Icon(icon, null, modifier = Modifier.size(24.dp))
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontFamily = if (isSelected) com.android.snippets.ui.theme.GoogleSansFlexTall else com.android.snippets.ui.theme.GoogleSans,
-                                    fontSize = if (isSelected) 32.sp else 14.sp
-                                ),
+                             Text(
+                                 text = label,
+                                 style = MaterialTheme.typography.titleSmall.copy(
+                                     fontFamily = com.android.snippets.ui.theme.GoogleSans
+                                 ),
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         }
