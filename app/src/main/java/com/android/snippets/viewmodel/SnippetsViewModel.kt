@@ -1026,7 +1026,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     ) {
         if (photoId.isBlank()) return
 
-        requestNotificationPermission = true
+
         if (resetPostedState) {
             MemoryWorker.clearPostedNotificationState(getApplication(), photoId)
         }
