@@ -163,7 +163,7 @@ fun MemoryScreen(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(80.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                        .blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                 )
 
                 // Dim/Tint overlay

@@ -480,7 +480,7 @@ object MediaSaver {
         val tiny = Bitmap.createScaledBitmap(cropped, tinyW, tinyH, true)
         
         // Apply box blur on the tiny image to make it silky smooth
-        val blurredTiny = boxBlur(tiny, 10)
+        val blurredTiny = boxBlur(tiny, 4)
         
         val blurred = Bitmap.createScaledBitmap(blurredTiny, targetWidth, targetHeight, true)
         cropped.recycle()
