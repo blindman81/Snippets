@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
@@ -162,7 +163,7 @@ fun MemoryScreen(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(32.dp)
+                        .blur(80.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                 )
 
                 // Dim/Tint overlay

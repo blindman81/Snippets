@@ -134,7 +134,11 @@ object MediaSaver {
         
         if (photoBitmap != null) {
             val blurredBackground = createBlurredBackground(photoBitmap, width, height)
-            canvas.drawBitmap(blurredBackground, 0f, 0f, null)
+            val blurPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                isFilterBitmap = true
+                isDither = true
+            }
+            canvas.drawBitmap(blurredBackground, 0f, 0f, blurPaint)
             blurredBackground.recycle()
             
             // Draw Dim/Tint Overlay
@@ -470,13 +474,90 @@ object MediaSaver {
         matrix.postTranslate((targetWidth - scaledW) * 0.5f, (targetHeight - scaledH) * 0.5f)
         canvas.drawBitmap(src, matrix, null)
         
-        val tinyW = (targetWidth * 0.02f).toInt().coerceAtLeast(8)
-        val tinyH = (targetHeight * 0.02f).toInt().coerceAtLeast(8)
+        // Downsample to 8% for smooth interpolation
+        val tinyW = (targetWidth * 0.08f).toInt().coerceAtLeast(8)
+        val tinyH = (targetHeight * 0.08f).toInt().coerceAtLeast(8)
         val tiny = Bitmap.createScaledBitmap(cropped, tinyW, tinyH, true)
         
-        val blurred = Bitmap.createScaledBitmap(tiny, targetWidth, targetHeight, true)
+        // Apply box blur on the tiny image to make it silky smooth
+        val blurredTiny = boxBlur(tiny, 10)
+        
+        val blurred = Bitmap.createScaledBitmap(blurredTiny, targetWidth, targetHeight, true)
         cropped.recycle()
         tiny.recycle()
+        blurredTiny.recycle()
         return blurred
+    }
+
+    private fun boxBlur(src: Bitmap, range: Int): Bitmap {
+        val width = src.width
+        val height = src.height
+        val pixels = IntArray(width * height)
+        src.getPixels(pixels, 0, width, 0, 0, width, height)
+        
+        val size = range * 2 + 1
+        val newPixels = IntArray(width * height)
+        
+        // Horizontal pass
+        for (y in 0 until height) {
+            val offset = y * width
+            var rSum = 0
+            var gSum = 0
+            var bSum = 0
+            
+            for (i in -range..range) {
+                val x = i.coerceIn(0, width - 1)
+                val pixel = pixels[offset + x]
+                rSum += Color.red(pixel)
+                gSum += Color.green(pixel)
+                bSum += Color.blue(pixel)
+            }
+            
+            for (x in 0 until width) {
+                newPixels[offset + x] = Color.rgb(rSum / size, gSum / size, bSum / size)
+                
+                val prevX = (x - range).coerceIn(0, width - 1)
+                val nextX = (x + range + 1).coerceIn(0, width - 1)
+                val prevPixel = pixels[offset + prevX]
+                val nextPixel = pixels[offset + nextX]
+                
+                rSum += Color.red(nextPixel) - Color.red(prevPixel)
+                gSum += Color.green(nextPixel) - Color.green(prevPixel)
+                bSum += Color.blue(nextPixel) - Color.blue(prevPixel)
+            }
+        }
+        
+        // Vertical pass
+        val finalPixels = IntArray(width * height)
+        for (x in 0 until width) {
+            var rSum = 0
+            var gSum = 0
+            var bSum = 0
+            
+            for (i in -range..range) {
+                val y = i.coerceIn(0, height - 1)
+                val pixel = newPixels[y * width + x]
+                rSum += Color.red(pixel)
+                gSum += Color.green(pixel)
+                bSum += Color.blue(pixel)
+            }
+            
+            for (y in 0 until height) {
+                finalPixels[y * width + x] = Color.rgb(rSum / size, gSum / size, bSum / size)
+                
+                val prevY = (y - range).coerceIn(0, height - 1)
+                val nextY = (y + range + 1).coerceIn(0, height - 1)
+                val prevPixel = newPixels[prevY * width + x]
+                val nextPixel = newPixels[nextY * width + x]
+                
+                rSum += Color.red(nextPixel) - Color.red(prevPixel)
+                gSum += Color.green(nextPixel) - Color.green(prevPixel)
+                bSum += Color.blue(nextPixel) - Color.blue(prevPixel)
+            }
+        }
+        
+        val dest = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        dest.setPixels(finalPixels, 0, width, 0, 0, width, height)
+        return dest
     }
 }
