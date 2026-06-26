@@ -149,7 +149,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                             Icon(icon, null, modifier = Modifier.size(24.dp))
                              Text(
                                  text = label,
-                                 style = MaterialTheme.typography.titleMedium.copy(
+                                 style = MaterialTheme.typography.titleLarge.copy(
                                      fontFamily = com.android.snippets.ui.theme.GoogleSans
                                  ),
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal

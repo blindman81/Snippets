@@ -111,6 +111,7 @@ fun DetailScreen(
     val photos = remember(
         viewModel.libraryCurrentTab,
         viewModel.filteredPhotos,
+        viewModel.filteredFavoritesPhotos,
         viewModel.detailReturnScreen,
         viewModel.curatedMemories,
         viewModel.getPhotoSortTypeFor(viewModel.libraryCurrentTab)
@@ -120,10 +121,7 @@ fun DetailScreen(
         } else {
             when (viewModel.libraryCurrentTab) {
                 "Library" -> viewModel.filteredPhotos
-                "Favorites" -> {
-                    val filtered = viewModel.filteredPhotos.filter { it.isFavorite }
-                    viewModel.sortPhotos(filtered, viewModel.getPhotoSortTypeFor("Favorites"))
-                }
+                "Favorites" -> viewModel.filteredFavoritesPhotos.values.flatten()
                 else -> {
                     val collectionName = viewModel.libraryCurrentTab
                     val filtered = viewModel.filteredPhotos.filter { it.collections.contains(collectionName) }
