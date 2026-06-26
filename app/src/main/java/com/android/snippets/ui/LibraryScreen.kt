@@ -372,7 +372,7 @@ Surface(
                                                         }
                                                         Text(
                                                             text = tabName,
-                                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                            style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized else MaterialTheme.typography.titleMedium.copy(
                                                                 fontFamily = com.android.snippets.ui.theme.GoogleSans
                                                             ),
                                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal

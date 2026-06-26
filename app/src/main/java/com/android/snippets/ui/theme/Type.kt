@@ -180,4 +180,9 @@ val titleEmphasized = Typography.titleLarge.copy(
     fontWeight = FontWeight.Bold
 )
 
+val titleMediumEmphasized = Typography.titleMedium.copy(
+    fontFamily = GoogleSans,
+    fontWeight = FontWeight.Bold
+)
+
 
