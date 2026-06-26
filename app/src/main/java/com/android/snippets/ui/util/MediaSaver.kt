@@ -28,6 +28,40 @@ import java.util.*
 
 object MediaSaver {
 
+    private val cachedFonts = mutableMapOf<String, Typeface>()
+
+    private fun getCustomTypeface(context: Context, variationSettings: String): Typeface? {
+        val cached = cachedFonts[variationSettings]
+        if (cached != null) return cached
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val cacheFile = File(context.cacheDir, "google_sans_flex_temp.ttf")
+                if (!cacheFile.exists()) {
+                    context.resources.openRawResource(com.ln.android.snippets.R.font.google_sans_flex).use { input ->
+                        FileOutputStream(cacheFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+                val typeface = Typeface.Builder(cacheFile)
+                    .setFontVariationSettings(variationSettings)
+                    .build()
+                if (typeface != null) {
+                    cachedFonts[variationSettings] = typeface
+                    return typeface
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        return try {
+            androidx.core.content.res.ResourcesCompat.getFont(context, com.ln.android.snippets.R.font.google_sans_flex)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap()): Boolean = withContext(Dispatchers.IO) {
         try {
             val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes) ?: return@withContext false
@@ -172,7 +206,7 @@ object MediaSaver {
             alpha = 230
             textSize = 34f
             textAlign = Paint.Align.CENTER
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            typeface = getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             letterSpacing = 0.15f
         }
         canvas.drawText(dateString, width / 2f, 200f, datePaint)
@@ -260,17 +294,28 @@ object MediaSaver {
             val forcedStyle = snippetStyles[trimmedText] ?: com.android.snippets.viewmodel.SnippetStyle.Default
             
             val typeface = when(forcedStyle) {
-                com.android.snippets.viewmodel.SnippetStyle.Thin -> Typeface.create("sans-serif-thin", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.Cursive -> Typeface.create("cursive", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.Mono -> Typeface.MONOSPACE
-                com.android.snippets.viewmodel.SnippetStyle.Serif -> Typeface.SERIF
-                com.android.snippets.viewmodel.SnippetStyle.Bold -> Typeface.create("sans-serif-black", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.Spaced -> Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                com.android.snippets.viewmodel.SnippetStyle.FlexHeavy -> Typeface.create("sans-serif-black", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.FlexWide -> Typeface.create("sans-serif", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.FlexSlant -> Typeface.create("sans-serif", Typeface.ITALIC)
-                com.android.snippets.viewmodel.SnippetStyle.FlexGrade -> Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                else -> Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                com.android.snippets.viewmodel.SnippetStyle.Thin ->
+                    getCustomTypeface(context, "'wght' 100, 'ROND' 100") ?: Typeface.create("sans-serif-thin", Typeface.NORMAL)
+                com.android.snippets.viewmodel.SnippetStyle.Cursive ->
+                    Typeface.create("cursive", Typeface.NORMAL)
+                com.android.snippets.viewmodel.SnippetStyle.Mono ->
+                    Typeface.MONOSPACE
+                com.android.snippets.viewmodel.SnippetStyle.Serif ->
+                    Typeface.SERIF
+                com.android.snippets.viewmodel.SnippetStyle.Bold ->
+                    Typeface.create("sans-serif-black", Typeface.NORMAL)
+                com.android.snippets.viewmodel.SnippetStyle.Spaced ->
+                    getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                com.android.snippets.viewmodel.SnippetStyle.FlexHeavy ->
+                    getCustomTypeface(context, "'wght' 1000, 'ROND' 100") ?: Typeface.create("sans-serif-black", Typeface.NORMAL)
+                com.android.snippets.viewmodel.SnippetStyle.FlexWide ->
+                    getCustomTypeface(context, "'wdth' 151, 'ROND' 100") ?: Typeface.create("sans-serif", Typeface.NORMAL)
+                com.android.snippets.viewmodel.SnippetStyle.FlexSlant ->
+                    getCustomTypeface(context, "'slnt' -10, 'ROND' 100") ?: Typeface.create("sans-serif", Typeface.ITALIC)
+                com.android.snippets.viewmodel.SnippetStyle.FlexGrade ->
+                    getCustomTypeface(context, "'GRAD' 100, 'ROND' 100") ?: Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                else ->
+                    getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             }
             
             val letterSpacingVal = when(forcedStyle) {
