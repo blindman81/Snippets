@@ -11,6 +11,10 @@ import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.core.content.FileProvider
 import com.android.snippets.model.Photo
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.CornerRounding
+import androidx.graphics.shapes.star
+import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -89,56 +93,87 @@ object MediaSaver {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
-        // 1. Draw Background (Fallback)
+        val photoBitmap = runBlockingCoil(context, photo.uri)
+
+        // 1. Draw Background (Fallback solid color first, then blurred photo if loaded)
         canvas.drawColor(bgColor)
         
-        // 2. Draw Immersive Photo (Edge-to-Edge)
-        val photoBitmap = runBlockingCoil(context, photo.uri)
-        val centerX = width / 2f
+        if (photoBitmap != null) {
+            val blurredBackground = createBlurredBackground(photoBitmap, width, height)
+            canvas.drawBitmap(blurredBackground, 0f, 0f, null)
+            blurredBackground.recycle()
+            
+            // Draw Dim/Tint Overlay
+            val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = if (isDark) Color.BLACK else Color.WHITE
+                alpha = (255 * (if (isDark) 0.5f else 0.6f)).toInt()
+            }
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
+        }
+        
+        // 2. Draw Photo in a 12-Sided Cookie Shape
+        val cx = width / 2f
+        val centerX = cx
+        val cy = 924f
+        val radius = 624f
+        val targetSize = 2 * radius // 1248f
+        
+        val polygon = RoundedPolygon.star(
+            numVerticesPerRadius = 12,
+            radius = radius,
+            innerRadius = radius * 0.88f,
+            rounding = CornerRounding(radius * 0.12f),
+            centerX = cx,
+            centerY = cy
+        )
+        val photoPath = polygon.toPath()
         
         if (photoBitmap != null) {
+            canvas.save()
+            canvas.clipPath(photoPath)
+            
             val srcWidth = photoBitmap.width.toFloat()
             val srcHeight = photoBitmap.height.toFloat()
             
-            // Calculate ContentScale.Crop equivalent
-            val scaleX = width / srcWidth
-            val scaleY = height / srcHeight
-            val scale = maxOf(scaleX, scaleY)
+            val scale = targetSize / minOf(srcWidth, srcHeight)
             
             val scaledWidth = srcWidth * scale
             val scaledHeight = srcHeight * scale
             
-            // Focus adjustments (similar to MemoryScreen)
-            val focusOffsetX = ((width - scaledWidth) * 0.5f).coerceIn((width - scaledWidth).coerceAtMost(0f), (width - scaledWidth).coerceAtLeast(0f))
-            val focusOffsetY = ((height - scaledHeight) * 0.5f).coerceIn((height - scaledHeight).coerceAtMost(0f), (height - scaledHeight).coerceAtLeast(0f))
+            val focusOffsetX = cx - scaledWidth * 0.5f
+            val focusOffsetY = cy - scaledHeight * 0.5f
             
             val matrix = android.graphics.Matrix()
             matrix.postScale(scale, scale)
             matrix.postTranslate(focusOffsetX, focusOffsetY)
             
             canvas.drawBitmap(photoBitmap, matrix, null)
-            
-            // Draw Dark Gradient Scrim at bottom (e.g. from y = 1200 to 2560)
-            val scrimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = LinearGradient(
-                    0f, height - 1200f, 0f, height.toFloat(),
-                    Color.TRANSPARENT, Color.parseColor("#E6000000"), // 90% black
-                    Shader.TileMode.CLAMP
-                )
+            canvas.restore()
+        } else {
+            // Draw a fallback placeholder rounded rect if photo load fails
+            val placeholderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = if (isDark) Color.parseColor("#303030") else Color.parseColor("#E0E0E0")
             }
-            canvas.drawRect(0f, height - 1200f, width.toFloat(), height.toFloat(), scrimPaint)
+            canvas.drawPath(photoPath, placeholderPaint)
         }
 
-        // 3. Draw Date Header (With Shadow for visibility)
+        // Draw a thick border around the Photo Rectangle
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 16f // 4.dp equivalent
+            color = Color.WHITE
+        }
+        canvas.drawPath(photoPath, borderPaint)
+
+        // 3. Draw Date Header
         val dateString = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date)).uppercase()
         val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
+            color = if (isDark) Color.WHITE else Color.BLACK
             alpha = 230
             textSize = 34f
             textAlign = Paint.Align.CENTER
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             letterSpacing = 0.15f
-            setShadowLayer(8f, 0f, 4f, Color.argb(180, 0, 0, 0))
         }
         canvas.drawText(dateString, width / 2f, 200f, datePaint)
 
@@ -213,7 +248,7 @@ object MediaSaver {
             val trimmedText = text.trim()
             val stableRandom = Random(trimmedText.hashCode())
             val personality = stableRandom.nextInt(0, 5)
-            val isFilled = (personality % 2 == 0)
+            val isFilled = true
             
             val rotation = stableRandom.nextInt(-15, 15).toFloat()
             
@@ -339,7 +374,7 @@ object MediaSaver {
                 if (pill.isFilled) {
                     pillPaint.style = Paint.Style.FILL
                     pillPaint.color = pill.color
-                    pillPaint.alpha = (255 * 0.10f).toInt()
+                    pillPaint.alpha = (255 * 0.25f).toInt()
                     canvas.drawPath(pillPath, pillPaint)
                 } else {
                     pillPaint.style = Paint.Style.STROKE
@@ -372,5 +407,31 @@ object MediaSaver {
             e.printStackTrace()
             null
         }
+    }
+
+    private fun createBlurredBackground(src: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
+        val srcWidth = src.width.toFloat()
+        val srcHeight = src.height.toFloat()
+        val scaleX = targetWidth / srcWidth
+        val scaleY = targetHeight / srcHeight
+        val scale = maxOf(scaleX, scaleY)
+        val scaledW = (srcWidth * scale).toInt().coerceAtLeast(1)
+        val scaledH = (srcHeight * scale).toInt().coerceAtLeast(1)
+        
+        val cropped = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(cropped)
+        val matrix = android.graphics.Matrix()
+        matrix.postScale(scale, scale)
+        matrix.postTranslate((targetWidth - scaledW) * 0.5f, (targetHeight - scaledH) * 0.5f)
+        canvas.drawBitmap(src, matrix, null)
+        
+        val tinyW = (targetWidth * 0.02f).toInt().coerceAtLeast(8)
+        val tinyH = (targetHeight * 0.02f).toInt().coerceAtLeast(8)
+        val tiny = Bitmap.createScaledBitmap(cropped, tinyW, tinyH, true)
+        
+        val blurred = Bitmap.createScaledBitmap(tiny, targetWidth, targetHeight, true)
+        cropped.recycle()
+        tiny.recycle()
+        return blurred
     }
 }

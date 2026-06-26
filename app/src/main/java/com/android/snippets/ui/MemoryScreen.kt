@@ -15,6 +15,12 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.graphics.Path
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -41,6 +47,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
@@ -105,11 +112,10 @@ fun MemoryScreen(
 
     val photoLightnessMap = remember { mutableStateMapOf<Int, Boolean>() }
 
-    LaunchedEffect(pagerState.currentPage, photoLightnessMap[pagerState.currentPage]) {
+    LaunchedEffect(isDarkTheme) {
         activity?.window?.let { window ->
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
-            val isLight = photoLightnessMap[pagerState.currentPage] ?: false
-            insetsController.isAppearanceLightStatusBars = isLight
+            insetsController.isAppearanceLightStatusBars = !isDarkTheme
         }
     }
 
@@ -149,26 +155,64 @@ fun MemoryScreen(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
+                // Blurred background photo
+                AsyncImage(
+                    model = photo.uriString,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(32.dp)
+                )
 
-                // Main Canvas (Box Layout)
+                // Dim/Tint overlay
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            if (isDarkTheme) Color.Black.copy(alpha = 0.5f)
+                            else Color.White.copy(alpha = 0.6f)
+                        )
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .systemBarsPadding(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Central Photo Core with Overlaid Snippets
+                    // Spacer to clear the status bar / date header
+                    Spacer(modifier = Modifier.height(72.dp))
+
                     val isPhotoPage = pageIndex >= 1 && pageIndex <= photoList.size
-                    val canSwipeDownOnImageToClose = isPhotoPage
-                    
+
+                    val infiniteTransition = rememberInfiniteTransition(label = "cookie_rotation")
+                    val rotationAngle by infiniteTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(60000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        ),
+                        label = "rotationAngle"
+                    )
+
                     Card(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                             viewModel.openDetail(photo.id)
                         },
-                        shape = RectangleShape,
-                        border = null,
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        shape = CookieShape,
+                        border = BorderStroke(4.dp, Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .aspectRatio(1f)
+                            .graphicsLayer {
+                                rotationZ = rotationAngle
+                            }
                             .then(
                                 if (photo.id == transitionTargetId && viewModel.currentScreen != Screen.Detail && sharedTransitionScope != null && animatedVisibilityScope != null) {
                                     with(sharedTransitionScope) {
@@ -182,133 +226,69 @@ fun MemoryScreen(
                                 } else Modifier
                             )
                     ) {
-                        var isPressed by remember { mutableStateOf(false) }
-                        
-                        Box(
+                        AsyncImage(
+                            model = photo.uriString,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            onSuccess = { state ->
+                                val drawable = state.result.drawable
+                                val bitmap = (drawable as? BitmapDrawable)?.bitmap
+                                if (bitmap != null) {
+                                    val topHeight = (bitmap.height * 0.1f).toInt().coerceIn(1, bitmap.height)
+                                    Palette.from(bitmap)
+                                        .setRegion(0, 0, bitmap.width, topHeight)
+                                        .generate { palette ->
+                                            palette?.let { p ->
+                                                val rgb = p.getDominantColor(android.graphics.Color.BLACK)
+                                                val isLight = ColorUtils.calculateLuminance(rgb) > 0.5
+                                                photoLightnessMap[pageIndex] = isLight
+                                            }
+                                        }
+                                }
+                            },
+                            alignment = Alignment.Center,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pointerInput(Unit) {
-                                    awaitPointerEventScope {
-                                        while (true) {
-                                            val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                                            isPressed = event.changes.any { it.pressed }
-                                        }
-                                    }
+                                .graphicsLayer {
+                                    rotationZ = -rotationAngle
+                                    scaleX = 1.25f
+                                    scaleY = 1.25f
                                 }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Snippets Cloud overlaid at the bottom
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 48.dp, top = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val cloudWidth = 360.dp
+                        val cloudHeight = 240.dp
+                        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                        androidx.compose.foundation.layout.FlowRow(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
                         ) {
-                            var isZoomingIn by remember { mutableStateOf(true) }
-                            val scaleAnim = remember { Animatable(1f) }
-
-                            LaunchedEffect(isPressed) {
-                                if (!isPressed) {
-                                    while (true) {
-                                        val target = if (isZoomingIn) 1.1f else 1f
-                                        val duration = (kotlin.math.abs(target - scaleAnim.value) / 0.1f * 8000).toInt()
-                                        if (duration > 0) {
-                                            scaleAnim.animateTo(
-                                                targetValue = target,
-                                                animationSpec = tween(durationMillis = duration, easing = LinearEasing)
-                                            )
-                                        }
-                                        isZoomingIn = !isZoomingIn
-                                    }
-                                } else {
-                                    scaleAnim.stop()
-                                }
-                            }
-                            val scale = scaleAnim.value
-
-                            AsyncImage(
-                                model = photo.uriString,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                onSuccess = { state ->
-                                    val drawable = state.result.drawable
-                                    val bitmap = (drawable as? BitmapDrawable)?.bitmap
-                                    if (bitmap != null) {
-                                        val topHeight = (bitmap.height * 0.1f).toInt().coerceIn(1, bitmap.height)
-                                        Palette.from(bitmap)
-                                            .setRegion(0, 0, bitmap.width, topHeight)
-                                            .generate { palette ->
-                                                palette?.let { p ->
-                                                    val rgb = p.getDominantColor(android.graphics.Color.BLACK)
-                                                    val isLight = ColorUtils.calculateLuminance(rgb) > 0.5
-                                                    photoLightnessMap[pageIndex] = isLight
-                                                }
-                                            }
-                                    }
-                                },
-                                alignment = Alignment { size, space, _ ->
-                                    val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
-                                        (space.width - size.width).coerceAtMost(0),
-                                        (space.width - size.width).coerceAtLeast(0)
-                                    )
-                                    val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
-                                        (space.height - size.height).coerceAtMost(0),
-                                        (space.height - size.height).coerceAtLeast(0)
-                                    )
-                                    androidx.compose.ui.unit.IntOffset(x, y)
-                                },
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer {
-                                        scaleX = scale
-                                        scaleY = scale
-                                    }
-                            )
-                            
-                            // Dark Scrim at bottom to make snippets readable
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight(0.5f)
-                                    .align(Alignment.BottomCenter)
-                                    .background(
-                                        Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.Transparent, 
-                                                Color.Black.copy(alpha = 0.6f),
-                                                Color.Black.copy(alpha = 0.9f)
-                                            )
-                                        )
-                                    )
-                            )
-
-                            // Snippets Cloud overlaid at the bottom
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 24.dp, top = 24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val cloudWidth = 360.dp
-                                val cloudHeight = 240.dp
-                                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-                                androidx.compose.foundation.layout.FlowRow(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
-                                ) {
-                                    photo.snippets.forEachIndexed { index, snippet ->
-                                        FloatingSnippet(
-                                            text = snippet, 
-                                            index = index, 
-                                            total = photo.snippets.size, 
-                                            photoColors = emptyList(),
-                                            forcedColor = viewModel.getSnippetColor(snippet),
-                                            forcedStyle = viewModel.getSnippetStyle(snippet),
-                                            screenWidth = cloudWidth,
-                                            screenHeight = cloudHeight
-                                        )
-                                    }
-                                }
+                            photo.snippets.forEachIndexed { index, snippet ->
+                                FloatingSnippet(
+                                    text = snippet,
+                                    index = index,
+                                    total = photo.snippets.size,
+                                    photoColors = emptyList(),
+                                    forcedColor = viewModel.getSnippetColor(snippet),
+                                    forcedStyle = viewModel.getSnippetStyle(snippet),
+                                    screenWidth = cloudWidth,
+                                    screenHeight = cloudHeight
+                                )
                             }
                         }
                     }
                 }
-
-
             }
         }
 
@@ -335,7 +315,7 @@ fun MemoryScreen(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     ),
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
             }
@@ -359,7 +339,7 @@ fun FloatingSnippet(
 
     val stableRandom = remember(text) { Random(text.hashCode().toLong()) }
     val personality = stableRandom.nextInt(0, 5)
-    val isFilled = (personality % 2 == 0)
+    val isFilled = true
 
     val baseFontSize = when(personality) {
         0, 1 -> 24 // Large
@@ -421,7 +401,7 @@ fun FloatingSnippet(
     val snippetColor = Color(colorInt)
     val rotation = (stableRandom.nextFloat() * 16 - 8)
 
-    val containerColor = if (isFilled) snippetColor.copy(alpha = 0.10f) else Color.Transparent
+    val containerColor = if (isFilled) snippetColor.copy(alpha = 0.25f) else Color.Transparent
     val borderColor = if (!isFilled) snippetColor.copy(alpha = 0.40f) else null
 
     Box(modifier = Modifier.rotateWithBounds(rotation)) {

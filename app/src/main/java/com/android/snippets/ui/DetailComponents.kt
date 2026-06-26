@@ -352,11 +352,11 @@ fun CloudSnippetItem(
         else baseSnippetColor
     }
 
-    // Streamlined style logic: Even personalities get Fill color, Odd personalities get Outline Transparent
-    val isFilled = (personality % 2 == 0)
+    // Streamlined style logic: All snippets are fill colored
+    val isFilled = true
 
     val containerColor = if (isFilled) {
-        snippetColor.copy(alpha = 0.10f)
+        snippetColor.copy(alpha = 0.25f)
     } else {
         Color.Transparent
     }
