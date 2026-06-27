@@ -714,28 +714,32 @@ fun AddSnippetsModal(
                                         enter = fadeIn() + expandVertically(),
                                         exit = fadeOut() + shrinkVertically()
                                     ) {
-                                        @OptIn(ExperimentalLayoutApi::class)
-                                        FlowRow(
+                                        Column(
                                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                            horizontalArrangement = Arrangement.Center,
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                                            maxItemsInEachRow = 4
+                                            horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
-                                            suggestions.forEach { suggestion ->
-                                                SuggestionChip(
-                                                    onClick = { 
-                                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                        text = suggestion 
-                                                    },
-                                                    label = { Text(suggestion, style = MaterialTheme.typography.labelMedium) },
-                                                    shape = CircleShape,
-                                                    colors = SuggestionChipDefaults.suggestionChipColors(
-                                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    ),
-                                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
+                                            suggestions.chunked(4).take(3).forEach { rowItems ->
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    rowItems.forEach { suggestion ->
+                                                        SuggestionChip(
+                                                            onClick = { 
+                                                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                                text = suggestion 
+                                                            },
+                                                            label = { Text(suggestion, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                                                            shape = CircleShape,
+                                                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            ),
+                                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
