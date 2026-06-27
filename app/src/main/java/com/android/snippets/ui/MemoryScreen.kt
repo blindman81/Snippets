@@ -170,10 +170,7 @@ fun MemoryScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(
-                            if (isDarkTheme) Color.Black.copy(alpha = 0.5f)
-                            else Color.White.copy(alpha = 0.6f)
-                        )
+                        .background(Color.Black.copy(alpha = 0.5f))
                 )
 
                 Column(
@@ -316,7 +313,7 @@ fun MemoryScreen(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     ),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color.White
                 )
 
             }

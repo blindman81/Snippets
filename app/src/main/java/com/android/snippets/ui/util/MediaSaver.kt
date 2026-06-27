@@ -141,10 +141,10 @@ object MediaSaver {
             canvas.drawBitmap(blurredBackground, 0f, 0f, blurPaint)
             blurredBackground.recycle()
             
-            // Draw Dim/Tint Overlay
+            // Draw Dim/Tint Overlay (always dark overlay)
             val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = if (isDark) Color.BLACK else Color.WHITE
-                alpha = (255 * (if (isDark) 0.5f else 0.6f)).toInt()
+                color = Color.BLACK
+                alpha = (255 * 0.5f).toInt()
             }
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
         }
@@ -206,7 +206,7 @@ object MediaSaver {
         // 3. Draw Date Header
         val dateString = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date)).uppercase()
         val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = if (isDark) Color.WHITE else Color.BLACK
+            color = Color.WHITE
             alpha = 230
             textSize = 34f
             textAlign = Paint.Align.CENTER
