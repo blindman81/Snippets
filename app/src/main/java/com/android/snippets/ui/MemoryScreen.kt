@@ -193,11 +193,9 @@ fun MemoryScreen(
                         detectTapGestures(
                             onPress = { offset ->
                                 isPressed = true
-                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                 val released = tryAwaitRelease()
                                 isPressed = false
                                 if (released) {
-                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                                     if (offset.x < size.width * 0.3f) {
                                         coroutineScope.launch {
                                             pagerState.animateScrollToPage(pagerState.currentPage - 1)
@@ -208,6 +206,9 @@ fun MemoryScreen(
                                         }
                                     }
                                 }
+                            },
+                            onLongPress = {
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                             }
                         )
                     }
