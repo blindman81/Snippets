@@ -1,6 +1,7 @@
 package com.android.snippets.ui
 
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -142,28 +143,27 @@ fun MemoryScreen(
     var currentMemoryProgress by remember { mutableFloatStateOf(0f) }
     var wavePhase by remember { mutableFloatStateOf(0f) }
 
-    // Reset progress when current page changes
-    LaunchedEffect(pagerState.currentPage) {
-        currentMemoryProgress = 0f
+    // Story Progress Timer and Auto-Advance Loop
+    LaunchedEffect(pagerState.currentPage, isPressed) {
         if (pagerState.currentPage >= 1 && pagerState.currentPage <= photoList.size) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-        }
-    }
+            currentMemoryProgress = 0f
 
-    // Progress timer loop
-    LaunchedEffect(pagerState.currentPage, isPressed, pagerState.isScrollInProgress) {
-        if (pagerState.currentPage >= 1 && pagerState.currentPage <= photoList.size && !isPressed && !pagerState.isScrollInProgress) {
             var lastTime = withFrameNanos { it }
             while (currentMemoryProgress < 1f) {
                 withFrameNanos { frameTime ->
-                    val deltaNano = frameTime - lastTime
+                    if (!isPressed) {
+                        val deltaNano = frameTime - lastTime
+                        val deltaSec = deltaNano / 1_000_000_000f
+                        currentMemoryProgress = (currentMemoryProgress + deltaSec / 10f).coerceAtMost(1f)
+                        wavePhase = (wavePhase + deltaSec * 8f) % (2f * PI.toFloat())
+                    }
                     lastTime = frameTime
-                    val deltaSec = deltaNano / 1_000_000_000f
-                    currentMemoryProgress = (currentMemoryProgress + deltaSec / 10f).coerceAtMost(1f)
-                    wavePhase = (wavePhase + deltaSec * 8f) % (2f * PI.toFloat())
                 }
             }
             if (currentMemoryProgress >= 1f) {
+                snapshotFlow { pagerState.isScrollInProgress }
+                    .first { !it }
                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
             }
         }
