@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -549,7 +550,7 @@ fun SnippetsDetailContent(
             modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize()
         )
 
-        // Snippets on the bottom of the screen
+        // Snippets on the bottom of the screen (Horizontal Pill Carousel)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -566,25 +567,32 @@ fun SnippetsDetailContent(
                         }
                     } else Modifier
                 )
-                .padding(start = 16.dp, end = 16.dp, top = 64.dp, bottom = 48.dp),
+                .padding(bottom = 36.dp),
             contentAlignment = Alignment.Center
         ) {
             val pureSnippets = photo.snippets
             val total = pureSnippets.size
+            val lazyListState = rememberLazyListState()
 
-            androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+            LazyRow(
+                state = lazyListState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .widthIn(max = 600.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
             ) {
-                pureSnippets.forEachIndexed { index, snippet ->
+                itemsIndexed(pureSnippets) { index, snippet ->
                     CloudSnippetItem(
                         text = snippet,
                         index = index,
                         totalCount = total,
                         photoColors = emptyList(),
                         forcedColor = viewModel.getSnippetColor(snippet),
-                        forcedStyle = viewModel.getSnippetStyle(snippet)
+                        forcedStyle = viewModel.getSnippetStyle(snippet),
+                        isSegmented = true
                     )
                 }
             }

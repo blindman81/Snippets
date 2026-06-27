@@ -297,12 +297,13 @@ fun CloudSnippetItem(
     totalCount: Int, 
     photoColors: List<Int> = emptyList(),
     forcedColor: Int? = null,
-    forcedStyle: com.android.snippets.viewmodel.SnippetStyle? = null
+    forcedStyle: com.android.snippets.viewmodel.SnippetStyle? = null,
+    isSegmented: Boolean = false
 ) {
     val stableRandom = remember(text) { Random(text.hashCode()) }
     val personality = stableRandom.nextInt(0, 5)
     val colorStrategy = (index + stableRandom.nextInt(0, 10)) % 3
-    val rotation = stableRandom.nextInt(-5, 5).toFloat()
+    val rotation = if (isSegmented) 0f else stableRandom.nextInt(-5, 5).toFloat()
 
     // Contrast-aware Snippet Color
     val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
@@ -355,51 +356,85 @@ fun CloudSnippetItem(
     // Streamlined style logic: All snippets are fill colored
     val isFilled = true
 
-    val containerColor = if (isFilled) {
+    val containerColor = if (isSegmented) {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    } else if (isFilled) {
         snippetColor.copy(alpha = 0.25f)
     } else {
         Color.Transparent
     }
     
-    val borderColor = if (!isFilled) {
+    val borderColor = if (isSegmented) {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+    } else if (!isFilled) {
         snippetColor.copy(alpha = 0.40f)
     } else {
         null
     }
 
+    val itemShape = remember(index, totalCount, isSegmented) {
+        if (isSegmented) {
+            if (totalCount <= 1) {
+                RoundedCornerShape(16.dp)
+            } else if (index == 0) {
+                RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 0.dp, bottomEnd = 0.dp)
+            } else if (index == totalCount - 1) {
+                RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 16.dp, bottomEnd = 16.dp)
+            } else {
+                RectangleShape
+            }
+        } else {
+            CircleShape
+        }
+    }
+
     Box(modifier = Modifier.rotateWithBounds(rotation)) {
         Surface(
             color = containerColor,
-            shape = CircleShape,
-            border = if (borderColor != null) BorderStroke(1.5.dp, borderColor) else null
+            shape = itemShape,
+            border = if (borderColor != null) BorderStroke(1.dp, borderColor) else null,
+            shadowElevation = if (isSegmented) 4.dp else 0.dp
         ) {
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getGridScalingFactor(totalCount)
     
-            // Streamlined into 3 visual levels (Large, Medium, Small)
-            when (personality) {
-                0, 1 -> { // Large Chip
-                    Text(
-                        text = text, 
-                        modifier = Modifier.padding(horizontal = (24 * scalingFactor).dp, vertical = (12 * scalingFactor).dp), 
-                        style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp), 
-                        color = snippetColor
-                    )
-                }
-                2, 3 -> { // Medium Chip
-                    Text(
-                        text = text, 
-                        modifier = Modifier.padding(horizontal = (18 * scalingFactor).dp, vertical = (9 * scalingFactor).dp), 
-                        style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp), 
-                        color = snippetColor
-                    )
-                }
-                else -> { // Small Chip
-                    Text(
-                        text = text, 
-                        modifier = Modifier.padding(horizontal = (12 * scalingFactor).dp, vertical = (6 * scalingFactor).dp), 
-                        style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp), 
-                        color = snippetColor
-                    )
+            if (isSegmented) {
+                Text(
+                    text = text, 
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), 
+                    style = getSnippetTextStyle(
+                        forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, 
+                        MaterialTheme.typography.titleMedium, 
+                        isCloud = true
+                    ), 
+                    color = snippetColor
+                )
+            } else {
+                // Streamlined into 3 visual levels (Large, Medium, Small)
+                when (personality) {
+                    0, 1 -> { // Large Chip
+                        Text(
+                            text = text, 
+                            modifier = Modifier.padding(horizontal = (24 * scalingFactor).dp, vertical = (12 * scalingFactor).dp), 
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp), 
+                            color = snippetColor
+                        )
+                    }
+                    2, 3 -> { // Medium Chip
+                        Text(
+                            text = text, 
+                            modifier = Modifier.padding(horizontal = (18 * scalingFactor).dp, vertical = (9 * scalingFactor).dp), 
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp), 
+                            color = snippetColor
+                        )
+                    }
+                    else -> { // Small Chip
+                        Text(
+                            text = text, 
+                            modifier = Modifier.padding(horizontal = (12 * scalingFactor).dp, vertical = (6 * scalingFactor).dp), 
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp), 
+                            color = snippetColor
+                        )
+                    }
                 }
             }
         }
