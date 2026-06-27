@@ -743,7 +743,7 @@ fun AddSnippetsModal(
                                 1 -> { // Color Step
                                     LazyVerticalGrid(
                                         columns = GridCells.Fixed(4),
-                                        modifier = Modifier.fillMaxWidth().height(240.dp),
+                                        modifier = Modifier.fillMaxWidth().height(260.dp),
                                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                                         verticalArrangement = Arrangement.spacedBy(16.dp),
                                         contentPadding = PaddingValues(8.dp),
@@ -808,7 +808,7 @@ fun AddSnippetsModal(
                                 2 -> { // Style Step
                                     @OptIn(ExperimentalLayoutApi::class)
                                     FlowRow(
-                                        modifier = Modifier.fillMaxWidth().height(240.dp).verticalScroll(rememberScrollState()),
+                                        modifier = Modifier.fillMaxWidth().height(290.dp).verticalScroll(rememberScrollState()),
                                         horizontalArrangement = Arrangement.Center,
                                         verticalArrangement = Arrangement.spacedBy(16.dp),
                                         maxItemsInEachRow = 4
