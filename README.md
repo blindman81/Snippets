@@ -14,7 +14,7 @@ Created with Antigravity, Codex, and Stitch (only in the early development stage
   <tr>
     <td width="25%"><img src="https://github.com/user-attachments/assets/64e8df83-e4c0-4d62-9d89-0a020319acc2" width="100%" /></td>
     <td width="25%"><img src="https://github.com/user-attachments/assets/f1f8b002-7152-47e9-b66e-3ff376a091c3" width="100%" /></td>
-    <td width="25%"><img src="https://github.com/user-attachments/assets/7973ac61-8d5d-4246-b47c-a76c3cf4e13e" width="100%" /></td>
+    <td width="25%"><img src="https://github.com/user-attachments/assets/82049c83-5c9d-45e1-a7cb-f7a94c2575a6" width="100%" /></td>
     <td width="25%"><img src="https://github.com/user-attachments/assets/60bbf8df-933a-4b8d-8775-2479807d0ddb" width="100%" /></td>
   </tr>
 </table>
