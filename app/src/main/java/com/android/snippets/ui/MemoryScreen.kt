@@ -466,6 +466,16 @@ fun MemoryStoryProgressBar(
                         }
                     }
                 }
+
+                // 4dp circle stop indicator at the end of the last memory's progress bar
+                if (i == count - 1) {
+                    val dotColor = if (i <= currentIndex) Color.White else Color.White.copy(alpha = 0.6f)
+                    drawCircle(
+                        color = dotColor,
+                        radius = 2.dp.toPx(),
+                        center = androidx.compose.ui.geometry.Offset(width - 2.dp.toPx(), centerY)
+                    )
+                }
             }
         }
     }
