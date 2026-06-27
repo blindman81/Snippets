@@ -145,6 +145,9 @@ fun MemoryScreen(
     // Reset progress when current page changes
     LaunchedEffect(pagerState.currentPage) {
         currentMemoryProgress = 0f
+        if (pagerState.currentPage >= 1 && pagerState.currentPage <= photoList.size) {
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
     }
 
     // Progress timer loop
@@ -190,6 +193,7 @@ fun MemoryScreen(
                         detectTapGestures(
                             onPress = { offset ->
                                 isPressed = true
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                 val released = tryAwaitRelease()
                                 isPressed = false
                                 if (released) {
@@ -418,12 +422,13 @@ fun MemoryStoryProgressBar(
                             cornerRadius = CornerRadius(cornerRadius, cornerRadius)
                         )
                     } else {
-                        // Active memory progress bar: squiggly for first 7s (0..0.7 progress), flattens for last 3s (0.7..1.0)
+                        // Active memory progress bar: flat for first 2s (0..0.2), squiggly until 7s (0.2..0.7), flattens for last 3s (0.7..1.0)
                         val maxAmplitude = 2.5.dp.toPx()
-                        val amplitude = if (progress <= 0.7f) {
-                            maxAmplitude
-                        } else {
-                            maxAmplitude * (1f - (progress - 0.7f) / 0.3f)
+                        val amplitude = when {
+                            progress <= 0.2f -> 0f
+                            progress <= 0.25f -> maxAmplitude * ((progress - 0.2f) / 0.05f)
+                            progress <= 0.7f -> maxAmplitude
+                            else -> maxAmplitude * (1f - (progress - 0.7f) / 0.3f)
                         }
 
                         if (amplitude > 0.1f) {
