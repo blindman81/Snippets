@@ -719,8 +719,7 @@ fun AddSnippetsModal(
                                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                             horizontalArrangement = Arrangement.Center,
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                                            maxItemsInEachRow = 4,
-                                            maxRows = 3
+                                            maxItemsInEachRow = 4
                                         ) {
                                             suggestions.forEach { suggestion ->
                                                 SuggestionChip(
