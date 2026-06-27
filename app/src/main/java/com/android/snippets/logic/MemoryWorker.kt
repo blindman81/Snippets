@@ -55,6 +55,10 @@ class MemoryWorker(context: Context, params: WorkerParameters) : Worker(context,
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(notificationId(photoId))
+            val remaining = postedIds(context) - photoId
+            if (remaining.isEmpty()) {
+                notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
+            }
         }
 
         fun wasNotificationPosted(context: Context, photoId: String): Boolean {
@@ -81,9 +85,9 @@ class MemoryWorker(context: Context, params: WorkerParameters) : Worker(context,
         }
 
         private fun postedIds(context: Context): Set<String> {
-            return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getStringSet(KEY_POSTED_IDS, emptySet())
-                .orEmpty()
+            val rawSet = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getStringSet(KEY_POSTED_IDS, null)
+            return if (rawSet != null) HashSet(rawSet) else emptySet()
         }
     }
 
