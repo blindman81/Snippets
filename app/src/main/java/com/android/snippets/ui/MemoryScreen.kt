@@ -405,48 +405,55 @@ fun MemoryStoryProgressBar(
                 val centerY = height / 2f
                 val cornerRadius = height / 2f
 
-                // Draw background track
-                drawRoundRect(
-                    color = Color.White.copy(alpha = 0.35f),
-                    size = size,
-                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
-                )
-
-                if (progress > 0f) {
+                if (!isActive) {
+                    // Inactive or completed memory segments
+                    val trackColor = if (i < currentIndex) Color.White else Color.White.copy(alpha = 0.35f)
+                    drawRoundRect(
+                        color = trackColor,
+                        size = size,
+                        cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                    )
+                } else {
+                    // Active memory segment
                     val activeWidth = width * progress
-                    if (!isActive || progress >= 1f) {
-                        // Fully filled flat track for completed memories
+                    val remainingWidth = width - activeWidth
+
+                    // Draw background track ONLY for the remaining upcoming portion so no flat bar appears behind the squiggly wave
+                    if (remainingWidth > 0f) {
                         drawRoundRect(
-                            color = Color.White,
-                            size = Size(activeWidth, height),
+                            color = Color.White.copy(alpha = 0.35f),
+                            topLeft = androidx.compose.ui.geometry.Offset(activeWidth, 0f),
+                            size = Size(remainingWidth, height),
                             cornerRadius = CornerRadius(cornerRadius, cornerRadius)
                         )
-                    } else {
-                        // Active memory progress bar: flat for first 2s (0..0.2), squiggly until 7s (0.2..0.7), flattens for last 3s (0.7..1.0)
-                        val maxAmplitude = 2.5.dp.toPx()
-                        val amplitude = when {
-                            progress <= 0.2f -> 0f
-                            progress <= 0.25f -> maxAmplitude * ((progress - 0.2f) / 0.05f)
-                            progress <= 0.7f -> maxAmplitude
-                            else -> maxAmplitude * (1f - (progress - 0.7f) / 0.3f)
-                        }
+                    }
 
-                        if (amplitude > 0.1f) {
-                            val path = Path()
-                            val numPoints = 60
-                            for (step in 0..numPoints) {
-                                val x = (activeWidth * step) / numPoints
-                                val wave = sin((x / 16.dp.toPx()) * 2 * PI + wavePhase).toFloat()
-                                val y = centerY + wave * amplitude
-                                if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                            }
-                            drawPath(
-                                path = path,
-                                color = Color.White,
-                                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-                            )
-                        } else {
-                            // Flattened state
+                    // Active memory progress bar: flat for first 2s (0..0.2), squiggly until 7s (0.2..0.7), flattens for last 3s (0.7..1.0)
+                    val maxAmplitude = 2.5.dp.toPx()
+                    val amplitude = when {
+                        progress <= 0.2f -> 0f
+                        progress <= 0.25f -> maxAmplitude * ((progress - 0.2f) / 0.05f)
+                        progress <= 0.7f -> maxAmplitude
+                        else -> maxAmplitude * (1f - (progress - 0.7f) / 0.3f)
+                    }
+
+                    if (amplitude > 0.1f) {
+                        val path = Path()
+                        val numPoints = 60
+                        for (step in 0..numPoints) {
+                            val x = (activeWidth * step) / numPoints
+                            val wave = sin((x / 16.dp.toPx()) * 2 * PI + wavePhase).toFloat()
+                            val y = centerY + wave * amplitude
+                            if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                        }
+                        drawPath(
+                            path = path,
+                            color = Color.White,
+                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    } else {
+                        // Flattened state
+                        if (activeWidth > 0f) {
                             drawRoundRect(
                                 color = Color.White,
                                 size = Size(activeWidth, height),
