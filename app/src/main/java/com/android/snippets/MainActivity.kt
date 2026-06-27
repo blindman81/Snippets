@@ -25,7 +25,16 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {
     private val viewModel: SnippetsViewModel by viewModels()
-    private var activeIntent by mutableStateOf<android.content.Intent?>(null)
+    private var pendingNotificationPhotoId by mutableStateOf<String?>(null)
+    private var pendingNotificationToken by mutableStateOf(0L)
+
+    private fun handleNotificationIntent(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra("open_memory", false) == true) {
+            pendingNotificationPhotoId = intent.getStringExtra("photo_id")
+            pendingNotificationToken = System.currentTimeMillis()
+            intent.removeExtra("open_memory")
+        }
+    }
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -93,7 +102,7 @@ class MainActivity : ComponentActivity() {
         
 
 
-        activeIntent = intent
+        handleNotificationIntent(intent)
 
         setContent {
             val isDarkTheme = when (viewModel.themePreference) {
@@ -123,11 +132,11 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val photos = viewModel.photos
-                    val notificationIntent = activeIntent
-                    androidx.compose.runtime.LaunchedEffect(notificationIntent, photos) {
-                        if (photos.isNotEmpty() && notificationIntent?.getBooleanExtra("open_memory", false) == true) {
-                            val photoId = notificationIntent.getStringExtra("photo_id")
-                            val index = viewModel.curatedMemories.indexOfFirst { it.id == photoId }
+                    val targetPhotoId = pendingNotificationPhotoId
+                    val notificationToken = pendingNotificationToken
+                    androidx.compose.runtime.LaunchedEffect(notificationToken, photos) {
+                        if (photos.isNotEmpty() && notificationToken != 0L) {
+                            val index = viewModel.curatedMemories.indexOfFirst { it.id == targetPhotoId }
                             
                             if (index != -1) {
                                 viewModel.openMemory(index)
@@ -135,8 +144,8 @@ class MainActivity : ComponentActivity() {
                                 viewModel.openMemory(0)
                             }
                             
-                            // Clear the flag to prevent re-triggering on photo updates
-                            notificationIntent.removeExtra("open_memory")
+                            pendingNotificationToken = 0L
+                            pendingNotificationPhotoId = null
                         }
                     }
 
@@ -168,6 +177,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        activeIntent = intent
+        handleNotificationIntent(intent)
     }
 }
