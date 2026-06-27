@@ -701,11 +701,11 @@ fun AddSnippetsModal(
                                     // Suggestions Menu
                                     val suggestions = remember(text, viewModel.allUniqueSnippets) {
                                         if (text.isEmpty()) {
-                                            viewModel.allUniqueSnippets.take(5)
+                                            viewModel.allUniqueSnippets.take(12)
                                         } else {
                                             viewModel.allUniqueSnippets.filter { 
                                                 it.contains(text, ignoreCase = true) && !it.equals(text, ignoreCase = true)
-                                            }.take(8)
+                                            }.take(12)
                                         }
                                     }
                                     
@@ -719,7 +719,8 @@ fun AddSnippetsModal(
                                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                             horizontalArrangement = Arrangement.Center,
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                                            maxItemsInEachRow = 4
+                                            maxItemsInEachRow = 4,
+                                            maxRows = 3
                                         ) {
                                             suggestions.forEach { suggestion ->
                                                 SuggestionChip(
