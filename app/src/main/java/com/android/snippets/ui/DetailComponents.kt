@@ -650,7 +650,9 @@ fun AddSnippetsModal(
                 }
 
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(260.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
                 ) {
                     val motionScheme = MaterialTheme.motionScheme
                     androidx.compose.animation.AnimatedContent(
@@ -707,7 +709,11 @@ fun AddSnippetsModal(
                                         }
                                     }
                                     
-                                    if (suggestions.isNotEmpty()) {
+                                    AnimatedVisibility(
+                                        visible = suggestions.isNotEmpty(),
+                                        enter = fadeIn() + expandVertically(),
+                                        exit = fadeOut() + shrinkVertically()
+                                    ) {
                                         @OptIn(ExperimentalLayoutApi::class)
                                         FlowRow(
                                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -737,7 +743,7 @@ fun AddSnippetsModal(
                                 1 -> { // Color Step
                                     LazyVerticalGrid(
                                         columns = GridCells.Fixed(4),
-                                        modifier = Modifier.fillMaxSize(),
+                                        modifier = Modifier.fillMaxWidth().height(240.dp),
                                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                                         verticalArrangement = Arrangement.spacedBy(16.dp),
                                         contentPadding = PaddingValues(8.dp),
