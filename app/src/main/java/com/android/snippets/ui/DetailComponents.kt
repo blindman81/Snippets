@@ -388,8 +388,9 @@ fun CloudSnippetItem(
         }
     }
 
-    Box(modifier = Modifier.rotateWithBounds(rotation)) {
+    val itemContent = @Composable {
         Surface(
+            modifier = if (isSegmented) Modifier.height(44.dp) else Modifier,
             color = containerColor,
             shape = itemShape,
             border = if (borderColor != null) BorderStroke(1.dp, borderColor) else null,
@@ -398,16 +399,21 @@ fun CloudSnippetItem(
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getGridScalingFactor(totalCount)
     
             if (isSegmented) {
-                Text(
-                    text = text, 
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), 
-                    style = getSnippetTextStyle(
-                        forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, 
-                        MaterialTheme.typography.titleMedium, 
-                        isCloud = true
-                    ), 
-                    color = snippetColor
-                )
+                Box(
+                    modifier = Modifier.fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = text, 
+                        modifier = Modifier.padding(horizontal = 16.dp), 
+                        style = getSnippetTextStyle(
+                            forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, 
+                            MaterialTheme.typography.titleMedium, 
+                            isCloud = true
+                        ), 
+                        color = snippetColor
+                    )
+                }
             } else {
                 // Streamlined into 3 visual levels (Large, Medium, Small)
                 when (personality) {
@@ -437,6 +443,14 @@ fun CloudSnippetItem(
                     }
                 }
             }
+        }
+    }
+
+    if (isSegmented) {
+        itemContent()
+    } else {
+        Box(modifier = Modifier.rotateWithBounds(rotation)) {
+            itemContent()
         }
     }
 }
