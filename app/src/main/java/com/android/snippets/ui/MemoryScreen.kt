@@ -7,71 +7,51 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
-import androidx.compose.foundation.lazy.staggeredgrid.items
-import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.graphics.Path
-
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalView
-import android.view.HapticFeedbackConstants
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import android.graphics.drawable.BitmapDrawable
-import androidx.palette.graphics.Palette
-import androidx.core.graphics.ColorUtils
-import androidx.core.view.WindowCompat
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.em
-import com.android.snippets.ui.util.rotateWithBounds
+import android.graphics.drawable.BitmapDrawable
+import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.WindowCompat
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.ui.util.rotateWithBounds
 import com.android.snippets.viewmodel.Screen
+import com.android.snippets.viewmodel.SnippetsViewModel
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import kotlin.random.Random
+import java.util.*
 import kotlin.math.*
+import kotlin.random.Random
+
 
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -116,7 +96,7 @@ fun MemoryScreen(
     LaunchedEffect(isDarkTheme) {
         activity?.window?.let { window ->
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
-            insetsController.isAppearanceLightStatusBars = !isDarkTheme
+            insetsController.isAppearanceLightStatusBars = false
         }
     }
 
@@ -137,25 +117,95 @@ fun MemoryScreen(
         label = "uiAlpha"
     )
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        VerticalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize().graphicsLayer { 
-                // Hardware accelerate the pager for smoother swiping and transitions
-                clip = true
+    // State for long-press hold detection to freeze spin & pause timer
+    var isPressed by remember { mutableStateOf(false) }
+
+    // 12-sided cookie rotation animation state that pauses when isPressed is true
+    var rotationAngle by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(isPressed) {
+        if (!isPressed) {
+            var lastTime = withFrameNanos { it }
+            while (true) {
+                withFrameNanos { frameTime ->
+                    val deltaNano = frameTime - lastTime
+                    lastTime = frameTime
+                    val deltaDegrees = (deltaNano / 1_000_000f) * (360f / 60000f)
+                    rotationAngle = (rotationAngle + deltaDegrees) % 360f
+                }
             }
+        }
+    }
+
+    // Story Progress Timer (10 seconds total per memory)
+    var currentMemoryProgress by remember { mutableFloatStateOf(0f) }
+    var wavePhase by remember { mutableFloatStateOf(0f) }
+
+    // Reset progress when current page changes
+    LaunchedEffect(pagerState.currentPage) {
+        currentMemoryProgress = 0f
+    }
+
+    // Progress timer loop
+    LaunchedEffect(pagerState.currentPage, isPressed, pagerState.isScrollInProgress) {
+        if (pagerState.currentPage >= 1 && pagerState.currentPage <= photoList.size && !isPressed && !pagerState.isScrollInProgress) {
+            var lastTime = withFrameNanos { it }
+            while (currentMemoryProgress < 1f) {
+                withFrameNanos { frameTime ->
+                    val deltaNano = frameTime - lastTime
+                    lastTime = frameTime
+                    val deltaSec = deltaNano / 1_000_000_000f
+                    currentMemoryProgress = (currentMemoryProgress + deltaSec / 10f).coerceAtMost(1f)
+                    wavePhase = (wavePhase + deltaSec * 8f) % (2f * PI.toFloat())
+                }
+            }
+            if (currentMemoryProgress >= 1f) {
+                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { clip = true }
         ) { pageIndex ->
             val photo = photoList.getOrNull(pageIndex - 1)
             if (photo == null) {
                 Box(modifier = Modifier.fillMaxSize())
-                return@VerticalPager
-            }
-            
-            val dateString = remember(photo.date) {
-                SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
+                return@HorizontalPager
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = { offset ->
+                                isPressed = true
+                                val released = tryAwaitRelease()
+                                isPressed = false
+                                if (released) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    if (offset.x < size.width * 0.3f) {
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                        }
+                                    } else {
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+            ) {
                 // Blurred background photo
                 AsyncImage(
                     model = photo.uriString,
@@ -182,19 +232,6 @@ fun MemoryScreen(
                 ) {
                     // Spacer to clear the status bar / date header
                     Spacer(modifier = Modifier.height(72.dp))
-
-                    val isPhotoPage = pageIndex >= 1 && pageIndex <= photoList.size
-
-                    val infiniteTransition = rememberInfiniteTransition(label = "cookie_rotation")
-                    val rotationAngle by infiniteTransition.animateFloat(
-                        initialValue = 0f,
-                        targetValue = 360f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(60000, easing = LinearEasing),
-                            repeatMode = RepeatMode.Restart
-                        ),
-                        label = "rotationAngle"
-                    )
 
                     Card(
                         onClick = {
@@ -290,19 +327,30 @@ fun MemoryScreen(
             }
         }
 
-        // Top Navigation (Date Header)
-        Row(
+        // Top Navigation Header containing M3 Wavy Progress Bar and Date Header
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 24.dp)
-                .alpha(uiAlpha), // Apply fade animation
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .alpha(uiAlpha)
         ) {
+            // Segmented M3 Wavy / Flat Progress Bar
+            MemoryStoryProgressBar(
+                count = photoList.size,
+                currentIndex = (pagerState.currentPage - 1).coerceIn(0, photoList.size - 1),
+                currentProgress = currentMemoryProgress,
+                wavePhase = wavePhase,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(16.dp)
+                    .padding(bottom = 8.dp)
+            )
+
+            // Date Header Text
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val photoList = viewModel.activeMemoriesSnapshot.ifEmpty { viewModel.curatedMemories }
-                val pageIndex = viewModel.currentMemoryIndex
-                val photo = photoList.getOrNull(pageIndex)
+                val activeIndex = (pagerState.currentPage - 1).coerceIn(0, photoList.size - 1)
+                val photo = photoList.getOrNull(activeIndex)
                 val dateString = if (photo != null) {
                     SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
                 } else ""
@@ -315,7 +363,91 @@ fun MemoryScreen(
                     ),
                     color = Color.White
                 )
+            }
+        }
+    }
+}
 
+@Composable
+fun MemoryStoryProgressBar(
+    count: Int,
+    currentIndex: Int,
+    currentProgress: Float,
+    wavePhase: Float,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (i in 0 until count) {
+            val progress = when {
+                i < currentIndex -> 1f
+                i == currentIndex -> currentProgress
+                else -> 0f
+            }
+            val isActive = (i == currentIndex)
+
+            Canvas(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(6.dp)
+            ) {
+                val width = size.width
+                val height = size.height
+                val centerY = height / 2f
+                val cornerRadius = height / 2f
+
+                // Draw background track
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.35f),
+                    size = size,
+                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                )
+
+                if (progress > 0f) {
+                    val activeWidth = width * progress
+                    if (!isActive || progress >= 1f) {
+                        // Fully filled flat track for completed memories
+                        drawRoundRect(
+                            color = Color.White,
+                            size = Size(activeWidth, height),
+                            cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                        )
+                    } else {
+                        // Active memory progress bar: squiggly for first 7s (0..0.7 progress), flattens for last 3s (0.7..1.0)
+                        val maxAmplitude = 2.5.dp.toPx()
+                        val amplitude = if (progress <= 0.7f) {
+                            maxAmplitude
+                        } else {
+                            maxAmplitude * (1f - (progress - 0.7f) / 0.3f)
+                        }
+
+                        if (amplitude > 0.1f) {
+                            val path = Path()
+                            val numPoints = 60
+                            for (step in 0..numPoints) {
+                                val x = (activeWidth * step) / numPoints
+                                val wave = sin((x / 16.dp.toPx()) * 2 * PI + wavePhase).toFloat()
+                                val y = centerY + wave * amplitude
+                                if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                            }
+                            drawPath(
+                                path = path,
+                                color = Color.White,
+                                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                            )
+                        } else {
+                            // Flattened state
+                            drawRoundRect(
+                                color = Color.White,
+                                size = Size(activeWidth, height),
+                                cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
