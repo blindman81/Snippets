@@ -701,11 +701,11 @@ fun AddSnippetsModal(
                                     // Suggestions Menu
                                     val suggestions = remember(text, viewModel.allUniqueSnippets) {
                                         if (text.isEmpty()) {
-                                            viewModel.allUniqueSnippets.take(12)
+                                            viewModel.allUniqueSnippets.take(9)
                                         } else {
                                             viewModel.allUniqueSnippets.filter { 
                                                 it.contains(text, ignoreCase = true) && !it.equals(text, ignoreCase = true)
-                                            }.take(12)
+                                            }.take(9)
                                         }
                                     }
                                     
@@ -719,7 +719,7 @@ fun AddSnippetsModal(
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
-                                            suggestions.chunked(4).take(3).forEach { rowItems ->
+                                            suggestions.chunked(3).take(3).forEach { rowItems ->
                                                 Row(
                                                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                                                     verticalAlignment = Alignment.CenterVertically
