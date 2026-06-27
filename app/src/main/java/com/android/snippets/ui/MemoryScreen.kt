@@ -143,9 +143,10 @@ fun MemoryScreen(
     var currentMemoryProgress by remember { mutableFloatStateOf(0f) }
     var wavePhase by remember { mutableFloatStateOf(0f) }
 
-    // Story Progress Timer and Auto-Advance Loop
-    LaunchedEffect(pagerState.currentPage, isPressed) {
-        if (pagerState.currentPage >= 1 && pagerState.currentPage <= photoList.size) {
+    // Story Progress Timer and Auto-Advance Loop bound to settledPage to prevent mid-animation cancellation
+    LaunchedEffect(pagerState.settledPage, isPressed) {
+        val activeSettled = pagerState.settledPage
+        if (activeSettled >= 1 && activeSettled <= photoList.size) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             currentMemoryProgress = 0f
 
@@ -164,7 +165,9 @@ fun MemoryScreen(
             if (currentMemoryProgress >= 1f) {
                 snapshotFlow { pagerState.isScrollInProgress }
                     .first { !it }
-                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(activeSettled + 1)
+                }
             }
         }
     }
@@ -198,11 +201,11 @@ fun MemoryScreen(
                                 if (released) {
                                     if (offset.x < size.width * 0.3f) {
                                         coroutineScope.launch {
-                                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                            pagerState.animateScrollToPage(pagerState.settledPage - 1)
                                         }
                                     } else {
                                         coroutineScope.launch {
-                                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                            pagerState.animateScrollToPage(pagerState.settledPage + 1)
                                         }
                                     }
                                 }
@@ -345,7 +348,7 @@ fun MemoryScreen(
             // Segmented M3 Wavy / Flat Progress Bar
             MemoryStoryProgressBar(
                 count = photoList.size,
-                currentIndex = (pagerState.currentPage - 1).coerceIn(0, photoList.size - 1),
+                currentIndex = (pagerState.settledPage - 1).coerceIn(0, photoList.size - 1),
                 currentProgress = currentMemoryProgress,
                 wavePhase = wavePhase,
                 modifier = Modifier
@@ -356,7 +359,7 @@ fun MemoryScreen(
 
             // Date Header Text
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val activeIndex = (pagerState.currentPage - 1).coerceIn(0, photoList.size - 1)
+                val activeIndex = (pagerState.settledPage - 1).coerceIn(0, photoList.size - 1)
                 val photo = photoList.getOrNull(activeIndex)
                 val dateString = if (photo != null) {
                     SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
