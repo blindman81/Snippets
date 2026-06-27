@@ -402,7 +402,7 @@ fun MemoryStoryProgressBar(
             Canvas(
                 modifier = Modifier
                     .weight(1f)
-                    .height(6.dp)
+                    .height(8.dp)
             ) {
                 val width = size.width
                 val height = size.height
@@ -432,8 +432,8 @@ fun MemoryStoryProgressBar(
                         )
                     }
 
-                    // Active memory progress bar: flat for first 1s (0..0.1), squiggly until 6s (0.1..0.6), flattens after 6s (0.6..1.0)
-                    val maxAmplitude = 2.5.dp.toPx()
+                    // Active memory progress bar (M3 Expressive specs): 8dp height, 4dp stroke, 40dp wavelength, 3dp amplitude
+                    val maxAmplitude = 3.dp.toPx()
                     val amplitude = when {
                         progress <= 0.1f -> 0f
                         progress <= 0.15f -> maxAmplitude * ((progress - 0.1f) / 0.05f)
@@ -446,14 +446,14 @@ fun MemoryStoryProgressBar(
                         val numPoints = 60
                         for (step in 0..numPoints) {
                             val x = (activeWidth * step) / numPoints
-                            val wave = sin((x / 16.dp.toPx()) * 2 * PI + wavePhase).toFloat()
+                            val wave = sin((x / 40.dp.toPx()) * 2 * PI + wavePhase).toFloat()
                             val y = centerY + wave * amplitude
                             if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
                         }
                         drawPath(
                             path = path,
                             color = Color.White,
-                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
                         )
                     } else {
                         // Flattened state
