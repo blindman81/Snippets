@@ -432,13 +432,13 @@ fun MemoryStoryProgressBar(
                         )
                     }
 
-                    // Active memory progress bar: flat for first 2s (0..0.2), squiggly until 7s (0.2..0.7), flattens for last 3s (0.7..1.0)
+                    // Active memory progress bar: flat for first 1s (0..0.1), squiggly until 6s (0.1..0.6), flattens after 6s (0.6..1.0)
                     val maxAmplitude = 2.5.dp.toPx()
                     val amplitude = when {
-                        progress <= 0.2f -> 0f
-                        progress <= 0.25f -> maxAmplitude * ((progress - 0.2f) / 0.05f)
-                        progress <= 0.7f -> maxAmplitude
-                        else -> maxAmplitude * (1f - (progress - 0.7f) / 0.3f)
+                        progress <= 0.1f -> 0f
+                        progress <= 0.15f -> maxAmplitude * ((progress - 0.1f) / 0.05f)
+                        progress <= 0.6f -> maxAmplitude
+                        else -> maxAmplitude * (1f - (progress - 0.6f) / 0.4f)
                     }
 
                     if (amplitude > 0.1f) {
