@@ -14,6 +14,8 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.ln.android.snippets.R
 
+import androidx.work.ForegroundInfo
+
 class MemoryWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     companion object {
         const val CHANNEL_ID = "new_memory_channel"
@@ -85,10 +87,20 @@ class MemoryWorker(context: Context, params: WorkerParameters) : Worker(context,
         }
     }
 
+    override fun getForegroundInfo(): ForegroundInfo {
+        val pendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            0,
+            Intent(applicationContext, com.android.snippets.MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return ForegroundInfo(SUMMARY_NOTIFICATION_ID, summaryNotification(pendingIntent))
+    }
+
     override fun doWork(): Result {
         val photoId = inputData.getString(INPUT_PHOTO_ID).orEmpty()
         if (photoId.isBlank()) return Result.success()
-        if (!canPostNotifications(applicationContext)) return Result.retry()
+        if (!canPostNotifications(applicationContext)) return Result.failure()
 
         val notificationType = inputData.getString(INPUT_NOTIFICATION_TYPE) ?: TYPE_NEW
         postNotification(photoId, notificationType)
