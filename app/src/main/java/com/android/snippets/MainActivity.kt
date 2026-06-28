@@ -36,6 +36,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleTileIntent(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra("open_add_photo", false) == true || intent?.action == "com.android.snippets.action.ADD_PHOTO") {
+            viewModel.pendingAddPhotoIntentToken = System.currentTimeMillis()
+            intent.removeExtra("open_add_photo")
+        }
+    }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
@@ -103,6 +110,7 @@ class MainActivity : ComponentActivity() {
 
 
         handleNotificationIntent(intent)
+        handleTileIntent(intent)
 
         setContent {
             val isDarkTheme = when (viewModel.themePreference) {
@@ -178,5 +186,6 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleNotificationIntent(intent)
+        handleTileIntent(intent)
     }
 }

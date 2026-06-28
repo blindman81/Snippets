@@ -62,9 +62,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap()): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap(), showTime: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes) ?: return@withContext false
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes, showTime) ?: return@withContext false
             
             val fileName = "Snippet_Card_${System.currentTimeMillis()}.jpg"
             val contentValues = ContentValues().apply {
@@ -102,9 +102,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap()): Uri? = withContext(Dispatchers.IO) {
+    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap(), showTime: Boolean = false): Uri? = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes) ?: return@withContext null
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes, showTime) ?: return@withContext null
             
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
@@ -121,7 +121,7 @@ object MediaSaver {
         }
     }
 
-    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap()): Bitmap? {
+    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap(), showTime: Boolean = false): Bitmap? {
         val width = 1440
         val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -204,7 +204,8 @@ object MediaSaver {
         canvas.drawPath(photoPath, borderPaint)
 
         // 3. Draw Date & Location Header
-        val dateString = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date)).uppercase()
+        val datePattern = if (showTime) "EEE, d MMM • HH:mm" else "EEE, d MMM"
+        val dateString = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(photo.date)).uppercase()
         val locationText = LocationUtils.getLocationFromExif(context, photo)
         val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE

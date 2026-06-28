@@ -172,13 +172,32 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     view.performHapticFeedback(if (!viewModel.useDynamicColors) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
                     viewModel.updateDynamicColors(!viewModel.useDynamicColors) 
                 },
-                position = CardPosition.Single,
+                position = CardPosition.First,
                 trailingContent = {
 
                     PremiumSwitch(
                         checked = viewModel.useDynamicColors,
                         onCheckedChange = { 
                             viewModel.updateDynamicColors(it) 
+                        }
+                    )
+                }
+            )
+
+            SettingsCardItem(
+                icon = Icons.Default.Schedule,
+                title = "Show time in memories and saved photos",
+                onClick = { 
+                    view.performHapticFeedback(if (!viewModel.showTimeInMemories) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                    viewModel.updateShowTimeInMemories(!viewModel.showTimeInMemories) 
+                },
+                position = CardPosition.Last,
+                trailingContent = {
+
+                    PremiumSwitch(
+                        checked = viewModel.showTimeInMemories,
+                        onCheckedChange = { 
+                            viewModel.updateShowTimeInMemories(it) 
                         }
                     )
                 }

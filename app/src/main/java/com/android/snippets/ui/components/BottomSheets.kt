@@ -94,9 +94,21 @@ fun MenuBottomSheet(
                     }
 
                     SettingsCardItem(
+                        icon = Icons.Default.BarChart,
+                        title = "Stats",
+                        position = CardPosition.First,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        onClick = {
+                            onDismissRequest()
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            viewModel.navigateStats()
+                        }
+                    )
+
+                    SettingsCardItem(
                         icon = SelectIcon(),
                         title = "Select",
-                        position = CardPosition.First,
+                        position = CardPosition.Middle,
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         onClick = {
                             onDismissRequest()

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Snippets</string>
+    <string name="tile_add_photo">Add Photo</string>
 </resources>

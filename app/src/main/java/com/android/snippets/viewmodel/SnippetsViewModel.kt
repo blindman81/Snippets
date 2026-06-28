@@ -33,7 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, PhotosCarousel }
+enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, PhotosCarousel, Stats }
 enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
@@ -854,6 +854,43 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val savedThemePreference = prefs.getString("theme_preference", ThemePreference.SYSTEM.name)
         themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
         useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
+        showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
+    }
+
+    fun updateThemePreference(pref: ThemePreference) {
+        themePreference = pref
+        prefs.edit().putString("theme_preference", pref.name).apply()
+    }
+
+    fun updateDynamicColors(use: Boolean) {
+        useDynamicColors = use
+        prefs.edit().putBoolean("use_dynamic_colors", use).apply()
+    }
+
+    fun updateShowTimeInMemories(show: Boolean) {
+        showTimeInMemories = show
+        prefs.edit().putBoolean("show_time_in_memories", show).apply()
+    }
+
+    fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
+        viewModelScope.launch {
+            val pureSnippets = getPureSnippets(photo)
+            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes, showTime = showTimeInMemories)
+            if (success) {
+                android.widget.Toast.makeText(context, "Downloaded to Gallery", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun sharePhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
+        viewModelScope.launch {
+            val pureSnippets = getPureSnippets(photo)
+            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes, showTime = showTimeInMemories)
+            if (uri != null) {
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "image/jpeg"
+                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    clipData = android.content.ClipData.newRawUri("", uri)
                     addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 context.startActivity(android.content.Intent.createChooser(intent, "Share Snippets"))
@@ -887,7 +924,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             Screen.Detail -> closeDetail()
             Screen.Memory,
             Screen.Settings,
-            Screen.About -> navigateLibrary()
+            Screen.About,
+            Screen.Stats -> navigateLibrary()
             Screen.SelectIcon,
             Screen.PhotosCarousel -> {
                 currentScreen = previousScreen
@@ -925,6 +963,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         searchQuery = ""
         previousScreen = currentScreen
         currentScreen = Screen.About
+        activePhotoId = null
+    }
+
+    fun navigateStats() {
+        searchQuery = ""
+        previousScreen = currentScreen
+        currentScreen = Screen.Stats
         activePhotoId = null
     }
 

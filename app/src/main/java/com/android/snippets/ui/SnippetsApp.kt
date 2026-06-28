@@ -88,6 +88,14 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         }
     }
 
+    LaunchedEffect(viewModel.pendingAddPhotoIntentToken) {
+        if (viewModel.pendingAddPhotoIntentToken != 0L) {
+            viewModel.pendingFavoriteIntent = false
+            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            viewModel.pendingAddPhotoIntentToken = 0L
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -149,6 +157,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             Screen.Settings -> SettingsScreen(viewModel)
                             Screen.SelectIcon -> SelectIconScreen(viewModel)
                             Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
+                            Screen.Stats -> StatsScreen(viewModel)
                             else -> Box(Modifier.fillMaxSize())
                         }
                     }

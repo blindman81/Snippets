@@ -366,7 +366,8 @@ fun MemoryScreen(
                 val activeIndex = (pagerState.settledPage - 1).coerceIn(0, photoList.size - 1)
                 val photo = photoList.getOrNull(activeIndex)
                 val dateString = if (photo != null) {
-                    SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
+                    val pattern = if (viewModel.showTimeInMemories) "EEE, d MMM • HH:mm" else "EEE, d MMM"
+                    SimpleDateFormat(pattern, Locale.getDefault()).format(Date(photo.date))
                 } else ""
                 val locationText = if (photo != null) {
                     com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)

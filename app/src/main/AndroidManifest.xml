@@ -44,6 +44,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <service
+            android:name="com.android.snippets.service.AddPhotoTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_add_photo"
+            android:label="@string/tile_add_photo"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>
