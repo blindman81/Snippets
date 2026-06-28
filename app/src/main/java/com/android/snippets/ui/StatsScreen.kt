@@ -147,8 +147,8 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
             // Header summary cards
             Surface(
                 shape = RoundedCornerShape(28.dp),
-                color = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
