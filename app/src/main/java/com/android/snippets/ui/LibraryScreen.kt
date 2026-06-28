@@ -621,8 +621,8 @@ Surface(
                                     tooltip = "Menu",
                                     isSpinning = !isAnyPopupActive,
                                     size = 48.dp,
-                                    containerColor = if (showMenuPopup) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = if (showMenuPopup) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
 
                                 // Search
@@ -654,8 +654,8 @@ Surface(
                                         tooltip = "History",
                                         isSpinning = !isAnyPopupActive,
                                         size = 48.dp,
-                                        containerColor = if (showHistoryBottomSheet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = if (showHistoryBottomSheet) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                     // Unviewed-memories indicator dot
                                     if (viewModel.hasUnviewedMemories) {
@@ -687,8 +687,8 @@ Surface(
                                     tooltip = "Filters",
                                     isSpinning = !isAnyPopupActive,
                                     size = 48.dp,
-                                    containerColor = if (isFilterActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = if (isFilterActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
                         }
@@ -720,6 +720,7 @@ Surface(
                             .verticalScroll(rememberScrollState())
                             .padding(bottom = 32.dp)
                     ) {
+
                         val isSystemCollection = longPressedCollection == "Library" || longPressedCollection == "Favorites"
                         Spacer(modifier = Modifier.height(16.dp))
 
