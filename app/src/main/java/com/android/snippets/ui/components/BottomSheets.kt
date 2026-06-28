@@ -69,6 +69,30 @@ fun MenuBottomSheet(
                         .padding(vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Surface(
+                            shape = com.android.snippets.ui.CookieShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(24.dp))
+                            }
+                        }
+                        Text(
+                            text = "Menu",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
                     SettingsCardItem(
                         icon = SelectIcon(),
                         title = "Select",
@@ -208,11 +232,35 @@ fun HistoryBottomSheet(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 32.dp)
             ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Surface(
+                        shape = com.android.snippets.ui.CookieShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                    Text(
+                        text = "History",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
                 if (curated.isEmpty()) {
                     Box(
                         modifier = Modifier

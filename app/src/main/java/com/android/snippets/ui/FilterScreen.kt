@@ -114,6 +114,30 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
             .fillMaxWidth()
             .navigationBarsPadding()
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Surface(
+                shape = CookieShape,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(androidx.compose.material.icons.filled.FilterList, contentDescription = null, modifier = Modifier.size(24.dp))
+                }
+            }
+            Text(
+                text = "Filter",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
         @OptIn(ExperimentalMaterial3Api::class)
         PrimaryTabRow(
             selectedTabIndex = selectedTabIndex,

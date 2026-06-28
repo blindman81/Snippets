@@ -720,6 +720,40 @@ Surface(
                             .verticalScroll(rememberScrollState())
                             .padding(bottom = 32.dp)
                     ) {
+                        val colName = longPressedCollection ?: ""
+                        val iconOrEmoji = when (colName) {
+                            "Library" -> Icons.Default.PhotoLibrary
+                            "Favorites" -> Icons.Default.Favorite
+                            else -> viewModel.getCollectionIcon(colName)
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Surface(
+                                shape = CookieShape,
+                                color = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
+                                        Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(24.dp))
+                                    } else if (iconOrEmoji is String) {
+                                        Text(text = iconOrEmoji, fontSize = 20.sp)
+                                    }
+                                }
+                            }
+                            Text(
+                                text = colName,
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
 
                         val isSystemCollection = longPressedCollection == "Library" || longPressedCollection == "Favorites"
                         Spacer(modifier = Modifier.height(16.dp))
