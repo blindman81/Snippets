@@ -1008,12 +1008,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun scheduleResurfacedMemoryNotification(photoId: String) {
-        scheduleMemoryNotification(
-            photoId = photoId,
-            delay = 0,
-            delayUnit = TimeUnit.SECONDS,
-            notificationType = MemoryWorker.TYPE_RESURFACED
-        )
+        if (!MemoryWorker.wasNotificationPosted(getApplication(), photoId)) {
+            scheduleMemoryNotification(
+                photoId = photoId,
+                delay = 0,
+                delayUnit = TimeUnit.SECONDS,
+                notificationType = MemoryWorker.TYPE_RESURFACED
+            )
+        }
     }
 
     private fun scheduleMemoryNotification(
@@ -1062,23 +1064,35 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     private fun reconcileMemoryNotifications() {
         val now = System.currentTimeMillis()
         photos
-            .filter { shouldHavePendingMemoryNotification(it) }
             .filterNot { MemoryWorker.wasNotificationPosted(getApplication(), it.id) }
             .forEach { photo ->
-                val remainingMs = maxOf(0L, NEW_MEMORY_WAIT_MS - (now - photo.snippetsAddedTime))
-                val notificationType = if (photo.isViewed) {
-                    MemoryWorker.TYPE_UPDATED
-                } else {
-                    MemoryWorker.TYPE_NEW
+                if (shouldHavePendingMemoryNotification(photo)) {
+                    val remainingMs = maxOf(0L, NEW_MEMORY_WAIT_MS - (now - photo.snippetsAddedTime))
+                    val notificationType = if (photo.isViewed) {
+                        MemoryWorker.TYPE_UPDATED
+                    } else {
+                        MemoryWorker.TYPE_NEW
+                    }
+                    scheduleMemoryNotification(
+                        photoId = photo.id,
+                        delay = remainingMs,
+                        delayUnit = TimeUnit.MILLISECONDS,
+                        notificationType = notificationType,
+                        policy = androidx.work.ExistingWorkPolicy.KEEP,
+                        resetPostedState = false
+                    )
+                } else if (shouldHavePendingResurfacedNotification(photo)) {
+                    val targetResurfaceTime = photo.lastViewedTime + VIEWED_MEMORY_RESET_MS
+                    val remainingMs = maxOf(0L, targetResurfaceTime - now)
+                    scheduleMemoryNotification(
+                        photoId = photo.id,
+                        delay = remainingMs,
+                        delayUnit = TimeUnit.MILLISECONDS,
+                        notificationType = MemoryWorker.TYPE_RESURFACED,
+                        policy = androidx.work.ExistingWorkPolicy.KEEP,
+                        resetPostedState = false
+                    )
                 }
-                scheduleMemoryNotification(
-                    photoId = photo.id,
-                    delay = remainingMs,
-                    delayUnit = TimeUnit.MILLISECONDS,
-                    notificationType = notificationType,
-                    policy = androidx.work.ExistingWorkPolicy.KEEP,
-                    resetPostedState = false
-                )
             }
     }
 
@@ -1087,6 +1101,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             photo.snippets.isNotEmpty() &&
             photo.snippetsAddedTime != 0L &&
             (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)
+    }
+
+    private fun shouldHavePendingResurfacedNotification(photo: Photo): Boolean {
+        return photo.isLibraryUpload &&
+            photo.snippets.isNotEmpty() &&
+            photo.snippetsAddedTime != 0L &&
+            photo.isViewed &&
+            photo.snippetsAddedTime <= photo.lastViewedTime &&
+            photo.lastViewedTime != 0L
     }
 
     private fun cancelMemoryNotification(photoId: String) {
@@ -1504,7 +1527,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         // Skip entirely if already up-to-date — avoids any list rebuild
         if (photo.isViewed && photo.snippetsAddedTime <= photo.lastViewedTime) {
-            cancelMemoryNotification(id)
             return
         }
 
@@ -1518,7 +1540,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             }
             savePhotos()
         }
-        cancelMemoryNotification(id)
+        scheduleMemoryNotification(
+            photoId = id,
+            delay = VIEWED_MEMORY_RESET_MS,
+            delayUnit = TimeUnit.MILLISECONDS,
+            notificationType = MemoryWorker.TYPE_RESURFACED,
+            policy = androidx.work.ExistingWorkPolicy.REPLACE,
+            resetPostedState = true
+        )
     }
 
     val activePhoto: Photo? get() = photos.find { it.id == activePhotoId }
