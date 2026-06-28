@@ -454,6 +454,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     
     // State to track if the next added photo should be a favorite
     var pendingFavoriteIntent by mutableStateOf(false)
+    var pendingAddPhotoIntentToken by mutableStateOf(0L)
 
     private val storageMutex = Mutex()
 
