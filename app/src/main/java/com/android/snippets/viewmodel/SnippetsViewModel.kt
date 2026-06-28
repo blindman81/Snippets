@@ -546,6 +546,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     isViewed = p.isViewed,
                     lastViewedTime = p.lastViewedTime,
                     snippetsAddedTime = p.snippetsAddedTime,
+                    surfacedTime = p.surfacedTime,
                     isFavorite = p.isFavorite,
                     isLibraryUpload = p.isLibraryUpload,
                     collections = p.collections ?: emptyList(),
@@ -588,6 +589,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 collectionIcons = loadedIcons
                 isInitialLoading = false
                 saveSnippetFirstSeenTimes()
+                reconcileSurfacedMemories()
                 if (resurfacedMemoryIds.isNotEmpty()) {
                     savePhotos()
                     resurfacedMemoryIds.forEach { id ->
@@ -687,24 +689,64 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         return rebuilt
     }
 
-    private fun checkAndResetMemories() {
-        val now = System.currentTimeMillis()
-        
-        val resurfacedMemoryIds = mutableListOf<String>()
+    private fun isSameDay(time1: Long, time2: Long): Boolean {
+        if (time1 == 0L || time2 == 0L) return false
+        val cal1 = Calendar.getInstance().apply { timeInMillis = time1 }
+        val cal2 = Calendar.getInstance().apply { timeInMillis = time2 }
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+               cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    private fun reconcileSurfacedMemories(now: Long = System.currentTimeMillis()) {
+        var changed = false
+        val newlySurfacedIds = mutableListOf<String>()
         val updatedPhotos = photos.map { photo ->
             if (shouldResurfaceViewedMemory(photo, now)) {
-                resurfacedMemoryIds.add(photo.id)
-                photo.copy(isViewed = false, lastViewedTime = 0L)
+                changed = true
+                photo.copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
             } else photo
+        }.toMutableList()
+
+        val todaySurfacedCount = updatedPhotos.count { photo ->
+            !photo.isViewed && photo.surfacedTime != 0L && isSameDay(photo.surfacedTime, now)
         }
-        
-        if (resurfacedMemoryIds.isNotEmpty()) {
+
+        if (todaySurfacedCount < 5) {
+            val quotaRemaining = 5 - todaySurfacedCount
+            val queuedCandidates = updatedPhotos.filter { photo ->
+                photo.isLibraryUpload &&
+                photo.snippets.isNotEmpty() &&
+                photo.snippetsAddedTime != 0L &&
+                (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
+                (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
+                photo.surfacedTime == 0L
+            }.sortedBy { it.snippetsAddedTime }
+
+            if (queuedCandidates.isNotEmpty()) {
+                val toSurface = queuedCandidates.take(quotaRemaining)
+                val toSurfaceIds = toSurface.map { it.id }.toSet()
+
+                for (i in updatedPhotos.indices) {
+                    if (updatedPhotos[i].id in toSurfaceIds) {
+                        updatedPhotos[i] = updatedPhotos[i].copy(surfacedTime = now)
+                        newlySurfacedIds.add(updatedPhotos[i].id)
+                        changed = true
+                    }
+                }
+            }
+        }
+
+        if (changed) {
             photos = updatedPhotos
             savePhotos()
-            resurfacedMemoryIds.forEach { id ->
+            newlySurfacedIds.forEach { id ->
                 scheduleResurfacedMemoryNotification(id)
             }
         }
+    }
+
+    private fun checkAndResetMemories() {
+        reconcileSurfacedMemories()
     }
 
     private fun shouldResurfaceViewedMemory(photo: Photo, now: Long): Boolean {
@@ -1555,16 +1597,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     val curatedMemories: List<Photo> by derivedStateOf {
         val now = System.currentTimeMillis()
 
-        // Return filtered list
         photos.filter { photo ->
-            photo.isLibraryUpload && // Only photos uploaded to library
+            photo.isLibraryUpload &&
             photo.snippets.isNotEmpty() && 
             photo.snippetsAddedTime != 0L &&
-            (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) && // Maturation timer
+            (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
             (
-                !photo.isViewed ||                              // Stay forever until viewed
-                photo.snippetsAddedTime > photo.lastViewedTime || // RESURFACE: If snippets added after last view
-                now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS // Remove 24 hours after viewed
+                (photo.surfacedTime != 0L && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
+                (photo.isViewed && now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS)
             )
         }.sortedWith(
             compareByDescending<Photo> { 
@@ -1572,7 +1612,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             }.thenByDescending { 
                 it.isViewed && (now - it.lastViewedTime < RECENTLY_VIEWED_MEMORY_MS)
             }.thenByDescending { 
-                if (it.isViewed) it.lastViewedTime else it.snippetsAddedTime 
+                if (it.isViewed) it.lastViewedTime else it.surfacedTime 
             }
         )
     }
@@ -2095,16 +2135,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
             saveSnippetFirstSeenTimes()
         }
-
+        
         photos = photos.map { photo ->
             if (photo.id == photoId) {
                 if (photo.snippets.size < 6 && !photo.snippets.contains(trimmed)) {
-                    photo.copy(snippets = photo.snippets + trimmed, snippetsAddedTime = now)
+                    photo.copy(snippets = photo.snippets + trimmed, snippetsAddedTime = now, surfacedTime = 0L)
                 } else photo
             } else photo
         }
         savePhotos()
-        
-
+        reconcileSurfacedMemories()
     }
 }

@@ -10,6 +10,7 @@ data class Photo(
     val isViewed: Boolean = false,
     val lastViewedTime: Long = 0L,
     val snippetsAddedTime: Long = 0L,
+    val surfacedTime: Long = 0L,
     val isFavorite: Boolean = false,
     val isLibraryUpload: Boolean = true,
     val collections: List<String> = emptyList(),
