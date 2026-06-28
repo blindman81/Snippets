@@ -1,6 +1,7 @@
 package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import kotlinx.coroutines.flow.first
@@ -44,6 +45,21 @@ fun AnimatedCookieButton(
     var isTapped by remember { mutableStateOf(false) }
     val rotation = remember { Animatable(0f) }
 
+    val isActive = isHolding || isTapped
+    val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
+    val targetContent = if (isActive) MaterialTheme.colorScheme.onPrimary else contentColor
+
+    val animatedContainerColor by animateColorAsState(
+        targetValue = targetContainer,
+        animationSpec = tween(150),
+        label = "cookie_button_container_color"
+    )
+    val animatedContentColor by animateColorAsState(
+        targetValue = targetContent,
+        animationSpec = tween(150),
+        label = "cookie_button_content_color"
+    )
+
     val content = @Composable {
         Box(
             modifier = modifier
@@ -52,7 +68,7 @@ fun AnimatedCookieButton(
                     rotationZ = rotation.value
                 }
                 .clip(shape)
-                .background(if (enabled) containerColor else containerColor.copy(alpha = 0.38f))
+                .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
                 .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
                     detectTapGestures(
@@ -79,7 +95,7 @@ fun AnimatedCookieButton(
                 modifier = Modifier
                     .size(iconSize)
                     .graphicsLayer { rotationZ = -rotation.value },
-                tint = if (enabled) contentColor else contentColor.copy(alpha = 0.38f)
+                tint = if (enabled) animatedContentColor else animatedContentColor.copy(alpha = 0.38f)
             )
         }
     }
