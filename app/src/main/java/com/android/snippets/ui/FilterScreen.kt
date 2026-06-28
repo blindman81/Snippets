@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -128,7 +129,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                 modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(androidx.compose.material.icons.filled.FilterList, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(24.dp))
                 }
             }
             Text(
