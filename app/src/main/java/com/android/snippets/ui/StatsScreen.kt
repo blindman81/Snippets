@@ -1,5 +1,9 @@
 package com.android.snippets.ui
 
+/**
+ * Snippet statistics and fun insights screen composable.
+ */
+
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
