@@ -40,13 +40,6 @@ enum class ThemePreference { SYSTEM, LIGHT, DARK }
 
 enum class DisplayMode { Day, Week, Month }
 enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, FlexHeavy, FlexWide, FlexSlant, FlexGrade }
-enum class SnippetShape {
-    Default, Square, Slanted, Arch, Semicircle, Oval, Pill,
-    Clamshell, Pentagon, Gen, VerySunny, Sunny,
-    Cookie6, Cookie7, Cookie9, Cookie12,
-    Clover8, Burst, SoftBurst, Flower, Puffy, PuffyDiamond,
-    Ghostish, PixelCircle, Bun
-}
 
 class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
@@ -166,202 +159,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     
     var snippetStyles by mutableStateOf<Map<String, SnippetStyle>>(emptyMap())
-        private set
-
-    var snippetShapes by mutableStateOf<Map<String, SnippetShape>>(emptyMap())
-        private set
-
-    var snippetFirstSeenTimes by mutableStateOf<Map<String, Long>>(emptyMap())
-        private set
-    
-    // Filter Context
-    var filteringCategory by mutableStateOf<String?>(null)
-
-    // Snackbar State
-    var snackbarMessage by mutableStateOf<String?>(null)
-    var snackbarActionLabel by mutableStateOf<String?>(null)
-    var onSnackbarAction by mutableStateOf<(() -> Unit)?>(null)
-
-    fun showSnackbar(message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
-        snackbarMessage = message
-        snackbarActionLabel = actionLabel
-        onSnackbarAction = onAction
-    }
-
-    // Original collections order
-    val sortedCollections: List<String>
-        get() {
-package com.android.snippets.viewmodel
-
-import android.app.Application
-import android.content.Context
-import android.net.Uri
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.derivedStateOf
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.android.snippets.model.Photo
-import com.android.snippets.ui.util.MediaSaver
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import java.io.File
-import java.io.FileOutputStream
-import java.util.Calendar
-import java.util.Locale
-import java.util.concurrent.TimeUnit
-import java.text.SimpleDateFormat
-import kotlinx.coroutines.launch
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.exifinterface.media.ExifInterface
-import com.android.snippets.logic.MemoryWorker
-import android.app.backup.BackupManager
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import android.widget.Toast
-import android.graphics.BitmapFactory
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.graphics.vector.ImageVector
-
-enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, PhotosCarousel }
-enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
-enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets }
-enum class ThemePreference { SYSTEM, LIGHT, DARK }
-
-enum class DisplayMode { Day, Week, Month }
-enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, FlexHeavy, FlexWide, FlexSlant, FlexGrade }
-enum class SnippetShape {
-    Default, Square, Slanted, Arch, Semicircle, Oval, Pill,
-    Clamshell, Pentagon, Gen, VerySunny, Sunny,
-    Cookie6, Cookie7, Cookie9, Cookie12,
-    Clover8, Burst, SoftBurst, Flower, Puffy, PuffyDiamond,
-    Ghostish, PixelCircle, Bun
-}
-
-class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
-    private companion object {
-        const val MEMORY_REMINDER_PREFIX = "memory_reminder_"
-        const val NEW_MEMORY_NOTIFICATION_DELAY_HOURS = 12L
-        const val VIEWED_MEMORY_VISIBLE_HOURS = 24L
-        const val RECENTLY_VIEWED_MEMORY_HOURS = 24L
-        const val VIEWED_MEMORY_RESET_DAYS = 3L
-        const val SURFACED_MEMORY_SPACING_HOURS = 3L
-        const val TEST_NOTIFICATION_DELAY_SECONDS = 5L
-        const val TEST_NOTIFICATION_PHOTO_ID = "test_notification"
-
-        val NEW_MEMORY_WAIT_MS: Long = TimeUnit.HOURS.toMillis(NEW_MEMORY_NOTIFICATION_DELAY_HOURS)
-        val VIEWED_MEMORY_VISIBLE_MS: Long = TimeUnit.HOURS.toMillis(VIEWED_MEMORY_VISIBLE_HOURS)
-        val RECENTLY_VIEWED_MEMORY_MS: Long = TimeUnit.HOURS.toMillis(RECENTLY_VIEWED_MEMORY_HOURS)
-        val VIEWED_MEMORY_RESET_MS: Long = TimeUnit.DAYS.toMillis(VIEWED_MEMORY_RESET_DAYS)
-        val SURFACED_MEMORY_SPACING_MS: Long = TimeUnit.HOURS.toMillis(SURFACED_MEMORY_SPACING_HOURS)
-    }
-
-    private val prefs = application.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
-    private val gson = Gson()
-
-    var photos by mutableStateOf<List<Photo>>(emptyList())
-        private set
-
-    var isInitialLoading by mutableStateOf(true)
-        private set
-
-
-
-
-    var userCollections by mutableStateOf<List<String>>(emptyList())
-        private set
-
-    var currentScreen by mutableStateOf(Screen.Library)
-    var previousScreen by mutableStateOf(Screen.Library)
-        private set
-
-    
-    var libraryCurrentTab by mutableStateOf("Library")
-    val libraryListStates = androidx.compose.runtime.mutableStateMapOf<String, androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState>()
-    
-    var activePhotoId by mutableStateOf<String?>(null)
-    var detailReturnScreen by mutableStateOf(Screen.Library)
-    var filterReturnScreen by mutableStateOf(Screen.Library)
-    var rotatingSearchHint by mutableStateOf("Library")
-        private set
-    var searchQuery by mutableStateOf("")
-    var isSearchViewOpen by mutableStateOf(false)
-    var recentSearches by mutableStateOf<List<String>>(emptyList())
-        private set
-    var showClearHistoryDialog by mutableStateOf(false)
-    
-    var isSearching by mutableStateOf(false)
-        private set
-    var isFiltering by mutableStateOf(false)
-        private set
-    var isBusy by mutableStateOf(false)
-    var isAddingPhotos by mutableStateOf(false)
-    var isCuratingMemories by mutableStateOf(false)
-
-    fun addRecentSearch(query: String) {
-        val trimmed = query.trim()
-        if (trimmed.isEmpty()) return
-        recentSearches = (listOf(trimmed) + recentSearches.filter { !it.equals(trimmed, ignoreCase = true) }).take(6)
-        saveRecentSearches()
-    }
-
-    fun removeRecentSearch(query: String) {
-        recentSearches = recentSearches.filter { !it.equals(query, ignoreCase = true) }
-        saveRecentSearches()
-    }
-
-    fun clearRecentSearches() {
-        recentSearches = emptyList()
-        saveRecentSearches()
-    }
-
-    private fun saveRecentSearches() {
-        val json = gson.toJson(recentSearches)
-        prefs.edit().putString("recent_searches_json", json).apply()
-    }
-
-    private fun loadRecentSearches() {
-        val json = prefs.getString("recent_searches_json", null)
-        if (json != null) {
-            val type = object : TypeToken<List<String>>() {}.type
-            recentSearches = gson.fromJson(json, type) ?: emptyList()
-        }
-    }
-    var selectedFilterSnippets by mutableStateOf<List<String>>(emptyList())
-
-    fun toggleFilterSnippet(snippet: String) {
-        if (selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }) {
-            selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
-        } else {
-            if (selectedFilterSnippets.size >= 6) {
-                showSnackbar("Upto 6 Chips!")
-                return
-            }
-            selectedFilterSnippets = selectedFilterSnippets + snippet
-        }
-    }
-
-    var activeCollection by mutableStateOf<String?>(null)
-    var currentMemoryIndex by mutableStateOf(0)
-    var activeMemoriesSnapshot by mutableStateOf<List<Photo>>(emptyList())
-    var showCreateDialog by mutableStateOf(false)
-    var editingCollectionIcon by mutableStateOf<String?>(null)
-    var collectionIcons by mutableStateOf<Map<String, String>>(emptyMap())
-    var focusCreateCollection by mutableStateOf(false)
-    var memoriesPage by androidx.compose.runtime.mutableIntStateOf(0)
-    var pinnedCollections by mutableStateOf<Set<String>>(emptySet())
-        private set
-    
-    var snippetColors by mutableStateOf<Map<String, Int>>(emptyMap())
-        private set
-    
-    var snippetStyles by mutableStateOf<Map<String, SnippetStyle>>(emptyMap())
-        private set
-
-    var snippetShapes by mutableStateOf<Map<String, SnippetShape>>(emptyMap())
         private set
 
     var snippetFirstSeenTimes by mutableStateOf<Map<String, Long>>(emptyMap())
@@ -661,7 +458,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     private val collectionsFile = File(application.filesDir, "collections_v2.json")
     private val snippetColorsFile = File(application.filesDir, "snippet_colors_v2.json")
     private val snippetStylesFile = File(application.filesDir, "snippet_styles_v2.json")
-    private val snippetShapesFile = File(application.filesDir, "snippet_shapes_v1.json")
     private val snippetFirstSeenFile = File(application.filesDir, "snippet_first_seen_v1.json")
 
     init {
@@ -670,7 +466,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         loadPhotos()
         loadSnippetColors()
         loadSnippetStyles()
-        loadSnippetShapes()
         loadSnippetFirstSeenTimes()
         pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
         loadRecentSearches()
@@ -875,7 +670,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
-            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes, showTime = showTimeInMemories)
+            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, showTime = showTimeInMemories)
             if (success) {
                 android.widget.Toast.makeText(context, "Downloaded to Gallery", android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -885,7 +680,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun sharePhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
-            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes, showTime = showTimeInMemories)
+            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, showTime = showTimeInMemories)
             if (uri != null) {
                 val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "image/jpeg"
@@ -1412,44 +1207,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         saveSnippetStyles()
     }
 
-    fun getSnippetShape(name: String): SnippetShape {
-        return snippetShapes[name.trim()] ?: SnippetShape.Default
-    }
-
-    fun updateSnippetShape(name: String, shape: SnippetShape) {
-        val trimmed = name.trim()
-        if (trimmed.isBlank()) return
-        snippetShapes = snippetShapes + (trimmed to shape)
-        saveSnippetShapes()
-    }
-
-    private fun saveSnippetShapes() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                val json = gson.toJson(snippetShapes)
-                snippetShapesFile.writeText(json)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    private fun loadSnippetShapes() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            if (snippetShapesFile.exists()) {
-                try {
-                    val json = snippetShapesFile.readText()
-                    val type = object : TypeToken<Map<String, SnippetShape>>() {}.type
-                    val loaded: Map<String, SnippetShape> = gson.fromJson(json, type) ?: emptyMap()
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        snippetShapes = loaded
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
 
     private fun saveSnippetStyles() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -1546,7 +1303,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun updateSnippets(photoId: String, name: String, color: Int? = null, style: SnippetStyle? = null, shape: SnippetShape? = null) {
+    fun updateSnippets(photoId: String, name: String, color: Int? = null, style: SnippetStyle? = null) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         val now = System.currentTimeMillis()
@@ -1556,9 +1313,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
         if (style != null) {
             updateSnippetStyle(trimmed, style)
-        }
-        if (shape != null) {
-            updateSnippetShape(trimmed, shape)
         }
 
         if (!snippetFirstSeenTimes.containsKey(trimmed)) {

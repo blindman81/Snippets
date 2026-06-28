@@ -62,9 +62,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap(), showTime: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), showTime: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes, showTime) ?: return@withContext false
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, showTime) ?: return@withContext false
             
             val fileName = "Snippet_Card_${System.currentTimeMillis()}.jpg"
             val contentValues = ContentValues().apply {
@@ -102,9 +102,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap(), showTime: Boolean = false): Uri? = withContext(Dispatchers.IO) {
+    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), showTime: Boolean = false): Uri? = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, snippetShapes, showTime) ?: return@withContext null
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, showTime) ?: return@withContext null
             
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
@@ -121,7 +121,7 @@ object MediaSaver {
         }
     }
 
-    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, snippetShapes: Map<String, com.android.snippets.viewmodel.SnippetShape> = emptyMap(), showTime: Boolean = false): Bitmap? {
+    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, showTime: Boolean = false): Bitmap? {
         val width = 1440
         val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -282,7 +282,7 @@ object MediaSaver {
         
         val scaleFactor = width / 360f // Baseline for DP to PX scaling
         
-        data class PlacedPill(val text: String, val w: Float, val h: Float, val boundingW: Float, val boundingH: Float, val textSize: Float, val color: Int, val rot: Float, val textBounds: Rect, val typeface: Typeface, val spacing: Float, val shape: com.android.snippets.viewmodel.SnippetShape, val isFilled: Boolean)
+        data class PlacedPill(val text: String, val w: Float, val h: Float, val boundingW: Float, val boundingH: Float, val textSize: Float, val color: Int, val rot: Float, val textBounds: Rect, val typeface: Typeface, val spacing: Float, val isFilled: Boolean)
         val maxRowWidth = 1100f
         val spacingX = 48f
         val spacingY = 48f
@@ -351,8 +351,6 @@ object MediaSaver {
             
             val total = snippets.size
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getCloudScalingFactor(total)
-            
-            val forcedShape = snippetShapes[trimmedText] ?: com.android.snippets.viewmodel.SnippetShape.Default
             
             val forcedStyle = snippetStyles[trimmedText] ?: com.android.snippets.viewmodel.SnippetStyle.Default
             
@@ -427,7 +425,7 @@ object MediaSaver {
                 currentRowHeight = 0f
             }
             
-            currentRow.add(PlacedPill(text, pillW, pillH, boundingW, boundingH, size, colorInt, rotation, bounds, typeface, letterSpacingVal, forcedShape, isFilled))
+            currentRow.add(PlacedPill(text, pillW, pillH, boundingW, boundingH, size, colorInt, rotation, bounds, typeface, letterSpacingVal, isFilled))
             currentRowWidth += boundingW + (if (currentRow.size > 1) spacingX else 0f)
             currentRowHeight = maxOf(currentRowHeight, boundingH)
         }
