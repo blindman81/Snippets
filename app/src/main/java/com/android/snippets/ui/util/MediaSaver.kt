@@ -468,6 +468,8 @@ object MediaSaver {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                     textPaint.letterSpacing = pill.spacing
                 }
+                val alphaColor = Color.argb(140, Color.red(pill.color), Color.green(pill.color), Color.blue(pill.color))
+                textPaint.shader = android.graphics.LinearGradient(x - (scaledW / 2f), y, x + (scaledW / 2f), y, intArrayOf(pill.color, alphaColor), null, android.graphics.Shader.TileMode.CLAMP)
                 
                 val pillPath = android.graphics.Path().apply {
                     val radius = scaledH / 2f

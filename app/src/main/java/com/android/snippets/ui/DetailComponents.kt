@@ -38,6 +38,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.RectangleShape
@@ -398,6 +399,10 @@ fun CloudSnippetItem(
         ) {
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getGridScalingFactor(totalCount)
     
+            val snippetGradient = remember(snippetColor) {
+                Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
+            }
+
             if (isSegmented) {
                 Box(
                     modifier = Modifier.fillMaxHeight(),
@@ -410,8 +415,7 @@ fun CloudSnippetItem(
                             forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, 
                             MaterialTheme.typography.titleMedium, 
                             isCloud = true
-                        ), 
-                        color = snippetColor
+                        ).copy(brush = snippetGradient)
                     )
                 }
             } else {
@@ -421,24 +425,21 @@ fun CloudSnippetItem(
                         Text(
                             text = text, 
                             modifier = Modifier.padding(horizontal = (24 * scalingFactor).dp, vertical = (12 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp), 
-                            color = snippetColor
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp, brush = snippetGradient)
                         )
                     }
                     2, 3 -> { // Medium Chip
                         Text(
                             text = text, 
                             modifier = Modifier.padding(horizontal = (18 * scalingFactor).dp, vertical = (9 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp), 
-                            color = snippetColor
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient)
                         )
                     }
                     else -> { // Small Chip
                         Text(
                             text = text, 
                             modifier = Modifier.padding(horizontal = (12 * scalingFactor).dp, vertical = (6 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp), 
-                            color = snippetColor
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient)
                         )
                     }
                 }

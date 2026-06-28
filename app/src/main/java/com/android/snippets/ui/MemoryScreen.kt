@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.toArgb
@@ -611,9 +612,12 @@ fun FloatingSnippet(
                 .widthIn(max = maxSnippetWidth)
                 .sizeIn(minWidth = 1.dp, minHeight = 1.dp)
         ) {
+            val snippetGradient = remember(snippetColor) {
+                Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
+            }
             Text(
                 text = text,
-                style = textStyle,
+                style = textStyle.copy(brush = snippetGradient),
                 modifier = Modifier.padding(
                     horizontal = (when (personality) {
                         0, 1 -> 24
