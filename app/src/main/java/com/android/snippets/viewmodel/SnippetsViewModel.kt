@@ -41,6 +41,7 @@ enum class ThemePreference { SYSTEM, LIGHT, DARK }
 enum class DisplayMode { Day, Week, Month }
 enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, FlexHeavy, FlexWide, FlexSlant, FlexGrade }
 
+
 class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         const val MEMORY_REMINDER_PREFIX = "memory_reminder_"
@@ -161,6 +162,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var snippetStyles by mutableStateOf<Map<String, SnippetStyle>>(emptyMap())
         private set
 
+
+
     var snippetFirstSeenTimes by mutableStateOf<Map<String, Long>>(emptyMap())
         private set
     
@@ -177,6 +180,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         snackbarActionLabel = actionLabel
         onSnackbarAction = onAction
     }
+
+
 
     // Original collections order
     val sortedCollections: List<String>
@@ -1206,6 +1211,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         snippetStyles = snippetStyles + (trimmed to style)
         saveSnippetStyles()
     }
+
 
 
     private fun saveSnippetStyles() {
