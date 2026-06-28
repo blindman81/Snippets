@@ -722,7 +722,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
                 (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
                 photo.surfacedTime == 0L
-            }.sortedBy { it.snippetsAddedTime }
+            }.sortedByDescending { it.snippetsAddedTime }
 
             if (queuedCandidates.isNotEmpty()) {
                 val toSurface = queuedCandidates.take(quotaRemaining)
