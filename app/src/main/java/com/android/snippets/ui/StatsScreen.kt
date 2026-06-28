@@ -1,12 +1,13 @@
 package com.android.snippets.ui
 
 /**
- * Snippet statistics and fun insights screen composable.
+ * Snippet stats and fun insights screen composable.
  */
 
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalView
@@ -122,7 +124,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
             MainTopBar(
-                title = "Snippet statistics",
+                title = "Stats",
                 onNavigationClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     viewModel.navigateLibrary()
@@ -145,8 +147,8 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
             // Header summary cards
             Surface(
                 shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -164,7 +166,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                         modifier = Modifier
                             .width(1.dp)
                             .height(40.dp)
-                            .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+                            .background(LocalContentColor.current.copy(alpha = 0.2f))
                     )
                     StatSummaryItem(
                         value = totalSnippetsCount.toString(),
@@ -174,7 +176,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                         modifier = Modifier
                             .width(1.dp)
                             .height(40.dp)
-                            .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+                            .background(LocalContentColor.current.copy(alpha = 0.2f))
                     )
                     StatSummaryItem(
                         value = "$longestStreakDays d",
@@ -184,7 +186,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
             }
 
             Text(
-                text = "FUN INSIGHTS",
+                text = "INSIGHTS",
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp
@@ -193,50 +195,55 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                 modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 4.dp)
             )
 
-            // 1. Most used snippet card
-            InsightCard(
-                icon = Icons.Default.AutoAwesome,
-                title = "Most used snippet",
-                value = mostUsedSnippetEntry?.key ?: "None yet",
-                subtitle = if (mostUsedSnippetEntry != null) "${mostUsedSnippetEntry.value} photos" else "0 photos",
-                position = CardPosition.First
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // 1. Most used snippet card
+                InsightCard(
+                    icon = Icons.Default.AutoAwesome,
+                    title = "Most used snippet",
+                    value = mostUsedSnippetEntry?.key ?: "None yet",
+                    subtitle = if (mostUsedSnippetEntry != null) "${mostUsedSnippetEntry.value} photos" else "0 photos",
+                    position = CardPosition.First
+                )
 
-            // 2. Most photographed location card
-            InsightCard(
-                icon = Icons.Default.LocationOn,
-                title = "Most photographed location",
-                value = mostPhotographedLocationEntry?.key ?: "No location data",
-                subtitle = if (mostPhotographedLocationEntry != null) "${mostPhotographedLocationEntry.value} photos" else "0 photos",
-                position = CardPosition.Middle
-            )
+                // 2. Most photographed location card
+                InsightCard(
+                    icon = Icons.Default.LocationOn,
+                    title = "Most photographed location",
+                    value = mostPhotographedLocationEntry?.key ?: "No location data",
+                    subtitle = if (mostPhotographedLocationEntry != null) "${mostPhotographedLocationEntry.value} photos" else "0 photos",
+                    position = CardPosition.Middle
+                )
 
-            // 3. Longest streak card
-            InsightCard(
-                icon = Icons.Default.Whatshot,
-                title = "Longest streak",
-                value = "$longestStreakDays ${if (longestStreakDays == 1) "day" else "days"}",
-                subtitle = "Consecutive days taking photos",
-                position = CardPosition.Middle
-            )
+                // 3. Longest streak card
+                InsightCard(
+                    icon = Icons.Default.Whatshot,
+                    title = "Longest streak",
+                    value = "$longestStreakDays ${if (longestStreakDays == 1) "day" else "days"}",
+                    subtitle = "Consecutive days taking photos",
+                    position = CardPosition.Middle
+                )
 
-            // 4. Photos this month card
-            InsightCard(
-                icon = Icons.Default.CalendarMonth,
-                title = "Photos this month",
-                value = "$photosThisMonthCount ${if (photosThisMonthCount == 1) "photo" else "photos"}",
-                subtitle = "Added in the current calendar month",
-                position = CardPosition.Middle
-            )
+                // 4. Photos this month card
+                InsightCard(
+                    icon = Icons.Default.CalendarMonth,
+                    title = "Photos this month",
+                    value = "$photosThisMonthCount ${if (photosThisMonthCount == 1) "photo" else "photos"}",
+                    subtitle = "Added in the current calendar month",
+                    position = CardPosition.Middle
+                )
 
-            // 5. Favorite snippet card
-            InsightCard(
-                icon = Icons.Default.Favorite,
-                title = "Favorite snippet",
-                value = favoriteSnippetEntry?.key ?: "None yet",
-                subtitle = if (favoriteSnippetEntry != null) "${favoriteSnippetEntry.value} favorite photos" else "No favorite snippets tagged",
-                position = CardPosition.Last
-            )
+                // 5. Favorite snippet card
+                InsightCard(
+                    icon = Icons.Default.Favorite,
+                    title = "Favorite snippet",
+                    value = favoriteSnippetEntry?.key ?: "None yet",
+                    subtitle = if (favoriteSnippetEntry != null) "${favoriteSnippetEntry.value} favorite photos" else "No favorite snippets tagged",
+                    position = CardPosition.Last
+                )
+            }
         }
     }
 }
@@ -244,15 +251,16 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
 @Composable
 private fun StatSummaryItem(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        val contentColor = LocalContentColor.current
         Text(
             text = value,
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            color = contentColor
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            color = contentColor.copy(alpha = 0.8f)
         )
     }
 }
