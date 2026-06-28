@@ -203,17 +203,75 @@ object MediaSaver {
         }
         canvas.drawPath(photoPath, borderPaint)
 
-        // 3. Draw Date Header
+        // 3. Draw Date & Location Header
         val dateString = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date)).uppercase()
+        val locationText = LocationUtils.getLocationFromExif(context, photo)
         val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             alpha = 230
             textSize = 34f
-            textAlign = Paint.Align.CENTER
             typeface = getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            letterSpacing = 0.15f
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                letterSpacing = 0.15f
+            }
         }
-        canvas.drawText(dateString, width / 2f, 200f, datePaint)
+
+        if (locationText.isNullOrBlank()) {
+            datePaint.textAlign = Paint.Align.CENTER
+            canvas.drawText(dateString, width / 2f, 200f, datePaint)
+        } else {
+            datePaint.textAlign = Paint.Align.LEFT
+            val dateWidth = datePaint.measureText(dateString)
+
+            val locTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                alpha = 240
+                textSize = 26f
+                typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            }
+            val locTextWidth = locTextPaint.measureText(locationText)
+
+            val pillW = locTextWidth + 64f
+            val pillH = 48f
+            val spacing = 24f
+            val totalHeaderWidth = dateWidth + spacing + pillW
+            val startX = (width - totalHeaderWidth) / 2f
+
+            canvas.drawText(dateString, startX, 200f, datePaint)
+
+            val pillLeft = startX + dateWidth + spacing
+            val pillTop = 162f
+            val pillRight = pillLeft + pillW
+            val pillBottom = pillTop + pillH
+            val pillRect = RectF(pillLeft, pillTop, pillRight, pillBottom)
+            val pillRadius = pillH / 2f
+
+            val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                alpha = (255 * 0.25f).toInt()
+                style = Paint.Style.FILL
+            }
+            val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                alpha = (255 * 0.4f).toInt()
+                style = Paint.Style.STROKE
+                strokeWidth = 3f
+            }
+            canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBgPaint)
+            canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBorderPaint)
+
+            val dotX = pillLeft + 24f
+            val dotY = pillRect.centerY()
+            val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                style = Paint.Style.FILL
+            }
+            canvas.drawCircle(dotX, dotY, 5f, dotPaint)
+
+            val textCenterX = pillLeft + 44f + (locTextWidth / 2f)
+            locTextPaint.textAlign = Paint.Align.CENTER
+            canvas.drawText(locationText, textCenterX, pillRect.centerY() + 9f, locTextPaint)
+        }
 
         // 4. Draw Snippets (Synchronized with ExpressiveShareSheet logic)
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {

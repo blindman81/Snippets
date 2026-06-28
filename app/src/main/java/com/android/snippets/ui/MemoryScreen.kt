@@ -357,13 +357,20 @@ fun MemoryScreen(
                     .padding(bottom = 8.dp)
             )
 
-            // Date Header Text
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            // Date & Location Header Text
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 val activeIndex = (pagerState.settledPage - 1).coerceIn(0, photoList.size - 1)
                 val photo = photoList.getOrNull(activeIndex)
                 val dateString = if (photo != null) {
                     SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
                 } else ""
+                val locationText = if (photo != null) {
+                    com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
+                } else null
 
                 Text(
                     text = dateString.uppercase(),
@@ -373,6 +380,37 @@ fun MemoryScreen(
                     ),
                     color = Color.White
                 )
+
+                if (!locationText.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                        color = Color.White.copy(alpha = 0.25f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                        modifier = Modifier.height(22.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = locationText,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
             }
         }
     }

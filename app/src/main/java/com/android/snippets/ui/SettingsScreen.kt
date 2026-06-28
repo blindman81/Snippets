@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.FormatColorFill
 
 import androidx.compose.material.icons.filled.ChevronRight
