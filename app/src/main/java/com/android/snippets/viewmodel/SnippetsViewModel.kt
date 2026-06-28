@@ -181,8 +181,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         onSnackbarAction = onAction
     }
 
-
-
     // Original collections order
     val sortedCollections: List<String>
         get() {
@@ -550,8 +548,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     widthPx = widthPx,
                     heightPx = heightPx,
                     isPublic = p.isPublic,
-                    locationLink = p.locationLink,
-                    locationName = p.locationName ?: com.android.snippets.ui.util.LocationUtils.extractLocationFromUri(getApplication(), Uri.parse(p.uriString))
+                    locationLink = p.locationLink
                 )
             }
 
@@ -655,8 +652,135 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
         useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
+
+        showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
+        searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
     }
 
+    private fun savePhotos(): kotlinx.coroutines.Job {
+        val snapshot = photos // Capture on main thread immediately — avoids race if photos mutates before IO runs
+        return viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            storageMutex.withLock {
+                try {
+                    val json = gson.toJson(snapshot)
+                    photosFile.writeText(json)
+                    BackupManager(getApplication()).dataChanged()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    private fun rebuildSnippetFirstSeenTimes(source: List<Photo>): Map<String, Long> {
+        val rebuilt = mutableMapOf<String, Long>()
+        source.forEach { photo ->
+            val time = if (photo.snippetsAddedTime > 0L) photo.snippetsAddedTime else photo.date
+            photo.snippets.forEach { snippet ->
+                rebuilt[snippet] = minOf(rebuilt[snippet] ?: Long.MAX_VALUE, time)
+            }
+        }
+        return rebuilt
+    }
+
+    private fun isSameDay(time1: Long, time2: Long): Boolean {
+        if (time1 == 0L || time2 == 0L) return false
+        val cal1 = Calendar.getInstance().apply { timeInMillis = time1 }
+        val cal2 = Calendar.getInstance().apply { timeInMillis = time2 }
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+               cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    private fun reconcileSurfacedMemories(now: Long = System.currentTimeMillis()) {
+        var changed = false
+        val scheduledNotifications = mutableListOf<Pair<String, Long>>()
+        val updatedPhotos = photos.map { photo ->
+            if (shouldResurfaceViewedMemory(photo, now)) {
+                changed = true
+                photo.copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
+            } else photo
+        }.toMutableList()
+
+        val todaySurfacedCount = updatedPhotos.count { photo ->
+            !photo.isViewed && photo.surfacedTime != 0L && isSameDay(photo.surfacedTime, now)
+        }
+
+        if (todaySurfacedCount < 5) {
+            val quotaRemaining = 5 - todaySurfacedCount
+            val queuedCandidates = updatedPhotos.filter { photo ->
+                photo.isLibraryUpload &&
+                photo.snippets.isNotEmpty() &&
+                photo.snippetsAddedTime != 0L &&
+                (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
+                (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
+                photo.surfacedTime == 0L
+            }.sortedByDescending { it.snippetsAddedTime }
+
+            if (queuedCandidates.isNotEmpty()) {
+                val toSurface = queuedCandidates.take(quotaRemaining)
+                var lastSurfacedTime = updatedPhotos
+                    .filter { !it.isViewed && it.surfacedTime != 0L && isSameDay(it.surfacedTime, now) }
+                    .maxOfOrNull { it.surfacedTime } ?: 0L
+
+                for (candidate in toSurface) {
+                    val targetSurfaceTime = if (lastSurfacedTime == 0L) {
+                        now
+                    } else {
+                        maxOf(now, lastSurfacedTime + SURFACED_MEMORY_SPACING_MS)
+                    }
+                    lastSurfacedTime = targetSurfaceTime
+
+                    val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
+                    if (index != -1) {
+                        updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = targetSurfaceTime)
+                        scheduledNotifications.add(candidate.id to targetSurfaceTime)
+                        changed = true
+                    }
+                }
+            }
+        }
+
+        if (changed) {
+            photos = updatedPhotos
+            savePhotos()
+            scheduledNotifications.forEach { (id, targetTime) ->
+                val delayMs = maxOf(0L, targetTime - now)
+                scheduleMemoryNotification(
+                    photoId = id,
+                    delay = delayMs,
+                    delayUnit = TimeUnit.MILLISECONDS,
+                    notificationType = MemoryWorker.TYPE_RESURFACED
+                )
+            }
+        }
+    }
+
+    private fun checkAndResetMemories() {
+        reconcileSurfacedMemories()
+    }
+
+    private fun shouldResurfaceViewedMemory(photo: Photo, now: Long): Boolean {
+        return photo.isViewed &&
+            photo.isLibraryUpload &&
+            photo.snippets.isNotEmpty() &&
+            photo.snippetsAddedTime != 0L &&
+            now - photo.lastViewedTime >= VIEWED_MEMORY_RESET_MS
+    }
+    private fun saveCollections() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            storageMutex.withLock {
+                try {
+                    val json = gson.toJson(userCollections)
+                    collectionsFile.writeText(json)
+                    BackupManager(getApplication()).dataChanged()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    // Settings Setters
     fun updateThemePreference(pref: ThemePreference) {
         themePreference = pref
         prefs.edit().putString("theme_preference", pref.name).apply()
@@ -665,6 +789,674 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateDynamicColors(use: Boolean) {
         useDynamicColors = use
         prefs.edit().putBoolean("use_dynamic_colors", use).apply()
+    }
+
+
+
+    fun addPhoto(uri: Uri, isFavorite: Boolean = false) {
+        isAddingPhotos = true
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val captureDate = extractCaptureDate(uri)
+                val duplicate = photos.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
+                
+                if (duplicate != null) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isFavorite && !duplicate.isFavorite) {
+                            toggleFavorite(duplicate.id)
+                        }
+                        isAddingPhotos = false
+                    }
+                    return@launch
+                }
+
+                val internalUri = saveToInternalStorage(uri) ?: uri.toString()
+                val (widthPx, heightPx) = extractImageDimensions(Uri.parse(internalUri))
+                val newPhoto = Photo(
+                    uriString = internalUri,
+                    date = captureDate,
+                    snippets = emptyList(),
+                    isFavorite = isFavorite,
+                    isLibraryUpload = true,
+                    widthPx = widthPx,
+                    heightPx = heightPx
+                )
+                
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    photos = (listOf(newPhoto) + photos).sortedByDescending { it.date }
+                    savePhotos()
+                    isAddingPhotos = false
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    isAddingPhotos = false
+                }
+            }
+        }
+    }
+
+    fun addPhotoToCollection(uri: Uri, collectionName: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val captureDate = extractCaptureDate(uri)
+            
+            val duplicate = photos.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
+            if (duplicate != null) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!duplicate.collections.contains(collectionName)) {
+                        photos = photos.map {
+                            if (it.id == duplicate.id) it.copy(collections = it.collections + collectionName) else it
+                        }
+                        savePhotos()
+                    }
+                }
+                return@launch
+            }
+
+            val internalUri = saveToInternalStorage(uri) ?: uri.toString()
+            val (widthPx, heightPx) = extractImageDimensions(Uri.parse(internalUri))
+            val newPhoto = Photo(
+                uriString = internalUri,
+                date = captureDate,
+                snippets = emptyList(),
+                collections = listOf(collectionName),
+                isLibraryUpload = true,
+                widthPx = widthPx,
+                heightPx = heightPx
+            )
+            
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                photos = (listOf(newPhoto) + photos).sortedByDescending { it.date }
+                savePhotos()
+            }
+        }
+    }
+
+    private fun extractImageDimensions(uri: Uri): Pair<Int, Int> {
+        return try {
+            val resolver = getApplication<Application>().contentResolver
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input, null, options) }
+            val width = options.outWidth.takeIf { it > 0 } ?: 0
+            val height = options.outHeight.takeIf { it > 0 } ?: 0
+            width to height
+        } catch (_: Exception) {
+            0 to 0
+        }
+    }
+
+
+
+    fun createCollection(name: String, openAfterCreate: Boolean = true) {
+        val trimmed = name.trim()
+        if (trimmed.isNotBlank() && userCollections.none { it.equals(trimmed, ignoreCase = true) }) {
+            userCollections = userCollections + trimmed
+
+            
+            saveCollections()
+            if (openAfterCreate) {
+                libraryCurrentTab = trimmed
+                navigateLibrary()
+            }
+        }
+    }
+
+
+    fun deleteCollection(name: String) {
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return
+
+        userCollections = userCollections.filter { it != trimmedName }
+        pinnedCollections = pinnedCollections - trimmedName
+        
+        // Cleanup per-collection settings
+        _collectionDisplayModes.value = _collectionDisplayModes.value - trimmedName
+        _collectionPhotoSortTypes.value = _collectionPhotoSortTypes.value - trimmedName
+        
+        saveCollections()
+        saveFilterState()
+        prefs.edit().putStringSet("pinned_collections", pinnedCollections).apply()
+        collectionIcons = collectionIcons - trimmedName
+        saveCollectionIcons()
+        showCountsIn = showCountsIn - trimmedName
+        prefs.edit().putStringSet("show_counts_in", showCountsIn).apply()
+        showCarouselsIn = showCarouselsIn - trimmedName
+        prefs.edit().putStringSet("show_carousels_in", showCarouselsIn).apply()
+        saveCollections()
+
+        var photosChanged = false
+        photos = photos.map { photo ->
+            if (photo.collections.contains(trimmedName)) {
+                photosChanged = true
+                photo.copy(collections = photo.collections - trimmedName)
+            } else photo
+        }
+        if (photosChanged) savePhotos()
+
+        if (activeCollection == trimmedName) {
+            navigateLibrary()
+        }
+        if (pendingCollectionAssignment == trimmedName) {
+            pendingCollectionAssignment = null
+        }
+    }
+
+    fun togglePinCollection(name: String) {
+        val isCurrentlyPinned = pinnedCollections.contains(name)
+        pinnedCollections = if (isCurrentlyPinned) {
+            pinnedCollections - name
+        } else {
+            if (pinnedCollections.size >= 3) {
+                showSnackbar("Upto 3 pins!")
+                return
+            }
+            pinnedCollections + name
+        }
+        prefs.edit().putStringSet("pinned_collections", pinnedCollections).apply()
+    }
+
+    fun renameCollection(oldName: String, newName: String) {
+        val trimmedOldName = oldName.trim()
+        val trimmedNewName = newName.trim()
+
+        if (trimmedOldName.isBlank() || trimmedNewName.isBlank() || trimmedOldName == trimmedNewName) return
+        if (userCollections.any { it.equals(trimmedNewName, ignoreCase = true) && it != trimmedOldName }) return
+
+        userCollections = userCollections.map { collection ->
+            if (collection == trimmedOldName) trimmedNewName else collection
+        }
+        saveCollections()
+
+        photos = photos.map { photo ->
+            if (photo.snippets.any { it == trimmedOldName } || photo.collections.any { it == trimmedOldName }) {
+                photo.copy(
+                    snippets = photo.snippets.map { snippet ->
+                        if (snippet == trimmedOldName) trimmedNewName else snippet
+                    },
+                    collections = photo.collections.map { collection ->
+                        if (collection == trimmedOldName) trimmedNewName else collection
+                    }.distinct()
+                )
+            } else {
+                photo
+            }
+        }
+        savePhotos()
+
+        if (collectionIcons.containsKey(trimmedOldName)) {
+            val icon = collectionIcons[trimmedOldName]
+            collectionIcons = collectionIcons - trimmedOldName
+            if (icon != null) collectionIcons = collectionIcons + (trimmedNewName to icon)
+            saveCollectionIcons()
+        }
+        if (pinnedCollections.contains(trimmedOldName)) {
+            pinnedCollections = pinnedCollections - trimmedOldName + trimmedNewName
+            prefs.edit().putStringSet("pinned_collections", pinnedCollections).apply()
+        }
+        if (showCountsIn.contains(trimmedOldName)) {
+            showCountsIn = showCountsIn - trimmedOldName + trimmedNewName
+            prefs.edit().putStringSet("show_counts_in", showCountsIn).apply()
+        }
+        if (showCarouselsIn.contains(trimmedOldName)) {
+            showCarouselsIn = showCarouselsIn - trimmedOldName + trimmedNewName
+            prefs.edit().putStringSet("show_carousels_in", showCarouselsIn).apply()
+        }
+
+        if (activeCollection == trimmedOldName) {
+            activeCollection = trimmedNewName
+        }
+        if (pendingCollectionAssignment == trimmedOldName) {
+            pendingCollectionAssignment = trimmedNewName
+        }
+        if (selectedFilterSnippets.contains(trimmedOldName)) {
+            selectedFilterSnippets = selectedFilterSnippets.map { if (it == trimmedOldName) trimmedNewName else it }
+            saveFilterState()
+        }
+    }
+
+    fun moveCollectionLeft(name: String) {
+        val trimmed = name.trim()
+        val index = userCollections.indexOf(trimmed)
+        if (index > 0) {
+            val newList = userCollections.toMutableList()
+            val temp = newList[index - 1]
+            newList[index - 1] = newList[index]
+            newList[index] = temp
+            userCollections = newList
+            saveCollections()
+        }
+    }
+
+    fun moveCollectionRight(name: String) {
+        val trimmed = name.trim()
+        val index = userCollections.indexOf(trimmed)
+        if (index != -1 && index < userCollections.size - 1) {
+            val newList = userCollections.toMutableList()
+            val temp = newList[index + 1]
+            newList[index + 1] = newList[index]
+            newList[index] = temp
+            userCollections = newList
+            saveCollections()
+        }
+    }
+
+    private fun memoryReminderName(photoId: String) = "$MEMORY_REMINDER_PREFIX$photoId"
+
+    private fun scheduleNewMemoryNotification(photoId: String) {
+        scheduleMemoryNotification(
+            photoId = photoId,
+            delay = NEW_MEMORY_NOTIFICATION_DELAY_HOURS,
+            delayUnit = TimeUnit.HOURS,
+            notificationType = MemoryWorker.TYPE_NEW
+        )
+    }
+
+    private fun scheduleUpdatedMemoryNotification(photoId: String) {
+        scheduleMemoryNotification(
+            photoId = photoId,
+            delay = NEW_MEMORY_NOTIFICATION_DELAY_HOURS,
+            delayUnit = TimeUnit.HOURS,
+            notificationType = MemoryWorker.TYPE_UPDATED
+        )
+    }
+
+    private fun scheduleResurfacedMemoryNotification(photoId: String) {
+        if (!MemoryWorker.wasNotificationPosted(getApplication(), photoId)) {
+            scheduleMemoryNotification(
+                photoId = photoId,
+                delay = 0,
+                delayUnit = TimeUnit.SECONDS,
+                notificationType = MemoryWorker.TYPE_RESURFACED
+            )
+        }
+    }
+
+    private fun scheduleMemoryNotification(
+        photoId: String,
+        delay: Long,
+        delayUnit: TimeUnit = TimeUnit.HOURS,
+        notificationType: String = MemoryWorker.TYPE_NEW,
+        policy: androidx.work.ExistingWorkPolicy = androidx.work.ExistingWorkPolicy.REPLACE,
+        resetPostedState: Boolean = true
+    ) {
+        if (photoId.isBlank()) return
+
+
+        if (resetPostedState) {
+            MemoryWorker.clearPostedNotificationState(getApplication(), photoId)
+        }
+        val reminderName = memoryReminderName(photoId)
+        val workRequestBuilder = OneTimeWorkRequestBuilder<MemoryWorker>()
+            .setInitialDelay(delay, delayUnit)
+            .setBackoffCriteria(
+                androidx.work.BackoffPolicy.LINEAR,
+                30,
+                TimeUnit.MINUTES
+            )
+            .setInputData(
+                androidx.work.workDataOf(
+                    MemoryWorker.INPUT_PHOTO_ID to photoId,
+                    MemoryWorker.INPUT_NOTIFICATION_TYPE to notificationType
+                )
+            )
+            .addTag(reminderName)
+
+        // For resurfaced memories (zero delay), use expedited work to deliver immediately
+        if (delay == 0L) {
+            workRequestBuilder.setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        }
+        val workRequest = workRequestBuilder.build()
+
+        WorkManager.getInstance(getApplication()).enqueueUniqueWork(
+            reminderName,
+            policy,
+            workRequest
+        )
+    }
+
+    private fun reconcileMemoryNotifications() {
+        val now = System.currentTimeMillis()
+        photos
+            .filterNot { MemoryWorker.wasNotificationPosted(getApplication(), it.id) }
+            .forEach { photo ->
+                if (shouldHavePendingMemoryNotification(photo)) {
+                    val remainingMs = maxOf(0L, NEW_MEMORY_WAIT_MS - (now - photo.snippetsAddedTime))
+                    val notificationType = if (photo.isViewed) {
+                        MemoryWorker.TYPE_UPDATED
+                    } else {
+                        MemoryWorker.TYPE_NEW
+                    }
+                    scheduleMemoryNotification(
+                        photoId = photo.id,
+                        delay = remainingMs,
+                        delayUnit = TimeUnit.MILLISECONDS,
+                        notificationType = notificationType,
+                        policy = androidx.work.ExistingWorkPolicy.KEEP,
+                        resetPostedState = false
+                    )
+                } else if (shouldHavePendingResurfacedNotification(photo)) {
+                    val targetResurfaceTime = photo.lastViewedTime + VIEWED_MEMORY_RESET_MS
+                    val remainingMs = maxOf(0L, targetResurfaceTime - now)
+                    scheduleMemoryNotification(
+                        photoId = photo.id,
+                        delay = remainingMs,
+                        delayUnit = TimeUnit.MILLISECONDS,
+                        notificationType = MemoryWorker.TYPE_RESURFACED,
+                        policy = androidx.work.ExistingWorkPolicy.KEEP,
+                        resetPostedState = false
+                    )
+                }
+            }
+    }
+
+    private fun shouldHavePendingMemoryNotification(photo: Photo): Boolean {
+        return photo.isLibraryUpload &&
+            photo.snippets.isNotEmpty() &&
+            photo.snippetsAddedTime != 0L &&
+            (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)
+    }
+
+    private fun shouldHavePendingResurfacedNotification(photo: Photo): Boolean {
+        return photo.isLibraryUpload &&
+            photo.snippets.isNotEmpty() &&
+            photo.snippetsAddedTime != 0L &&
+            photo.isViewed &&
+            photo.snippetsAddedTime <= photo.lastViewedTime &&
+            photo.lastViewedTime != 0L
+    }
+
+    private fun cancelMemoryNotification(photoId: String) {
+        if (photoId.isBlank()) return
+        val reminderName = memoryReminderName(photoId)
+        WorkManager.getInstance(getApplication()).cancelUniqueWork(reminderName)
+        WorkManager.getInstance(getApplication()).cancelAllWorkByTag(reminderName)
+        MemoryWorker.cancelPostedNotification(getApplication(), photoId)
+    }
+
+    fun testNotification() {
+        val photosWithSnippets = photos.filter { it.snippets.isNotEmpty() }
+        val testId = photosWithSnippets.firstOrNull()?.id ?: TEST_NOTIFICATION_PHOTO_ID
+        
+        val workRequest = OneTimeWorkRequestBuilder<MemoryWorker>()
+            .setInitialDelay(TEST_NOTIFICATION_DELAY_SECONDS, TimeUnit.SECONDS)
+            .setInputData(
+                androidx.work.workDataOf(
+                    MemoryWorker.INPUT_PHOTO_ID to testId,
+                    MemoryWorker.INPUT_NOTIFICATION_TYPE to MemoryWorker.TYPE_NEW
+                )
+            )
+            .build()
+        requestNotificationPermission = true
+        WorkManager.getInstance(getApplication()).enqueue(workRequest)
+    }
+
+    private fun extractCaptureDate(uri: Uri): Long {
+        val context = getApplication<Application>()
+        var fallbackDate = 0L
+        
+        // Try to get the file's last modified date as a better fallback than current time
+        try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val dateModifiedIndex = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DATE_MODIFIED)
+                    if (dateModifiedIndex != -1) {
+                        val dateSeconds = cursor.getLong(dateModifiedIndex)
+                        if (dateSeconds > 0) fallbackDate = dateSeconds * 1000L
+                    }
+                    if (fallbackDate == 0L) {
+                        val docLastModIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                        if (docLastModIndex != -1) {
+                            val dateMs = cursor.getLong(docLastModIndex)
+                            if (dateMs > 0) fallbackDate = dateMs
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {}
+        
+        if (fallbackDate == 0L) fallbackDate = System.currentTimeMillis()
+
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val exif = ExifInterface(input)
+                val dateTime = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+                    ?: exif.getAttribute(ExifInterface.TAG_DATETIME)
+                
+                if (dateTime != null) {
+                    val format = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
+                    format.parse(dateTime)?.time ?: fallbackDate
+                } else {
+                    fallbackDate
+                }
+            } ?: fallbackDate
+        } catch (e: Exception) {
+            e.printStackTrace()
+            fallbackDate
+        }
+    }
+
+    private fun saveToInternalStorage(uri: Uri): String? {
+        val context = getApplication<Application>()
+        val photosDir = File(context.filesDir, "photos")
+        if (!photosDir.exists()) photosDir.mkdirs()
+        
+        val fileName = "photo_${System.currentTimeMillis()}.jpg" // Still using JPG extension for clarity, but raw copy preserves quality
+        val localFile = File(photosDir, fileName)
+        
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(localFile).use { output ->
+                    input.copyTo(output) // Raw byte stream copy ensures original quality
+                }
+            }
+            localFile.absolutePath.let { if (it.startsWith("/")) "file://$it" else it }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun updateSnippets(photoId: String, text: String, color: Int, style: SnippetStyle) {
+        val targetPhoto = photos.find { it.id == photoId }
+        if (targetPhoto != null && targetPhoto.snippets.size >= 6) {
+            android.widget.Toast.makeText(getApplication(), "Maximum 6 snippets per photo", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val trimmedText = text.trim()
+        if (trimmedText.isBlank()) return
+
+        // Update color and style first
+        updateSnippetColor(trimmedText, color)
+        updateSnippetStyle(trimmedText, style)
+
+        val newSnippets = listOf(trimmedText)
+        val now = System.currentTimeMillis()
+        var firstTimeSnippetsAdded = false
+        var resurfacedMemory = false
+        val wasAppEmptyBefore = photos.all { it.snippets.isEmpty() }
+
+        if (!snippetFirstSeenTimes.containsKey(trimmedText)) {
+            snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmedText to now)
+            saveSnippetFirstSeenTimes()
+        }
+        
+        // Update photo's snippets list
+        photos = photos.map {
+            if (it.id == photoId) {
+                val wasEmpty = it.snippets.isEmpty()
+                if (wasEmpty && newSnippets.isNotEmpty()) {
+                    firstTimeSnippetsAdded = true
+                }
+                if (it.isViewed && newSnippets.isNotEmpty() && it.snippetsAddedTime <= it.lastViewedTime) {
+                    resurfacedMemory = true
+                }
+                val updatedSnippets = (it.snippets + newSnippets).distinct()
+                it.copy(
+                    snippets = updatedSnippets,
+                    snippetsAddedTime = if (newSnippets.isNotEmpty()) now else it.snippetsAddedTime
+                )
+            } else it
+        }
+
+        savePhotos()
+
+
+
+        if (firstTimeSnippetsAdded) {
+            scheduleNewMemoryNotification(photoId)
+            if (wasAppEmptyBefore) {
+                showSnackbar("You just created your first snippet! A new memory will be created soon.")
+            }
+        } else if (resurfacedMemory) {
+            scheduleUpdatedMemoryNotification(photoId)
+        } else {
+            // snippetsAddedTime was bumped to now, so re-schedule the notification
+            // to align with the new maturation timer. Without this, the old WorkManager
+            // job fires before curatedMemories would include this photo.
+            scheduleNewMemoryNotification(photoId)
+        }
+    }
+
+    fun removeSnippet(photoId: String, snippet: String) {
+        var emptiedMemory = false
+        photos = photos.map {
+            if (it.id == photoId) {
+                val updatedSnippets = it.snippets.filter { s -> s != snippet }
+                emptiedMemory = it.snippets.isNotEmpty() && updatedSnippets.isEmpty()
+                it.copy(
+                    snippets = updatedSnippets,
+                    snippetsAddedTime = if (updatedSnippets.isEmpty()) 0L else it.snippetsAddedTime
+                )
+            } else it
+        }
+        savePhotos()
+        
+
+        
+        if (emptiedMemory) cancelMemoryNotification(photoId)
+
+        if (photos.none { photo -> photo.snippets.contains(snippet) }) {
+            snippetFirstSeenTimes = snippetFirstSeenTimes - snippet
+            saveSnippetFirstSeenTimes()
+        }
+    }
+
+    fun deleteSnippetGlobally(snippet: String) {
+        val emptiedMemoryIds = mutableListOf<String>()
+        photos = photos.map {
+            val updatedSnippets = it.snippets.filter { s -> s != snippet }
+            if (it.snippets.isNotEmpty() && updatedSnippets.isEmpty()) {
+                emptiedMemoryIds.add(it.id)
+            }
+            it.copy(
+                snippets = updatedSnippets,
+                snippetsAddedTime = if (updatedSnippets.isEmpty()) 0L else it.snippetsAddedTime
+            )
+        }
+        savePhotos()
+        emptiedMemoryIds.forEach { cancelMemoryNotification(it) }
+        
+
+        snippetFirstSeenTimes = snippetFirstSeenTimes - snippet
+        saveSnippetFirstSeenTimes()
+    }
+
+    fun toggleFavorite(photoId: String) {
+        photos = photos.map {
+            if (it.id == photoId) it.copy(isFavorite = !it.isFavorite) else it
+        }
+        savePhotos()
+    }
+
+    fun togglePublicStatus(photoId: String) {
+        photos = photos.map {
+            if (it.id == photoId) it.copy(isPublic = !it.isPublic) else it
+        }
+        savePhotos()
+    }
+
+    fun updateLocationLink(photoId: String, link: String?) {
+        photos = photos.map {
+            if (it.id == photoId) it.copy(locationLink = link) else it
+        }
+        savePhotos()
+    }
+
+    fun deletePhoto(photoId: String, unpublish: Boolean = true) {
+        photos = photos.filter { it.id != photoId }
+        savePhotos()
+        cancelMemoryNotification(photoId)
+        closeDetail()
+    }
+
+    // --- Bulk Actions ---
+    
+    fun toggleSelection(photoId: String) {
+        selectedPhotoIds = if (selectedPhotoIds.contains(photoId)) {
+            selectedPhotoIds - photoId
+        } else {
+            selectedPhotoIds + photoId
+        }
+    }
+
+    fun clearSelection() {
+        selectedPhotoIds = emptySet()
+        pendingCollectionAssignment = null
+        pendingCollectionRemoval = null
+        forceSelectionMode = false
+    }
+
+    fun deleteSelectedPhotos(unpublish: Boolean = true) {
+        isBusy = true
+        photos = photos.filter { !selectedPhotoIds.contains(it.id) }
+        savePhotos()
+        selectedPhotoIds.forEach { cancelMemoryNotification(it) }
+        clearSelection()
+        isBusy = false
+    }
+
+    fun toggleSelectedInCollection(collectionName: String) {
+        isBusy = true
+        val now = System.currentTimeMillis()
+        photos = photos.map { photo ->
+            if (selectedPhotoIds.contains(photo.id)) {
+                val updatedCollections = if (photo.collections.contains(collectionName)) {
+                    photo.collections - collectionName
+                } else {
+                    photo.collections + collectionName
+                }
+                photo.copy(
+                    collections = updatedCollections,
+                    snippetsAddedTime = if (photo.snippetsAddedTime == 0L) now else photo.snippetsAddedTime
+                )
+            } else photo
+        }
+        savePhotos()
+        clearSelection()
+        isBusy = false
+    }
+    
+    val isAllSelectedFavorited: Boolean by derivedStateOf {
+        val selected = photos.filter { selectedPhotoIds.contains(it.id) }
+        selected.isNotEmpty() && selected.all { it.isFavorite }
+    }
+
+    fun bulkFavoriteSelection() {
+        isBusy = true
+        val targetState = !isAllSelectedFavorited
+        val count = selectedPhotoIds.size
+        photos = photos.map { photo ->
+            if (selectedPhotoIds.contains(photo.id)) {
+                photo.copy(isFavorite = targetState)
+            } else photo
+        }
+        savePhotos()
+        
+        if (targetState) {
+            showSnackbar(message = "$count to Favorites")
+        }
+        clearSelection()
+        isBusy = false
     }
 
     fun updateShowTimeInMemories(show: Boolean) {
