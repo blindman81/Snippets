@@ -55,6 +55,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         const val VIEWED_MEMORY_VISIBLE_HOURS = 24L
         const val RECENTLY_VIEWED_MEMORY_HOURS = 24L
         const val VIEWED_MEMORY_RESET_DAYS = 3L
+        const val SURFACED_MEMORY_SPACING_HOURS = 3L
         const val TEST_NOTIFICATION_DELAY_SECONDS = 5L
         const val TEST_NOTIFICATION_PHOTO_ID = "test_notification"
 
@@ -62,6 +63,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val VIEWED_MEMORY_VISIBLE_MS: Long = TimeUnit.HOURS.toMillis(VIEWED_MEMORY_VISIBLE_HOURS)
         val RECENTLY_VIEWED_MEMORY_MS: Long = TimeUnit.HOURS.toMillis(RECENTLY_VIEWED_MEMORY_HOURS)
         val VIEWED_MEMORY_RESET_MS: Long = TimeUnit.DAYS.toMillis(VIEWED_MEMORY_RESET_DAYS)
+        val SURFACED_MEMORY_SPACING_MS: Long = TimeUnit.HOURS.toMillis(SURFACED_MEMORY_SPACING_HOURS)
     }
 
     private val prefs = application.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
@@ -699,7 +701,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     private fun reconcileSurfacedMemories(now: Long = System.currentTimeMillis()) {
         var changed = false
-        val newlySurfacedIds = mutableListOf<String>()
+        val scheduledNotifications = mutableListOf<Pair<String, Long>>()
         val updatedPhotos = photos.map { photo ->
             if (shouldResurfaceViewedMemory(photo, now)) {
                 changed = true
@@ -724,12 +726,22 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
             if (queuedCandidates.isNotEmpty()) {
                 val toSurface = queuedCandidates.take(quotaRemaining)
-                val toSurfaceIds = toSurface.map { it.id }.toSet()
+                var lastSurfacedTime = updatedPhotos
+                    .filter { !it.isViewed && it.surfacedTime != 0L && isSameDay(it.surfacedTime, now) }
+                    .maxOfOrNull { it.surfacedTime } ?: 0L
 
-                for (i in updatedPhotos.indices) {
-                    if (updatedPhotos[i].id in toSurfaceIds) {
-                        updatedPhotos[i] = updatedPhotos[i].copy(surfacedTime = now)
-                        newlySurfacedIds.add(updatedPhotos[i].id)
+                for (candidate in toSurface) {
+                    val targetSurfaceTime = if (lastSurfacedTime == 0L) {
+                        now
+                    } else {
+                        maxOf(now, lastSurfacedTime + SURFACED_MEMORY_SPACING_MS)
+                    }
+                    lastSurfacedTime = targetSurfaceTime
+
+                    val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
+                    if (index != -1) {
+                        updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = targetSurfaceTime)
+                        scheduledNotifications.add(candidate.id to targetSurfaceTime)
                         changed = true
                     }
                 }
@@ -739,8 +751,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         if (changed) {
             photos = updatedPhotos
             savePhotos()
-            newlySurfacedIds.forEach { id ->
-                scheduleResurfacedMemoryNotification(id)
+            scheduledNotifications.forEach { (id, targetTime) ->
+                val delayMs = maxOf(0L, targetTime - now)
+                scheduleMemoryNotification(
+                    photoId = id,
+                    delay = delayMs,
+                    delayUnit = TimeUnit.MILLISECONDS,
+                    notificationType = MemoryWorker.TYPE_RESURFACED
+                )
             }
         }
     }
@@ -1603,7 +1621,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             photo.snippetsAddedTime != 0L &&
             (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
             (
-                (photo.surfacedTime != 0L && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
+                (photo.surfacedTime != 0L && photo.surfacedTime <= now && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
                 (photo.isViewed && now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS)
             )
         }.sortedWith(
