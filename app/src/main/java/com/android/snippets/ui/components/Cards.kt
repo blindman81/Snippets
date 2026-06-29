@@ -402,6 +402,7 @@ fun PhotoMasonryItem(
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp)
 ) {
     val finalShape = if (isSelected) RoundedCornerShape(4.dp) else shape
+    val isCustomPolygon = shape is com.android.snippets.ui.shapes.RoundedPolygonShape
 
     val saturation by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (grayOutIfViewed && photo.isViewed) 0f else 1f,
@@ -445,7 +446,7 @@ fun PhotoMasonryItem(
                     .memoryCacheKey(photo.uriString)
                     .build(),
                 contentDescription = null,
-                contentScale = if (fillCard) ContentScale.Crop else ContentScale.FillWidth,
+                contentScale = if (fillCard || isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
                 colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
                 alignment = Alignment { size, space, _ ->
                     val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
@@ -460,6 +461,10 @@ fun PhotoMasonryItem(
                 },
                 modifier = (if (fillCard) {
                     Modifier.fillMaxSize()
+                } else if (isCustomPolygon) {
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
                 } else {
                     photo.aspectRatio?.let { ratio ->
                         Modifier
