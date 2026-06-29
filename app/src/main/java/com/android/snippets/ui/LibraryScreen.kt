@@ -115,7 +115,8 @@ fun LibraryScreen(
     var showHistoryBottomSheet by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
 
-    BackHandler {
+    val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
+    BackHandler(enabled = isBackHandlerEnabled) {
         if (isSearchOpen) {
             isSearchOpen = false
             viewModel.searchQuery = ""
