@@ -34,6 +34,7 @@ import androidx.compose.material3.carousel.rememberCarouselState
 import com.android.snippets.viewmodel.Screen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -178,19 +179,40 @@ fun MemoryMoreButton(
     var isHolding by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
     val rotation = remember { androidx.compose.animation.core.Animatable(0f) }
-    val scale = remember { androidx.compose.animation.core.Animatable(1f) }
+    val animScaleX = remember { androidx.compose.animation.core.Animatable(1f) }
+    val animScaleY = remember { androidx.compose.animation.core.Animatable(1f) }
 
     val shapeType = LocalAppShapeType.current
     val isSpinningShape = when (shapeType) {
         AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-        AppShape.GEM, AppShape.SQUARE -> false
+        else -> false
     }
 
     LaunchedEffect(isHolding) {
         if (isHolding) {
-            scale.animateTo(0.92f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+            when (shapeType) {
+                AppShape.CLOVER_4_LEAF -> {
+                    animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+                    animScaleY.animateTo(0.85f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+                }
+                AppShape.PENTAGON -> {
+                    rotation.animateTo(12f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+                }
+                else -> {
+                    animScaleX.animateTo(0.92f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+                    animScaleY.animateTo(0.92f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+                }
+            }
         } else {
-            scale.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+            when (shapeType) {
+                AppShape.PENTAGON -> {
+                    rotation.animateTo(0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+                }
+                else -> {
+                    animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+                    animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+                }
+            }
         }
     }
 
@@ -228,9 +250,43 @@ fun MemoryMoreButton(
 
     LaunchedEffect(isTapped) {
         if (isTapped) {
-            if (!isSpinningShape) {
-                scale.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                scale.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+            when (shapeType) {
+                AppShape.GEM, AppShape.SQUARE -> {
+                    animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                }
+                AppShape.PENTAGON -> {
+                    rotation.animateTo(-15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    rotation.animateTo(15f, animationSpec = androidx.compose.animation.core.tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    rotation.animateTo(0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                }
+                AppShape.CLOVER_4_LEAF -> {
+                    launch {
+                        animScaleX.animateTo(1.25f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(0.8f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.2f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                }
+                AppShape.CLOVER_8_LEAF -> {
+                    launch {
+                        animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.03f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.20f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.03f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.20f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                }
+                else -> {}
             }
             kotlinx.coroutines.delay(1200)
             isTapped = false
@@ -244,13 +300,15 @@ fun MemoryMoreButton(
             .graphicsLayer {
                 rotationZ = if (isSpinning && !isDirectionalArrow && isSpinningShape) {
                     rotation.value
+                } else if (isSpinning && !isDirectionalArrow && shapeType == AppShape.PENTAGON) {
+                    rotation.value
                 } else if (isDownArrow || isUpArrow) {
                     animatedDirectionalRotation
                 } else {
                     0f
                 }
-                scaleX = scale.value
-                scaleY = scale.value
+                scaleX = animScaleX.value
+                scaleY = animScaleY.value
                 if (isPointing) {
                     if (isForwardArrow || isBackArrow) {
                         translationX = pointerOffset
@@ -285,7 +343,13 @@ fun MemoryMoreButton(
                 modifier = Modifier
                     .size(34.dp)
                     .graphicsLayer {
-                        rotationZ = if (isSpinning && isSpinningShape) -rotation.value else 0f
+                        rotationZ = if (isSpinning && isSpinningShape) {
+                            -rotation.value
+                        } else if (isSpinning && shapeType == AppShape.PENTAGON) {
+                            -rotation.value
+                        } else {
+                            0f
+                        }
                         translationX = pointerOffset
                     },
                 tint = if (unviewedCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer

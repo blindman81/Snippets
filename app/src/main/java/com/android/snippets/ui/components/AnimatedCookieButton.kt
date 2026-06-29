@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -46,12 +47,13 @@ fun AnimatedCookieButton(
     var isHolding by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
     val rotation = remember { Animatable(0f) }
-    val scale = remember { Animatable(1f) }
+    val animScaleX = remember { Animatable(1f) }
+    val animScaleY = remember { Animatable(1f) }
 
     val shapeType = LocalAppShapeType.current
     val isSpinningShape = when (shapeType) {
         AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-        AppShape.GEM, AppShape.SQUARE -> false
+        else -> false
     }
 
     val isActive = isHolding || isTapped
@@ -74,9 +76,13 @@ fun AnimatedCookieButton(
             modifier = modifier
                 .size(size)
                 .graphicsLayer {
-                    rotationZ = if (isSpinningShape) rotation.value else 0f
-                    scaleX = scale.value
-                    scaleY = scale.value
+                    rotationZ = when (shapeType) {
+                        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> rotation.value
+                        AppShape.PENTAGON -> rotation.value
+                        else -> 0f
+                    }
+                    scaleX = animScaleX.value
+                    scaleY = animScaleY.value
                 }
                 .clip(shape)
                 .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
@@ -105,60 +111,128 @@ fun AnimatedCookieButton(
                 contentDescription = contentDescription,
                 modifier = Modifier
                     .size(iconSize)
-                    .graphicsLayer { rotationZ = if (isSpinningShape) -rotation.value else 0f },
+                    .graphicsLayer { 
+                        rotationZ = when (shapeType) {
+                            AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> -rotation.value
+                            AppShape.PENTAGON -> -rotation.value
+                            else -> 0f
+                        }
+                    },
                 tint = if (enabled) animatedContentColor else animatedContentColor.copy(alpha = 0.38f)
             )
         }
     }
 
 
-    // Spin/Pulse animation loop: ensures each animation finishes cleanly without snapping
+    // Spin/Pulse/Wiggle/Squish animation loop
     LaunchedEffect(Unit) {
         while (true) {
             if (isTapped) {
-                if (isSpinningShape) {
-                    rotation.animateTo(
-                        targetValue = rotation.value + 360f,
-                        animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-                    )
-                } else {
-                    scale.animateTo(
-                        targetValue = 1.18f,
-                        animationSpec = tween(100, easing = FastOutSlowInEasing)
-                    )
-                    scale.animateTo(
-                        targetValue = 1.0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
+                when (shapeType) {
+                    AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
+                        rotation.animateTo(
+                            targetValue = rotation.value + 360f,
+                            animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
                         )
-                    )
+                    }
+                    AppShape.GEM, AppShape.SQUARE -> {
+                        launch {
+                            animScaleX.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                            animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                        }
+                        launch {
+                            animScaleY.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                            animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                        }
+                    }
+                    AppShape.PENTAGON -> {
+                        rotation.animateTo(-15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                        rotation.animateTo(15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
+                        rotation.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    AppShape.CLOVER_4_LEAF -> {
+                        launch {
+                            animScaleX.animateTo(1.25f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                            animScaleX.animateTo(0.8f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                            animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                        }
+                        launch {
+                            animScaleY.animateTo(0.75f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                            animScaleY.animateTo(1.2f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                            animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                        }
+                    }
+                    AppShape.CLOVER_8_LEAF -> {
+                        launch {
+                            animScaleX.animateTo(1.15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                            animScaleX.animateTo(1.03f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                            animScaleX.animateTo(1.20f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                            animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                        }
+                        launch {
+                            animScaleY.animateTo(1.15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                            animScaleY.animateTo(1.03f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                            animScaleY.animateTo(1.20f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                            animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                        }
+                    }
                 }
-                // Wait a bit before allowing another tap/pulse to avoid spam
                 kotlinx.coroutines.delay(150)
                 isTapped = false
             } else if (isHolding) {
-                if (isSpinningShape) {
-                    rotation.animateTo(
-                        targetValue = rotation.value + 360f,
-                        animationSpec = tween(600, easing = LinearEasing)
-                    )
-                } else {
-                    scale.animateTo(
-                        targetValue = 0.9f,
-                        animationSpec = tween(150, easing = FastOutSlowInEasing)
-                    )
-                    androidx.compose.runtime.snapshotFlow { isHolding }.first { !it }
-                    scale.animateTo(
-                        targetValue = 1.0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
+                when (shapeType) {
+                    AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
+                        rotation.animateTo(
+                            targetValue = rotation.value + 360f,
+                            animationSpec = tween(600, easing = LinearEasing)
                         )
-                    )
+                    }
+                    AppShape.GEM, AppShape.SQUARE -> {
+                        launch { animScaleX.animateTo(0.9f, animationSpec = tween(150, easing = FastOutSlowInEasing)) }
+                        launch { animScaleY.animateTo(0.9f, animationSpec = tween(150, easing = FastOutSlowInEasing)) }
+                        androidx.compose.runtime.snapshotFlow { isHolding }.first { !it }
+                        launch { animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
+                        launch { animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
+                    }
+                    AppShape.PENTAGON -> {
+                        rotation.animateTo(12f, animationSpec = tween(150, easing = FastOutSlowInEasing))
+                        androidx.compose.runtime.snapshotFlow { isHolding }.first { !it }
+                        rotation.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    AppShape.CLOVER_4_LEAF -> {
+                        launch { animScaleX.animateTo(1.15f, animationSpec = tween(150, easing = FastOutSlowInEasing)) }
+                        launch { animScaleY.animateTo(0.85f, animationSpec = tween(150, easing = FastOutSlowInEasing)) }
+                        androidx.compose.runtime.snapshotFlow { isHolding }.first { !it }
+                        launch { animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
+                        launch { animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
+                    }
+                    AppShape.CLOVER_8_LEAF -> {
+                        val pulseJob = launch {
+                            while (isHolding) {
+                                animScaleX.animateTo(1.08f, animationSpec = tween(200, easing = FastOutSlowInEasing))
+                                animScaleX.animateTo(1.02f, animationSpec = tween(150, easing = FastOutSlowInEasing))
+                                animScaleX.animateTo(1.12f, animationSpec = tween(250, easing = FastOutSlowInEasing))
+                                animScaleX.animateTo(1.0f, animationSpec = tween(300, easing = FastOutSlowInEasing))
+                                kotlinx.coroutines.delay(200)
+                            }
+                        }
+                        val pulseJobY = launch {
+                            while (isHolding) {
+                                animScaleY.animateTo(1.08f, animationSpec = tween(200, easing = FastOutSlowInEasing))
+                                animScaleY.animateTo(1.02f, animationSpec = tween(150, easing = FastOutSlowInEasing))
+                                animScaleY.animateTo(1.12f, animationSpec = tween(250, easing = FastOutSlowInEasing))
+                                animScaleY.animateTo(1.0f, animationSpec = tween(300, easing = FastOutSlowInEasing))
+                                kotlinx.coroutines.delay(200)
+                            }
+                        }
+                        androidx.compose.runtime.snapshotFlow { isHolding }.first { !it }
+                        pulseJob.cancel()
+                        pulseJobY.cancel()
+                        launch { animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
+                        launch { animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
+                    }
                 }
             } else {
-                // Suspend until either holding or tapped becomes true
                 androidx.compose.runtime.snapshotFlow { isHolding || isTapped }
                     .first { it }
             }
@@ -178,20 +252,49 @@ fun AnimatedCookieButton(
     // Spin/Pulse on entry if configured
     LaunchedEffect(spinOnEntry) {
         if (spinOnEntry) {
-            if (isSpinningShape) {
-                rotation.animateTo(
-                    targetValue = rotation.value + 360f,
-                    animationSpec = tween(1000, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-                )
-            } else {
-                scale.snapTo(0f)
-                scale.animateTo(
-                    targetValue = 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMediumLow
+            when (shapeType) {
+                AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
+                    rotation.animateTo(
+                        targetValue = rotation.value + 360f,
+                        animationSpec = tween(1000, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
                     )
-                )
+                }
+                AppShape.PENTAGON -> {
+                    launch {
+                        animScaleX.snapTo(0f)
+                        animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+                    }
+                    launch {
+                        animScaleY.snapTo(0f)
+                        animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+                    }
+                    rotation.animateTo(15f, animationSpec = tween(150, easing = FastOutSlowInEasing))
+                    rotation.animateTo(-15f, animationSpec = tween(200, easing = FastOutSlowInEasing))
+                    rotation.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                }
+                AppShape.CLOVER_4_LEAF -> {
+                    animScaleX.snapTo(0f)
+                    animScaleY.snapTo(0f)
+                    launch {
+                        animScaleX.animateTo(1.15f, animationSpec = tween(300, easing = FastOutSlowInEasing))
+                        animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        kotlinx.coroutines.delay(50)
+                        animScaleY.animateTo(1.15f, animationSpec = tween(300, easing = FastOutSlowInEasing))
+                        animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+                AppShape.CLOVER_8_LEAF, AppShape.GEM, AppShape.SQUARE -> {
+                    launch {
+                        animScaleX.snapTo(0f)
+                        animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+                    }
+                    launch {
+                        animScaleY.snapTo(0f)
+                        animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow))
+                    }
+                }
             }
         }
     }

@@ -130,11 +130,14 @@ fun MemoryScreen(
     val shapeType = LocalAppShapeType.current
     val isSpinningShape = when (shapeType) {
         AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-        AppShape.GEM, AppShape.SQUARE -> false
+        else -> false
     }
 
     var rotationAngle by remember { mutableFloatStateOf(0f) }
     var swayAngle by remember { mutableFloatStateOf(0f) }
+    var pulseScale by remember { mutableFloatStateOf(1f) }
+    var translationXOffset by remember { mutableFloatStateOf(0f) }
+    var translationYOffset by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(isPressed) {
         if (!isPressed) {
@@ -151,8 +154,24 @@ fun MemoryScreen(
                         rotationAngle = (rotationAngle + deltaDegrees) % 360f
                     } else {
                         accumulatedTime += deltaMs
-                        val swayDegrees = 3f * kotlin.math.sin(accumulatedTime * (2f * kotlin.math.PI.toFloat() / 4000f))
-                        swayAngle = swayDegrees
+                        val fraction = accumulatedTime * (2f * kotlin.math.PI.toFloat() / 4000f)
+                        
+                        when (shapeType) {
+                            AppShape.GEM, AppShape.SQUARE -> {
+                                val swayDegrees = 3f * kotlin.math.sin(fraction)
+                                swayAngle = swayDegrees
+                            }
+                            AppShape.PENTAGON -> {
+                                pulseScale = 1f + 0.04f * kotlin.math.sin(fraction)
+                            }
+                            AppShape.CLOVER_4_LEAF -> {
+                                translationYOffset = 25f * kotlin.math.sin(fraction)
+                            }
+                            AppShape.CLOVER_8_LEAF -> {
+                                translationXOffset = 25f * kotlin.math.sin(fraction)
+                            }
+                            else -> {}
+                        }
                     }
                 }
             }
@@ -276,7 +295,15 @@ fun MemoryScreen(
                             .padding(horizontal = 24.dp)
                             .aspectRatio(1f)
                             .graphicsLayer {
-                                rotationZ = if (isSpinningShape) rotationAngle else swayAngle
+                                rotationZ = when (shapeType) {
+                                    AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> rotationAngle
+                                    AppShape.GEM, AppShape.SQUARE -> swayAngle
+                                    else -> 0f
+                                }
+                                scaleX = if (shapeType == AppShape.PENTAGON) pulseScale else 1f
+                                scaleY = if (shapeType == AppShape.PENTAGON) pulseScale else 1f
+                                translationX = if (shapeType == AppShape.CLOVER_8_LEAF) translationXOffset else 0f
+                                translationY = if (shapeType == AppShape.CLOVER_4_LEAF) translationYOffset else 0f
                             }
                             .then(
                                 if (photo.id == transitionTargetId && viewModel.currentScreen != Screen.Detail && sharedTransitionScope != null && animatedVisibilityScope != null) {
@@ -315,9 +342,15 @@ fun MemoryScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    rotationZ = if (isSpinningShape) -rotationAngle else -swayAngle
-                                    scaleX = 1.25f
-                                    scaleY = 1.25f
+                                    rotationZ = when (shapeType) {
+                                        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> -rotationAngle
+                                        AppShape.GEM, AppShape.SQUARE -> -swayAngle
+                                        else -> 0f
+                                    }
+                                    scaleX = 1.25f / (if (shapeType == AppShape.PENTAGON) pulseScale else 1f)
+                                    scaleY = 1.25f / (if (shapeType == AppShape.PENTAGON) pulseScale else 1f)
+                                    translationX = if (shapeType == AppShape.CLOVER_8_LEAF) -translationXOffset else 0f
+                                    translationY = if (shapeType == AppShape.CLOVER_4_LEAF) -translationYOffset else 0f
                                 }
                         )
                     }

@@ -334,48 +334,75 @@ Surface(
                                                         "Library" -> Icons.Default.PhotoLibrary
                                                         else -> viewModel.getCollectionIcon(tabName)
                                                     }
-                                                    val rotation = remember { Animatable(0f) }
-                                                    val scale = remember { Animatable(1f) }
+                                                     val rotation = remember { Animatable(0f) }
+                                                     val animScaleX = remember { Animatable(1f) }
+                                                     val animScaleY = remember { Animatable(1f) }
 
-                                                    val shapeType = LocalAppShapeType.current
-                                                    val isSpinningShape = when (shapeType) {
-                                                        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-                                                        AppShape.GEM, AppShape.SQUARE -> false
-                                                    }
+                                                     val shapeType = LocalAppShapeType.current
+                                                     val isSpinningShape = when (shapeType) {
+                                                         AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
+                                                         else -> false
+                                                     }
 
-                                                    LaunchedEffect(isSelected) {
-                                                        if (isSelected) {
-                                                            if (isSpinningShape) {
-                                                                rotation.animateTo(
-                                                                    targetValue = rotation.value + 360f,
-                                                                    animationSpec = tween(
-                                                                        durationMillis = 600,
-                                                                        easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
-                                                                    )
-                                                                )
-                                                            } else {
-                                                                scale.animateTo(1.15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
-                                                                scale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                                                            }
-                                                        }
-                                                    }
+                                                     LaunchedEffect(isSelected) {
+                                                         if (isSelected) {
+                                                             when (shapeType) {
+                                                                 AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
+                                                                     rotation.animateTo(
+                                                                         targetValue = rotation.value + 360f,
+                                                                         animationSpec = tween(
+                                                                             durationMillis = 600,
+                                                                             easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
+                                                                         )
+                                                                     )
+                                                                 }
+                                                                 AppShape.GEM, AppShape.SQUARE, AppShape.CLOVER_8_LEAF -> {
+                                                                     launch {
+                                                                         animScaleX.animateTo(1.15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
+                                                                         animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                     }
+                                                                     launch {
+                                                                         animScaleY.animateTo(1.15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
+                                                                         animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                     }
+                                                                 }
+                                                                 AppShape.PENTAGON -> {
+                                                                     rotation.animateTo(-15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                                                                     rotation.animateTo(15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
+                                                                     rotation.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                 }
+                                                                 AppShape.CLOVER_4_LEAF -> {
+                                                                     launch {
+                                                                         animScaleX.animateTo(1.25f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                                                                         animScaleX.animateTo(0.8f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                                                                         animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                     }
+                                                                     launch {
+                                                                         animScaleY.animateTo(0.75f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                                                                         animScaleY.animateTo(1.2f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                                                                         animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                     }
+                                                                 }
+                                                             }
+                                                         }
+                                                     }
 
-                                                    Surface(
-                                                        shape = LocalAppShape.current,
-                                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier
-                                                            .size(44.dp)
-                                                            .graphicsLayer { 
-                                                                rotationZ = if (isSpinningShape) rotation.value else 0f 
-                                                                scaleX = scale.value
-                                                                scaleY = scale.value
-                                                            }
-                                                    ) {
-                                                        Box(
-                                                            contentAlignment = Alignment.Center,
-                                                            modifier = Modifier.graphicsLayer { rotationZ = if (isSpinningShape) -rotation.value else 0f }
-                                                        ) {
+                                                     Surface(
+                                                         shape = LocalAppShape.current,
+                                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                                         contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                         modifier = Modifier
+                                                             .size(44.dp)
+                                                             .graphicsLayer { 
+                                                                 rotationZ = if (isSpinningShape || shapeType == AppShape.PENTAGON) rotation.value else 0f 
+                                                                 scaleX = animScaleX.value
+                                                                 scaleY = animScaleY.value
+                                                             }
+                                                     ) {
+                                                         Box(
+                                                             contentAlignment = Alignment.Center,
+                                                             modifier = Modifier.graphicsLayer { rotationZ = if (isSpinningShape || shapeType == AppShape.PENTAGON) -rotation.value else 0f }
+                                                         ) {
                                                             if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
                                                                 Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
                                                             } else if (iconOrEmoji is String) {

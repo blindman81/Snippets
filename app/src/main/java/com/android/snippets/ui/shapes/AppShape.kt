@@ -21,7 +21,10 @@ enum class AppShape(val displayName: String) {
     VERY_SUNNY("Very sunny"),
     GEM("Gem"),
     SQUARE("Square"),
-    PILL("Pill")
+    PILL("Pill"),
+    PENTAGON("Pentagon"),
+    CLOVER_4_LEAF("4-leaf clover"),
+    CLOVER_8_LEAF("8-leaf clover")
 }
 
 val CookiePolygon = RoundedPolygon.star(
@@ -61,6 +64,9 @@ fun AppShape.toComposeShape(): Shape {
         AppShape.GEM -> RoundedPolygonShape(MaterialShapes.Gem)
         AppShape.SQUARE -> RoundedPolygonShape(MaterialShapes.Square)
         AppShape.PILL -> RoundedPolygonShape(MaterialShapes.Pill)
+        AppShape.PENTAGON -> RoundedPolygonShape(MaterialShapes.Pentagon)
+        AppShape.CLOVER_4_LEAF -> RoundedPolygonShape(MaterialShapes.Clover4Leaf)
+        AppShape.CLOVER_8_LEAF -> RoundedPolygonShape(MaterialShapes.Clover8Leaf)
     }
 }
 
@@ -72,6 +78,9 @@ fun AppShape.getNormalizedPolygon(): RoundedPolygon {
         AppShape.GEM -> MaterialShapes.Gem
         AppShape.SQUARE -> MaterialShapes.Square
         AppShape.PILL -> MaterialShapes.Pill
+        AppShape.PENTAGON -> MaterialShapes.Pentagon
+        AppShape.CLOVER_4_LEAF -> MaterialShapes.Clover4Leaf
+        AppShape.CLOVER_8_LEAF -> MaterialShapes.Clover8Leaf
     }
 }
 

@@ -61,12 +61,15 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
     
     var isHolding by remember { mutableStateOf(false) }
     val rotation = remember { Animatable(0f) }
-    val scale = remember { Animatable(1f) }
+    val animScaleX = remember { Animatable(1f) }
+    val animScaleY = remember { Animatable(1f) }
+    val animTranslationX = remember { Animatable(0f) }
+    val animTranslationY = remember { Animatable(0f) }
 
     val shapeType = LocalAppShapeType.current
     val isSpinningShape = when (shapeType) {
         AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-        AppShape.GEM, AppShape.SQUARE -> false
+        else -> false
     }
 
     LaunchedEffect(isHolding) {
@@ -80,9 +83,25 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
             }
         } else {
             val duration = if (isHolding) 400 else 4000
-            while (true) {
-                scale.animateTo(1.05f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
-                scale.animateTo(0.95f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+            when (shapeType) {
+                AppShape.CLOVER_4_LEAF -> {
+                    while (true) {
+                        animTranslationY.animateTo(8f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+                        animTranslationY.animateTo(-8f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+                    }
+                }
+                AppShape.CLOVER_8_LEAF -> {
+                    while (true) {
+                        animTranslationX.animateTo(8f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+                        animTranslationX.animateTo(-8f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+                    }
+                }
+                else -> {
+                    while (true) {
+                        animScaleX.animateTo(1.05f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+                        animScaleX.animateTo(0.95f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+                    }
+                }
             }
         }
     }
@@ -251,8 +270,10 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                             .fillMaxSize()
                             .graphicsLayer { 
                                 rotationZ = if (isSpinningShape) rotation.value else 0f
-                                scaleX = if (isSpinningShape) 1f else scale.value
-                                scaleY = if (isSpinningShape) 1f else scale.value
+                                scaleX = if (isSpinningShape) 1f else animScaleX.value
+                                scaleY = if (isSpinningShape) 1f else animScaleX.value
+                                translationX = if (shapeType == AppShape.CLOVER_8_LEAF) animTranslationX.value else 0f
+                                translationY = if (shapeType == AppShape.CLOVER_4_LEAF) animTranslationY.value else 0f
                             }
                             .clip(LocalAppShape.current)
                             .background(MaterialTheme.colorScheme.secondaryContainer)
