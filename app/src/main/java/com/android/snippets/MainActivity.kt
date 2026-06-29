@@ -41,9 +41,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import kotlinx.coroutines.delay
+
 
 
 class MainActivity : ComponentActivity() {
@@ -197,7 +204,6 @@ private val AnticipateEasing = Easing { fraction ->
 
 @Composable
 private fun ComposeSplashScreen(
-
     shapeType: AppShape,
     isDarkTheme: Boolean,
     isInitialLoading: Boolean,
@@ -214,6 +220,26 @@ private fun ComposeSplashScreen(
             startExitAnimation = true
         }
     }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "SplashInfinite")
+    val infiniteSpin by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "infiniteSpin"
+    )
+    val infiniteSine by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "infiniteSine"
+    )
 
     val duration = 700
     val animProgress = animateFloatAsState(
@@ -250,23 +276,24 @@ private fun ComposeSplashScreen(
             var rotationZ = 0f
             var translationX = 0f
 
+            val idleSine = kotlin.math.sin(infiniteSine.toDouble()).toFloat()
+
             when (shapeType) {
                 AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
                     scaleX = 1f - p
                     scaleY = 1f - p
-                    rotationZ = p * 360f
+                    rotationZ = infiniteSpin + p * 360f
                 }
                 AppShape.GEM, AppShape.SQUARE -> {
                     scaleX = 1f - p
                     scaleY = 1f - p
-                    rotationZ = if (startExitAnimation) {
-                        (kotlin.math.sin(p.toDouble() * java.lang.Math.PI * 3.0) * 20.0).toFloat()
-                    } else {
-                        0f
-                    }
+                    val idleSway = idleSine * 12f
+                    val exitSway = (kotlin.math.sin(p.toDouble() * java.lang.Math.PI * 3.0) * 20.0).toFloat()
+                    rotationZ = idleSway * (1f - p) + exitSway * p
                 }
                 AppShape.PENTAGON -> {
-                    val pulseScale = if (startExitAnimation) {
+                    val idlePulse = 1f + 0.06f * idleSine
+                    val exitPulseScale = if (startExitAnimation) {
                         if (p < 0.25f) {
                             1f + (p / 0.25f) * 0.3f
                         } else if (p < 0.5f) {
@@ -279,12 +306,14 @@ private fun ComposeSplashScreen(
                     } else {
                         1f
                     }
-                    scaleX = pulseScale
-                    scaleY = pulseScale
+                    scaleX = idlePulse * exitPulseScale
+                    scaleY = idlePulse * exitPulseScale
                 }
                 AppShape.CLOVER_4_LEAF -> {
+                    val idleScaleX = 1f + 0.06f * idleSine
+                    val idleScaleY = 1f - 0.06f * idleSine
                     if (startExitAnimation) {
-                        scaleX = if (p < 0.25f) {
+                        val exitScaleX = if (p < 0.25f) {
                             1f + (p / 0.25f) * 0.3f
                         } else if (p < 0.5f) {
                             1.3f - ((p - 0.25f) / 0.25f) * 0.6f
@@ -293,7 +322,7 @@ private fun ComposeSplashScreen(
                         } else {
                             1.1f - ((p - 0.75f) / 0.25f) * 1.1f
                         }
-                        scaleY = if (p < 0.25f) {
+                        val exitScaleY = if (p < 0.25f) {
                             1f - (p / 0.25f) * 0.3f
                         } else if (p < 0.5f) {
                             0.7f + ((p - 0.25f) / 0.25f) * 0.6f
@@ -302,19 +331,19 @@ private fun ComposeSplashScreen(
                         } else {
                             0.9f - ((p - 0.75f) / 0.25f) * 0.9f
                         }
+                        scaleX = idleScaleX * exitScaleX
+                        scaleY = idleScaleY * exitScaleY
                     } else {
-                        scaleX = 1f
-                        scaleY = 1f
+                        scaleX = idleScaleX
+                        scaleY = idleScaleY
                     }
                 }
                 AppShape.CLOVER_8_LEAF -> {
                     scaleX = 1f - p
                     scaleY = 1f - p
-                    translationX = if (startExitAnimation) {
-                        (kotlin.math.sin(p.toDouble() * java.lang.Math.PI * 3.0) * 100.0).toFloat()
-                    } else {
-                        0f
-                    }
+                    val idleTranslationX = idleSine * 20f
+                    val exitTranslationX = (kotlin.math.sin(p.toDouble() * java.lang.Math.PI * 3.0) * 100.0).toFloat()
+                    translationX = idleTranslationX * (1f - p) + exitTranslationX * p
                 }
             }
 
@@ -332,4 +361,5 @@ private fun ComposeSplashScreen(
         }
     }
 }
+
 
