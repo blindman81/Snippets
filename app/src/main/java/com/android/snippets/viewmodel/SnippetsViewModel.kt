@@ -553,20 +553,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 )
             }
 
-            // Move memory reset to IO thread too
-            val now = System.currentTimeMillis()
-            val resurfacedMemoryIds = mutableListOf<String>()
-            val finalPhotos = processedPhotos.map { photo ->
-                if (shouldResurfaceViewedMemory(photo, now)) {
-                    resurfacedMemoryIds.add(photo.id)
-                    photo.copy(isViewed = false, lastViewedTime = 0L)
-                } else photo
-            }
-
             // Run expensive operations on IO thread to avoid ANR on Main thread
             val currentPhotos = photos
             val currentSnippetTimes = snippetFirstSeenTimes
-            val merged = (currentPhotos + finalPhotos).distinctBy { it.id }.sortedByDescending { it.date }
+            val merged = (currentPhotos + processedPhotos).distinctBy { it.id }.sortedByDescending { it.date }
             val rebuiltSnippetTimes = rebuildSnippetFirstSeenTimes(merged)
             val updatedSnippetTimes = if (currentSnippetTimes.isEmpty()) {
                 rebuiltSnippetTimes
@@ -586,12 +576,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 isInitialLoading = false
                 saveSnippetFirstSeenTimes()
                 reconcileSurfacedMemories()
-                if (resurfacedMemoryIds.isNotEmpty()) {
-                    savePhotos()
-                    resurfacedMemoryIds.forEach { id ->
-                        scheduleResurfacedMemoryNotification(id)
-                    }
-                }
                 reconcileMemoryNotifications()
             }
         }
@@ -702,41 +686,27 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             } else photo
         }.toMutableList()
 
-        val todaySurfacedCount = updatedPhotos.count { photo ->
-            !photo.isViewed && photo.surfacedTime != 0L && isSameDay(photo.surfacedTime, now)
-        }
+        val assignedTimes = updatedPhotos.map { it.surfacedTime }.filter { it != 0L }
 
-        if (todaySurfacedCount < 5) {
-            val quotaRemaining = 5 - todaySurfacedCount
-            val queuedCandidates = updatedPhotos.filter { photo ->
-                photo.isLibraryUpload &&
-                photo.snippets.isNotEmpty() &&
-                photo.snippetsAddedTime != 0L &&
-                (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
-                (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
-                photo.surfacedTime == 0L
-            }.sortedByDescending { it.snippetsAddedTime }
+        val queuedCandidates = updatedPhotos.filter { photo ->
+            photo.isLibraryUpload &&
+            photo.snippets.isNotEmpty() &&
+            photo.snippetsAddedTime != 0L &&
+            (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
+            photo.surfacedTime == 0L
+        }.sortedByDescending { it.snippetsAddedTime }
 
-            if (queuedCandidates.isNotEmpty()) {
-                val toSurface = queuedCandidates.take(quotaRemaining)
-                var lastSurfacedTime = updatedPhotos
-                    .filter { !it.isViewed && it.surfacedTime != 0L && isSameDay(it.surfacedTime, now) }
-                    .maxOfOrNull { it.surfacedTime } ?: 0L
+        if (queuedCandidates.isNotEmpty()) {
+            val tempAssignedTimes = assignedTimes.toMutableList()
+            for (candidate in queuedCandidates) {
+                val targetTime = findNextAvailableSurfacedTime(candidate, now, tempAssignedTimes)
+                tempAssignedTimes.add(targetTime)
 
-                for (candidate in toSurface) {
-                    val targetSurfaceTime = if (lastSurfacedTime == 0L) {
-                        now
-                    } else {
-                        maxOf(now, lastSurfacedTime + SURFACED_MEMORY_SPACING_MS)
-                    }
-                    lastSurfacedTime = targetSurfaceTime
-
-                    val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
-                    if (index != -1) {
-                        updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = targetSurfaceTime)
-                        scheduledNotifications.add(candidate.id to targetSurfaceTime)
-                        changed = true
-                    }
+                val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
+                if (index != -1) {
+                    updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = targetTime)
+                    scheduledNotifications.add(candidate.id to targetTime)
+                    changed = true
                 }
             }
         }
@@ -746,14 +716,93 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             savePhotos()
             scheduledNotifications.forEach { (id, targetTime) ->
                 val delayMs = maxOf(0L, targetTime - now)
+                val photo = photos.find { it.id == id }
+                val notificationType = if (photo?.isViewed == true) {
+                    MemoryWorker.TYPE_UPDATED
+                } else if (photo != null && photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
+                    MemoryWorker.TYPE_RESURFACED
+                } else {
+                    MemoryWorker.TYPE_NEW
+                }
                 scheduleMemoryNotification(
                     photoId = id,
                     delay = delayMs,
                     delayUnit = TimeUnit.MILLISECONDS,
-                    notificationType = MemoryWorker.TYPE_RESURFACED
+                    notificationType = notificationType,
+                    policy = androidx.work.ExistingWorkPolicy.REPLACE,
+                    resetPostedState = true
                 )
             }
         }
+    }
+
+    private fun findNextAvailableSurfacedTime(photo: Photo, now: Long, assignedTimes: List<Long>): Long {
+        val earliestTime = photo.snippetsAddedTime + NEW_MEMORY_WAIT_MS
+        var candidateTime = maxOf(now, earliestTime)
+
+        candidateTime = adjustForQuietHours(candidateTime)
+
+        val activeAssignedTimes = assignedTimes.toMutableList()
+
+        var attempts = 0
+        while (attempts < 1000) {
+            val conflict = activeAssignedTimes.find { assigned ->
+                val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
+                diff < SURFACED_MEMORY_SPACING_MS
+            }
+            if (conflict != null) {
+                candidateTime = conflict + SURFACED_MEMORY_SPACING_MS
+                candidateTime = adjustForQuietHours(candidateTime)
+                attempts++
+                continue
+            }
+
+            val dayStart = getStartOfDay(candidateTime)
+            val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
+            if (countOnDay >= 5) {
+                val calendar = Calendar.getInstance().apply { timeInMillis = candidateTime }
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+                calendar.set(Calendar.HOUR_OF_DAY, 9)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                candidateTime = calendar.timeInMillis
+                attempts++
+                continue
+            }
+
+            break
+        }
+        return candidateTime
+    }
+
+    private fun adjustForQuietHours(timeMs: Long): Long {
+        val calendar = Calendar.getInstance().apply { timeInMillis = timeMs }
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        if (hour >= 22) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            calendar.set(Calendar.HOUR_OF_DAY, 9)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            return calendar.timeInMillis
+        } else if (hour < 8) {
+            calendar.set(Calendar.HOUR_OF_DAY, 9)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            return calendar.timeInMillis
+        }
+        return timeMs
+    }
+
+    private fun getStartOfDay(timeMs: Long): Long {
+        val calendar = Calendar.getInstance().apply { timeInMillis = timeMs }
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
     }
 
     private fun checkAndResetMemories() {
@@ -1060,17 +1109,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         )
     }
 
-    private fun scheduleResurfacedMemoryNotification(photoId: String) {
-        if (!MemoryWorker.wasNotificationPosted(getApplication(), photoId)) {
-            scheduleMemoryNotification(
-                photoId = photoId,
-                delay = 0,
-                delayUnit = TimeUnit.SECONDS,
-                notificationType = MemoryWorker.TYPE_RESURFACED
-            )
-        }
-    }
-
     private fun scheduleMemoryNotification(
         photoId: String,
         delay: Long,
@@ -1080,7 +1118,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         resetPostedState: Boolean = true
     ) {
         if (photoId.isBlank()) return
-
 
         if (resetPostedState) {
             MemoryWorker.clearPostedNotificationState(getApplication(), photoId)
@@ -1119,50 +1156,25 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         photos
             .filterNot { MemoryWorker.wasNotificationPosted(getApplication(), it.id) }
             .forEach { photo ->
-                if (shouldHavePendingMemoryNotification(photo)) {
-                    val remainingMs = maxOf(0L, NEW_MEMORY_WAIT_MS - (now - photo.snippetsAddedTime))
+                if (photo.surfacedTime != 0L) {
+                    val delayMs = maxOf(0L, photo.surfacedTime - now)
                     val notificationType = if (photo.isViewed) {
                         MemoryWorker.TYPE_UPDATED
+                    } else if (photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
+                        MemoryWorker.TYPE_RESURFACED
                     } else {
                         MemoryWorker.TYPE_NEW
                     }
                     scheduleMemoryNotification(
                         photoId = photo.id,
-                        delay = remainingMs,
+                        delay = delayMs,
                         delayUnit = TimeUnit.MILLISECONDS,
                         notificationType = notificationType,
                         policy = androidx.work.ExistingWorkPolicy.KEEP,
                         resetPostedState = false
                     )
-                } else if (shouldHavePendingResurfacedNotification(photo)) {
-                    val targetResurfaceTime = photo.lastViewedTime + VIEWED_MEMORY_RESET_MS
-                    val remainingMs = maxOf(0L, targetResurfaceTime - now)
-                    scheduleMemoryNotification(
-                        photoId = photo.id,
-                        delay = remainingMs,
-                        delayUnit = TimeUnit.MILLISECONDS,
-                        notificationType = MemoryWorker.TYPE_RESURFACED,
-                        policy = androidx.work.ExistingWorkPolicy.KEEP,
-                        resetPostedState = false
-                    )
                 }
             }
-    }
-
-    private fun shouldHavePendingMemoryNotification(photo: Photo): Boolean {
-        return photo.isLibraryUpload &&
-            photo.snippets.isNotEmpty() &&
-            photo.snippetsAddedTime != 0L &&
-            (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)
-    }
-
-    private fun shouldHavePendingResurfacedNotification(photo: Photo): Boolean {
-        return photo.isLibraryUpload &&
-            photo.snippets.isNotEmpty() &&
-            photo.snippetsAddedTime != 0L &&
-            photo.isViewed &&
-            photo.snippetsAddedTime <= photo.lastViewedTime &&
-            photo.lastViewedTime != 0L
     }
 
     private fun cancelMemoryNotification(photoId: String) {
@@ -1288,33 +1300,20 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 if (wasEmpty && newSnippets.isNotEmpty()) {
                     firstTimeSnippetsAdded = true
                 }
-                if (it.isViewed && newSnippets.isNotEmpty() && it.snippetsAddedTime <= it.lastViewedTime) {
-                    resurfacedMemory = true
-                }
                 val updatedSnippets = (it.snippets + newSnippets).distinct()
                 it.copy(
                     snippets = updatedSnippets,
-                    snippetsAddedTime = if (newSnippets.isNotEmpty()) now else it.snippetsAddedTime
+                    snippetsAddedTime = if (newSnippets.isNotEmpty()) now else it.snippetsAddedTime,
+                    surfacedTime = 0L
                 )
             } else it
         }
 
         savePhotos()
+        reconcileSurfacedMemories()
 
-
-
-        if (firstTimeSnippetsAdded) {
-            scheduleNewMemoryNotification(photoId)
-            if (wasAppEmptyBefore) {
-                showSnackbar("You just created your first snippet! A new memory will be created soon.")
-            }
-        } else if (resurfacedMemory) {
-            scheduleUpdatedMemoryNotification(photoId)
-        } else {
-            // snippetsAddedTime was bumped to now, so re-schedule the notification
-            // to align with the new maturation timer. Without this, the old WorkManager
-            // job fires before curatedMemories would include this photo.
-            scheduleNewMemoryNotification(photoId)
+        if (firstTimeSnippetsAdded && wasAppEmptyBefore) {
+            showSnackbar("You just created your first snippet! A new memory will be created soon.")
         }
     }
 
