@@ -37,15 +37,6 @@ val CookiePolygon = RoundedPolygon.star(
     centerY = 0.5f
 )
 
-val Cookie4SidedPolygon = RoundedPolygon.star(
-    numVerticesPerRadius = 4,
-    radius = 0.5f,
-    innerRadius = 0.5f * 0.88f,
-    rounding = CornerRounding(0.5f * 0.12f),
-    centerX = 0.5f,
-    centerY = 0.5f
-)
-
 class RoundedPolygonShape(
     val polygon: RoundedPolygon
 ) : Shape {
@@ -70,7 +61,7 @@ class RoundedPolygonShape(
 fun AppShape.toComposeShape(): Shape {
     return when (this) {
         AppShape.COOKIE_12_SIDED -> RoundedPolygonShape(CookiePolygon)
-        AppShape.COOKIE_4_SIDED -> RoundedPolygonShape(Cookie4SidedPolygon)
+        AppShape.COOKIE_4_SIDED -> RoundedPolygonShape(MaterialShapes.Cookie4Sided)
         AppShape.VERY_SUNNY -> RoundedPolygonShape(MaterialShapes.VerySunny)
         AppShape.GEM -> RoundedPolygonShape(MaterialShapes.Gem)
         AppShape.SQUARE -> RoundedPolygonShape(MaterialShapes.Square)
@@ -85,7 +76,7 @@ fun AppShape.toComposeShape(): Shape {
 fun AppShape.getNormalizedPolygon(): RoundedPolygon {
     return when (this) {
         AppShape.COOKIE_12_SIDED -> CookiePolygon
-        AppShape.COOKIE_4_SIDED -> Cookie4SidedPolygon
+        AppShape.COOKIE_4_SIDED -> MaterialShapes.Cookie4Sided
         AppShape.VERY_SUNNY -> MaterialShapes.VerySunny
         AppShape.GEM -> MaterialShapes.Gem
         AppShape.SQUARE -> MaterialShapes.Square
