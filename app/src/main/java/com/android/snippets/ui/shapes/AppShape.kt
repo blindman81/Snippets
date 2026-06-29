@@ -86,3 +86,46 @@ fun AppShape.getNormalizedPolygon(): RoundedPolygon {
 
 val LocalAppShape = staticCompositionLocalOf<Shape> { RoundedPolygonShape(CookiePolygon) }
 val LocalAppShapeType = staticCompositionLocalOf<AppShape> { AppShape.COOKIE_12_SIDED }
+
+class PolygonDrawable(
+    private val polygon: RoundedPolygon,
+    private val fillColor: Int
+) : android.graphics.drawable.Drawable() {
+    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = fillColor
+        style = android.graphics.Paint.Style.FILL
+    }
+    private val path = android.graphics.Path()
+
+    override fun onBoundsChange(bounds: android.graphics.Rect) {
+        super.onBoundsChange(bounds)
+        val polyPath = polygon.toPath()
+        val boundsF = android.graphics.RectF()
+        polyPath.computeBounds(boundsF, true)
+
+        val matrix = android.graphics.Matrix()
+        matrix.postTranslate(-boundsF.left, -boundsF.top)
+        val scaleX = if (boundsF.width() > 0f) bounds.width().toFloat() / boundsF.width() else 1f
+        val scaleY = if (boundsF.height() > 0f) bounds.height().toFloat() / boundsF.height() else 1f
+        matrix.postScale(scaleX, scaleY)
+
+        path.reset()
+        polyPath.transform(matrix, path)
+    }
+
+    override fun draw(canvas: android.graphics.Canvas) {
+        canvas.drawPath(path, paint)
+    }
+
+    override fun setAlpha(alpha: Int) {
+        paint.alpha = alpha
+    }
+
+    override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) {
+        paint.colorFilter = colorFilter
+    }
+
+    @Deprecated("Deprecated in Java", ReplaceWith("android.graphics.PixelFormat.TRANSLUCENT"))
+    override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
+}
+

@@ -21,6 +21,10 @@ import androidx.compose.runtime.getValue
 import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.ui.shapes.LocalAppShapeType
 import com.android.snippets.ui.shapes.toComposeShape
+import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.PolygonDrawable
+import com.android.snippets.ui.shapes.getNormalizedPolygon
+import com.ln.android.snippets.R
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
@@ -69,22 +73,104 @@ class MainActivity : ComponentActivity() {
             val animators = mutableListOf<android.animation.Animator>()
             
             if (iconView != null) {
-                val zoomX = android.animation.ObjectAnimator.ofFloat(
-                    iconView,
-                    android.view.View.SCALE_X,
-                    1f, 0f
-                )
-                val zoomY = android.animation.ObjectAnimator.ofFloat(
-                    iconView,
-                    android.view.View.SCALE_Y,
-                    1f, 0f
-                )
-                val rotation = android.animation.ObjectAnimator.ofFloat(
-                    iconView,
-                    android.view.View.ROTATION,
-                    0f, 360f
-                )
-                animators.addAll(listOf(zoomX, zoomY, rotation))
+                val shapeType = viewModel.selectedShape
+                
+                // Immediately set the custom shape drawable on the iconView
+                if (iconView is android.widget.ImageView) {
+                    val fillColor = ContextCompat.getColor(this, R.color.splash_cookie_color)
+                    val drawable = PolygonDrawable(shapeType.getNormalizedPolygon(), fillColor)
+                    iconView.setImageDrawable(drawable)
+                }
+
+                when (shapeType) {
+                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
+                        // Spin exit animation: zoom/scale down + rotation
+                        val zoomX = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_X,
+                            1f, 0f
+                        )
+                        val zoomY = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_Y,
+                            1f, 0f
+                        )
+                        val rotation = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.ROTATION,
+                            0f, 360f
+                        )
+                        animators.addAll(listOf(zoomX, zoomY, rotation))
+                    }
+                    AppShape.GEM, AppShape.SQUARE -> {
+                        // Sway exit animation: zoom/scale down + sway rotation
+                        val zoomX = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_X,
+                            1f, 0f
+                        )
+                        val zoomY = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_Y,
+                            1f, 0f
+                        )
+                        val rotation = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.ROTATION,
+                            0f, -20f, 20f, -10f, 10f, 0f
+                        )
+                        animators.addAll(listOf(zoomX, zoomY, rotation))
+                    }
+                    AppShape.PENTAGON -> {
+                        // Pulse exit animation: scale/zoom pulse down to 0
+                        val zoomX = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_X,
+                            1f, 1.3f, 0.7f, 1.1f, 0f
+                        )
+                        val zoomY = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_Y,
+                            1f, 1.3f, 0.7f, 1.1f, 0f
+                        )
+                        animators.addAll(listOf(zoomX, zoomY))
+                    }
+                    AppShape.CLOVER_4_LEAF -> {
+                        // Squash & Stretch bounce exit animation: scaleX/scaleY animated out of phase
+                        val zoomX = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_X,
+                            1f, 1.3f, 0.7f, 1.1f, 0f
+                        )
+                        val zoomY = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_Y,
+                            1f, 0.7f, 1.3f, 0.9f, 0f
+                        )
+                        animators.addAll(listOf(zoomX, zoomY))
+                    }
+                    AppShape.CLOVER_8_LEAF -> {
+                        // Translate/Sway exit animation: horizontal translation sway + scale down
+                        val density = resources.displayMetrics.density
+                        val swayDist = 40f * density
+                        val translateX = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.TRANSLATION_X,
+                            0f, -swayDist, swayDist, -swayDist / 2f, swayDist / 2f, 0f
+                        )
+                        val zoomX = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_X,
+                            1f, 0f
+                        )
+                        val zoomY = android.animation.ObjectAnimator.ofFloat(
+                            iconView,
+                            android.view.View.SCALE_Y,
+                            1f, 0f
+                        )
+                        animators.addAll(listOf(translateX, zoomX, zoomY))
+                    }
+                }
             }
             
             val alpha = android.animation.ObjectAnimator.ofFloat(
