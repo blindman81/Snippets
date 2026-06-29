@@ -179,7 +179,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     view.performHapticFeedback(if (!viewModel.useDynamicColors) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
                     viewModel.updateDynamicColors(!viewModel.useDynamicColors) 
                 },
-                position = CardPosition.First,
+                position = CardPosition.Single,
                 trailingContent = {
 
                     PremiumSwitch(
@@ -191,6 +191,18 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 }
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = "Management",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 28.dp, vertical = 8.dp)
+            )
+
             SettingsCardItem(
                 icon = Icons.Default.Schedule,
                 title = "Show time in memories and saved photos",
@@ -198,7 +210,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     view.performHapticFeedback(if (!viewModel.showTimeInMemories) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
                     viewModel.updateShowTimeInMemories(!viewModel.showTimeInMemories) 
                 },
-                position = CardPosition.Last,
+                position = CardPosition.Single,
                 trailingContent = {
 
                     PremiumSwitch(
@@ -269,8 +281,8 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                                      showShapeDialog = false
                                  },
                              shape = RoundedCornerShape(16.dp),
-                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                             border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+                             color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                             border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.secondary) else null
                          ) {
                              Row(
                                  modifier = Modifier
@@ -296,14 +308,14 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                                      text = shape.displayName,
                                      style = MaterialTheme.typography.bodyLarge,
                                      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                     color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                     color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
                                      modifier = Modifier.weight(1f)
                                  )
                                  if (isSelected) {
                                      Icon(
                                          imageVector = Icons.Default.Check,
                                          contentDescription = "Selected",
-                                         tint = MaterialTheme.colorScheme.primary,
+                                         tint = MaterialTheme.colorScheme.secondary,
                                          modifier = Modifier.size(24.dp)
                                      )
                                  }

@@ -210,7 +210,9 @@ object MediaSaver {
         canvas.drawPath(photoPath, borderPaint)
 
         // 3. Draw Date & Location Header
-        val datePattern = if (showTime) "EEE, d MMM • HH:mm" else "EEE, d MMM"
+        val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
+        val timeFormat = if (is24Hour) "HH:mm" else "h:mm a"
+        val datePattern = if (showTime) "EEE, d MMM • $timeFormat" else "EEE, d MMM"
         val dateString = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(photo.date)).uppercase()
         val locationText = LocationUtils.getLocationFromExif(context, photo)
         val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
