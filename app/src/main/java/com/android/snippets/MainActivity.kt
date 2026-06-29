@@ -29,6 +29,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Easing
+import kotlinx.coroutines.delay
+
 
 class MainActivity : ComponentActivity() {
     private val viewModel: SnippetsViewModel by viewModels()
@@ -68,133 +84,9 @@ class MainActivity : ComponentActivity() {
         }
         
         splashScreen.setOnExitAnimationListener { splashScreenView ->
-            val iconView = try { splashScreenView.iconView } catch (e: Exception) { null }
-            
-            val animators = mutableListOf<android.animation.Animator>()
-            
-            if (iconView != null) {
-                val shapeType = viewModel.selectedShape
-                
-                // Immediately set the custom shape drawable on the iconView
-                if (iconView is android.widget.ImageView) {
-                    val fillColor = ContextCompat.getColor(this, R.color.splash_cookie_color)
-                    val drawable = PolygonDrawable(shapeType.getNormalizedPolygon(), fillColor)
-                    iconView.setImageDrawable(drawable)
-                }
-
-                when (shapeType) {
-                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
-                        // Spin exit animation: zoom/scale down + rotation
-                        val zoomX = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_X,
-                            1f, 0f
-                        )
-                        val zoomY = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_Y,
-                            1f, 0f
-                        )
-                        val rotation = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.ROTATION,
-                            0f, 360f
-                        )
-                        animators.addAll(listOf(zoomX, zoomY, rotation))
-                    }
-                    AppShape.GEM, AppShape.SQUARE -> {
-                        // Sway exit animation: zoom/scale down + sway rotation
-                        val zoomX = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_X,
-                            1f, 0f
-                        )
-                        val zoomY = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_Y,
-                            1f, 0f
-                        )
-                        val rotation = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.ROTATION,
-                            0f, -20f, 20f, -10f, 10f, 0f
-                        )
-                        animators.addAll(listOf(zoomX, zoomY, rotation))
-                    }
-                    AppShape.PENTAGON -> {
-                        // Pulse exit animation: scale/zoom pulse down to 0
-                        val zoomX = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_X,
-                            1f, 1.3f, 0.7f, 1.1f, 0f
-                        )
-                        val zoomY = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_Y,
-                            1f, 1.3f, 0.7f, 1.1f, 0f
-                        )
-                        animators.addAll(listOf(zoomX, zoomY))
-                    }
-                    AppShape.CLOVER_4_LEAF -> {
-                        // Squash & Stretch bounce exit animation: scaleX/scaleY animated out of phase
-                        val zoomX = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_X,
-                            1f, 1.3f, 0.7f, 1.1f, 0f
-                        )
-                        val zoomY = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_Y,
-                            1f, 0.7f, 1.3f, 0.9f, 0f
-                        )
-                        animators.addAll(listOf(zoomX, zoomY))
-                    }
-                    AppShape.CLOVER_8_LEAF -> {
-                        // Translate/Sway exit animation: horizontal translation sway + scale down
-                        val density = resources.displayMetrics.density
-                        val swayDist = 40f * density
-                        val translateX = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.TRANSLATION_X,
-                            0f, -swayDist, swayDist, -swayDist / 2f, swayDist / 2f, 0f
-                        )
-                        val zoomX = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_X,
-                            1f, 0f
-                        )
-                        val zoomY = android.animation.ObjectAnimator.ofFloat(
-                            iconView,
-                            android.view.View.SCALE_Y,
-                            1f, 0f
-                        )
-                        animators.addAll(listOf(translateX, zoomX, zoomY))
-                    }
-                }
-            }
-            
-            val alpha = android.animation.ObjectAnimator.ofFloat(
-                splashScreenView.view,
-                android.view.View.ALPHA,
-                1f, 0f
-            )
-            animators.add(alpha)
-            
-            val animatorSet = android.animation.AnimatorSet()
-            animatorSet.duration = 700L
-            animatorSet.interpolator = android.view.animation.AnticipateInterpolator()
-            animatorSet.playTogether(animators)
-            
-            animatorSet.addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
-                    splashScreenView.remove()
-                }
-            })
-            
-            splashScreenView.view.postDelayed({
-                animatorSet.start()
-            }, 200L)
+            splashScreenView.remove()
         }
+
         
 
 
@@ -220,6 +112,8 @@ class MainActivity : ComponentActivity() {
                 insetsController.isAppearanceLightNavigationBars = !isDarkTheme
             }
             
+            var showSplashOverlay by remember { mutableStateOf(true) }
+
             SnippetsTheme(
                 darkTheme = isDarkTheme,
                 dynamicColor = viewModel.useDynamicColors
@@ -232,45 +126,58 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                    val photos = viewModel.photos
-                    val targetPhotoId = pendingNotificationPhotoId
-                    val notificationToken = pendingNotificationToken
-                    androidx.compose.runtime.LaunchedEffect(notificationToken, photos) {
-                        if (photos.isNotEmpty() && notificationToken != 0L) {
-                            val index = viewModel.curatedMemories.indexOfFirst { it.id == targetPhotoId }
-                            
-                            if (index != -1) {
-                                viewModel.openMemory(index)
-                            } else if (viewModel.curatedMemories.isNotEmpty()) {
-                                viewModel.openMemory(0)
-                            }
-                            
-                            pendingNotificationToken = 0L
-                            pendingNotificationPhotoId = null
-                        }
-                    }
-
-                    val requestPermission = viewModel.requestNotificationPermission
-                    androidx.compose.runtime.LaunchedEffect(requestPermission) {
-                        if (requestPermission) {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                val permissionState = ContextCompat.checkSelfPermission(
-                                    this@MainActivity,
-                                    android.Manifest.permission.POST_NOTIFICATIONS
-                                )
-                                if (permissionState != PackageManager.PERMISSION_GRANTED) {
-                                    requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                } else {
-                                    viewModel.requestNotificationPermission = false
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            val photos = viewModel.photos
+                            val targetPhotoId = pendingNotificationPhotoId
+                            val notificationToken = pendingNotificationToken
+                            androidx.compose.runtime.LaunchedEffect(notificationToken, photos) {
+                                if (photos.isNotEmpty() && notificationToken != 0L) {
+                                    val index = viewModel.curatedMemories.indexOfFirst { it.id == targetPhotoId }
+                                    
+                                    if (index != -1) {
+                                        viewModel.openMemory(index)
+                                    } else if (viewModel.curatedMemories.isNotEmpty()) {
+                                        viewModel.openMemory(0)
+                                    }
+                                    
+                                    pendingNotificationToken = 0L
+                                    pendingNotificationPhotoId = null
                                 }
-                            } else {
-                                viewModel.requestNotificationPermission = false
+                            }
+
+                            val requestPermission = viewModel.requestNotificationPermission
+                            androidx.compose.runtime.LaunchedEffect(requestPermission) {
+                                if (requestPermission) {
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                        val permissionState = ContextCompat.checkSelfPermission(
+                                            this@MainActivity,
+                                            android.Manifest.permission.POST_NOTIFICATIONS
+                                        )
+                                        if (permissionState != PackageManager.PERMISSION_GRANTED) {
+                                            requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                        } else {
+                                            viewModel.requestNotificationPermission = false
+                                        }
+                                    } else {
+                                        viewModel.requestNotificationPermission = false
+                                    }
+                                }
+                            }
+                            val windowSizeClass = calculateWindowSizeClass(this@MainActivity)
+                            SnippetsApp(viewModel, windowSizeClass)
+
+                            if (showSplashOverlay) {
+                                ComposeSplashScreen(
+                                    shapeType = viewModel.selectedShape,
+                                    isDarkTheme = isDarkTheme,
+                                    isInitialLoading = viewModel.isInitialLoading,
+                                    onAnimationFinished = {
+                                        showSplashOverlay = false
+                                    }
+                                )
                             }
                         }
                     }
-                    val windowSizeClass = calculateWindowSizeClass(this@MainActivity)
-                    SnippetsApp(viewModel, windowSizeClass)
-                }
                 }
             }
         }
@@ -283,3 +190,146 @@ class MainActivity : ComponentActivity() {
         handleTileIntent(intent)
     }
 }
+
+private val AnticipateEasing = Easing { fraction ->
+    android.view.animation.AnticipateInterpolator().getInterpolation(fraction)
+}
+
+@Composable
+private fun ComposeSplashScreen(
+
+    shapeType: AppShape,
+    isDarkTheme: Boolean,
+    isInitialLoading: Boolean,
+    onAnimationFinished: () -> Unit
+) {
+    val bgColor = if (isDarkTheme) Color(0xFF42474E) else Color(0xFFF2E0D1)
+    val iconColor = colorResource(id = R.color.splash_cookie_color)
+
+    var startExitAnimation by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isInitialLoading) {
+        if (!isInitialLoading) {
+            delay(200L)
+            startExitAnimation = true
+        }
+    }
+
+    val duration = 700
+    val animProgress = animateFloatAsState(
+        targetValue = if (startExitAnimation) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = duration,
+            easing = AnticipateEasing
+        ),
+        finishedListener = {
+            if (it == 1f) {
+                onAnimationFinished()
+            }
+        }
+    )
+
+    val bgAlpha by animateFloatAsState(
+        targetValue = if (startExitAnimation) 0f else 1f,
+        animationSpec = tween(durationMillis = duration)
+    )
+
+    if (bgAlpha > 0f) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = bgAlpha }
+                .background(bgColor),
+            contentAlignment = Alignment.Center
+        ) {
+            val shape = shapeType.toComposeShape()
+            val p = animProgress.value
+
+            var scaleX = 1f
+            var scaleY = 1f
+            var rotationZ = 0f
+            var translationX = 0f
+
+            when (shapeType) {
+                AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
+                    scaleX = 1f - p
+                    scaleY = 1f - p
+                    rotationZ = p * 360f
+                }
+                AppShape.GEM, AppShape.SQUARE -> {
+                    scaleX = 1f - p
+                    scaleY = 1f - p
+                    rotationZ = if (startExitAnimation) {
+                        (kotlin.math.sin(p.toDouble() * java.lang.Math.PI * 3.0) * 20.0).toFloat()
+                    } else {
+                        0f
+                    }
+                }
+                AppShape.PENTAGON -> {
+                    val pulseScale = if (startExitAnimation) {
+                        if (p < 0.25f) {
+                            1f + (p / 0.25f) * 0.3f
+                        } else if (p < 0.5f) {
+                            1.3f - ((p - 0.25f) / 0.25f) * 0.6f
+                        } else if (p < 0.75f) {
+                            0.7f + ((p - 0.5f) / 0.25f) * 0.4f
+                        } else {
+                            1.1f - ((p - 0.75f) / 0.25f) * 1.1f
+                        }
+                    } else {
+                        1f
+                    }
+                    scaleX = pulseScale
+                    scaleY = pulseScale
+                }
+                AppShape.CLOVER_4_LEAF -> {
+                    if (startExitAnimation) {
+                        scaleX = if (p < 0.25f) {
+                            1f + (p / 0.25f) * 0.3f
+                        } else if (p < 0.5f) {
+                            1.3f - ((p - 0.25f) / 0.25f) * 0.6f
+                        } else if (p < 0.75f) {
+                            0.7f + ((p - 0.5f) / 0.25f) * 0.4f
+                        } else {
+                            1.1f - ((p - 0.75f) / 0.25f) * 1.1f
+                        }
+                        scaleY = if (p < 0.25f) {
+                            1f - (p / 0.25f) * 0.3f
+                        } else if (p < 0.5f) {
+                            0.7f + ((p - 0.25f) / 0.25f) * 0.6f
+                        } else if (p < 0.75f) {
+                            1.3f - ((p - 0.5f) / 0.25f) * 0.4f
+                        } else {
+                            0.9f - ((p - 0.75f) / 0.25f) * 0.9f
+                        }
+                    } else {
+                        scaleX = 1f
+                        scaleY = 1f
+                    }
+                }
+                AppShape.CLOVER_8_LEAF -> {
+                    scaleX = 1f - p
+                    scaleY = 1f - p
+                    translationX = if (startExitAnimation) {
+                        (kotlin.math.sin(p.toDouble() * java.lang.Math.PI * 3.0) * 100.0).toFloat()
+                    } else {
+                        0f
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(108.dp)
+                    .graphicsLayer {
+                        this.scaleX = scaleX
+                        this.scaleY = scaleY
+                        this.rotationZ = rotationZ
+                        this.translationX = translationX
+                    }
+                    .background(color = iconColor, shape = shape)
+            )
+        }
+    }
+}
+
