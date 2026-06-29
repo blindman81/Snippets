@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.animation.core.*
 import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.shapes.LocalAppShapeType
+import com.android.snippets.ui.shapes.AppShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -59,14 +61,29 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
     
     var isHolding by remember { mutableStateOf(false) }
     val rotation = remember { Animatable(0f) }
+    val scale = remember { Animatable(1f) }
+
+    val shapeType = LocalAppShapeType.current
+    val isSpinningShape = when (shapeType) {
+        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
+        AppShape.GEM, AppShape.SQUARE -> false
+    }
 
     LaunchedEffect(isHolding) {
-        val duration = if (isHolding) 600 else 30000
-        while (true) {
-            rotation.animateTo(
-                targetValue = rotation.value + 360f,
-                animationSpec = tween(duration, easing = LinearEasing)
-            )
+        if (isSpinningShape) {
+            val duration = if (isHolding) 600 else 30000
+            while (true) {
+                rotation.animateTo(
+                    targetValue = rotation.value + 360f,
+                    animationSpec = tween(duration, easing = LinearEasing)
+                )
+            }
+        } else {
+            val duration = if (isHolding) 400 else 4000
+            while (true) {
+                scale.animateTo(1.05f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+                scale.animateTo(0.95f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
+            }
         }
     }
 
@@ -232,7 +249,11 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer { rotationZ = rotation.value }
+                            .graphicsLayer { 
+                                rotationZ = if (isSpinningShape) rotation.value else 0f
+                                scaleX = if (isSpinningShape) 1f else scale.value
+                                scaleY = if (isSpinningShape) 1f else scale.value
+                            }
                             .clip(LocalAppShape.current)
                             .background(MaterialTheme.colorScheme.secondaryContainer)
                     )

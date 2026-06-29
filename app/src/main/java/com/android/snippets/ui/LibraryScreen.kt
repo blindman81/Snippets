@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.*
 import androidx.compose.foundation.shape.CircleShape
 import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.shapes.LocalAppShapeType
+import com.android.snippets.ui.shapes.AppShape
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.model.Photo
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -333,28 +335,46 @@ Surface(
                                                         else -> viewModel.getCollectionIcon(tabName)
                                                     }
                                                     val rotation = remember { Animatable(0f) }
+                                                    val scale = remember { Animatable(1f) }
+
+                                                    val shapeType = LocalAppShapeType.current
+                                                    val isSpinningShape = when (shapeType) {
+                                                        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
+                                                        AppShape.GEM, AppShape.SQUARE -> false
+                                                    }
+
                                                     LaunchedEffect(isSelected) {
                                                         if (isSelected) {
-                                                            rotation.animateTo(
-                                                                targetValue = rotation.value + 360f,
-                                                                animationSpec = tween(
-                                                                    durationMillis = 600,
-                                                                    easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
+                                                            if (isSpinningShape) {
+                                                                rotation.animateTo(
+                                                                    targetValue = rotation.value + 360f,
+                                                                    animationSpec = tween(
+                                                                        durationMillis = 600,
+                                                                        easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
+                                                                    )
                                                                 )
-                                                            )
+                                                            } else {
+                                                                scale.animateTo(1.15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
+                                                                scale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                            }
                                                         }
                                                     }
+
                                                     Surface(
                                                         shape = LocalAppShape.current,
                                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                                         contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                                         modifier = Modifier
                                                             .size(44.dp)
-                                                            .graphicsLayer { rotationZ = rotation.value }
+                                                            .graphicsLayer { 
+                                                                rotationZ = if (isSpinningShape) rotation.value else 0f 
+                                                                scaleX = scale.value
+                                                                scaleY = scale.value
+                                                            }
                                                     ) {
                                                         Box(
                                                             contentAlignment = Alignment.Center,
-                                                            modifier = Modifier.graphicsLayer { rotationZ = -rotation.value }
+                                                            modifier = Modifier.graphicsLayer { rotationZ = if (isSpinningShape) -rotation.value else 0f }
                                                         ) {
                                                             if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
                                                                 Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))

@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
 import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.shapes.LocalAppShapeType
+import com.android.snippets.ui.shapes.AppShape
 import androidx.compose.material3.carousel.rememberCarouselState
 import com.android.snippets.viewmodel.Screen
 import androidx.compose.runtime.Composable
@@ -176,12 +178,21 @@ fun MemoryMoreButton(
     var isHolding by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
     val rotation = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scale = remember { androidx.compose.animation.core.Animatable(1f) }
 
-    val scale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isHolding) 0.92f else 1f,
-        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f),
-        label = "cookie_scale"
-    )
+    val shapeType = LocalAppShapeType.current
+    val isSpinningShape = when (shapeType) {
+        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
+        AppShape.GEM, AppShape.SQUARE -> false
+    }
+
+    LaunchedEffect(isHolding) {
+        if (isHolding) {
+            scale.animateTo(0.92f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+        } else {
+            scale.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+        }
+    }
 
     val pointerOffset by androidx.compose.animation.core.rememberInfiniteTransition(label = "pointer").animateFloat(
         initialValue = 0f,
@@ -201,20 +212,26 @@ fun MemoryMoreButton(
 
     LaunchedEffect(isHolding, isTapped, isSpinning) {
         if (!isSpinning || (!isHolding && !isTapped)) return@LaunchedEffect
-        val duration = when {
-            isTapped -> 150
-            else -> 600
-        }
-        while (true) {
-            rotation.animateTo(
-                targetValue = rotation.value + 360f,
-                animationSpec = androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.LinearEasing)
-            )
+        if (isSpinningShape) {
+            val duration = when {
+                isTapped -> 150
+                else -> 600
+            }
+            while (true) {
+                rotation.animateTo(
+                    targetValue = rotation.value + 360f,
+                    animationSpec = androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.LinearEasing)
+                )
+            }
         }
     }
 
     LaunchedEffect(isTapped) {
         if (isTapped) {
+            if (!isSpinningShape) {
+                scale.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                scale.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+            }
             kotlinx.coroutines.delay(1200)
             isTapped = false
         }
@@ -225,15 +242,15 @@ fun MemoryMoreButton(
     Box(
         modifier = modifier
             .graphicsLayer {
-                rotationZ = if (isSpinning && !isDirectionalArrow) {
+                rotationZ = if (isSpinning && !isDirectionalArrow && isSpinningShape) {
                     rotation.value
                 } else if (isDownArrow || isUpArrow) {
                     animatedDirectionalRotation
                 } else {
                     0f
                 }
-                scaleX = scale
-                scaleY = scale
+                scaleX = scale.value
+                scaleY = scale.value
                 if (isPointing) {
                     if (isForwardArrow || isBackArrow) {
                         translationX = pointerOffset
@@ -268,7 +285,7 @@ fun MemoryMoreButton(
                 modifier = Modifier
                     .size(34.dp)
                     .graphicsLayer {
-                        rotationZ = if (isSpinning) -rotation.value else 0f
+                        rotationZ = if (isSpinning && isSpinningShape) -rotation.value else 0f
                         translationX = pointerOffset
                     },
                 tint = if (unviewedCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer

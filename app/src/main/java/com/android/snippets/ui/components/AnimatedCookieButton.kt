@@ -21,6 +21,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.shapes.LocalAppShapeType
+import com.android.snippets.ui.shapes.AppShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +46,13 @@ fun AnimatedCookieButton(
     var isHolding by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
     val rotation = remember { Animatable(0f) }
+    val scale = remember { Animatable(1f) }
+
+    val shapeType = LocalAppShapeType.current
+    val isSpinningShape = when (shapeType) {
+        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
+        AppShape.GEM, AppShape.SQUARE -> false
+    }
 
     val isActive = isHolding || isTapped
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
@@ -65,7 +74,9 @@ fun AnimatedCookieButton(
             modifier = modifier
                 .size(size)
                 .graphicsLayer {
-                    rotationZ = rotation.value
+                    rotationZ = if (isSpinningShape) rotation.value else 0f
+                    scaleX = scale.value
+                    scaleY = scale.value
                 }
                 .clip(shape)
                 .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
@@ -94,29 +105,58 @@ fun AnimatedCookieButton(
                 contentDescription = contentDescription,
                 modifier = Modifier
                     .size(iconSize)
-                    .graphicsLayer { rotationZ = -rotation.value },
+                    .graphicsLayer { rotationZ = if (isSpinningShape) -rotation.value else 0f },
                 tint = if (enabled) animatedContentColor else animatedContentColor.copy(alpha = 0.38f)
             )
         }
     }
 
 
-    // Spin animation loop: ensures each rotation finishes cleanly without snapping
+    // Spin/Pulse animation loop: ensures each animation finishes cleanly without snapping
     LaunchedEffect(Unit) {
         while (true) {
             if (isTapped) {
-                rotation.animateTo(
-                    targetValue = rotation.value + 360f,
-                    animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-                )
-                // Wait a bit before allowing another tap spin to avoid spam
+                if (isSpinningShape) {
+                    rotation.animateTo(
+                        targetValue = rotation.value + 360f,
+                        animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+                    )
+                } else {
+                    scale.animateTo(
+                        targetValue = 1.18f,
+                        animationSpec = tween(100, easing = FastOutSlowInEasing)
+                    )
+                    scale.animateTo(
+                        targetValue = 1.0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
+                }
+                // Wait a bit before allowing another tap/pulse to avoid spam
                 kotlinx.coroutines.delay(150)
                 isTapped = false
             } else if (isHolding) {
-                rotation.animateTo(
-                    targetValue = rotation.value + 360f,
-                    animationSpec = tween(600, easing = LinearEasing)
-                )
+                if (isSpinningShape) {
+                    rotation.animateTo(
+                        targetValue = rotation.value + 360f,
+                        animationSpec = tween(600, easing = LinearEasing)
+                    )
+                } else {
+                    scale.animateTo(
+                        targetValue = 0.9f,
+                        animationSpec = tween(150, easing = FastOutSlowInEasing)
+                    )
+                    androidx.compose.runtime.snapshotFlow { isHolding }.first { !it }
+                    scale.animateTo(
+                        targetValue = 1.0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
+                }
             } else {
                 // Suspend until either holding or tapped becomes true
                 androidx.compose.runtime.snapshotFlow { isHolding || isTapped }
@@ -135,13 +175,24 @@ fun AnimatedCookieButton(
         }
     }
 
-    // Spin on entry if configured
+    // Spin/Pulse on entry if configured
     LaunchedEffect(spinOnEntry) {
         if (spinOnEntry) {
-            rotation.animateTo(
-                targetValue = rotation.value + 360f,
-                animationSpec = tween(1000, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-            )
+            if (isSpinningShape) {
+                rotation.animateTo(
+                    targetValue = rotation.value + 360f,
+                    animationSpec = tween(1000, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+                )
+            } else {
+                scale.snapTo(0f)
+                scale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
+            }
         }
     }
 

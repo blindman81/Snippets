@@ -19,6 +19,7 @@ import com.android.snippets.ui.theme.SnippetsTheme
 import com.android.snippets.viewmodel.SnippetsViewModel
 import androidx.compose.runtime.getValue
 import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.shapes.LocalAppShapeType
 import com.android.snippets.ui.shapes.toComposeShape
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -138,7 +139,8 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = viewModel.useDynamicColors
             ) {
                 androidx.compose.runtime.CompositionLocalProvider(
-                    LocalAppShape provides viewModel.selectedShape.toComposeShape()
+                    LocalAppShape provides viewModel.selectedShape.toComposeShape(),
+                    LocalAppShapeType provides viewModel.selectedShape
                 ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),

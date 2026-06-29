@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.shapes.LocalAppShapeType
+import com.android.snippets.ui.shapes.AppShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -125,17 +127,33 @@ fun MemoryScreen(
     // State for long-press hold detection to freeze spin & pause timer
     var isPressed by remember { mutableStateOf(false) }
 
-    // 12-sided cookie rotation animation state that pauses when isPressed is true
+    val shapeType = LocalAppShapeType.current
+    val isSpinningShape = when (shapeType) {
+        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
+        AppShape.GEM, AppShape.SQUARE -> false
+    }
+
     var rotationAngle by remember { mutableFloatStateOf(0f) }
+    var swayAngle by remember { mutableFloatStateOf(0f) }
+
     LaunchedEffect(isPressed) {
         if (!isPressed) {
             var lastTime = withFrameNanos { it }
+            var accumulatedTime = 0f
             while (true) {
                 withFrameNanos { frameTime ->
                     val deltaNano = frameTime - lastTime
                     lastTime = frameTime
-                    val deltaDegrees = (deltaNano / 1_000_000f) * (360f / 60000f)
-                    rotationAngle = (rotationAngle + deltaDegrees) % 360f
+                    val deltaMs = deltaNano / 1_000_000f
+                    
+                    if (isSpinningShape) {
+                        val deltaDegrees = deltaMs * (360f / 60000f)
+                        rotationAngle = (rotationAngle + deltaDegrees) % 360f
+                    } else {
+                        accumulatedTime += deltaMs
+                        val swayDegrees = 3f * kotlin.math.sin(accumulatedTime * (2f * kotlin.math.PI.toFloat() / 4000f))
+                        swayAngle = swayDegrees
+                    }
                 }
             }
         }
@@ -258,7 +276,7 @@ fun MemoryScreen(
                             .padding(horizontal = 24.dp)
                             .aspectRatio(1f)
                             .graphicsLayer {
-                                rotationZ = rotationAngle
+                                rotationZ = if (isSpinningShape) rotationAngle else swayAngle
                             }
                             .then(
                                 if (photo.id == transitionTargetId && viewModel.currentScreen != Screen.Detail && sharedTransitionScope != null && animatedVisibilityScope != null) {
@@ -297,7 +315,7 @@ fun MemoryScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    rotationZ = -rotationAngle
+                                    rotationZ = if (isSpinningShape) -rotationAngle else -swayAngle
                                     scaleX = 1.25f
                                     scaleY = 1.25f
                                 }

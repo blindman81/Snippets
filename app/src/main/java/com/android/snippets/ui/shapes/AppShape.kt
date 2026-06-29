@@ -76,3 +76,4 @@ fun AppShape.getNormalizedPolygon(): RoundedPolygon {
 }
 
 val LocalAppShape = staticCompositionLocalOf<Shape> { RoundedPolygonShape(CookiePolygon) }
+val LocalAppShapeType = staticCompositionLocalOf<AppShape> { AppShape.COOKIE_12_SIDED }
