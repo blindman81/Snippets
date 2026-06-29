@@ -49,6 +49,12 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import com.android.snippets.ui.components.PremiumSwitch
 import kotlinx.coroutines.launch
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.toComposeShape
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -67,6 +73,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
     
     var showThemeDialog by remember { mutableStateOf(false) }
     var showCanvasDialog by remember { mutableStateOf(false) }
+    var showShapeDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val isScrolled by remember { derivedStateOf<Boolean> { scrollState.value > 0 } }
     
@@ -89,7 +96,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     viewModel.navigateLibrary()
                 },
                 navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-                isSpinning = !(showThemeDialog || showCanvasDialog),
+                isSpinning = !(showThemeDialog || showCanvasDialog || showShapeDialog),
                 isScrolled = isScrolled,
                 leftAlignTitle = true
             )
@@ -205,10 +212,113 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-}
+            Text(
+                text = "Shape",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 28.dp, vertical = 8.dp)
+            )
+
+            SettingsCardItem(
+                icon = Icons.Default.Palette,
+                title = "App Shape",
+                subtitle = viewModel.selectedShape.displayName,
+                onClick = { 
+                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                    showShapeDialog = true 
+                },
+                position = CardPosition.Single
+            )
+ 
+             Spacer(modifier = Modifier.height(16.dp))
+             
+             Spacer(modifier = Modifier.height(32.dp))
+         }
+     }
+ }
+
+     if (showShapeDialog) {
+         AlertDialog(
+             onDismissRequest = { showShapeDialog = false },
+             title = {
+                 Text(
+                     text = "Choose Shape",
+                     style = MaterialTheme.typography.titleLarge,
+                     fontWeight = FontWeight.Bold
+                 )
+             },
+             text = {
+                 Column(
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .verticalScroll(rememberScrollState())
+                         .padding(vertical = 8.dp),
+                     verticalArrangement = Arrangement.spacedBy(12.dp)
+                 ) {
+                     AppShape.values().forEach { shape ->
+                         val isSelected = viewModel.selectedShape == shape
+                         Surface(
+                             modifier = Modifier
+                                 .fillMaxWidth()
+                                 .clickable {
+                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                     viewModel.updateSelectedShape(shape)
+                                     showShapeDialog = false
+                                 },
+                             shape = RoundedCornerShape(16.dp),
+                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                             border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+                         ) {
+                             Row(
+                                 modifier = Modifier
+                                     .fillMaxWidth()
+                                     .padding(horizontal = 16.dp, vertical = 12.dp),
+                                 verticalAlignment = Alignment.CenterVertically,
+                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
+                             ) {
+                                 Box(
+                                     modifier = Modifier
+                                         .size(48.dp)
+                                         .clip(shape.toComposeShape())
+                                         .background(
+                                             androidx.compose.ui.graphics.Brush.linearGradient(
+                                                 colors = listOf(
+                                                     MaterialTheme.colorScheme.primary,
+                                                     MaterialTheme.colorScheme.secondary
+                                                 )
+                                             )
+                                         )
+                                 )
+                                 Text(
+                                     text = shape.displayName,
+                                     style = MaterialTheme.typography.bodyLarge,
+                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                     color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                     modifier = Modifier.weight(1f)
+                                 )
+                                 if (isSelected) {
+                                     Icon(
+                                         imageVector = Icons.Default.Check,
+                                         contentDescription = "Selected",
+                                         tint = MaterialTheme.colorScheme.primary,
+                                         modifier = Modifier.size(24.dp)
+                                     )
+                                 }
+                             }
+                         }
+                     }
+                 }
+             },
+             confirmButton = {
+                 TextButton(onClick = { showShapeDialog = false }) {
+                     Text("Close")
+                 }
+             }
+         )
+     }
 }
 
 @Composable

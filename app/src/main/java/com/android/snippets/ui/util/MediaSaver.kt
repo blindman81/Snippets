@@ -16,6 +16,8 @@ import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.star
 import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.Dispatchers
+import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.getNormalizedPolygon
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -62,9 +64,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), showTime: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, showTime) ?: return@withContext false
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime) ?: return@withContext false
             
             val fileName = "Snippet_Card_${System.currentTimeMillis()}.jpg"
             val contentValues = ContentValues().apply {
@@ -102,9 +104,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), showTime: Boolean = false): Uri? = withContext(Dispatchers.IO) {
+    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false): Uri? = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, showTime) ?: return@withContext null
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime) ?: return@withContext null
             
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
@@ -121,7 +123,7 @@ object MediaSaver {
         }
     }
 
-    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, showTime: Boolean = false): Bitmap? {
+    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false): Bitmap? {
         val width = 1440
         val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -149,22 +151,26 @@ object MediaSaver {
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
         }
         
-        // 2. Draw Photo in a 12-Sided Cookie Shape
+        // 2. Draw Photo in the selected Shape
         val cx = width / 2f
         val centerX = cx
         val cy = 924f
         val radius = 624f
         val targetSize = 2 * radius // 1248f
         
-        val polygon = RoundedPolygon.star(
-            numVerticesPerRadius = 12,
-            radius = radius,
-            innerRadius = radius * 0.88f,
-            rounding = CornerRounding(radius * 0.12f),
-            centerX = cx,
-            centerY = cy
-        )
-        val photoPath = polygon.toPath()
+        val normalizedPolygon = appShape.getNormalizedPolygon()
+        val path = normalizedPolygon.toPath()
+        val bounds = RectF()
+        path.computeBounds(bounds, true)
+        val matrix = android.graphics.Matrix()
+        matrix.postTranslate(-bounds.left, -bounds.top)
+        val scaleX = if (bounds.width() > 0f) targetSize / bounds.width() else 1f
+        val scaleY = if (bounds.height() > 0f) targetSize / bounds.height() else 1f
+        matrix.postScale(scaleX, scaleY)
+        matrix.postTranslate(cx - radius, cy - radius)
+        path.transform(matrix)
+        
+        val photoPath = path
         
         if (photoBitmap != null) {
             canvas.save()

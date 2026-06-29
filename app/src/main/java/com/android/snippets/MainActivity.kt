@@ -18,6 +18,8 @@ import com.android.snippets.ui.SnippetsApp
 import com.android.snippets.ui.theme.SnippetsTheme
 import com.android.snippets.viewmodel.SnippetsViewModel
 import androidx.compose.runtime.getValue
+import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.shapes.toComposeShape
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
@@ -135,10 +137,13 @@ class MainActivity : ComponentActivity() {
                 darkTheme = isDarkTheme,
                 dynamicColor = viewModel.useDynamicColors
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                androidx.compose.runtime.CompositionLocalProvider(
+                    LocalAppShape provides viewModel.selectedShape.toComposeShape()
                 ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
                     val photos = viewModel.photos
                     val targetPhotoId = pendingNotificationPhotoId
                     val notificationToken = pendingNotificationToken
@@ -177,6 +182,7 @@ class MainActivity : ComponentActivity() {
                     }
                     val windowSizeClass = calculateWindowSizeClass(this@MainActivity)
                     SnippetsApp(viewModel, windowSizeClass)
+                }
                 }
             }
         }

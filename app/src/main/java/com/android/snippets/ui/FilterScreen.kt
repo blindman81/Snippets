@@ -18,6 +18,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.runtime.*
 import androidx.compose.animation.*
+import com.android.snippets.ui.shapes.LocalAppShape
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Alignment
@@ -123,7 +124,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Surface(
-                shape = CookieShape,
+                shape = LocalAppShape.current,
                 color = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(44.dp)

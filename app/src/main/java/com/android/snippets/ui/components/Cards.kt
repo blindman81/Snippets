@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
+import com.android.snippets.ui.shapes.LocalAppShape
 import androidx.compose.material3.carousel.rememberCarouselState
 import com.android.snippets.viewmodel.Screen
 import androidx.compose.runtime.Composable
@@ -96,7 +97,8 @@ fun MemoryAvatar(
         remember { mutableStateOf(0f) }
     }
 
-    val MorphShapesList = listOf(com.android.snippets.ui.CookieShape, androidx.compose.foundation.shape.CircleShape)
+    val currentAppShape = LocalAppShape.current
+    val MorphShapesList = remember(currentAppShape) { listOf(currentAppShape, androidx.compose.foundation.shape.CircleShape) }
     val shapeIndex = remember(photo.id) { kotlin.math.abs(photo.id.hashCode()) % MorphShapesList.size }
     val avatarShape = MorphShapesList[shapeIndex]
 
@@ -164,11 +166,12 @@ fun MemoryMoreButton(
         label = "arrow_rotation"
     )
 
+    val currentAppShape = LocalAppShape.current
     val buttonShape = when {
         isForwardArrow -> androidx.compose.foundation.shape.CircleShape
         isBackArrow -> androidx.compose.foundation.shape.CircleShape
         isDownArrow || isUpArrow -> androidx.compose.foundation.shape.CircleShape
-        else -> com.android.snippets.ui.CookieShape
+        else -> currentAppShape
     }
     var isHolding by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
@@ -388,7 +391,7 @@ fun PhotoMasonryItem(
             if (photo.isFavorite && !isSelected && showFavoriteIcon) {
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
-                    shape = CookieShape,
+                    shape = LocalAppShape.current,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(16.dp)
@@ -408,7 +411,7 @@ fun PhotoMasonryItem(
             if (matchingSnippetsCount > 0 && !isSelected) {
                 Surface(
                     color = MaterialTheme.colorScheme.tertiary,
-                    shape = CookieShape,
+                    shape = LocalAppShape.current,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(16.dp)

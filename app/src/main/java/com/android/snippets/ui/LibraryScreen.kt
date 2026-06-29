@@ -22,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.*
 import androidx.compose.foundation.shape.CircleShape
+import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.model.Photo
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -344,7 +345,7 @@ Surface(
                                                         }
                                                     }
                                                     Surface(
-                                                        shape = CookieShape,
+                                                        shape = LocalAppShape.current,
                                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                                         contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                                         modifier = Modifier
@@ -735,7 +736,7 @@ Surface(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Surface(
-                                shape = CookieShape,
+                                shape = LocalAppShape.current,
                                 color = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(44.dp)

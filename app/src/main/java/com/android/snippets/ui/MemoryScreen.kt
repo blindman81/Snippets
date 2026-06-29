@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.android.snippets.ui.shapes.LocalAppShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -249,7 +250,7 @@ fun MemoryScreen(
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                             viewModel.openDetail(photo.id)
                         },
-                        shape = CookieShape,
+                        shape = LocalAppShape.current,
                         border = BorderStroke(4.dp, Color.White),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         modifier = Modifier

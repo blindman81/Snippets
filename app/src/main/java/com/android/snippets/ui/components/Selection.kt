@@ -1,5 +1,7 @@
 package com.android.snippets.ui.components
 
+import com.android.snippets.ui.shapes.LocalAppShape
+
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -58,7 +60,7 @@ fun PremiumSwitch(
         modifier = modifier
             .size(40.dp)
             .graphicsLayer { rotationZ = rotation }
-            .clip(com.android.snippets.ui.CookieShape)
+            .clip(LocalAppShape.current)
             .background(if (enabled) containerColor.value else containerColor.value.copy(alpha = 0.38f)),
         contentAlignment = Alignment.Center
     ) {
@@ -102,7 +104,7 @@ fun CookieCheckmark(
     Box(
         modifier = modifier
             .size(32.dp)
-            .clip(com.android.snippets.ui.CookieShape)
+            .clip(LocalAppShape.current)
             .background(containerColor),
         contentAlignment = Alignment.Center
     ) {

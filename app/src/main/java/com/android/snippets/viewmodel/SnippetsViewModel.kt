@@ -10,6 +10,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.snippets.model.Photo
+import com.android.snippets.ui.shapes.AppShape
 import com.android.snippets.ui.util.MediaSaver
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -193,6 +194,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var useDynamicColors by mutableStateOf(true)
         private set
     var showTimeInMemories by mutableStateOf(false)
+        private set
+    var selectedShape by mutableStateOf(AppShape.COOKIE_12_SIDED)
         private set
     var showFilterSheet by mutableStateOf(false)
 
@@ -637,6 +640,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
         useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
+        val savedShape = prefs.getString("selected_shape", AppShape.COOKIE_12_SIDED.name)
+        selectedShape = try { AppShape.valueOf(savedShape!!) } catch (e: Exception) { AppShape.COOKIE_12_SIDED }
 
         showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
         searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
@@ -839,6 +844,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateDynamicColors(use: Boolean) {
         useDynamicColors = use
         prefs.edit().putBoolean("use_dynamic_colors", use).apply()
+    }
+
+    fun updateSelectedShape(shape: AppShape) {
+        selectedShape = shape
+        prefs.edit().putString("selected_shape", shape.name).apply()
     }
 
 
@@ -1467,7 +1477,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
-            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, showTime = showTimeInMemories)
+            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories)
             if (success) {
                 android.widget.Toast.makeText(context, "Downloaded to Gallery", android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -1477,7 +1487,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun sharePhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
-            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, showTime = showTimeInMemories)
+            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories)
             if (uri != null) {
                 val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "image/jpeg"

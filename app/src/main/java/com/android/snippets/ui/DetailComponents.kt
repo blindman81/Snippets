@@ -62,6 +62,7 @@ import androidx.graphics.shapes.star
 import androidx.graphics.shapes.toPath
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.foundation.shape.GenericShape
+import com.android.snippets.ui.shapes.LocalAppShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 
@@ -136,7 +137,7 @@ fun DetailTopBar(
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     isSpinning = isSpinning,
                     hapticOnHold = true,
-                    shape = CookieShape,
+                    shape = LocalAppShape.current,
                     size = 56.dp
                 )
             }

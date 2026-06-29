@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.animation.core.*
+import com.android.snippets.ui.shapes.LocalAppShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -232,7 +233,7 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer { rotationZ = rotation.value }
-                            .clip(CookieShape)
+                            .clip(LocalAppShape.current)
                             .background(MaterialTheme.colorScheme.secondaryContainer)
                     )
 
@@ -1070,7 +1071,7 @@ fun IconSelectionItem(
             onClick = onClick,
             icon = icon,
             modifier = Modifier.fillMaxSize(),
-            shape = CookieShape,
+            shape = LocalAppShape.current,
             size = 120.dp
         )
     }

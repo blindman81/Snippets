@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import com.android.snippets.ui.CookieShape
+import com.android.snippets.ui.shapes.LocalAppShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,7 +33,7 @@ fun AnimatedCookieButton(
     containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     size: androidx.compose.ui.unit.Dp = 56.dp,
-    shape: androidx.compose.ui.graphics.Shape = CookieShape,
+    shape: androidx.compose.ui.graphics.Shape = LocalAppShape.current,
     isSpinning: Boolean = true,
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
