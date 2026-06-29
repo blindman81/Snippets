@@ -302,7 +302,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                                  Box(
                                      modifier = Modifier
                                          .weight(1f)
-                                         .aspectRatio(0.85f)
+                                         .aspectRatio(1f)
                                          .clip(RoundedCornerShape(16.dp))
                                          .background(
                                              if (isSelected) MaterialTheme.colorScheme.secondaryContainer 
@@ -320,36 +320,19 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                                          .padding(6.dp),
                                      contentAlignment = Alignment.Center
                                  ) {
-                                     Column(
-                                         horizontalAlignment = Alignment.CenterHorizontally,
-                                         verticalArrangement = Arrangement.Center,
-                                         modifier = Modifier.fillMaxSize()
-                                     ) {
-                                         Box(
-                                             modifier = Modifier
-                                                 .size(38.dp)
-                                                 .clip(shape.toComposeShape())
-                                                 .background(
-                                                     androidx.compose.ui.graphics.Brush.linearGradient(
-                                                         colors = listOf(
-                                                             MaterialTheme.colorScheme.primary,
-                                                             MaterialTheme.colorScheme.secondary
-                                                         )
+                                     Box(
+                                         modifier = Modifier
+                                             .size(42.dp)
+                                             .clip(shape.toComposeShape())
+                                             .background(
+                                                 androidx.compose.ui.graphics.Brush.linearGradient(
+                                                     colors = listOf(
+                                                         MaterialTheme.colorScheme.primary,
+                                                         MaterialTheme.colorScheme.secondary
                                                      )
                                                  )
-                                         )
-                                         Spacer(modifier = Modifier.height(6.dp))
-                                         Text(
-                                             text = shape.displayName,
-                                             style = MaterialTheme.typography.labelSmall,
-                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                             color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                             textAlign = TextAlign.Center,
-                                             maxLines = 2,
-                                             overflow = TextOverflow.Ellipsis,
-                                             lineHeight = 12.sp
-                                         )
-                                     }
+                                             )
+                                     )
                                      if (isSelected) {
                                          Box(
                                              modifier = Modifier
