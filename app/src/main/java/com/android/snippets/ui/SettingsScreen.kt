@@ -51,10 +51,14 @@ import com.android.snippets.ui.components.PremiumSwitch
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import com.android.snippets.ui.shapes.AppShape
 import com.android.snippets.ui.shapes.toComposeShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -286,57 +290,86 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                          .fillMaxWidth()
                          .verticalScroll(rememberScrollState())
                          .padding(vertical = 8.dp),
-                     verticalArrangement = Arrangement.spacedBy(12.dp)
+                     verticalArrangement = Arrangement.spacedBy(10.dp)
                  ) {
-                     AppShape.values().forEach { shape ->
-                         val isSelected = viewModel.selectedShape == shape
-                         Surface(
-                             modifier = Modifier
-                                 .fillMaxWidth()
-                                 .clickable {
-                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                     viewModel.updateSelectedShape(shape)
-                                     showShapeDialog = false
-                                 },
-                             shape = RoundedCornerShape(16.dp),
-                             color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-                             border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.secondary) else null
+                     AppShape.values().toList().chunked(4).forEach { rowShapes ->
+                         Row(
+                             modifier = Modifier.fillMaxWidth(),
+                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                          ) {
-                             Row(
-                                 modifier = Modifier
-                                     .fillMaxWidth()
-                                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                                 verticalAlignment = Alignment.CenterVertically,
-                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
-                             ) {
+                             rowShapes.forEach { shape ->
+                                 val isSelected = viewModel.selectedShape == shape
                                  Box(
                                      modifier = Modifier
-                                         .size(48.dp)
-                                         .clip(shape.toComposeShape())
+                                         .weight(1f)
+                                         .aspectRatio(0.85f)
+                                         .clip(RoundedCornerShape(16.dp))
                                          .background(
-                                             androidx.compose.ui.graphics.Brush.linearGradient(
-                                                 colors = listOf(
-                                                     MaterialTheme.colorScheme.primary,
-                                                     MaterialTheme.colorScheme.secondary
-                                                 )
-                                             )
+                                             if (isSelected) MaterialTheme.colorScheme.secondaryContainer 
+                                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                                          )
-                                 )
-                                 Text(
-                                     text = shape.displayName,
-                                     style = MaterialTheme.typography.bodyLarge,
-                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                     color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
-                                     modifier = Modifier.weight(1f)
-                                 )
-                                 if (isSelected) {
-                                     Icon(
-                                         imageVector = Icons.Default.Check,
-                                         contentDescription = "Selected",
-                                         tint = MaterialTheme.colorScheme.secondary,
-                                         modifier = Modifier.size(24.dp)
-                                     )
+                                         .then(
+                                             if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(16.dp))
+                                             else Modifier
+                                         )
+                                         .clickable {
+                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                             viewModel.updateSelectedShape(shape)
+                                             showShapeDialog = false
+                                         }
+                                         .padding(6.dp),
+                                     contentAlignment = Alignment.Center
+                                 ) {
+                                     Column(
+                                         horizontalAlignment = Alignment.CenterHorizontally,
+                                         verticalArrangement = Arrangement.Center,
+                                         modifier = Modifier.fillMaxSize()
+                                     ) {
+                                         Box(
+                                             modifier = Modifier
+                                                 .size(38.dp)
+                                                 .clip(shape.toComposeShape())
+                                                 .background(
+                                                     androidx.compose.ui.graphics.Brush.linearGradient(
+                                                         colors = listOf(
+                                                             MaterialTheme.colorScheme.primary,
+                                                             MaterialTheme.colorScheme.secondary
+                                                         )
+                                                     )
+                                                 )
+                                         )
+                                         Spacer(modifier = Modifier.height(6.dp))
+                                         Text(
+                                             text = shape.displayName,
+                                             style = MaterialTheme.typography.labelSmall,
+                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                             color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                             textAlign = TextAlign.Center,
+                                             maxLines = 2,
+                                             overflow = TextOverflow.Ellipsis,
+                                             lineHeight = 12.sp
+                                         )
+                                     }
+                                     if (isSelected) {
+                                         Box(
+                                             modifier = Modifier
+                                                 .align(Alignment.TopEnd)
+                                                 .size(18.dp)
+                                                 .background(MaterialTheme.colorScheme.secondary, CircleShape),
+                                             contentAlignment = Alignment.Center
+                                         ) {
+                                             Icon(
+                                                 imageVector = Icons.Default.Check,
+                                                 contentDescription = "Selected",
+                                                 tint = MaterialTheme.colorScheme.onSecondary,
+                                                 modifier = Modifier.size(12.dp)
+                                             )
+                                         }
+                                     }
                                  }
+                             }
+                             repeat(4 - rowShapes.size) {
+                                 Spacer(modifier = Modifier.weight(1f))
                              }
                          }
                      }
