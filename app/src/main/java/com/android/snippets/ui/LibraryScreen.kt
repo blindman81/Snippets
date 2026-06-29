@@ -347,17 +347,29 @@ Surface(
 
                                                      LaunchedEffect(isSelected) {
                                                          if (isSelected) {
-                                                             when (shapeType) {
-                                                                 AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
-                                                                     rotation.animateTo(
-                                                                         targetValue = rotation.value + 360f,
-                                                                         animationSpec = tween(
-                                                                             durationMillis = 600,
-                                                                             easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
-                                                                         )
-                                                                     )
-                                                                 }
-                                                                 AppShape.GEM, AppShape.SQUARE, AppShape.CLOVER_8_LEAF -> {
+                                                              when (shapeType) {
+                                                                  AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
+                                                                      rotation.animateTo(
+                                                                          targetValue = rotation.value + 360f,
+                                                                          animationSpec = tween(
+                                                                              durationMillis = 600,
+                                                                              easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
+                                                                          )
+                                                                      )
+                                                                  }
+                                                                  AppShape.COOKIE_4_SIDED -> {
+                                                                      launch {
+                                                                          animScaleX.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
+                                                                          animScaleX.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
+                                                                          animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                      }
+                                                                      launch {
+                                                                          animScaleY.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
+                                                                          animScaleY.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
+                                                                          animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                      }
+                                                                  }
+                                                                  AppShape.GEM, AppShape.SQUARE, AppShape.CLOVER_8_LEAF -> {
                                                                      launch {
                                                                          animScaleX.animateTo(1.15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
                                                                          animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))

@@ -161,8 +161,8 @@ fun MemoryScreen(
                                 val swayDegrees = 3f * kotlin.math.sin(fraction)
                                 swayAngle = swayDegrees
                             }
-                            AppShape.PENTAGON -> {
-                                pulseScale = 1f + 0.04f * kotlin.math.sin(fraction)
+                            AppShape.PENTAGON, AppShape.COOKIE_4_SIDED -> {
+                                pulseScale = 1f + 0.08f * kotlin.math.sin(fraction)
                             }
                             AppShape.CLOVER_4_LEAF -> {
                                 translationYOffset = 25f * kotlin.math.sin(fraction)
@@ -300,8 +300,8 @@ fun MemoryScreen(
                                     AppShape.GEM, AppShape.SQUARE -> swayAngle
                                     else -> 0f
                                 }
-                                scaleX = if (shapeType == AppShape.PENTAGON) pulseScale else 1f
-                                scaleY = if (shapeType == AppShape.PENTAGON) pulseScale else 1f
+                                scaleX = if (shapeType == AppShape.PENTAGON || shapeType == AppShape.COOKIE_4_SIDED) pulseScale else 1f
+                                scaleY = if (shapeType == AppShape.PENTAGON || shapeType == AppShape.COOKIE_4_SIDED) pulseScale else 1f
                                 translationX = if (shapeType == AppShape.CLOVER_8_LEAF) translationXOffset else 0f
                                 translationY = if (shapeType == AppShape.CLOVER_4_LEAF) translationYOffset else 0f
                             }
@@ -347,8 +347,8 @@ fun MemoryScreen(
                                         AppShape.GEM, AppShape.SQUARE -> -swayAngle
                                         else -> 0f
                                     }
-                                    scaleX = 1.25f / (if (shapeType == AppShape.PENTAGON) pulseScale else 1f)
-                                    scaleY = 1.25f / (if (shapeType == AppShape.PENTAGON) pulseScale else 1f)
+                                    scaleX = 1.25f / (if (shapeType == AppShape.PENTAGON || shapeType == AppShape.COOKIE_4_SIDED) pulseScale else 1f)
+                                    scaleY = 1.25f / (if (shapeType == AppShape.PENTAGON || shapeType == AppShape.COOKIE_4_SIDED) pulseScale else 1f)
                                     translationX = if (shapeType == AppShape.CLOVER_8_LEAF) -translationXOffset else 0f
                                     translationY = if (shapeType == AppShape.CLOVER_4_LEAF) -translationYOffset else 0f
                                 }

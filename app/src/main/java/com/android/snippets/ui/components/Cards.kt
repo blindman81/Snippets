@@ -251,6 +251,18 @@ fun MemoryMoreButton(
     LaunchedEffect(isTapped) {
         if (isTapped) {
             when (shapeType) {
+                AppShape.COOKIE_4_SIDED -> {
+                    launch {
+                        animScaleX.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+                        animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+                        animScaleY.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                }
                 AppShape.GEM, AppShape.SQUARE -> {
                     animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                     animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))

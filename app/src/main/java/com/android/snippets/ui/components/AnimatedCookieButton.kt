@@ -135,6 +135,18 @@ fun AnimatedCookieButton(
                             animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
                         )
                     }
+                    AppShape.COOKIE_4_SIDED -> {
+                        launch {
+                            animScaleX.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
+                            animScaleX.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
+                            animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                        }
+                        launch {
+                            animScaleY.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
+                            animScaleY.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
+                            animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                        }
+                    }
                     AppShape.GEM, AppShape.SQUARE -> {
                         launch {
                             animScaleX.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
@@ -186,6 +198,13 @@ fun AnimatedCookieButton(
                             targetValue = rotation.value + 360f,
                             animationSpec = tween(600, easing = LinearEasing)
                         )
+                    }
+                    AppShape.COOKIE_4_SIDED -> {
+                        launch { animScaleX.animateTo(0.82f, animationSpec = tween(120, easing = FastOutSlowInEasing)) }
+                        launch { animScaleY.animateTo(0.82f, animationSpec = tween(120, easing = FastOutSlowInEasing)) }
+                        androidx.compose.runtime.snapshotFlow { isHolding }.first { !it }
+                        launch { animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
+                        launch { animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
                     }
                     AppShape.GEM, AppShape.SQUARE -> {
                         launch { animScaleX.animateTo(0.9f, animationSpec = tween(150, easing = FastOutSlowInEasing)) }
@@ -258,6 +277,18 @@ fun AnimatedCookieButton(
                         targetValue = rotation.value + 360f,
                         animationSpec = tween(1000, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
                     )
+                }
+                AppShape.COOKIE_4_SIDED -> {
+                    animScaleX.snapTo(0.5f)
+                    animScaleY.snapTo(0.5f)
+                    launch {
+                        animScaleX.animateTo(1.2f, animationSpec = tween(200, easing = FastOutSlowInEasing))
+                        animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(1.2f, animationSpec = tween(200, easing = FastOutSlowInEasing))
+                        animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
                 }
                 AppShape.PENTAGON -> {
                     launch {

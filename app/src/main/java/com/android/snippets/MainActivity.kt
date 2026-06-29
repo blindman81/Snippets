@@ -284,6 +284,22 @@ private fun ComposeSplashScreen(
                     scaleY = 1f - p
                     rotationZ = infiniteSpin + p * 360f
                 }
+                AppShape.COOKIE_4_SIDED -> {
+                    val idleStamp = 1f + 0.08f * idleSine
+                    val exitStamp = if (startExitAnimation) {
+                        if (p < 0.2f) {
+                            1f - (p / 0.2f) * 0.35f
+                        } else if (p < 0.5f) {
+                            0.65f + ((p - 0.2f) / 0.3f) * 0.55f
+                        } else {
+                            1.2f - ((p - 0.5f) / 0.5f) * 1.2f
+                        }
+                    } else {
+                        1f
+                    }
+                    scaleX = idleStamp * exitStamp
+                    scaleY = idleStamp * exitStamp
+                }
                 AppShape.GEM, AppShape.SQUARE -> {
                     scaleX = 1f - p
                     scaleY = 1f - p
