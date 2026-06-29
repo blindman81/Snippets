@@ -242,7 +242,25 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     showShapeDialog = true 
                 },
-                position = CardPosition.Single
+                position = CardPosition.First
+            )
+
+            SettingsCardItem(
+                icon = Icons.Default.Image,
+                title = "Make photos follow the shape",
+                onClick = { 
+                    view.performHapticFeedback(if (!viewModel.makePhotosFollowShape) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                    viewModel.updateMakePhotosFollowShape(!viewModel.makePhotosFollowShape) 
+                },
+                position = CardPosition.Last,
+                trailingContent = {
+                    PremiumSwitch(
+                        checked = viewModel.makePhotosFollowShape,
+                        onCheckedChange = { 
+                            viewModel.updateMakePhotosFollowShape(it) 
+                        }
+                    )
+                }
             )
  
              Spacer(modifier = Modifier.height(16.dp))

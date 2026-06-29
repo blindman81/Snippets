@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.android.snippets.model.Photo
 import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.ui.shapes.LocalAppShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 import androidx.compose.ui.layout.ContentScale
 
@@ -41,6 +43,7 @@ fun PhotoPageGrid(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
+        val pageItemShape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(0.dp)
         when (photos.size) {
             1 -> {
                 val photo = photos[0]
@@ -56,6 +59,7 @@ fun PhotoPageGrid(
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
                     fillCard = true,
+                    shape = pageItemShape,
                     modifier = Modifier.fillMaxSize().padding(8.dp)
                 )
             }
@@ -74,6 +78,7 @@ fun PhotoPageGrid(
                             sharedTransitionScope = sharedTransitionScope,
                             animatedVisibilityScope = animatedVisibilityScope,
                             fillCard = true,
+                            shape = pageItemShape,
                             modifier = Modifier.weight(1f).fillMaxWidth().padding(4.dp)
                         )
                     }
@@ -93,6 +98,7 @@ fun PhotoPageGrid(
                         sharedTransitionScope = sharedTransitionScope,
                         animatedVisibilityScope = animatedVisibilityScope,
                         fillCard = true,
+                        shape = pageItemShape,
                         modifier = Modifier.weight(1.2f).fillMaxHeight().padding(4.dp)
                     )
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -109,6 +115,7 @@ fun PhotoPageGrid(
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 fillCard = true,
+                                shape = pageItemShape,
                                 modifier = Modifier.weight(1f).fillMaxWidth().padding(4.dp)
                             )
                         }
@@ -131,6 +138,7 @@ fun PhotoPageGrid(
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 fillCard = true,
+                                shape = pageItemShape,
                                 modifier = Modifier.weight(1f).fillMaxHeight().padding(4.dp)
                             )
                         }
@@ -149,6 +157,7 @@ fun PhotoPageGrid(
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 fillCard = true,
+                                shape = pageItemShape,
                                 modifier = Modifier.weight(1f).fillMaxHeight().padding(4.dp)
                             )
                         }

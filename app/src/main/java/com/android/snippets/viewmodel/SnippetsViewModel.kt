@@ -197,6 +197,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var selectedShape by mutableStateOf(AppShape.COOKIE_12_SIDED)
         private set
+    var makePhotosFollowShape by mutableStateOf(false)
+        private set
     var showFilterSheet by mutableStateOf(false)
 
 
@@ -642,6 +644,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
         val savedShape = prefs.getString("selected_shape", AppShape.COOKIE_12_SIDED.name)
         selectedShape = try { AppShape.valueOf(savedShape!!) } catch (e: Exception) { AppShape.COOKIE_12_SIDED }
+        makePhotosFollowShape = prefs.getBoolean("make_photos_follow_shape", false)
 
         showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
         searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
@@ -849,6 +852,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateSelectedShape(shape: AppShape) {
         selectedShape = shape
         prefs.edit().putString("selected_shape", shape.name).apply()
+    }
+
+    fun updateMakePhotosFollowShape(follow: Boolean) {
+        makePhotosFollowShape = follow
+        prefs.edit().putBoolean("make_photos_follow_shape", follow).apply()
     }
 
 
