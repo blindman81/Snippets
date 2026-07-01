@@ -688,7 +688,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         var changed = false
         val scheduledNotifications = mutableListOf<Pair<String, Long>>()
         val updatedPhotos = photos.map { photo ->
-            if (shouldResurfaceViewedMemory(photo, now)) {
+            if (shouldResurfaceMemory(photo, now)) {
                 changed = true
                 photo.copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
             } else photo
@@ -817,12 +817,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         reconcileSurfacedMemories()
     }
 
-    private fun shouldResurfaceViewedMemory(photo: Photo, now: Long): Boolean {
-        return photo.isViewed &&
-            photo.isLibraryUpload &&
-            photo.snippets.isNotEmpty() &&
-            photo.snippetsAddedTime != 0L &&
-            now - photo.lastViewedTime >= VIEWED_MEMORY_RESET_MS
+    private fun shouldResurfaceMemory(photo: Photo, now: Long): Boolean {
+        if (!photo.isLibraryUpload || photo.snippets.isEmpty() || photo.snippetsAddedTime == 0L) {
+            return false
+        }
+        if (photo.isViewed) {
+            return now - photo.lastViewedTime >= VIEWED_MEMORY_RESET_MS
+        }
+        return photo.surfacedTime != 0L &&
+            now - photo.surfacedTime >= VIEWED_MEMORY_RESET_MS + VIEWED_MEMORY_VISIBLE_MS
     }
     private fun saveCollections() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -1643,7 +1646,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             photo.snippetsAddedTime != 0L &&
             (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
             (
-                (photo.surfacedTime != 0L && photo.surfacedTime <= now && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
+                (photo.surfacedTime != 0L && photo.surfacedTime <= now && now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
                 (photo.isViewed && now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS)
             )
         }.sortedWith(
