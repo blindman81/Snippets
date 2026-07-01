@@ -144,6 +144,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             }
             selectedFilterSnippets = selectedFilterSnippets + snippet
         }
+        saveFilterState()
     }
 
     var activeCollection by mutableStateOf<String?>(null)
@@ -1360,6 +1361,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             snippetFirstSeenTimes = snippetFirstSeenTimes - snippet
             saveSnippetFirstSeenTimes()
         }
+
+        if (selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }) {
+            selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
+            saveFilterState()
+        }
     }
 
     fun deleteSnippetGlobally(snippet: String) {
@@ -1380,6 +1386,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         snippetFirstSeenTimes = snippetFirstSeenTimes - snippet
         saveSnippetFirstSeenTimes()
+
+        if (selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }) {
+            selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
+            saveFilterState()
+        }
     }
 
     fun toggleFavorite(photoId: String) {
@@ -1404,10 +1415,22 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun deletePhoto(photoId: String, unpublish: Boolean = true) {
+        val deletedPhoto = photos.find { it.id == photoId }
         photos = photos.filter { it.id != photoId }
         savePhotos()
         cancelMemoryNotification(photoId)
         closeDetail()
+
+        deletedPhoto?.snippets?.forEach { snippet ->
+            if (photos.none { photo -> photo.snippets.contains(snippet) }) {
+                snippetFirstSeenTimes = snippetFirstSeenTimes - snippet
+                saveSnippetFirstSeenTimes()
+                if (selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }) {
+                    selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
+                    saveFilterState()
+                }
+            }
+        }
     }
 
     // --- Bulk Actions ---
