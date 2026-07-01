@@ -64,9 +64,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, locationText: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime) ?: return@withContext false
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime, locationText) ?: return@withContext false
             
             val fileName = "Snippet_Card_${System.currentTimeMillis()}.jpg"
             val contentValues = ContentValues().apply {
@@ -104,9 +104,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false): Uri? = withContext(Dispatchers.IO) {
+    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, locationText: String? = null): Uri? = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime) ?: return@withContext null
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime, locationText) ?: return@withContext null
             
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
@@ -123,7 +123,7 @@ object MediaSaver {
         }
     }
 
-    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false): Bitmap? {
+    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, overrideLocationText: String? = null): Bitmap? {
         val width = 1440
         val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -214,7 +214,7 @@ object MediaSaver {
         val timeFormat = if (is24Hour) "HH:mm" else "h:mm a"
         val datePattern = if (showTime) "EEE, d MMM • $timeFormat" else "EEE, d MMM"
         val dateString = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(photo.date)).uppercase()
-        val locationText = LocationUtils.getLocationFromExif(context, photo)
+        val locationText = overrideLocationText ?: LocationUtils.getLocationFromExif(context, photo)
         val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             alpha = 230

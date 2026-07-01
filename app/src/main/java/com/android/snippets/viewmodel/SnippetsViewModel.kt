@@ -1488,7 +1488,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
-            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories)
+            val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
+            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories, locationText = locationText)
             if (success) {
                 android.widget.Toast.makeText(context, "Downloaded to Gallery", android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -1498,7 +1499,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun sharePhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
-            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories)
+            val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
+            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories, locationText = locationText)
             if (uri != null) {
                 val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "image/jpeg"
