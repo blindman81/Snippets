@@ -148,7 +148,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
             ) {
                 themeOptions.forEachIndexed { index, option ->
                     val isSelected = viewModel.themePreference == option
-                    toggleableItem(
+                    themeToggleableItem(
                         weight = 1f,
                         checked = isSelected,
                         onCheckedChange = {
@@ -157,7 +157,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                                 viewModel.updateThemePreference(option)
                             }
                         },
-                        icon = { Icon(themeIcons[index], null, modifier = Modifier.size(18.dp)) },
+                        icon = { Icon(themeIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
                         label = themeLabels[index]
                     )
                 }
@@ -380,5 +380,60 @@ private fun settingsSwitchColors(useDarkTheme: Boolean): SwitchColors {
         uncheckedTrackColor = colors.surfaceContainer,
         uncheckedBorderColor = colors.outline,
         uncheckedIconColor = colors.surfaceContainerHighest
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ButtonGroupScope.themeToggleableItem(
+    weight: Float,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    icon: @Composable () -> Unit,
+    label: String
+) {
+    val itemModifier = Modifier.weight(weight)
+    customItem(
+        buttonGroupContent = {
+            ToggleButton(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                modifier = itemModifier
+            ) {
+                icon()
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text(
+                    text = label,
+                    style = if (checked) {
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                        )
+                    } else {
+                        MaterialTheme.typography.labelLarge
+                    }
+                )
+            }
+        },
+        menuContent = { state ->
+            DropdownMenuItem(
+                leadingIcon = icon,
+                text = {
+                    Text(
+                        text = label,
+                        style = if (checked) {
+                            MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            )
+                        } else {
+                            MaterialTheme.typography.labelLarge
+                        }
+                    )
+                },
+                onClick = {
+                    onCheckedChange(!checked)
+                    state.dismiss()
+                }
+            )
+        }
     )
 }
