@@ -67,8 +67,7 @@ fun ChooseShapeScreen(viewModel: SnippetsViewModel) {
                             icon = Icons.Default.FilterList,
                             contentDescription = "Animation Style",
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            size = 40.dp
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         DropdownMenu(
                             expanded = showDropdown,
