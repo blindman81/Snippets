@@ -610,7 +610,11 @@ fun SettingsCardItem(
         ) {
             com.android.snippets.ui.CollectionIcon(
                 icon = icon,
-                modifier = Modifier.size(if (isExpressive) 36.dp else 32.dp),
+                modifier = Modifier.size(
+                    if (isSelected) 44.dp
+                    else if (isExpressive) 36.dp
+                    else 32.dp
+                ),
                 tint = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Column(
@@ -623,7 +627,11 @@ fun SettingsCardItem(
                 } else {
                     Text(
                         text = title,
-                        style = if (isExpressive) {
+                        style = if (isSelected) {
+                            MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            )
+                        } else if (isExpressive) {
                             MaterialTheme.typography.titleMedium.copy(
                                 fontSize = 18.sp,
                                 letterSpacing = 0.15.sp

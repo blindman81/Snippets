@@ -88,7 +88,10 @@ fun MenuBottomSheet(
                         }
                         Text(
                             text = "Menu",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -268,7 +271,10 @@ fun HistoryBottomSheet(
                     }
                     Text(
                         text = "History",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                        ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }

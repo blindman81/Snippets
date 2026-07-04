@@ -285,13 +285,15 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
         label = {
             Text(
                 snippet,
-                style = getSnippetTextStyle(snippetStyle, MaterialTheme.typography.labelLarge),
+                style = getSnippetTextStyle(snippetStyle, MaterialTheme.typography.labelLarge).let {
+                    if (isSelected) it.copy(fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide) else it
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         },
         leadingIcon = if (isSelected) {
-            { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) }
+            { Icon(Icons.Default.Check, null, modifier = Modifier.size(24.dp)) }
         } else null,
         shape = RoundedCornerShape(8.dp),
         colors = FilterChipDefaults.filterChipColors(

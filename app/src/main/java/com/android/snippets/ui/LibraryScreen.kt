@@ -812,7 +812,10 @@ Surface(
                             }
                             Text(
                                 text = colName,
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
@@ -856,7 +859,7 @@ Surface(
                                                 }
                                             }
                                         },
-                                        icon = { Icon(dateIcons[index], null, modifier = Modifier.size(18.dp)) },
+                                        icon = { Icon(dateIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
                                         label = dateLabels[index]
                                     )
                                 }
@@ -887,7 +890,7 @@ Surface(
                                                 }
                                             }
                                         },
-                                        icon = { Icon(snippetIcons[index], null, modifier = Modifier.size(18.dp)) },
+                                        icon = { Icon(snippetIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
                                         label = snippetLabels[index]
                                     )
                                 }
@@ -1115,13 +1118,33 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
             ) {
                 icon()
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text(label)
+                Text(
+                    text = label,
+                    style = if (checked) {
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                        )
+                    } else {
+                        MaterialTheme.typography.labelLarge
+                    }
+                )
             }
         },
         menuContent = { state ->
             DropdownMenuItem(
                 leadingIcon = icon,
-                text = { Text(label) },
+                text = {
+                    Text(
+                        text = label,
+                        style = if (checked) {
+                            MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            )
+                        } else {
+                            MaterialTheme.typography.labelLarge
+                        }
+                    )
+                },
                 onClick = {
                     onCheckedChange(!checked)
                     state.dismiss()

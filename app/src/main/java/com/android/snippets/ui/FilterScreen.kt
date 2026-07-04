@@ -135,7 +135,10 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
             }
             Text(
                 text = "Filter",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                ),
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
@@ -177,9 +180,9 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                                  text = label,
                                  style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized else MaterialTheme.typography.titleMedium.copy(
                                      fontFamily = com.android.snippets.ui.theme.GoogleSans
-                                 ),
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
+                                  ),
+                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                             )
                         }
                     },
                     selectedContentColor = MaterialTheme.colorScheme.primary,
