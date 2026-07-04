@@ -28,6 +28,8 @@ import androidx.compose.foundation.background
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
 
+val LocalShapeAnimationMode = androidx.compose.runtime.staticCompositionLocalOf { "memory" }
+
 @Composable
 fun HeartBrokenBoltIcon(): ImageVector {
     return ImageVector.Builder(name = "HeartBrokenBolt", defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 960f, viewportHeight = 960f).path(fill = SolidColor(MaterialTheme.colorScheme.primary)) {
@@ -347,81 +349,133 @@ fun CollectionIcon(
 
         if (isSelected) {
             val infiniteTransition = rememberInfiniteTransition(label = "shape_anim")
+            val animMode = LocalShapeAnimationMode.current
             
-            when (icon) {
-                AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
-                    rotationZ = infiniteTransition.animateFloat(
-                        initialValue = 0f,
-                        targetValue = 360f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(12000, easing = LinearEasing),
-                            repeatMode = RepeatMode.Restart
-                        ),
-                        label = "spin"
-                    ).value
+            if (animMode == "icon button") {
+                when (icon) {
+                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
+                        rotationZ = infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(30000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "icon_spin"
+                        ).value
+                    }
+                    AppShape.CLOVER_4_LEAF -> {
+                        translateY = infiniteTransition.animateFloat(
+                            initialValue = -8f,
+                            targetValue = 8f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(2000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "icon_translateY"
+                        ).value
+                    }
+                    AppShape.CLOVER_8_LEAF -> {
+                        translateX = infiniteTransition.animateFloat(
+                            initialValue = -8f,
+                            targetValue = 8f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(2000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "icon_translateX"
+                        ).value
+                    }
+                    else -> {
+                        val scale = infiniteTransition.animateFloat(
+                            initialValue = 0.95f,
+                            targetValue = 1.05f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(2000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "icon_pulse"
+                        ).value
+                        scaleX = scale
+                        scaleY = scale
+                    }
                 }
-                AppShape.GEM, AppShape.SQUARE -> {
-                    rotationZ = infiniteTransition.animateFloat(
-                        initialValue = -12f,
-                        targetValue = 12f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(2000, easing = FastOutSlowInEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "sway"
-                    ).value
-                }
-                AppShape.PENTAGON -> {
-                    val scale = infiniteTransition.animateFloat(
-                        initialValue = 0.94f,
-                        targetValue = 1.06f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1500, easing = FastOutSlowInEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "pentagon_pulse"
-                    ).value
-                    scaleX = scale
-                    scaleY = scale
-                }
-                AppShape.COOKIE_4_SIDED -> {
-                    val scale = infiniteTransition.animateFloat(
-                        initialValue = 0.92f,
-                        targetValue = 1.08f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1500, easing = FastOutSlowInEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "cookie_stamp_pulse"
-                    ).value
-                    scaleX = scale
-                    scaleY = scale
-                }
-                AppShape.CLOVER_4_LEAF -> {
-                    val offset = infiniteTransition.animateFloat(
-                        initialValue = -0.06f,
-                        targetValue = 0.06f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1500, easing = FastOutSlowInEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "clover4_squish"
-                    ).value
-                    scaleX = 1f + offset
-                    scaleY = 1f - offset
-                }
-                AppShape.CLOVER_8_LEAF -> {
-                    val offset = infiniteTransition.animateFloat(
-                        initialValue = -0.06f,
-                        targetValue = 0.06f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1500, easing = FastOutSlowInEasing),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "clover8_squish"
-                    ).value
-                    scaleX = 1f - offset
-                    scaleY = 1f + offset
+            } else {
+                when (icon) {
+                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
+                        rotationZ = infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(12000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "spin"
+                        ).value
+                    }
+                    AppShape.GEM, AppShape.SQUARE -> {
+                        rotationZ = infiniteTransition.animateFloat(
+                            initialValue = -12f,
+                            targetValue = 12f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(2000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "sway"
+                        ).value
+                    }
+                    AppShape.PENTAGON -> {
+                        val scale = infiniteTransition.animateFloat(
+                            initialValue = 0.94f,
+                            targetValue = 1.06f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1500, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "pentagon_pulse"
+                        ).value
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    AppShape.COOKIE_4_SIDED -> {
+                        val scale = infiniteTransition.animateFloat(
+                            initialValue = 0.92f,
+                            targetValue = 1.08f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1500, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "cookie_stamp_pulse"
+                        ).value
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    AppShape.CLOVER_4_LEAF -> {
+                        val offset = infiniteTransition.animateFloat(
+                            initialValue = -0.06f,
+                            targetValue = 0.06f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1500, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "clover4_squish"
+                        ).value
+                        scaleX = 1f + offset
+                        scaleY = 1f - offset
+                    }
+                    AppShape.CLOVER_8_LEAF -> {
+                        val offset = infiniteTransition.animateFloat(
+                            initialValue = -0.06f,
+                            targetValue = 0.06f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1500, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "clover8_squish"
+                        ).value
+                        scaleX = 1f - offset
+                        scaleY = 1f + offset
+                    }
                 }
             }
         }

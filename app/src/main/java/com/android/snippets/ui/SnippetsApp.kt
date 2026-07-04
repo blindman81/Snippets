@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
-import com.android.snippets.ui.components.ExpressiveSnippetTemplatesBottomSheet
 import com.android.snippets.ui.components.BulkEditSnippetsDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -161,6 +160,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             Screen.ChooseShape -> ChooseShapeScreen(viewModel)
                             Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
                             Screen.Stats -> StatsScreen(viewModel)
+                            Screen.Templates -> TemplatesScreen(viewModel)
                             else -> Box(Modifier.fillMaxSize())
                         }
                     }
@@ -311,15 +311,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         BulkEditSnippetsDialog(
             viewModel = viewModel,
             onDismiss = { viewModel.showBulkEditSnippetsDialog = false }
-        )
-    }
-
-    if (viewModel.showExpressiveSnippetTemplatesSheet) {
-        ExpressiveSnippetTemplatesBottomSheet(
-            show = true,
-            onDismissRequest = { viewModel.showExpressiveSnippetTemplatesSheet = false },
-            viewModel = viewModel,
-            view = view
         )
     }
 }
