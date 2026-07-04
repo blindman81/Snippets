@@ -29,7 +29,7 @@ fun ChooseShapeScreen(viewModel: SnippetsViewModel) {
     val view = LocalView.current
     val scrollState = rememberScrollState()
     val isScrolled by remember { derivedStateOf { scrollState.value > 0 } }
-    var animationMode by remember { mutableStateOf("memory") } // "memory" or "icon button"
+    var animationMode by remember { mutableStateOf("icon button") } // "memory" or "icon button"
 
     val nestedScrollConnection = remember {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
@@ -76,21 +76,6 @@ fun ChooseShapeScreen(viewModel: SnippetsViewModel) {
                         ) {
                             DropdownMenuItem(
                                 leadingIcon = {
-                                    if (animationMode == "memory") {
-                                        Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
-                                    } else {
-                                        Spacer(modifier = Modifier.size(18.dp))
-                                    }
-                                },
-                                text = { Text("Memory style") },
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    animationMode = "memory"
-                                    showDropdown = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                leadingIcon = {
                                     if (animationMode == "icon button") {
                                         Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
                                     } else {
@@ -101,6 +86,21 @@ fun ChooseShapeScreen(viewModel: SnippetsViewModel) {
                                 onClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     animationMode = "icon button"
+                                    showDropdown = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                leadingIcon = {
+                                    if (animationMode == "memory") {
+                                        Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
+                                    } else {
+                                        Spacer(modifier = Modifier.size(18.dp))
+                                    }
+                                },
+                                text = { Text("Memory style") },
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    animationMode = "memory"
                                     showDropdown = false
                                 }
                             )

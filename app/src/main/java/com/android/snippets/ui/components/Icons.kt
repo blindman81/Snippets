@@ -28,7 +28,7 @@ import androidx.compose.foundation.background
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
 
-val LocalShapeAnimationMode = androidx.compose.runtime.staticCompositionLocalOf { "memory" }
+val LocalShapeAnimationMode = androidx.compose.runtime.staticCompositionLocalOf { "icon button" }
 
 @Composable
 fun HeartBrokenBoltIcon(): ImageVector {
