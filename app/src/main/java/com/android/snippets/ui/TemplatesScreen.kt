@@ -143,7 +143,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                             val photosCount = viewModel.photos.count { it.snippets.contains(snippet) }
                             
                             SettingsCardItem(
-                                icon = Icons.Default.Tag,
+                                icon = Icons.Default.TextSnippet,
                                 title = snippet,
                                 subtitle = "Used in $photosCount photo",
                                 position = position,
