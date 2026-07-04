@@ -313,11 +313,14 @@ private fun ButtonGroupScope.themeToggleableItem(
                     text = label,
                     style = if (checked) {
                         MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
+                            fontSize = 11.sp
                         )
                     } else {
                         MaterialTheme.typography.labelLarge
-                    }
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         },
@@ -329,11 +332,14 @@ private fun ButtonGroupScope.themeToggleableItem(
                         text = label,
                         style = if (checked) {
                             MaterialTheme.typography.labelLarge.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
+                                fontSize = 11.sp
                             )
                         } else {
                             MaterialTheme.typography.labelLarge
-                        }
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 onClick = {
