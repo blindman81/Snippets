@@ -219,8 +219,17 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                         onValueChange = { if (it.length <= 10) customText = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        label = { Text("Snippet Text (Max 10 chars)") },
-                        shape = RoundedCornerShape(16.dp)
+                        label = { Text("Snippet Text") },
+                        shape = RoundedCornerShape(16.dp),
+                        supportingText = {
+                            Text(
+                                text = "${customText.length}/10",
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.End,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (customText.length >= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     )
                 }
             },
