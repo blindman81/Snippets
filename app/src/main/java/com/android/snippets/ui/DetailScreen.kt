@@ -220,6 +220,14 @@ fun DetailScreen(
     var showCurrentSnippetsModal by remember { mutableStateOf(false) }
     var showAddModal by remember { mutableStateOf(false) }
     var showDeleteModal by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel.pendingOpenAddSnippetDialog, photo.id) {
+        if (viewModel.pendingOpenAddSnippetDialog && viewModel.activePhotoId == photo.id) {
+            showAddModal = true
+            viewModel.pendingOpenAddSnippetDialog = false
+        }
+    }
+
     val context = LocalContext.current
     val isAnyPopupActive = showCurrentSnippetsModal || showAddModal || showDeleteModal
     

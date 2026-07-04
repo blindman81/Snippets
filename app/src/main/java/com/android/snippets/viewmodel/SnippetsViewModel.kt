@@ -401,6 +401,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     var showBulkAddToCollectionDialog by mutableStateOf(false)
     var showBulkDeleteModal by mutableStateOf(false)
+    var showBulkEditSnippetsDialog by mutableStateOf(false)
+    var showExpressiveSnippetTemplatesSheet by mutableStateOf(false)
+    var pendingAddSnippetOnImport by mutableStateOf(false)
+    var pendingOpenAddSnippetDialog by mutableStateOf(false)
+    var pendingSnippetToApply by mutableStateOf<String?>(null)
 
     private var _snippetSortType = mutableStateOf(SnippetSortType.New)
     var snippetSortType: SnippetSortType
@@ -883,6 +888,12 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun addPhoto(uri: Uri, isFavorite: Boolean = false) {
         isAddingPhotos = true
+        val targetSnippet = pendingSnippetToApply
+        val shouldOpenDialog = pendingAddSnippetOnImport
+        // Reset immediately
+        pendingSnippetToApply = null
+        pendingAddSnippetOnImport = false
+
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val captureDate = extractCaptureDate(uri)
@@ -893,6 +904,36 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                         if (isFavorite && !duplicate.isFavorite) {
                             toggleFavorite(duplicate.id)
                         }
+
+                        if (!targetSnippet.isNullOrBlank()) {
+                            val trimmed = targetSnippet.trim()
+                            if (duplicate.snippets.size < 6 && !duplicate.snippets.contains(trimmed)) {
+                                val now = System.currentTimeMillis()
+                                updateSnippetColor(trimmed, android.graphics.Color.WHITE)
+                                val isFirstSeen = !snippetFirstSeenTimes.containsKey(trimmed)
+                                if (isFirstSeen) {
+                                    snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
+                                    saveSnippetFirstSeenTimes()
+                                }
+                                photos = photos.map {
+                                    if (it.id == duplicate.id) {
+                                        it.copy(
+                                            snippets = (it.snippets + trimmed).distinct(),
+                                            snippetsAddedTime = now
+                                        )
+                                    } else it
+                                }
+                                savePhotos()
+                            }
+                        }
+
+                        if (shouldOpenDialog) {
+                            pendingOpenAddSnippetDialog = true
+                            openDetail(duplicate.id, Screen.Library)
+                        } else if (!targetSnippet.isNullOrBlank()) {
+                            openDetail(duplicate.id, Screen.Library)
+                        }
+
                         isAddingPhotos = false
                     }
                     return@launch
@@ -900,10 +941,24 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
                 val internalUri = saveToInternalStorage(uri) ?: uri.toString()
                 val (widthPx, heightPx) = extractImageDimensions(Uri.parse(internalUri))
+                val initialSnippets = if (!targetSnippet.isNullOrBlank()) listOf(targetSnippet.trim()) else emptyList()
+                val now = System.currentTimeMillis()
+
+                if (!targetSnippet.isNullOrBlank()) {
+                    val trimmed = targetSnippet.trim()
+                    updateSnippetColor(trimmed, android.graphics.Color.WHITE)
+                    val isFirstSeen = !snippetFirstSeenTimes.containsKey(trimmed)
+                    if (isFirstSeen) {
+                        snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
+                        saveSnippetFirstSeenTimes()
+                    }
+                }
+
                 val newPhoto = Photo(
                     uriString = internalUri,
                     date = captureDate,
-                    snippets = emptyList(),
+                    snippets = initialSnippets,
+                    snippetsAddedTime = if (initialSnippets.isNotEmpty()) now else 0L,
                     isFavorite = isFavorite,
                     isLibraryUpload = true,
                     widthPx = widthPx,
@@ -913,6 +968,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     photos = (listOf(newPhoto) + photos).sortedByDescending { it.date }
                     savePhotos()
+
+                    if (shouldOpenDialog) {
+                        pendingOpenAddSnippetDialog = true
+                        openDetail(newPhoto.id, Screen.Library)
+                    } else if (!targetSnippet.isNullOrBlank()) {
+                        openDetail(newPhoto.id, Screen.Library)
+                    }
+
                     isAddingPhotos = false
                 }
             } catch (e: Exception) {
@@ -1518,6 +1581,142 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
         clearSelection()
         isBusy = false
+    }
+
+    fun bulkAddSnippet(photoIds: Set<String>, text: String, color: Int, style: SnippetStyle) {
+        val trimmedText = text.trim()
+        if (trimmedText.isBlank() || photoIds.isEmpty()) return
+
+        updateSnippetColor(trimmedText, color)
+        updateSnippetStyle(trimmedText, style)
+
+        val now = System.currentTimeMillis()
+        if (!snippetFirstSeenTimes.containsKey(trimmedText)) {
+            snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmedText to now)
+            saveSnippetFirstSeenTimes()
+        }
+
+        var skippedCount = 0
+        photos = photos.map { photo ->
+            if (photoIds.contains(photo.id)) {
+                if (photo.snippets.size >= 6 && !photo.snippets.contains(trimmedText)) {
+                    skippedCount++
+                    photo
+                } else {
+                    val updatedSnippets = (photo.snippets + trimmedText).distinct()
+                    photo.copy(
+                        snippets = updatedSnippets,
+                        snippetsAddedTime = now,
+                        surfacedTime = 0L
+                    )
+                }
+            } else photo
+        }
+        savePhotos()
+        reconcileSurfacedMemories()
+
+        if (skippedCount > 0) {
+            showSnackbar("Added '$trimmedText' to selected photos ($skippedCount skipped because they reached the limit of 6 snippets)")
+        } else {
+            showSnackbar("Added '$trimmedText' to ${photoIds.size} photos")
+        }
+        clearSelection()
+    }
+
+    fun bulkRemoveSnippet(photoIds: Set<String>, snippet: String) {
+        if (photoIds.isEmpty() || snippet.isBlank()) return
+        val trimmedSnippet = snippet.trim()
+
+        var emptiedMemoryIds = mutableListOf<String>()
+        photos = photos.map { photo ->
+            if (photoIds.contains(photo.id)) {
+                val updatedSnippets = photo.snippets.filter { s -> s != trimmedSnippet }
+                if (photo.snippets.isNotEmpty() && updatedSnippets.isEmpty()) {
+                    emptiedMemoryIds.add(photo.id)
+                }
+                photo.copy(
+                    snippets = updatedSnippets,
+                    snippetsAddedTime = if (updatedSnippets.isEmpty()) 0L else photo.snippetsAddedTime
+                )
+            } else photo
+        }
+        savePhotos()
+        emptiedMemoryIds.forEach { cancelMemoryNotification(it) }
+
+        if (photos.none { photo -> photo.snippets.contains(trimmedSnippet) }) {
+            snippetFirstSeenTimes = snippetFirstSeenTimes - trimmedSnippet
+            saveSnippetFirstSeenTimes()
+        }
+
+        if (selectedFilterSnippets.any { it.equals(trimmedSnippet, ignoreCase = true) }) {
+            selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(trimmedSnippet, ignoreCase = true) }
+            saveFilterState()
+        }
+
+        showSnackbar("Removed '$trimmedSnippet' from selected photos")
+        clearSelection()
+    }
+
+    fun bulkClearSnippets(photoIds: Set<String>) {
+        if (photoIds.isEmpty()) return
+        
+        photos = photos.map { photo ->
+            if (photoIds.contains(photo.id)) {
+                cancelMemoryNotification(photo.id)
+                photo.copy(
+                    snippets = emptyList(),
+                    snippetsAddedTime = 0L
+                )
+            } else photo
+        }
+        savePhotos()
+        
+        val allExistingSnippets = photos.flatMap { it.snippets }.toSet()
+        snippetFirstSeenTimes = snippetFirstSeenTimes.filterKeys { it in allExistingSnippets }
+        saveSnippetFirstSeenTimes()
+        
+        selectedFilterSnippets = selectedFilterSnippets.filter { it in allExistingSnippets }
+        saveFilterState()
+        
+        showSnackbar("Cleared all snippets from selected photos")
+        clearSelection()
+    }
+
+    fun confirmBulkSnippetApply() {
+        val snippet = pendingSnippetToApply ?: return
+        val trimmed = snippet.trim()
+        val now = System.currentTimeMillis()
+        if (!snippetFirstSeenTimes.containsKey(trimmed)) {
+            snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
+            saveSnippetFirstSeenTimes()
+        }
+
+        var skippedCount = 0
+        photos = photos.map { photo ->
+            if (selectedPhotoIds.contains(photo.id)) {
+                if (photo.snippets.size >= 6 && !photo.snippets.contains(trimmed)) {
+                    skippedCount++
+                    photo
+                } else {
+                    val updatedSnippets = (photo.snippets + trimmed).distinct()
+                    photo.copy(
+                        snippets = updatedSnippets,
+                        snippetsAddedTime = now,
+                        surfacedTime = 0L
+                    )
+                }
+            } else photo
+        }
+        savePhotos()
+        reconcileSurfacedMemories()
+
+        val count = selectedPhotoIds.size
+        if (skippedCount > 0) {
+            showSnackbar("Added '$trimmed' to selected photos ($skippedCount skipped because they reached the limit of 6 snippets)")
+        } else {
+            showSnackbar("Added '$trimmed' to $count photos")
+        }
+        clearSelection()
     }
 
     fun updateShowTimeInMemories(show: Boolean) {

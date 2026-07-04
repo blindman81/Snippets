@@ -121,22 +121,30 @@ fun SelectionToolbar(
                     isSpinning = isSpinning
                 )
 
+                val textToShow = when {
+                    viewModel.pendingCollectionAssignment != null -> "Add to ${viewModel.pendingCollectionAssignment} (${viewModel.selectedPhotoIds.size})"
+                    viewModel.pendingCollectionRemoval != null -> "Remove from ${viewModel.pendingCollectionRemoval} (${viewModel.selectedPhotoIds.size})"
+                    viewModel.pendingSnippetToApply != null -> "Add '${viewModel.pendingSnippetToApply}' (${viewModel.selectedPhotoIds.size})"
+                    else -> viewModel.selectedPhotoIds.size.toString()
+                }
                 Text(
-                    text = viewModel.selectedPhotoIds.size.toString(),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    text = textToShow,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null) {
+                if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null || viewModel.pendingSnippetToApply != null) {
                     AnimatedCookieButton(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             if (viewModel.pendingCollectionAssignment != null) {
                                 viewModel.confirmCollectionAssignment()
-                            } else {
+                            } else if (viewModel.pendingCollectionRemoval != null) {
                                 viewModel.confirmCollectionRemoval()
+                            } else if (viewModel.pendingSnippetToApply != null) {
+                                viewModel.confirmBulkSnippetApply()
                             }
                         },
                         icon = Icons.Default.Check,
@@ -147,18 +155,50 @@ fun SelectionToolbar(
                         isSpinning = isSpinning
                     )
                 } else {
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                            onDeleteClick()
-                        },
-                        icon = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        size = 44.dp,
-                        isSpinning = isSpinning
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val isFav = viewModel.isAllSelectedFavorited
+                        AnimatedCookieButton(
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                viewModel.bulkFavoriteSelection()
+                            },
+                            icon = Icons.Default.Favorite,
+                            contentDescription = "Favorite",
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = if (isFav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f),
+                            size = 44.dp,
+                            isSpinning = isSpinning
+                        )
+
+                        AnimatedCookieButton(
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                viewModel.showBulkEditSnippetsDialog = true
+                            },
+                            icon = Icons.Default.TextSnippet,
+                            contentDescription = "Edit Snippets",
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            size = 44.dp,
+                            isSpinning = isSpinning
+                        )
+
+                        AnimatedCookieButton(
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                                onDeleteClick()
+                            },
+                            icon = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            size = 44.dp,
+                            isSpinning = isSpinning
+                        )
+                    }
                 }
             }
         }
