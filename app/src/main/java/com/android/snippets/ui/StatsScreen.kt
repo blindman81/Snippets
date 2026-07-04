@@ -27,9 +27,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.TextSnippet
 import com.android.snippets.ui.components.MainTopBar
 import com.android.snippets.viewmodel.SnippetsViewModel
 import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,6 +120,11 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
             .groupingBy { it }
             .eachCount()
             .maxByOrNull { it.value }
+    }
+
+    // 6. Average snippets per photo
+    val averageSnippets = remember(totalPhotos, totalSnippetsCount) {
+        if (totalPhotos == 0) 0f else totalSnippetsCount.toFloat() / totalPhotos
     }
 
     Scaffold(
@@ -234,6 +241,15 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     title = "Photos this month",
                     value = "$photosThisMonthCount ${if (photosThisMonthCount == 1) "photo" else "photos"}",
                     subtitle = "Added in the current calendar month",
+                    position = CardPosition.Middle
+                )
+
+                // 6. Average snippets card
+                InsightCard(
+                    icon = Icons.Default.TextSnippet,
+                    title = "Average snippets",
+                    value = String.format(Locale.US, "%.1f", averageSnippets),
+                    subtitle = "Average number of snippets per photo",
                     position = CardPosition.Middle
                 )
 
