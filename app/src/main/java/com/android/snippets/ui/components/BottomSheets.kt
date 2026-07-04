@@ -221,9 +221,9 @@ fun ExpressiveSnippetTemplatesBottomSheet(
 
                     SettingsCardItem(
                         icon = Icons.Default.Add,
-                        title = "Create custom snippet...",
+                        title = "Create custom snippet",
                         subtitle = "Write a new snippet and add to photo(s)",
-                        position = CardPosition.First,
+                        position = CardPosition.Single,
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
