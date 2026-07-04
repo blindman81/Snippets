@@ -549,12 +549,21 @@ fun SnippetsDetailContent(
             isTransitionTarget = isTransitionTarget,
             modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize()
         )
-
-        // Snippets on the bottom of the screen (Horizontal Pill Carousel)
+        // Snippets on the bottom of the screen (Full Width/Bottom Screen Layout)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+                )
                 .navigationBarsPadding()
                 .then(
                     if (animatedVisibilityScope != null) {
@@ -567,32 +576,77 @@ fun SnippetsDetailContent(
                         }
                     } else Modifier
                 )
-                .padding(bottom = 36.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 48.dp, bottom = 32.dp),
             contentAlignment = Alignment.Center
         ) {
             val pureSnippets = photo.snippets
-            val total = pureSnippets.size
-            val lazyListState = rememberLazyListState()
 
-            LazyRow(
-                state = lazyListState,
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
                     .widthIn(max = 600.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                itemsIndexed(pureSnippets) { index, snippet ->
-                    CloudSnippetItem(
+                pureSnippets.forEachIndexed { index, snippet ->
+                    val style = viewModel.getSnippetStyle(snippet)
+                    val color = viewModel.getSnippetColor(snippet)
+                    
+                    val stableRandom = remember(snippet) { Random(snippet.hashCode()) }
+                    val colorStrategy = (index + stableRandom.nextInt(0, 10)) % 3
+                    val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
+                    
+                    val baseSnippetColor = if (color != null) {
+                        Color(color)
+                    } else {
+                        when (colorStrategy) {
+                            0 -> MaterialTheme.colorScheme.primary
+                            1 -> {
+                                val themeColors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.secondary,
+                                    MaterialTheme.colorScheme.tertiary,
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                themeColors[stableRandom.nextInt(themeColors.size)]
+                            }
+                            else -> {
+                                val vividColors = if (isDark) listOf(
+                                    Color(0xFFFF8A65), Color(0xFFF06292), Color(0xFFBA68C8),
+                                    Color(0xFF4DD0E1), Color(0xFF81C784), Color(0xFFFFD54F)
+                                ) else listOf(
+                                    Color(0xFFD84315), Color(0xFFC2185B), Color(0xFF7B1FA2),
+                                    Color(0xFF0097A7), Color(0xFF388E3C), Color(0xFFFFA000)
+                                )
+                                vividColors[stableRandom.nextInt(vividColors.size)]
+                            }
+                        }
+                    }
+
+                    val snippetColor = remember(baseSnippetColor, isDark) {
+                        val lum = baseSnippetColor.let { 0.299f * it.red + 0.587f * it.green + 0.114f * it.blue }
+                        if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
+                        else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
+                        else baseSnippetColor
+                    }
+
+                    val snippetGradient = remember(snippetColor) {
+                        Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.75f)))
+                    }
+
+                    val textStyle = getSnippetTextStyle(
+                        style = style ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                        base = MaterialTheme.typography.displaySmall,
+                        isCloud = true
+                    ).copy(
+                        brush = snippetGradient,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
                         text = snippet,
-                        index = index,
-                        totalCount = total,
-                        photoColors = emptyList(),
-                        forcedColor = viewModel.getSnippetColor(snippet),
-                        forcedStyle = viewModel.getSnippetStyle(snippet),
-                        isSegmented = true
+                        style = textStyle,
+                        modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
             }
