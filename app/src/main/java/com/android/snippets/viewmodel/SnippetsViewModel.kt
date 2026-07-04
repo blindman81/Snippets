@@ -34,7 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, PhotosCarousel, Stats }
+enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, ChooseShape, Filter, PhotosCarousel, Stats }
 enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
@@ -226,6 +226,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun navigatePhotosCarousel() {
         previousScreen = currentScreen
         currentScreen = Screen.PhotosCarousel
+    }
+
+    fun navigateChooseShape() {
+        previousScreen = currentScreen
+        currentScreen = Screen.ChooseShape
     }
 
 
@@ -1577,6 +1582,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             Screen.About,
             Screen.Stats -> navigateLibrary()
             Screen.SelectIcon,
+            Screen.ChooseShape,
             Screen.PhotosCarousel -> {
                 currentScreen = previousScreen
             }

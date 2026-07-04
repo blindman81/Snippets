@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalView
 import android.view.HapticFeedbackConstants
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.ThemePreference
+import com.android.snippets.viewmodel.Screen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -77,7 +78,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
     
     var showThemeDialog by remember { mutableStateOf(false) }
     var showCanvasDialog by remember { mutableStateOf(false) }
-    var showShapeDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val isScrolled by remember { derivedStateOf<Boolean> { scrollState.value > 0 } }
     
@@ -100,7 +100,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     viewModel.navigateLibrary()
                 },
                 navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-                isSpinning = !(showThemeDialog || showCanvasDialog || showShapeDialog),
+                isSpinning = !(showThemeDialog || showCanvasDialog),
                 isScrolled = isScrolled,
                 leftAlignTitle = true
             )
@@ -244,7 +244,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 subtitle = viewModel.selectedShape.displayName,
                 onClick = { 
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    showShapeDialog = true 
+                    viewModel.navigateChooseShape()
                 },
                 position = CardPosition.First
             )
@@ -273,98 +273,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
          }
      }
  }
-
-     if (showShapeDialog) {
-         AlertDialog(
-             onDismissRequest = { showShapeDialog = false },
-             title = {
-                 Text(
-                     text = "Choose Shape",
-                     style = MaterialTheme.typography.titleLarge,
-                     fontWeight = FontWeight.Bold
-                 )
-             },
-             text = {
-                 Column(
-                     modifier = Modifier
-                         .fillMaxWidth()
-                         .verticalScroll(rememberScrollState())
-                         .padding(vertical = 8.dp),
-                     verticalArrangement = Arrangement.spacedBy(10.dp)
-                 ) {
-                     AppShape.values().toList().chunked(4).forEach { rowShapes ->
-                         Row(
-                             modifier = Modifier.fillMaxWidth(),
-                             horizontalArrangement = Arrangement.spacedBy(10.dp)
-                         ) {
-                             rowShapes.forEach { shape ->
-                                 val isSelected = viewModel.selectedShape == shape
-                                 Box(
-                                     modifier = Modifier
-                                         .weight(1f)
-                                         .aspectRatio(1f)
-                                         .clip(RoundedCornerShape(16.dp))
-                                         .background(
-                                             if (isSelected) MaterialTheme.colorScheme.secondaryContainer 
-                                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                         )
-                                         .then(
-                                             if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(16.dp))
-                                             else Modifier
-                                         )
-                                         .clickable {
-                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                             viewModel.updateSelectedShape(shape)
-                                             showShapeDialog = false
-                                         }
-                                         .padding(6.dp),
-                                     contentAlignment = Alignment.Center
-                                 ) {
-                                     Box(
-                                         modifier = Modifier
-                                             .size(42.dp)
-                                             .clip(shape.toComposeShape())
-                                             .background(
-                                                 androidx.compose.ui.graphics.Brush.linearGradient(
-                                                     colors = listOf(
-                                                         MaterialTheme.colorScheme.primary,
-                                                         MaterialTheme.colorScheme.secondary
-                                                     )
-                                                 )
-                                             )
-                                     )
-                                     if (isSelected) {
-                                         Box(
-                                             modifier = Modifier
-                                                 .align(Alignment.TopEnd)
-                                                 .size(18.dp)
-                                                 .background(MaterialTheme.colorScheme.secondary, CircleShape),
-                                             contentAlignment = Alignment.Center
-                                         ) {
-                                             Icon(
-                                                 imageVector = Icons.Default.Check,
-                                                 contentDescription = "Selected",
-                                                 tint = MaterialTheme.colorScheme.onSecondary,
-                                                 modifier = Modifier.size(12.dp)
-                                             )
-                                         }
-                                     }
-                                 }
-                             }
-                             repeat(4 - rowShapes.size) {
-                                 Spacer(modifier = Modifier.weight(1f))
-                             }
-                         }
-                     }
-                 }
-             },
-             confirmButton = {
-                 TextButton(onClick = { showShapeDialog = false }) {
-                     Text("Close")
-                 }
-             }
-         )
-     }
 }
 
 @Composable
@@ -384,7 +292,6 @@ private fun settingsSwitchColors(useDarkTheme: Boolean): SwitchColors {
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
 private fun ButtonGroupScope.themeToggleableItem(
     weight: Float,
     checked: Boolean,

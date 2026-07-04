@@ -21,6 +21,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.wrapContentSize
+import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.toComposeShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
 
 @Composable
 fun HeartBrokenBoltIcon(): ImageVector {
@@ -330,7 +336,107 @@ fun CollectionIcon(
     modifier: Modifier = Modifier,
     tint: Color = LocalContentColor.current
 ) {
-    if (icon is String) {
+    if (icon is AppShape) {
+        val isSelected = tint == MaterialTheme.colorScheme.onPrimary
+        
+        var scaleX = 1f
+        var scaleY = 1f
+        var rotationZ = 0f
+        var translateX = 0f
+        var translateY = 0f
+
+        if (isSelected) {
+            val infiniteTransition = rememberInfiniteTransition(label = "shape_anim")
+            
+            when (icon) {
+                AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
+                    rotationZ = infiniteTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(12000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        ),
+                        label = "spin"
+                    ).value
+                }
+                AppShape.GEM, AppShape.SQUARE -> {
+                    rotationZ = infiniteTransition.animateFloat(
+                        initialValue = -12f,
+                        targetValue = 12f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(2000, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "sway"
+                    ).value
+                }
+                AppShape.PENTAGON, AppShape.COOKIE_4_SIDED -> {
+                    val scale = infiniteTransition.animateFloat(
+                        initialValue = 0.94f,
+                        targetValue = 1.06f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1500, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "pulse"
+                    ).value
+                    scaleX = scale
+                    scaleY = scale
+                }
+                AppShape.CLOVER_4_LEAF -> {
+                    translateY = infiniteTransition.animateFloat(
+                        initialValue = -4f,
+                        targetValue = 4f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1500, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "translateY"
+                    ).value
+                }
+                AppShape.CLOVER_8_LEAF -> {
+                    translateX = infiniteTransition.animateFloat(
+                        initialValue = -4f,
+                        targetValue = 4f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1500, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "translateX"
+                    ).value
+                }
+            }
+        }
+
+        val brush = if (isSelected) {
+            androidx.compose.ui.graphics.Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.onPrimary,
+                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                )
+            )
+        } else {
+            androidx.compose.ui.graphics.Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.secondary
+                )
+            )
+        }
+        Box(
+            modifier = modifier
+                .graphicsLayer {
+                    this.rotationZ = rotationZ
+                    this.scaleX = scaleX
+                    this.scaleY = scaleY
+                    this.translationX = translateX.dp.toPx()
+                    this.translationY = translateY.dp.toPx()
+                }
+                .clip(icon.toComposeShape())
+                .background(brush)
+        )
+    } else if (icon is String) {
         BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
             val fontSize = (minOf(maxWidth, maxHeight) * 1.0f).value.sp
             Text(
