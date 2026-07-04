@@ -56,7 +56,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             MainTopBar(
-                title = "Snippet Templates",
+                title = "Add Snippets",
                 onNavigationClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     viewModel.navigateLibrary()

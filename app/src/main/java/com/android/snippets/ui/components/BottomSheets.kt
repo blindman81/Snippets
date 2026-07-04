@@ -126,7 +126,7 @@ fun MenuBottomSheet(
 
                     SettingsCardItem(
                         icon = Icons.Default.AddPhotoAlternate,
-                        title = "Add snippet to a photo",
+                        title = "Add Snippets",
                         position = CardPosition.Middle,
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         onClick = {
