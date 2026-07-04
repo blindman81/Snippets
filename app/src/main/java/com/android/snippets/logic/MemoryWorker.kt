@@ -55,7 +55,8 @@ class MemoryWorker(context: Context, params: WorkerParameters) : Worker(context,
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(notificationId(photoId))
-            val remaining = postedIds(context) - photoId
+            clearPostedNotificationState(context, photoId)
+            val remaining = postedIds(context)
             if (remaining.isEmpty()) {
                 notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
             }
