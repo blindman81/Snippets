@@ -580,6 +580,17 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 userCollections = loadedCollections
                 collectionIcons = loadedIcons
                 isInitialLoading = false
+
+                // Clean up any filter snippets that no longer exist in any photo (prevents stuck empty state)
+                val allExistingSnippets = merged.flatMap { it.snippets }.toSet()
+                val validFilters = selectedFilterSnippets.filter { filter ->
+                    allExistingSnippets.any { it.equals(filter, ignoreCase = true) }
+                }
+                if (validFilters.size != selectedFilterSnippets.size) {
+                    selectedFilterSnippets = validFilters
+                    saveFilterState()
+                }
+
                 saveSnippetFirstSeenTimes()
                 reconcileSurfacedMemories()
                 reconcileMemoryNotifications()
