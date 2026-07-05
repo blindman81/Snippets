@@ -41,7 +41,16 @@ val GoogleSansFlexTall = FontFamily(
 )
 
 val GoogleSansFlexHeavy = FontFamily(Font(resId = R.font.google_sans_flex, variationSettings = FontVariation.Settings(FontVariation.weight(1000), roundness(100f))))
-val GoogleSansFlexWide = FontFamily(Font(resId = R.font.google_sans_flex, variationSettings = FontVariation.Settings(FontVariation.width(151f), roundness(100f))))
+val GoogleSansFlexWide = FontFamily(
+    Font(R.font.google_sans_flex, weight = FontWeight.Thin, variationSettings = FontVariation.Settings(FontVariation.weight(100), FontVariation.width(151f), roundness(100f))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Light, variationSettings = FontVariation.Settings(FontVariation.weight(300), FontVariation.width(151f), roundness(100f))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400), FontVariation.width(151f), roundness(100f))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500), FontVariation.width(151f), roundness(100f))),
+    Font(R.font.google_sans_flex, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600), FontVariation.width(151f), roundness(100f))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700), FontVariation.width(151f), roundness(100f))),
+    Font(R.font.google_sans_flex, weight = FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800), FontVariation.width(151f), roundness(100f))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Black, variationSettings = FontVariation.Settings(FontVariation.weight(900), FontVariation.width(151f), roundness(100f)))
+)
 val GoogleSansFlexOptical = FontFamily(Font(resId = R.font.google_sans_flex, variationSettings = FontVariation.Settings(FontVariation.Setting("opsz", 144f), roundness(100f))))
 val GoogleSansFlexSlant = FontFamily(Font(resId = R.font.google_sans_flex, variationSettings = FontVariation.Settings(FontVariation.slant(-10f), roundness(100f))))
 val GoogleSansFlexGrade = FontFamily(Font(resId = R.font.google_sans_flex, variationSettings = FontVariation.Settings(grade(100f), roundness(100f))))
