@@ -13,7 +13,7 @@ Created with Antigravity, Codex, and Stitch (only in the early development stage
 <table>
   <tr>
     <td width="25%"><img src="https://github.com/user-attachments/assets/64e8df83-e4c0-4d62-9d89-0a020319acc2" width="100%" /></td>
-    <td width="25%"><img src="https://github.com/user-attachments/assets/d617bc57-e590-4e5f-848f-3ec16a666595" width="100%" /></td>
+    <td width="25%"><img src="https://github.com/user-attachments/assets/856c5f6c-730b-4d2f-8959-b6c861080e5b" width="100%" /></td>
     <td width="25%"><img src="https://github.com/user-attachments/assets/cc32433c-b217-448c-99fe-b7ca54eabb47" width="100%" /></td>
     <td width="25%"><img src="https://github.com/user-attachments/assets/fe024309-1acb-48fa-8e76-5cc32b1e294b" width="100%" /></td>
     <td width="25%"><img
