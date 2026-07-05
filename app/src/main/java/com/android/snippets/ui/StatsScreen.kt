@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.TextSnippet
 import com.android.snippets.ui.components.MainTopBar
 import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.SnippetStyle
 import java.util.Calendar
 import java.util.Locale
 
@@ -127,6 +128,37 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
         if (totalPhotos == 0) 0f else totalSnippetsCount.toFloat() / totalPhotos
     }
 
+    // 7. Most used style
+    val mostUsedStyleEntry = remember(allSnippets) {
+        if (allSnippets.isEmpty()) null
+        else {
+            allSnippets.map { viewModel.getSnippetStyle(it) }
+                .groupingBy { it }
+                .eachCount()
+                .maxByOrNull { it.value }
+        }
+    }
+
+    // 8. Most used color
+    val mostUsedColorEntry = remember(allSnippets) {
+        if (allSnippets.isEmpty()) null
+        else {
+            allSnippets.map { viewModel.getSnippetColor(it) ?: Int.MIN_VALUE }
+                .groupingBy { it }
+                .eachCount()
+                .maxByOrNull { it.value }
+        }
+    }
+
+    val badgeColor = remember(mostUsedColorEntry) {
+        val colorInt = mostUsedColorEntry?.key
+        if (colorInt != null && colorInt != Int.MIN_VALUE) {
+            Color(colorInt)
+        } else {
+            null
+        }
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         topBar = {
@@ -213,8 +245,27 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     icon = Icons.Default.AutoAwesome,
                     title = "Most used snippet",
                     value = mostUsedSnippetEntry?.key ?: "None yet",
-                    subtitle = if (mostUsedSnippetEntry != null) "${mostUsedSnippetEntry.value} photos" else "0 photos",
+                    subtitle = if (mostUsedSnippetEntry != null) "${mostUsedSnippetEntry.value} ${if (mostUsedSnippetEntry.value == 1) "photo" else "photos"}" else "0 photos",
                     position = CardPosition.First
+                )
+
+                // 1b. Most used style card
+                InsightCard(
+                    icon = Icons.Default.Style,
+                    title = "Most used style",
+                    value = mostUsedStyleEntry?.let { formatStyleName(it.key) } ?: "None yet",
+                    subtitle = if (mostUsedStyleEntry != null) "${mostUsedStyleEntry.value} ${if (mostUsedStyleEntry.value == 1) "use" else "uses"}" else "0 uses",
+                    position = CardPosition.Middle
+                )
+
+                // 1c. Most used color card
+                InsightCard(
+                    icon = Icons.Default.Palette,
+                    title = "Most used color",
+                    value = mostUsedColorEntry?.let { formatColorName(it.key) } ?: "None yet",
+                    subtitle = if (mostUsedColorEntry != null) "${mostUsedColorEntry.value} ${if (mostUsedColorEntry.value == 1) "use" else "uses"}" else "0 uses",
+                    position = CardPosition.Middle,
+                    badgeColor = badgeColor
                 )
 
                 // 2. Most photographed location card
@@ -222,7 +273,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     icon = Icons.Default.LocationOn,
                     title = "Most photographed location",
                     value = mostPhotographedLocationEntry?.key ?: "No location data",
-                    subtitle = if (mostPhotographedLocationEntry != null) "${mostPhotographedLocationEntry.value} photos" else "0 photos",
+                    subtitle = if (mostPhotographedLocationEntry != null) "${mostPhotographedLocationEntry.value} ${if (mostPhotographedLocationEntry.value == 1) "photo" else "photos"}" else "0 photos",
                     position = CardPosition.Middle
                 )
 
@@ -283,13 +334,46 @@ private fun StatSummaryItem(value: String, label: String) {
     }
 }
 
+private fun formatStyleName(style: SnippetStyle): String = when (style) {
+    SnippetStyle.Default -> "Default"
+    SnippetStyle.Thin -> "Thin"
+    SnippetStyle.Cursive -> "Cursive"
+    SnippetStyle.Mono -> "Mono"
+    SnippetStyle.Serif -> "Serif"
+    SnippetStyle.Spaced -> "Spaced"
+    SnippetStyle.Bold -> "Bold"
+    SnippetStyle.FlexHeavy -> "Flex Heavy"
+    SnippetStyle.FlexWide -> "Flex Wide"
+    SnippetStyle.FlexSlant -> "Flex Slanted"
+    SnippetStyle.FlexGrade -> "Flex Grade"
+}
+
+private fun formatColorName(colorInt: Int?): String {
+    if (colorInt == null || colorInt == Int.MIN_VALUE) return "Default"
+    return when (colorInt.toLong() and 0xFFFFFFFFL) {
+        0xFFEF5350L -> "Red"
+        0xFFEC407AL -> "Pink"
+        0xFFAB47BCL -> "Purple"
+        0xFF42A5F5L -> "Blue"
+        0xFF26A69AL -> "Teal"
+        0xFF66BB6AL -> "Green"
+        0xFFFFEE58L -> "Yellow"
+        0xFFFFA726L -> "Orange"
+        0xFF8D6E63L -> "Brown"
+        0xFF78909CL -> "Slate"
+        0xFFD4E157L -> "Lime"
+        else -> String.format("#%06X", 0xFFFFFF and colorInt)
+    }
+}
+
 @Composable
 private fun InsightCard(
     icon: ImageVector,
     title: String,
     value: String,
     subtitle: String,
-    position: CardPosition
+    position: CardPosition,
+    badgeColor: Color? = null
 ) {
     SettingsCardItem(
         icon = icon,
@@ -303,11 +387,27 @@ private fun InsightCard(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                )
+                ) {
+                    if (badgeColor != null) {
+                        Surface(
+                            modifier = Modifier.size(12.dp),
+                            shape = CircleShape,
+                            color = badgeColor,
+                            border = androidx.compose.foundation.BorderStroke(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+                            )
+                        ) {}
+                    }
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
         }
     )
