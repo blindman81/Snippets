@@ -36,7 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, ChooseShape, Filter, PhotosCarousel, Stats, Templates }
 enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
-enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets }
+enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, MostStarred, LeastStarred }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
 
 enum class DisplayMode { Day, Week, Month }
@@ -465,6 +465,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             PhotoSortType.DateOldest -> baseList.sortedBy { it.date }
             PhotoSortType.MostSnippets -> baseList.sortedWith(compareByDescending<Photo> { it.snippets.size }.thenByDescending { it.date })
             PhotoSortType.LeastSnippets -> baseList.sortedWith(compareBy<Photo> { it.snippets.size }.thenByDescending { it.date })
+            PhotoSortType.MostStarred -> baseList.sortedWith(compareByDescending<Photo> { it.rating }.thenByDescending { it.date })
+            PhotoSortType.LeastStarred -> baseList.sortedWith(compareBy<Photo> { it.rating }.thenByDescending { it.date })
         }
     }
     
@@ -565,7 +567,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     widthPx = widthPx,
                     heightPx = heightPx,
                     isPublic = p.isPublic,
-                    locationLink = p.locationLink
+                    locationLink = p.locationLink,
+                    locationName = p.locationName,
+                    rating = p.rating
                 )
             }
 
@@ -675,13 +679,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     private fun savePhotos(): kotlinx.coroutines.Job {
         val snapshot = photos // Capture on main thread immediately — avoids race if photos mutates before IO runs
         return viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            storageMutex.withLock {
-                try {
-                    val json = gson.toJson(snapshot)
-                    photosFile.writeText(json)
-                    BackupManager(getApplication()).dataChanged()
-                } catch (e: Exception) {
-                    e.printStackTrace()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                storageMutex.withLock {
+                    try {
+                        val json = gson.toJson(snapshot)
+                        photosFile.writeText(json)
+                        BackupManager(getApplication()).dataChanged()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
         }
@@ -1480,6 +1486,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         savePhotos()
     }
 
+    fun setPhotoRating(photoId: String, rating: Int) {
+        photos = photos.map {
+            if (it.id == photoId) it.copy(rating = rating) else it
+        }
+        savePhotos()
+    }
+
     fun togglePublicStatus(photoId: String) {
         photos = photos.map {
             if (it.id == photoId) it.copy(isPublic = !it.isPublic) else it
@@ -1865,23 +1878,23 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             return
         }
 
-        // Rebuild list on Default dispatcher so the main thread is never stalled
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            val updated = photos.map {
-                if (it.id == id) it.copy(isViewed = true, lastViewedTime = now) else it
-            }
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                photos = updated
-            }
-            savePhotos()
+        // Rebuild list synchronously on the Main thread to prevent race conditions
+        val updated = photos.map {
+            if (it.id == id) it.copy(isViewed = true, lastViewedTime = now) else it
         }
+        photos = updated
+        savePhotos()
+
+        // Immediately cancel the posted notification and clear its posted state
+        MemoryWorker.cancelPostedNotification(getApplication(), id)
+
         scheduleMemoryNotification(
             photoId = id,
             delay = VIEWED_MEMORY_RESET_MS,
             delayUnit = TimeUnit.MILLISECONDS,
             notificationType = MemoryWorker.TYPE_RESURFACED,
             policy = androidx.work.ExistingWorkPolicy.REPLACE,
-            resetPostedState = true
+            resetPostedState = false
         )
     }
 
@@ -2000,6 +2013,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             PhotoSortType.DateOldest -> baseList.sortedBy { it.date }
             PhotoSortType.MostSnippets -> baseList.sortedWith(compareByDescending<Photo> { it.snippets.size }.thenByDescending { it.date })
             PhotoSortType.LeastSnippets -> baseList.sortedWith(compareBy<Photo> { it.snippets.size }.thenByDescending { it.date })
+            PhotoSortType.MostStarred -> baseList.sortedWith(compareByDescending<Photo> { it.rating }.thenByDescending { it.date })
+            PhotoSortType.LeastStarred -> baseList.sortedWith(compareBy<Photo> { it.rating }.thenByDescending { it.date })
         }
     }
 
@@ -2015,8 +2030,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         mode: DisplayMode = displayMode,
         sort: PhotoSortType = photoSortType
     ): Map<String, List<Photo>> {
-        if (sort == PhotoSortType.MostSnippets || sort == PhotoSortType.LeastSnippets) {
-            val label = if (sort == PhotoSortType.MostSnippets) "Most Snippets" else "Least Snippets"
+        if (sort == PhotoSortType.MostSnippets || sort == PhotoSortType.LeastSnippets ||
+            sort == PhotoSortType.MostStarred || sort == PhotoSortType.LeastStarred) {
+            val label = when (sort) {
+                PhotoSortType.MostSnippets -> "Most Snippets"
+                PhotoSortType.LeastSnippets -> "Least Snippets"
+                PhotoSortType.MostStarred -> "Most Starred"
+                PhotoSortType.LeastStarred -> "Least Starred"
+                else -> ""
+            }
             return mapOf(label to source)
         }
         val now = System.currentTimeMillis()
@@ -2175,6 +2197,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun getCollectionIcon(collectionName: String): Any {
+        if (collectionName == "Eatlist") return com.ln.android.snippets.R.drawable.ic_eatlist
         if (collectionName == "Favorites") return Icons.Default.Favorite
         val iconName = collectionIcons[collectionName] ?: return Icons.Default.Folder
         

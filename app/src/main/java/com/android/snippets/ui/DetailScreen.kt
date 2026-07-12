@@ -220,6 +220,7 @@ fun DetailScreen(
     var showCurrentSnippetsModal by remember { mutableStateOf(false) }
     var showAddModal by remember { mutableStateOf(false) }
     var showDeleteModal by remember { mutableStateOf(false) }
+    var showRateModal by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.pendingOpenAddSnippetDialog, photo.id) {
         if (viewModel.pendingOpenAddSnippetDialog && viewModel.activePhotoId == photo.id) {
@@ -229,7 +230,7 @@ fun DetailScreen(
     }
 
     val context = LocalContext.current
-    val isAnyPopupActive = showCurrentSnippetsModal || showAddModal || showDeleteModal
+    val isAnyPopupActive = showCurrentSnippetsModal || showAddModal || showDeleteModal || showRateModal
     
     val scrollStates = remember { mutableStateMapOf<Int, Boolean>() }
     val isScrolled = scrollStates[pagerState.currentPage] ?: false
@@ -260,6 +261,7 @@ fun DetailScreen(
                     onEdit = { showCurrentSnippetsModal = true },
                     onShare = { viewModel.sharePhotoCard(context, photo, true, android.graphics.Color.BLACK) },
                     onDelete = { showDeleteModal = true },
+                    onRate = { showRateModal = true },
                     isFavorite = photo.isFavorite,
                     onToggleFavorite = { viewModel.toggleFavorite(photo.id) },
                     animatedVisibilityScope = animatedVisibilityScope
@@ -377,6 +379,17 @@ fun DetailScreen(
             onConfirm = { unpublish -> 
                 showDeleteModal = false
                 viewModel.deletePhoto(photo.id, unpublish = unpublish)
+            }
+        )
+    }
+
+    if (showRateModal) {
+        RatePhotoDialog(
+            initialRating = photo.rating,
+            onDismiss = { showRateModal = false },
+            onConfirm = { newRating ->
+                showRateModal = false
+                viewModel.setPhotoRating(photo.id, newRating)
             }
         )
     }
@@ -602,6 +615,132 @@ fun SnippetsDetailContent(
                         forcedStyle = viewModel.getSnippetStyle(snippet),
                         isSegmented = true
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RatePhotoDialog(
+    initialRating: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    var rating by remember { mutableStateOf(initialRating) }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shadowElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 360.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Rate Photo",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    IconButton(
+                        onClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                            if (rating > 0) rating--
+                        },
+                        enabled = rating > 0,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "Decrease rating",
+                            tint = if (rating > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(96.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_star_rating),
+                            contentDescription = "Star icon",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            shape = CircleShape,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = rating.toString(),
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    IconButton(
+                        onClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                            if (rating < 5) rating++
+                        },
+                        enabled = rating < 5,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Increase rating",
+                            tint = if (rating < 5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_END)
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                    ) {
+                        Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                            onConfirm(rating)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                    ) {
+                        Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

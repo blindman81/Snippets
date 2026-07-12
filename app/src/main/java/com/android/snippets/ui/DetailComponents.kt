@@ -1,4 +1,6 @@
 package com.android.snippets.ui
+import com.ln.android.snippets.R
+import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.*
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
@@ -97,6 +99,7 @@ fun DetailTopBar(
     onEdit: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
+    onRate: () -> Unit,
     isFavorite: Boolean = false,
     onToggleFavorite: () -> Unit = {},
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null
@@ -199,6 +202,11 @@ fun DetailTopBar(
                                         onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onEdit(); closeMenu() }
                                     )
                                 }
+                                DropdownMenuItem(
+                                    text = { Text("Rate") },
+                                    leadingIcon = { Icon(painterResource(id = R.drawable.ic_star_rating), null) },
+                                    onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onRate(); closeMenu() }
+                                )
                                 DropdownMenuItem(
                                     text = { Text("Delete") },
                                     leadingIcon = { Icon(Icons.Default.Delete, null) },
