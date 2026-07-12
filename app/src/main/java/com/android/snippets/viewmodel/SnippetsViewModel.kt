@@ -25,6 +25,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.exifinterface.media.ExifInterface
 import com.android.snippets.logic.MemoryWorker
+import com.android.snippets.logic.DailyReminderWorker
 import android.app.backup.BackupManager
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -53,6 +54,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         const val SURFACED_MEMORY_SPACING_HOURS = 3L
         const val TEST_NOTIFICATION_DELAY_SECONDS = 5L
         const val TEST_NOTIFICATION_PHOTO_ID = "test_notification"
+        const val DAILY_REMINDER_WORK_TAG = "daily_reminder_work"
 
         val NEW_MEMORY_WAIT_MS: Long = TimeUnit.HOURS.toMillis(NEW_MEMORY_NOTIFICATION_DELAY_HOURS)
         val VIEWED_MEMORY_VISIBLE_MS: Long = TimeUnit.HOURS.toMillis(VIEWED_MEMORY_VISIBLE_HOURS)
@@ -209,6 +211,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
 
     var searchHintsByTap by mutableStateOf(false)
+        private set
+    
+    var notificationReminderEnabled by mutableStateOf(false)
+        private set
+    var notificationReminderHour by mutableStateOf(9)
+        private set
+    var notificationReminderMinute by mutableStateOf(0)
         private set
     
     val separateCollectionSort = true
@@ -683,6 +692,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
         searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
+        notificationReminderEnabled = prefs.getBoolean("notification_reminder_enabled", false)
+        notificationReminderHour = prefs.getInt("notification_reminder_hour", 9)
+        notificationReminderMinute = prefs.getInt("notification_reminder_minute", 0)
     }
 
     private fun savePhotos(): kotlinx.coroutines.Job {
@@ -1315,6 +1327,52 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         WorkManager.getInstance(getApplication()).cancelUniqueWork(reminderName)
         WorkManager.getInstance(getApplication()).cancelAllWorkByTag(reminderName)
         MemoryWorker.cancelPostedNotification(getApplication(), photoId)
+    }
+
+    fun updateNotificationReminder(enabled: Boolean, hour: Int, minute: Int) {
+        notificationReminderEnabled = enabled
+        notificationReminderHour = hour
+        notificationReminderMinute = minute
+
+        prefs.edit()
+            .putBoolean("notification_reminder_enabled", enabled)
+            .putInt("notification_reminder_hour", hour)
+            .putInt("notification_reminder_minute", minute)
+            .apply()
+
+        if (enabled) {
+            scheduleDailyReminderWork(hour, minute)
+        } else {
+            cancelDailyReminderWork()
+        }
+    }
+
+    private fun scheduleDailyReminderWork(hour: Int, minute: Int) {
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        if (calendar.timeInMillis <= System.currentTimeMillis()) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        val delay = calendar.timeInMillis - System.currentTimeMillis()
+
+        val workRequest = OneTimeWorkRequestBuilder<DailyReminderWorker>()
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .addTag(DAILY_REMINDER_WORK_TAG)
+            .build()
+
+        WorkManager.getInstance(getApplication()).enqueueUniqueWork(
+            DAILY_REMINDER_WORK_TAG,
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
+    }
+
+    private fun cancelDailyReminderWork() {
+        WorkManager.getInstance(getApplication()).cancelUniqueWork(DAILY_REMINDER_WORK_TAG)
     }
 
     fun testNotification() {

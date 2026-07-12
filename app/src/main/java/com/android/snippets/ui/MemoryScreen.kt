@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.ui.shapes.LocalAppShapeType
 import com.android.snippets.ui.shapes.AppShape
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -41,6 +42,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,7 +54,9 @@ import androidx.core.view.WindowCompat
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.android.snippets.ui.util.rotateWithBounds
+import androidx.compose.ui.res.painterResource
 import com.android.snippets.viewmodel.Screen
+import com.ln.android.snippets.R
 import com.android.snippets.viewmodel.SnippetsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -410,14 +414,34 @@ fun MemoryScreen(
                     .padding(bottom = 8.dp)
             )
 
+            val activeIndex = (pagerState.settledPage - 1).coerceIn(0, photoList.size - 1)
+            val photo = photoList.getOrNull(activeIndex)
+
+            if (photo != null && photo.rating > 0) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (i in 1..5) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_star_rating),
+                            contentDescription = null,
+                            tint = if (i <= photo.rating) Color.White else Color.White.copy(alpha = 0.3f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
             // Date & Location Header Text
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val activeIndex = (pagerState.settledPage - 1).coerceIn(0, photoList.size - 1)
-                val photo = photoList.getOrNull(activeIndex)
                 val dateString = if (photo != null) {
                     val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
                     val timeFormat = if (is24Hour) "HH:mm" else "h:mm a"

@@ -8,9 +8,11 @@ import android.os.Build
 import androidx.compose.ui.graphics.toArgb
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.exifinterface.media.ExifInterface
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.core.content.FileProvider
 import com.android.snippets.model.Photo
+import com.ln.android.snippets.R
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.star
@@ -76,6 +78,17 @@ object MediaSaver {
                     put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Snippets")
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
+                try {
+                    val coords = LocationUtils.extractCoordinates(context, photo)
+                    if (coords != null) {
+                        @Suppress("DEPRECATION")
+                        put(MediaStore.Images.ImageColumns.LATITUDE, coords.first)
+                        @Suppress("DEPRECATION")
+                        put(MediaStore.Images.ImageColumns.LONGITUDE, coords.second)
+                    }
+                } catch (e: Exception) {
+                    // Ignore
+                }
             }
 
             val resolver = context.contentResolver
@@ -85,6 +98,19 @@ object MediaSaver {
                 val outputStream: OutputStream? = resolver.openOutputStream(uri)
                 outputStream?.use {
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it)
+                }
+                
+                try {
+                    val coords = LocationUtils.extractCoordinates(context, photo)
+                    if (coords != null) {
+                        resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                            val exif = ExifInterface(pfd.fileDescriptor)
+                            exif.setLatLong(coords.first, coords.second)
+                            exif.saveAttributes()
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
                 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -114,8 +140,19 @@ object MediaSaver {
             val stream = FileOutputStream(file)
             bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
             stream.close()
-            bitmap.recycle()
 
+            try {
+                val coords = LocationUtils.extractCoordinates(context, photo)
+                if (coords != null) {
+                    val exif = ExifInterface(file.absolutePath)
+                    exif.setLatLong(coords.first, coords.second)
+                    exif.saveAttributes()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            bitmap.recycle()
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -225,9 +262,45 @@ object MediaSaver {
             }
         }
 
+        // Adjust Y positions if there is a rating to make space above the day, date and time
+        val hasRating = photo.rating > 0
+        val dateY = if (hasRating) 220f else 200f
+        val pillTop = if (hasRating) 182f else 162f
+
+        if (hasRating) {
+            val starSize = 36f
+            val starSpacing = 10f
+            val totalStarsWidth = 5 * starSize + 4 * starSpacing
+            val starsStartX = (width - totalStarsWidth) / 2f
+            val starsY = 100f
+
+            val starDrawable = androidx.core.content.res.ResourcesCompat.getDrawable(
+                context.resources,
+                R.drawable.ic_star_rating,
+                null
+            )
+            if (starDrawable != null) {
+                for (i in 0 until 5) {
+                    val left = starsStartX + i * (starSize + starSpacing)
+                    val top = starsY
+                    val right = left + starSize
+                    val bottom = top + starSize
+                    starDrawable.setBounds(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
+                    
+                    val alpha = if (i < photo.rating) 255 else (255 * 0.3f).toInt()
+                    val tintedDrawable = starDrawable.mutate()
+                    androidx.core.graphics.drawable.DrawableCompat.setTint(
+                        tintedDrawable,
+                        Color.argb(alpha, 255, 255, 255)
+                    )
+                    tintedDrawable.draw(canvas)
+                }
+            }
+        }
+
         if (locationText.isNullOrBlank()) {
             datePaint.textAlign = Paint.Align.CENTER
-            canvas.drawText(dateString, width / 2f, 200f, datePaint)
+            canvas.drawText(dateString, width / 2f, dateY, datePaint)
         } else {
             datePaint.textAlign = Paint.Align.LEFT
             val dateWidth = datePaint.measureText(dateString)
@@ -246,10 +319,9 @@ object MediaSaver {
             val totalHeaderWidth = dateWidth + spacing + pillW
             val startX = (width - totalHeaderWidth) / 2f
 
-            canvas.drawText(dateString, startX, 200f, datePaint)
+            canvas.drawText(dateString, startX, dateY, datePaint)
 
             val pillLeft = startX + dateWidth + spacing
-            val pillTop = 162f
             val pillRight = pillLeft + pillW
             val pillBottom = pillTop + pillH
             val pillRect = RectF(pillLeft, pillTop, pillRight, pillBottom)
