@@ -579,7 +579,7 @@ Surface(
 
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             shadowElevation = 8.dp,
                             tonalElevation = 8.dp,
                             modifier = Modifier
@@ -663,7 +663,7 @@ Surface(
                         // â”€â”€ NORMAL MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             shadowElevation = 8.dp,
                             tonalElevation = 8.dp,
                             modifier = Modifier
