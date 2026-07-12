@@ -709,19 +709,12 @@ fun RateFoodDialog(
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.fillMaxSize()
                         )
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            shape = CircleShape,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = rating.toString(),
-                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                        Text(
+                            text = rating.toString(),
+                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
                     }
 
                     Spacer(modifier = Modifier.width(16.dp))
