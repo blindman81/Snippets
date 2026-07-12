@@ -712,7 +712,7 @@ fun RateFoodDialog(
                         Text(
                             text = rating.toString(),
                             style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }

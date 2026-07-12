@@ -527,7 +527,7 @@ fun PhotoMasonryItem(
                         Text(
                             text = photo.rating.toString(),
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
                             modifier = Modifier.padding(top = 1.dp)
                         )
                     }

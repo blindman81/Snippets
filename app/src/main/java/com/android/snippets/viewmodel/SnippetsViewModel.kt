@@ -447,10 +447,19 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         
     fun getPhotoSortTypeFor(tabName: String): PhotoSortType {
         if (tabName == "Library") return _photoSortType.value
-        return _collectionPhotoSortTypes.value[tabName] ?: PhotoSortType.DateNewest
+        val savedType = _collectionPhotoSortTypes.value[tabName] ?: PhotoSortType.DateNewest
+        if (tabName == "Eatlist") {
+            if (savedType != PhotoSortType.DateNewest && savedType != PhotoSortType.DateOldest) {
+                return PhotoSortType.DateNewest
+            }
+        }
+        return savedType
     }
 
     fun setPhotoSortTypeFor(tabName: String, sortType: PhotoSortType) {
+        if (tabName == "Eatlist" && sortType != PhotoSortType.DateNewest && sortType != PhotoSortType.DateOldest) {
+            return
+        }
         if (tabName == "Library") {
             _photoSortType.value = sortType
         } else {
@@ -2178,8 +2187,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         } else _displayMode.value
         
         val sort = if (separateCollectionSort && currentCollection != null) {
-            _collectionPhotoSortTypes.value[currentCollection] ?: PhotoSortType.DateNewest
-        } else _photoSortType.value
+            getPhotoSortTypeFor(currentCollection)
+        } else {
+            val globalSort = getPhotoSortTypeFor("Library")
+            if (currentCollection == "Eatlist" && globalSort != PhotoSortType.DateNewest && globalSort != PhotoSortType.DateOldest) {
+                PhotoSortType.DateNewest
+            } else {
+                globalSort
+            }
+        }
         
         groupPhotosByDate(source, mode, sort)
     }

@@ -872,64 +872,66 @@ Surface(
                                 }
                             }
 
-                            androidx.compose.material3.ButtonGroup(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
-                                overflowIndicator = {}
-                            ) {
-                                val snippetOptions = listOf(com.android.snippets.viewmodel.PhotoSortType.MostSnippets, com.android.snippets.viewmodel.PhotoSortType.LeastSnippets)
-                                val snippetLabels = listOf("Most snippets", "Least snippets")
-                                val snippetIcons = listOf(androidx.compose.material.icons.Icons.Default.TextSnippet, androidx.compose.material.icons.Icons.Default.TextSnippet)
+                            if (longPressedCollection != "Eatlist") {
+                                androidx.compose.material3.ButtonGroup(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
+                                    overflowIndicator = {}
+                                ) {
+                                    val snippetOptions = listOf(com.android.snippets.viewmodel.PhotoSortType.MostSnippets, com.android.snippets.viewmodel.PhotoSortType.LeastSnippets)
+                                    val snippetLabels = listOf("Most snippets", "Least snippets")
+                                    val snippetIcons = listOf(androidx.compose.material.icons.Icons.Default.TextSnippet, androidx.compose.material.icons.Icons.Default.TextSnippet)
 
-                                snippetOptions.forEachIndexed { index, option ->
-                                    val isSelected = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library") == option
-                                    surfaceContainerHighestToggleableItem(
-                                        weight = 1f,
-                                        checked = isSelected,
-                                        onCheckedChange = {
-                                            if (!isSelected) {
-                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                viewModel.setPhotoSortTypeFor(longPressedCollection ?: "Library", option)
-                                                listStates.values.forEach { state ->
-                                                    scope.launch { state.scrollToItem(0) }
+                                    snippetOptions.forEachIndexed { index, option ->
+                                        val isSelected = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library") == option
+                                        surfaceContainerHighestToggleableItem(
+                                            weight = 1f,
+                                            checked = isSelected,
+                                            onCheckedChange = {
+                                                if (!isSelected) {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                    viewModel.setPhotoSortTypeFor(longPressedCollection ?: "Library", option)
+                                                    listStates.values.forEach { state ->
+                                                        scope.launch { state.scrollToItem(0) }
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        icon = { Icon(snippetIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
-                                        label = snippetLabels[index]
-                                    )
+                                            },
+                                            icon = { Icon(snippetIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
+                                            label = snippetLabels[index]
+                                        )
+                                    }
                                 }
-                            }
 
-                            androidx.compose.material3.ButtonGroup(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
-                                overflowIndicator = {}
-                            ) {
-                                val starOptions = listOf(com.android.snippets.viewmodel.PhotoSortType.MostStarred, com.android.snippets.viewmodel.PhotoSortType.LeastStarred)
-                                val starLabels = listOf("Most starred", "Least starred")
+                                androidx.compose.material3.ButtonGroup(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
+                                    overflowIndicator = {}
+                                ) {
+                                    val starOptions = listOf(com.android.snippets.viewmodel.PhotoSortType.MostStarred, com.android.snippets.viewmodel.PhotoSortType.LeastStarred)
+                                    val starLabels = listOf("Most starred", "Least starred")
 
-                                starOptions.forEachIndexed { index, option ->
-                                    val isSelected = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library") == option
-                                    surfaceContainerHighestToggleableItem(
-                                        weight = 1f,
-                                        checked = isSelected,
-                                        onCheckedChange = {
-                                            if (!isSelected) {
-                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                viewModel.setPhotoSortTypeFor(longPressedCollection ?: "Library", option)
-                                                listStates.values.forEach { state ->
-                                                    scope.launch { state.scrollToItem(0) }
+                                    starOptions.forEachIndexed { index, option ->
+                                        val isSelected = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library") == option
+                                        surfaceContainerHighestToggleableItem(
+                                            weight = 1f,
+                                            checked = isSelected,
+                                            onCheckedChange = {
+                                                if (!isSelected) {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                    viewModel.setPhotoSortTypeFor(longPressedCollection ?: "Library", option)
+                                                    listStates.values.forEach { state ->
+                                                        scope.launch { state.scrollToItem(0) }
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        icon = { Icon(painterResource(id = R.drawable.ic_star_rating), null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
-                                        label = starLabels[index]
-                                    )
+                                            },
+                                            icon = { Icon(painterResource(id = R.drawable.ic_star_rating), null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
+                                            label = starLabels[index]
+                                        )
+                                    }
                                 }
                             }
 
