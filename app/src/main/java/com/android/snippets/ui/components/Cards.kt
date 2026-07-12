@@ -1,4 +1,6 @@
 package com.android.snippets.ui
+import com.ln.android.snippets.R
+import androidx.compose.ui.res.painterResource
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -501,6 +503,36 @@ fun PhotoMasonryItem(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+            
+            if (photo.rating > 0 && !isSelected) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = LocalAppShape.current,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(16.dp)
+                        .height(32.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_star_rating),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = photo.rating.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }

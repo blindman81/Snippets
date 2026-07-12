@@ -84,6 +84,13 @@ fun EmptyCollectionState() {
 }
 
 @Composable
+fun EmptyEatlistState() {
+    PremiumEmptyState(
+        icon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = com.ln.android.snippets.R.drawable.ic_eatlist)
+    )
+}
+
+@Composable
 fun EmptySearchState() {
     PremiumEmptyState(
         icon = SearchNoResultsIcon()

@@ -515,6 +515,13 @@ fun CollectionIcon(
             modifier = modifier,
             tint = tint
         )
+    } else if (icon is Int) {
+        Icon(
+            painter = androidx.compose.ui.res.painterResource(id = icon),
+            contentDescription = null,
+            modifier = modifier,
+            tint = tint
+        )
     }
 }
 
