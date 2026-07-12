@@ -384,7 +384,7 @@ fun DetailScreen(
     }
 
     if (showRateModal) {
-        RatePhotoDialog(
+        RateFoodDialog(
             initialRating = photo.rating,
             onDismiss = { showRateModal = false },
             onConfirm = { newRating ->
@@ -622,13 +622,35 @@ fun SnippetsDetailContent(
 }
 
 @Composable
-fun RatePhotoDialog(
+fun RateFoodDialog(
     initialRating: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
     val view = androidx.compose.ui.platform.LocalView.current
     var rating by remember { mutableStateOf(initialRating) }
+    
+    // Stamp animation for the star and count box
+    val scale = remember { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(rating) {
+        scale.snapTo(1f)
+        scale.animateTo(
+            targetValue = 0.75f,
+            animationSpec = tween(durationMillis = 80, easing = FastOutLinearInEasing)
+        )
+        scale.animateTo(
+            targetValue = 1.3f,
+            animationSpec = tween(durationMillis = 120, easing = LinearOutSlowInEasing)
+        )
+        scale.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        )
+    }
+
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             shape = RoundedCornerShape(28.dp),
@@ -642,7 +664,7 @@ fun RatePhotoDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Rate Photo",
+                    text = "Rate food",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.align(Alignment.Start)
@@ -674,7 +696,12 @@ fun RatePhotoDialog(
 
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(96.dp)
+                        modifier = Modifier
+                            .size(96.dp)
+                            .graphicsLayer {
+                                scaleX = scale.value
+                                scaleY = scale.value
+                            }
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_star_rating),
