@@ -93,9 +93,9 @@ fun SelectionToolbar(
     ) {
         Surface(
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 8.dp,
-            tonalElevation = 8.dp,
+            tonalElevation = 0.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(CircleShape)
