@@ -1909,7 +1909,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             photo.snippetsAddedTime != 0L &&
             (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
             (
-                (photo.surfacedTime != 0L && photo.surfacedTime <= now && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
+                (photo.surfacedTime != 0L && photo.surfacedTime <= now && now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
                 (photo.isViewed && now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS)
             )
         }.sortedWith(
