@@ -269,9 +269,9 @@ object MediaSaver {
 
         if (hasRating) {
             val scaleFactor = width / 360f
-            val starSize = 32f * scaleFactor
+            val starSize = 28f * scaleFactor
             val starLeft = (width - starSize) / 2f
-            val starTop = 100f
+            val starTop = 30f
 
             val starDrawable = androidx.core.content.res.ResourcesCompat.getDrawable(
                 context.resources,
@@ -287,7 +287,7 @@ object MediaSaver {
                 // Draw the rating number inside the star
                 val ratingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = Color.parseColor("#1F1F1F")
-                    textSize = 11f * scaleFactor
+                    textSize = 10f * scaleFactor
                     textAlign = Paint.Align.CENTER
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 }
