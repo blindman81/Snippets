@@ -434,6 +434,8 @@ fun PhotoMasonryItem(
         label = "scale"
     )
 
+    val iconColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -501,7 +503,7 @@ fun PhotoMasonryItem(
                         Icon(
                             Icons.Default.Favorite,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = iconColor,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -521,7 +523,7 @@ fun PhotoMasonryItem(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_star_rating),
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = iconColor,
                             modifier = Modifier.fillMaxSize().padding(4.dp)
                         )
                         Text(
