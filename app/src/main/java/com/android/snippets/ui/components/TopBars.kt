@@ -155,50 +155,18 @@ fun SelectionToolbar(
                         isSpinning = isSpinning
                     )
                 } else {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val isFav = viewModel.isAllSelectedFavorited
-                        AnimatedCookieButton(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                viewModel.bulkFavoriteSelection()
-                            },
-                            icon = Icons.Default.Favorite,
-                            contentDescription = "Favorite",
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = if (isFav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f),
-                            size = 44.dp,
-                            isSpinning = isSpinning
-                        )
-
-                        AnimatedCookieButton(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                viewModel.showBulkEditSnippetsDialog = true
-                            },
-                            icon = Icons.Default.TextSnippet,
-                            contentDescription = "Edit Snippets",
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            size = 44.dp,
-                            isSpinning = isSpinning
-                        )
-
-                        AnimatedCookieButton(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                                onDeleteClick()
-                            },
-                            icon = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            size = 44.dp,
-                            isSpinning = isSpinning
-                        )
-                    }
+                    AnimatedCookieButton(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                            onDeleteClick()
+                        },
+                        icon = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        size = 44.dp,
+                        isSpinning = isSpinning
+                    )
                 }
             }
         }
