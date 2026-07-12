@@ -68,4 +68,48 @@ object LocationUtils {
         val lngDir = if (lng >= 0) "E" else "W"
         return String.format(Locale.US, "%.2f°%s, %.2f°%s", Math.abs(lat), latDir, Math.abs(lng), lngDir)
     }
+
+    fun extractCoordinates(context: Context, photo: Photo): Pair<Double, Double>? {
+        photo.locationLink?.let { link ->
+            val parsed = parseCoordinatesFromLink(link)
+            if (parsed != null) return parsed
+        }
+        
+        try {
+            if (!photo.uriString.isNullOrBlank()) {
+                context.contentResolver.openInputStream(photo.uri)?.use { stream ->
+                    val exif = ExifInterface(stream)
+                    val latLong = exif.latLong
+                    if (latLong != null && latLong.size >= 2) {
+                        val lat = latLong[0]
+                        val lng = latLong[1]
+                        if (lat != 0.0 || lng != 0.0) {
+                            return Pair(lat, lng)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        return null
+    }
+
+    private fun parseCoordinatesFromLink(link: String): Pair<Double, Double>? {
+        val regex = """(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)""".toRegex()
+        val matchResult = regex.find(link)
+        if (matchResult != null) {
+            try {
+                val lat = matchResult.groupValues[1].toDoubleOrNull()
+                val lng = matchResult.groupValues[2].toDoubleOrNull()
+                if (lat != null && lng != null && lat in -90.0..90.0 && lng in -180.0..180.0) {
+                    return Pair(lat, lng)
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+        return null
+    }
 }

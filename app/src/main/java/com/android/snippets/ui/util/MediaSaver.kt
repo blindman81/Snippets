@@ -268,11 +268,10 @@ object MediaSaver {
         val pillTop = if (hasRating) 182f else 162f
 
         if (hasRating) {
-            val starSize = 36f
-            val starSpacing = 10f
-            val totalStarsWidth = 5 * starSize + 4 * starSpacing
-            val starsStartX = (width - totalStarsWidth) / 2f
-            val starsY = 100f
+            val scaleFactor = width / 360f
+            val starSize = 32f * scaleFactor
+            val starLeft = (width - starSize) / 2f
+            val starTop = 100f
 
             val starDrawable = androidx.core.content.res.ResourcesCompat.getDrawable(
                 context.resources,
@@ -280,21 +279,21 @@ object MediaSaver {
                 null
             )
             if (starDrawable != null) {
-                for (i in 0 until 5) {
-                    val left = starsStartX + i * (starSize + starSpacing)
-                    val top = starsY
-                    val right = left + starSize
-                    val bottom = top + starSize
-                    starDrawable.setBounds(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
-                    
-                    val alpha = if (i < photo.rating) 255 else (255 * 0.3f).toInt()
-                    val tintedDrawable = starDrawable.mutate()
-                    androidx.core.graphics.drawable.DrawableCompat.setTint(
-                        tintedDrawable,
-                        Color.argb(alpha, 255, 255, 255)
-                    )
-                    tintedDrawable.draw(canvas)
+                starDrawable.setBounds(starLeft.toInt(), starTop.toInt(), (starLeft + starSize).toInt(), (starTop + starSize).toInt())
+                val tintedDrawable = starDrawable.mutate()
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tintedDrawable, Color.WHITE)
+                tintedDrawable.draw(canvas)
+
+                // Draw the rating number inside the star
+                val ratingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#1F1F1F")
+                    textSize = 11f * scaleFactor
+                    textAlign = Paint.Align.CENTER
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 }
+                val textX = starLeft + starSize / 2f
+                val textY = starTop + starSize / 2f + (ratingPaint.textSize / 3f)
+                canvas.drawText(photo.rating.toString(), textX, textY, ratingPaint)
             }
         }
 

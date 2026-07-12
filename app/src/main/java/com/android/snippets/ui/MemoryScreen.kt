@@ -418,21 +418,28 @@ fun MemoryScreen(
             val photo = photoList.getOrNull(activeIndex)
 
             if (photo != null && photo.rating > 0) {
-                Row(
+                Box(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(bottom = 6.dp)
+                        .size(32.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    for (i in 1..5) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_star_rating),
-                            contentDescription = null,
-                            tint = if (i <= photo.rating) Color.White else Color.White.copy(alpha = 0.3f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_star_rating),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Text(
+                        text = photo.rating.toString(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        ),
+                        color = Color(0xFF1F1F1F),
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
                 }
             }
 
