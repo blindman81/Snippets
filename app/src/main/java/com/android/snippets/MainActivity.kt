@@ -94,9 +94,6 @@ class MainActivity : ComponentActivity() {
             splashScreenView.remove()
         }
 
-        
-
-
         handleNotificationIntent(intent)
         handleTileIntent(intent)
 

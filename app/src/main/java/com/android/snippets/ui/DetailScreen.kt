@@ -221,6 +221,7 @@ fun DetailScreen(
     var showAddModal by remember { mutableStateOf(false) }
     var showDeleteModal by remember { mutableStateOf(false) }
     var showRateModal by remember { mutableStateOf(false) }
+    var showLinkModal by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.pendingOpenAddSnippetDialog, photo.id) {
         if (viewModel.pendingOpenAddSnippetDialog && viewModel.activePhotoId == photo.id) {
@@ -230,7 +231,7 @@ fun DetailScreen(
     }
 
     val context = LocalContext.current
-    val isAnyPopupActive = showCurrentSnippetsModal || showAddModal || showDeleteModal || showRateModal
+    val isAnyPopupActive = showCurrentSnippetsModal || showAddModal || showDeleteModal || showRateModal || showLinkModal
     
     val scrollStates = remember { mutableStateMapOf<Int, Boolean>() }
     val isScrolled = scrollStates[pagerState.currentPage] ?: false
@@ -264,6 +265,8 @@ fun DetailScreen(
                     onRate = { showRateModal = true },
                     isFavorite = photo.isFavorite,
                     onToggleFavorite = { viewModel.toggleFavorite(photo.id) },
+                    hasLocationLink = !photo.locationLink.isNullOrBlank(),
+                    onAddLinkClick = { showLinkModal = true },
                     animatedVisibilityScope = animatedVisibilityScope
                 )
             }
@@ -390,6 +393,17 @@ fun DetailScreen(
             onConfirm = { newRating ->
                 showRateModal = false
                 viewModel.setPhotoRating(photo.id, newRating)
+            }
+        )
+    }
+
+    if (showLinkModal) {
+        LocationLinkModal(
+            initialLink = photo.locationLink,
+            onDismiss = { showLinkModal = false },
+            onSave = { link ->
+                showLinkModal = false
+                viewModel.updateLocationLink(photo.id, link.takeIf { it.isNotBlank() })
             }
         )
     }
@@ -756,6 +770,72 @@ fun RateFoodDialog(
                         onClick = {
                             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                             onConfirm(rating)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                    ) {
+                        Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LocationLinkModal(
+    initialLink: String?,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    val view = LocalView.current
+    var linkValue by remember { mutableStateOf(initialLink ?: "") }
+    
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 400.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = "Link to a place",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Paste a Google Maps or location link below.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                OutlinedTextField(
+                    value = linkValue,
+                    onValueChange = { linkValue = it },
+                    placeholder = { Text("https://maps.app.goo.gl/...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                    ) {
+                        Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onSave(linkValue)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                     ) {

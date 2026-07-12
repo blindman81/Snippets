@@ -3,6 +3,8 @@ package com.android.snippets.viewmodel
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -981,13 +983,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     }
                 }
 
-                val context = getApplication<Application>()
-                val extractedLocation = try {
-                    com.android.snippets.ui.util.LocationUtils.extractLocationFromUri(context, Uri.parse(internalUri))
-                } catch (e: Exception) {
-                    null
-                }
-
                 val newPhoto = Photo(
                     uriString = internalUri,
                     date = captureDate,
@@ -996,8 +991,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     isFavorite = isFavorite,
                     isLibraryUpload = true,
                     widthPx = widthPx,
-                    heightPx = heightPx,
-                    locationName = extractedLocation
+                    heightPx = heightPx
                 )
                 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -1040,12 +1034,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
             val internalUri = saveToInternalStorage(uri) ?: uri.toString()
             val (widthPx, heightPx) = extractImageDimensions(Uri.parse(internalUri))
-            val context = getApplication<Application>()
-            val extractedLocation = try {
-                com.android.snippets.ui.util.LocationUtils.extractLocationFromUri(context, Uri.parse(internalUri))
-            } catch (e: Exception) {
-                null
-            }
             val newPhoto = Photo(
                 uriString = internalUri,
                 date = captureDate,
@@ -1053,8 +1041,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 collections = listOf(collectionName),
                 isLibraryUpload = true,
                 widthPx = widthPx,
-                heightPx = heightPx,
-                locationName = extractedLocation
+                heightPx = heightPx
             )
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {

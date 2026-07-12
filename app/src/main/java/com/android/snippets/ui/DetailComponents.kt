@@ -102,6 +102,8 @@ fun DetailTopBar(
     onRate: () -> Unit,
     isFavorite: Boolean = false,
     onToggleFavorite: () -> Unit = {},
+    hasLocationLink: Boolean = false,
+    onAddLinkClick: () -> Unit = {},
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null
 ) {
     val view = LocalView.current
@@ -186,7 +188,24 @@ fun DetailTopBar(
                             }
                         }
 
-                        // Group 2: Edit & Delete
+                        // Group 2: Location link
+                        Surface(
+                            shape = menuGroupShape,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            shadowElevation = 4.dp,
+                            modifier = Modifier.clip(menuGroupShape)
+                        ) {
+                            Column {
+                                DropdownMenuItem(
+                                    text = { Text(if (hasLocationLink) "Edit location link" else "Link a place") },
+                                    leadingIcon = { Icon(Icons.Default.Place, null) },
+                                    onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onAddLinkClick(); closeMenu() }
+                                )
+                            }
+                        }
+
+                        // Group 3: Edit & Delete
                         Surface(
                             shape = menuGroupShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
