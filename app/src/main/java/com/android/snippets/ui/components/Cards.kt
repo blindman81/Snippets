@@ -490,7 +490,7 @@ fun PhotoMasonryItem(
 
             if (photo.isFavorite && !isSelected && showFavoriteIcon) {
                 Surface(
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = LocalAppShape.current,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -501,7 +501,7 @@ fun PhotoMasonryItem(
                         Icon(
                             Icons.Default.Favorite,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                            tint = Color.White,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -521,7 +521,7 @@ fun PhotoMasonryItem(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_star_rating),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            tint = Color.White,
                             modifier = Modifier.fillMaxSize().padding(4.dp)
                         )
                         Text(
