@@ -64,10 +64,11 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
         allSnippets.groupingBy { it }.eachCount().maxByOrNull { it.value }
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
     // 2. Most photographed location
-    val mostPhotographedLocationEntry = remember(photos) {
+    val mostPhotographedLocationEntry = remember(photos, context) {
         photos.mapNotNull { photo ->
-            val loc = photo.locationName?.trim()
+            val loc = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)?.trim()
             if (!loc.isNullOrEmpty()) loc else null
         }.groupingBy { it }.eachCount().maxByOrNull { it.value }
     }

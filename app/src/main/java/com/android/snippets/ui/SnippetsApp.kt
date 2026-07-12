@@ -45,7 +45,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     val scope = rememberCoroutineScope()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
+        contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { viewModel.addPhoto(it, isFavorite = viewModel.pendingFavoriteIntent) }
     }
@@ -92,7 +92,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     LaunchedEffect(viewModel.pendingAddPhotoIntentToken) {
         if (viewModel.pendingAddPhotoIntentToken != 0L) {
             viewModel.pendingFavoriteIntent = false
-            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            photoPickerLauncher.launch("image/*")
             viewModel.pendingAddPhotoIntentToken = 0L
         }
     }
@@ -144,7 +144,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                                     onAddPhotos = { tab ->
                                         if (tab == "Library") {
                                             viewModel.pendingFavoriteIntent = false
-                                            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                            photoPickerLauncher.launch("image/*")
                                         } else if (tab == "Favorites") {
                                             viewModel.startCollectionAssignment("Favorites")
                                         } else {
