@@ -371,7 +371,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = if (r > 0) "$r ★" else "0 ★",
+                                    text = r.toString(),
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
