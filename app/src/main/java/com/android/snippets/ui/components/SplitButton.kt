@@ -23,15 +23,10 @@ fun SplitButton(
     primaryText: String,
     onPrimaryClick: () -> Unit,
     dropdownContent: @Composable ColumnScope.(() -> Unit) -> Unit,
-    modifier: Modifier = Modifier,
-    onExpandedChange: ((Boolean) -> Unit)? = null
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val view = LocalView.current
-
-    LaunchedEffect(expanded) {
-        onExpandedChange?.invoke(expanded)
-    }
 
     // Animations for morphing between unselected and selected states
     val gap by animateDpAsState(

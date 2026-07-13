@@ -104,8 +104,7 @@ fun DetailTopBar(
     onToggleFavorite: () -> Unit = {},
     hasLocationLink: Boolean = false,
     onAddLinkClick: () -> Unit = {},
-    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null,
-    onSplitButtonExpandedChange: (Boolean) -> Unit = {}
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null
 ) {
     val view = LocalView.current
     Surface(
@@ -155,27 +154,16 @@ fun DetailTopBar(
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     onAdd()
                 },
-                onExpandedChange = onSplitButtonExpandedChange,
                 dropdownContent = { closeMenu ->
                     val menuGroupShape = RoundedCornerShape(12.dp)
-                    val cardColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f)
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    }
-                    val cardElevation = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        0.dp
-                    } else {
-                        4.dp
-                    }
 
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         // Group 1: Download, Share, Favorite
                         Surface(
                             shape = menuGroupShape,
-                            color = cardColor,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
-                            shadowElevation = cardElevation,
+                            shadowElevation = 4.dp,
                             modifier = Modifier.clip(menuGroupShape)
                         ) {
                             Column {
@@ -203,9 +191,9 @@ fun DetailTopBar(
                         // Group 2: Location link
                         Surface(
                             shape = menuGroupShape,
-                            color = cardColor,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
-                            shadowElevation = cardElevation,
+                            shadowElevation = 4.dp,
                             modifier = Modifier.clip(menuGroupShape)
                         ) {
                             Column {
@@ -220,9 +208,9 @@ fun DetailTopBar(
                         // Group 3: Edit & Delete
                         Surface(
                             shape = menuGroupShape,
-                            color = cardColor,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
-                            shadowElevation = cardElevation,
+                            shadowElevation = 4.dp,
                             modifier = Modifier.clip(menuGroupShape)
                         ) {
                             Column {

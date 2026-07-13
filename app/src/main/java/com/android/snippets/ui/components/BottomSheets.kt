@@ -58,17 +58,11 @@ fun MenuBottomSheet(
     view: android.view.View
 ) {
     if (show) {
-        val containerColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
-        }
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
-            containerColor = containerColor,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
         ) {
-            BottomSheetWindowBlur()
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -184,17 +178,11 @@ fun CollectionOptionsBottomSheet(
     onRemovePhotos: () -> Unit
 ) {
     if (show) {
-        val containerColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
-        }
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
-            containerColor = containerColor,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
         ) {
-            BottomSheetWindowBlur()
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -272,17 +260,11 @@ fun HistoryBottomSheet(
         val curated = remember(viewModel.curatedMemories) {
             viewModel.curatedMemories.sortedByDescending { it.date }
         }
-        val containerColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
-        }
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
-            containerColor = containerColor,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
         ) {
-            BottomSheetWindowBlur()
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

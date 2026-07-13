@@ -777,16 +777,10 @@ Surface(
                 }
                 }
             if (longPressedCollection != null) {
-                val containerColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                    MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f)
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainer
-                }
                 ModalBottomSheet(
                     onDismissRequest = { longPressedCollection = null },
-                    containerColor = containerColor
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    BottomSheetWindowBlur()
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
