@@ -32,6 +32,7 @@ import com.android.snippets.viewmodel.Screen
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import kotlinx.coroutines.launch
+import com.ln.android.snippets.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -252,7 +253,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                                         text = snippet,
                                                         style = getSnippetTextStyle(snippetStyle, MaterialTheme.typography.labelMedium),
                                                         fontWeight = FontWeight.Bold,
-                                                        color = if (snippetColorInt == android.graphics.Color.WHITE) MaterialTheme.onSurface else snippetColor,
+                                                        color = if (snippetColorInt == android.graphics.Color.WHITE) MaterialTheme.colorScheme.onSurface else snippetColor,
                                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                                     )
                                                 }
@@ -262,7 +263,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                 }
                             }
                         }
-                    } else {
+                    } else if (page == 1) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
