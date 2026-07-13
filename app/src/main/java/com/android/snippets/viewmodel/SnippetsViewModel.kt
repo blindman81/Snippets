@@ -799,40 +799,74 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val earliestTime = photo.snippetsAddedTime + NEW_MEMORY_WAIT_MS
         var candidateTime = maxOf(now, earliestTime)
 
-        candidateTime = adjustForQuietHours(candidateTime)
-
-        val activeAssignedTimes = assignedTimes.toMutableList()
-
-        var attempts = 0
-        while (attempts < 1000) {
-            val conflict = activeAssignedTimes.find { assigned ->
-                val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
-                diff < SURFACED_MEMORY_SPACING_MS
-            }
-            if (conflict != null) {
-                candidateTime = conflict + SURFACED_MEMORY_SPACING_MS
-                candidateTime = adjustForQuietHours(candidateTime)
-                attempts++
-                continue
-            }
-
-            val dayStart = getStartOfDay(candidateTime)
-            val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
-            if (countOnDay >= 5) {
-                val calendar = Calendar.getInstance().apply { timeInMillis = candidateTime }
+        if (notificationReminderEnabled) {
+            val calendar = Calendar.getInstance().apply { timeInMillis = candidateTime }
+            calendar.set(Calendar.HOUR_OF_DAY, notificationReminderHour)
+            calendar.set(Calendar.MINUTE, notificationReminderMinute)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            
+            // If the set time is in the past (before earliestTime or now), push it to the next day (or future days)
+            while (calendar.timeInMillis < earliestTime || calendar.timeInMillis < now) {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
-                calendar.set(Calendar.HOUR_OF_DAY, 9)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                calendar.set(Calendar.MILLISECOND, 0)
-                candidateTime = calendar.timeInMillis
-                attempts++
-                continue
             }
+            candidateTime = calendar.timeInMillis
+            
+            val activeAssignedTimes = assignedTimes.toMutableList()
+            var attempts = 0
+            while (attempts < 1000) {
+                val dayStart = getStartOfDay(candidateTime)
+                val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
+                if (countOnDay >= 5) {
+                    calendar.timeInMillis = candidateTime
+                    calendar.add(Calendar.DAY_OF_YEAR, 1)
+                    calendar.set(Calendar.HOUR_OF_DAY, notificationReminderHour)
+                    calendar.set(Calendar.MINUTE, notificationReminderMinute)
+                    calendar.set(Calendar.SECOND, 0)
+                    calendar.set(Calendar.MILLISECOND, 0)
+                    candidateTime = calendar.timeInMillis
+                    attempts++
+                    continue
+                }
+                break
+            }
+            return candidateTime
+        } else {
+            candidateTime = adjustForQuietHours(candidateTime)
 
-            break
+            val activeAssignedTimes = assignedTimes.toMutableList()
+
+            var attempts = 0
+            while (attempts < 1000) {
+                val conflict = activeAssignedTimes.find { assigned ->
+                    val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
+                    diff < SURFACED_MEMORY_SPACING_MS
+                }
+                if (conflict != null) {
+                    candidateTime = conflict + SURFACED_MEMORY_SPACING_MS
+                    candidateTime = adjustForQuietHours(candidateTime)
+                    attempts++
+                    continue
+                }
+
+                val dayStart = getStartOfDay(candidateTime)
+                val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
+                if (countOnDay >= 5) {
+                    val calendar = Calendar.getInstance().apply { timeInMillis = candidateTime }
+                    calendar.add(Calendar.DAY_OF_YEAR, 1)
+                    calendar.set(Calendar.HOUR_OF_DAY, 9)
+                    calendar.set(Calendar.MINUTE, 0)
+                    calendar.set(Calendar.SECOND, 0)
+                    calendar.set(Calendar.MILLISECOND, 0)
+                    candidateTime = calendar.timeInMillis
+                    attempts++
+                    continue
+                }
+
+                break
+            }
+            return candidateTime
         }
-        return candidateTime
     }
 
     private fun adjustForQuietHours(timeMs: Long): Long {
@@ -1332,6 +1366,24 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         } else {
             cancelDailyReminderWork()
         }
+
+        // Cancel and reset surfacedTime for all pending memory notifications
+        // so that they will be recalculated and rescheduled to the new time
+        val updatedPhotos = photos.map { photo ->
+            val hasNotificationBeenPosted = MemoryWorker.wasNotificationPosted(getApplication(), photo.id)
+            val isPending = !photo.isViewed || (photo.snippetsAddedTime > photo.lastViewedTime)
+            if (isPending && !hasNotificationBeenPosted && photo.surfacedTime != 0L) {
+                cancelMemoryNotification(photo.id)
+                photo.copy(surfacedTime = 0L)
+            } else {
+                photo
+            }
+        }
+        photos = updatedPhotos
+        savePhotos()
+
+        reconcileSurfacedMemories()
+        reconcileMemoryNotifications()
     }
 
     private fun scheduleDailyReminderWork(hour: Int, minute: Int) {

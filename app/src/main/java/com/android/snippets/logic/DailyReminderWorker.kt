@@ -10,7 +10,11 @@ import androidx.work.WorkerParameters
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.ExistingWorkPolicy
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.android.snippets.model.Photo
 import com.ln.android.snippets.R
+import java.io.File
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -37,6 +41,20 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
         return Result.success()
     }
 
+    private fun getNewMemoriesCount(): Int {
+        return try {
+            val file = File(applicationContext.filesDir, "photos_v2.json")
+            if (!file.exists()) return 0
+            val json = file.readText()
+            val type = object : TypeToken<List<Photo>>() {}.type
+            val photos: List<Photo> = Gson().fromJson(json, type) ?: emptyList()
+            photos.count { !it.isViewed || it.snippetsAddedTime > it.lastViewedTime }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0
+        }
+    }
+
     private fun postReminderNotification() {
         val notificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -52,10 +70,20 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val count = getNewMemoriesCount()
+        val title = "Review your memories"
+        val text = if (count == 1) {
+            "There is 1 new memory"
+        } else if (count > 1) {
+            "There are $count new memories"
+        } else {
+            "Take a look at your photos and add new snippets today!"
+        }
+
         val notification = NotificationCompat.Builder(applicationContext, MemoryWorker.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Review your memories")
-            .setContentText("Take a look at your photos and add new snippets today!")
+            .setContentTitle(title)
+            .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
