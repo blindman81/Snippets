@@ -137,7 +137,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 28.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
             )
 
             val themeOptions = listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK)
@@ -178,7 +178,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 28.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
             )
 
             SettingsCardItem(
@@ -209,7 +209,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 28.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
             )
 
             SettingsCardItem(
@@ -328,7 +328,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 28.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
             )
 
             SettingsCardItem(
