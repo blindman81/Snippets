@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -84,6 +85,7 @@ fun SelectionToolbar(
     isScrolled: Boolean = false
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -125,6 +127,14 @@ fun SelectionToolbar(
                     viewModel.pendingCollectionAssignment != null -> "Add to ${viewModel.pendingCollectionAssignment} (${viewModel.selectedPhotoIds.size})"
                     viewModel.pendingCollectionRemoval != null -> "Remove from ${viewModel.pendingCollectionRemoval} (${viewModel.selectedPhotoIds.size})"
                     viewModel.pendingSnippetToApply != null -> "Add '${viewModel.pendingSnippetToApply}' (${viewModel.selectedPhotoIds.size})"
+                    viewModel.pendingLocationToApply != null -> {
+                        val loc = viewModel.pendingLocationToApply!!
+                        val clean = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(
+                            context,
+                            com.android.snippets.model.Photo(uriString = "", locationLink = loc)
+                        ) ?: loc
+                        "Set location '$clean' (${viewModel.selectedPhotoIds.size})"
+                    }
                     else -> viewModel.selectedPhotoIds.size.toString()
                 }
                 Text(
@@ -135,7 +145,7 @@ fun SelectionToolbar(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null || viewModel.pendingSnippetToApply != null) {
+                if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null || viewModel.pendingSnippetToApply != null || viewModel.pendingLocationToApply != null) {
                     AnimatedCookieButton(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -145,6 +155,8 @@ fun SelectionToolbar(
                                 viewModel.confirmCollectionRemoval()
                             } else if (viewModel.pendingSnippetToApply != null) {
                                 viewModel.confirmBulkSnippetApply()
+                            } else if (viewModel.pendingLocationToApply != null) {
+                                viewModel.confirmBulkLocationApply()
                             }
                         },
                         icon = Icons.Default.Check,

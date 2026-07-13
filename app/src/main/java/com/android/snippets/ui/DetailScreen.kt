@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -237,6 +238,11 @@ fun DetailScreen(
     val isScrolled = scrollStates[pagerState.currentPage] ?: false
     val scrollToTopActions = remember { mutableStateMapOf<Int, () -> Unit>() }
 
+    var isSplitButtonExpanded by remember { mutableStateOf(false) }
+    val splitButtonBlurRadius by animateDpAsState(
+        targetValue = if (isSplitButtonExpanded) 16.dp else 0.dp,
+        label = "split_button_blur"
+    )
 
     val focusManager = LocalFocusManager.current
 
@@ -267,7 +273,8 @@ fun DetailScreen(
                     onToggleFavorite = { viewModel.toggleFavorite(photo.id) },
                     hasLocationLink = !photo.locationLink.isNullOrBlank(),
                     onAddLinkClick = { showLinkModal = true },
-                    animatedVisibilityScope = animatedVisibilityScope
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    onSplitButtonExpandedChange = { isSplitButtonExpanded = it }
                 )
             }
         ) { paddingValues ->
@@ -277,6 +284,7 @@ fun DetailScreen(
                     detectTapGestures(onTap = { focusManager.clearFocus() })
                 }
                 .nestedScroll(nestedScrollConnection)
+                .blur(splitButtonBlurRadius)
             ) {
                 HorizontalPager(
                     state = pagerState,

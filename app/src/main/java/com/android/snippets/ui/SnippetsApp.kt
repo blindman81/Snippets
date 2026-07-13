@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.ui.components.BulkEditSnippetsDialog
+import com.android.snippets.ui.components.BottomSheetWindowBlur
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -261,11 +262,17 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     }
 
     if (viewModel.showFilterSheet) {
+        val containerColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
         ModalBottomSheet(
             onDismissRequest = { viewModel.closeFilter() },
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = containerColor,
             scrimColor = BottomSheetDefaults.ScrimColor
         ) {
+            BottomSheetWindowBlur()
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
