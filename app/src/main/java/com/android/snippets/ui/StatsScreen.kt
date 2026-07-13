@@ -329,36 +329,39 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                 modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 4.dp)
             )
 
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
+            val ratingCounts = remember(photos) {
+                val counts = IntArray(6)
+                photos.forEach { photo ->
+                    val r = photo.rating.coerceIn(0, 5)
+                    counts[r]++
+                }
+                counts
+            }
+            val maxCount = remember(ratingCounts) {
+                ratingCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
+            }
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val ratingCounts = remember(photos) {
-                        val counts = IntArray(6)
-                        photos.forEach { photo ->
-                            val r = photo.rating.coerceIn(0, 5)
-                            counts[r]++
-                        }
-                        counts
-                    }
-                    val maxCount = remember(ratingCounts) {
-                        ratingCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
+                for (r in 5 downTo 0) {
+                    val count = ratingCounts[r]
+                    val progress = count.toFloat() / maxCount
+                    val position = when (r) {
+                        5 -> CardPosition.First
+                        0 -> CardPosition.Last
+                        else -> CardPosition.Middle
                     }
 
-                    for (r in 5 downTo 0) {
-                        val count = ratingCounts[r]
-                        val progress = count.toFloat() / maxCount
-                        
+                    DynamicCardContainer(
+                        position = position
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 16.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -414,43 +417,54 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                 modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 4.dp)
             )
 
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val (topLocations, maxCount) = remember(photos, context) {
-                        val counts = photos.mapNotNull { photo ->
-                            val loc = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)?.trim()
-                            if (!loc.isNullOrEmpty()) loc else null
-                        }.groupingBy { it }.eachCount()
-                            .toList()
-                            .sortedByDescending { it.second }
-                        val top = counts.take(5)
-                        val max = top.firstOrNull()?.second?.coerceAtLeast(1) ?: 1
-                        Pair(top, max)
-                    }
+            val (topLocations, locationMaxCount) = remember(photos, context) {
+                val counts = photos.mapNotNull { photo ->
+                    val loc = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)?.trim()
+                    if (!loc.isNullOrEmpty()) loc else null
+                }.groupingBy { it }.eachCount()
+                    .toList()
+                    .sortedByDescending { it.second }
+                val top = counts.take(5)
+                val max = top.firstOrNull()?.second?.coerceAtLeast(1) ?: 1
+                Pair(top, max)
+            }
 
-                    if (topLocations.isEmpty()) {
-                        Text(
-                            text = "No location data available",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    } else {
-                        topLocations.forEach { (name, count) ->
-                            val progress = count.toFloat() / maxCount
+            if (topLocations.isEmpty()) {
+                DynamicCardContainer(
+                    position = CardPosition.Single
+                ) {
+                    Text(
+                        text = "No location data available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp, horizontal = 16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    topLocations.forEachIndexed { index, (name, count) ->
+                        val progress = count.toFloat() / locationMaxCount
+                        val position = when {
+                            topLocations.size == 1 -> CardPosition.Single
+                            index == 0 -> CardPosition.First
+                            index == topLocations.size - 1 -> CardPosition.Last
+                            else -> CardPosition.Middle
+                        }
+
+                        DynamicCardContainer(
+                            position = position
+                        ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 16.dp)
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,

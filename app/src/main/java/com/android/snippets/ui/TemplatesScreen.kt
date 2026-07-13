@@ -11,7 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material.icons.filled.TextSnippet
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,7 +82,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
             Column(modifier = Modifier.fillMaxSize()) {
                 PrimaryTabRow(
                     selectedTabIndex = selectedTabIndex,
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.primary,
                     divider = {},
                     indicator = {
@@ -96,36 +96,37 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                         )
                     }
                 ) {
-                    Tab(
-                        selected = selectedTabIndex == 0,
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            selectedTabIndex = 0
-                        },
-                        text = {
-                            Text(
-                                "Snippets",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = com.android.snippets.ui.theme.GoogleSans
-                            )
-                        }
+                    val tabs = listOf(
+                        "Snippets" to Icons.AutoMirrored.Filled.TextSnippet,
+                        "Locations" to Icons.Default.LocationOn
                     )
-                    Tab(
-                        selected = selectedTabIndex == 1,
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            selectedTabIndex = 1
-                        },
-                        text = {
-                            Text(
-                                "Locations",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = com.android.snippets.ui.theme.GoogleSans
-                            )
-                        }
-                    )
+                    tabs.forEachIndexed { index, (label, icon) ->
+                        val isSelected = selectedTabIndex == index
+                        Tab(
+                            selected = isSelected,
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                selectedTabIndex = index
+                            },
+                            text = {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(if (isSelected) 2.dp else 4.dp)
+                                ) {
+                                    Icon(icon, null, modifier = Modifier.size(24.dp))
+                                    Text(
+                                        text = label,
+                                        style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized else MaterialTheme.typography.titleMedium.copy(
+                                            fontFamily = com.android.snippets.ui.theme.GoogleSans
+                                        ),
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Column(
@@ -198,7 +199,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                     val photosCount = viewModel.photos.count { it.snippets.contains(snippet) }
                                     
                                     SettingsCardItem(
-                                        icon = Icons.Default.TextSnippet,
+                                        icon = Icons.AutoMirrored.Filled.TextSnippet,
                                         title = snippet,
                                         subtitle = "Used in $photosCount ${if (photosCount == 1) "photo" else "photos"}",
                                         position = position,
