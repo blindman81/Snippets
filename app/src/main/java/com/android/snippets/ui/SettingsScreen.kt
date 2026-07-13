@@ -249,7 +249,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             SettingsCardItem(
                 icon = Icons.Default.Schedule,
-                title = "Daily Notification Reminder",
+                title = "Daily notification reminder",
                 subtitle = reminderTimeStr,
                 onClick = { 
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
