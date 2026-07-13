@@ -28,6 +28,9 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.ui.platform.LocalContext
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.Screen
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,8 +39,22 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
         viewModel.navigateLibrary()
     }
     val view = LocalView.current
-    val scrollState = rememberScrollState()
-    val isScrolled by remember { derivedStateOf { scrollState.value > 0 } }
+    
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        initialPageOffsetFraction = 0f
+    ) {
+        2
+    }
+    val coroutineScope = rememberCoroutineScope()
+    val snippetsScrollState = rememberScrollState()
+    val locationsScrollState = rememberScrollState()
+
+    val activeScrollState = when (pagerState.currentPage) {
+        0 -> snippetsScrollState
+        else -> locationsScrollState
+    }
+    val isScrolled by remember { derivedStateOf { activeScrollState.value > 0 } }
 
     val nestedScrollConnection = remember {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
@@ -54,7 +71,6 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
     var showCustomSnippetDialog by remember { mutableStateOf(false) }
     var showActionDialogForLocation by remember { mutableStateOf<String?>(null) }
     var showCustomLocationDialog by remember { mutableStateOf(false) }
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
@@ -81,14 +97,14 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 PrimaryTabRow(
-                    selectedTabIndex = selectedTabIndex,
+                    selectedTabIndex = pagerState.currentPage,
                     containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.primary,
                     divider = {},
                     indicator = {
                         TabRowDefaults.PrimaryIndicator(
                             modifier = Modifier.tabIndicatorOffset(
-                                selectedTabIndex = selectedTabIndex,
+                                selectedTabIndex = pagerState.currentPage,
                                 matchContentSize = true
                             ),
                             width = androidx.compose.ui.unit.Dp.Unspecified,
@@ -101,12 +117,14 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                         "Locations" to Icons.Default.LocationOn
                     )
                     tabs.forEachIndexed { index, (label, icon) ->
-                        val isSelected = selectedTabIndex == index
+                        val isSelected = pagerState.currentPage == index
                         Tab(
                             selected = isSelected,
                             onClick = {
                                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                selectedTabIndex = index
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
                             },
                             text = {
                                 Column(
@@ -129,189 +147,204 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                     }
                 }
 
-                Column(
+                HorizontalPager(
+                    state = pagerState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(scrollState)
-                        .padding(vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    if (selectedTabIndex == 0) {
-                        // Create Custom Snippet Button
-                        SettingsCardItem(
-                            icon = Icons.Default.Add,
-                            title = "Create custom snippet",
-                            subtitle = "Write a new snippet and add to photo",
-                            position = CardPosition.Single,
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                showCustomSnippetDialog = true
-                            }
-                        )
+                        .weight(1f)
+                ) { page ->
+                    if (page == 0) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(snippetsScrollState)
+                                .padding(vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            // Create Custom Snippet Button
+                            SettingsCardItem(
+                                icon = Icons.Default.Add,
+                                title = "Create custom snippet",
+                                subtitle = "Write a new snippet and add to photo",
+                                position = CardPosition.Single,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    showCustomSnippetDialog = true
+                                }
+                            )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "CHOOSE A TEMPLATE",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 1.sp,
-                                fontFamily = com.android.snippets.ui.theme.GoogleSans
-                            ),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                        )
+                            Text(
+                                text = "CHOOSE A TEMPLATE",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.sp,
+                                    fontFamily = com.android.snippets.ui.theme.GoogleSans
+                                ),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                            )
 
-                        val uniqueSnippets = viewModel.allUniqueSnippets
-                        if (uniqueSnippets.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No snippets created yet.\nCreate a custom one above!",
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontFamily = com.android.snippets.ui.theme.GoogleSans
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            }
-                        } else {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                uniqueSnippets.forEachIndexed { index, snippet ->
-                                    val position = when {
-                                        uniqueSnippets.size == 1 -> CardPosition.Single
-                                        index == 0 -> CardPosition.First
-                                        index == uniqueSnippets.size - 1 -> CardPosition.Last
-                                        else -> CardPosition.Middle
-                                    }
-                                    
-                                    val snippetStyle = viewModel.getSnippetStyle(snippet)
-                                    val snippetColorInt = viewModel.snippetColors[snippet] ?: android.graphics.Color.WHITE
-                                    val snippetColor = Color(snippetColorInt)
-                                    val photosCount = viewModel.photos.count { it.snippets.contains(snippet) }
-                                    
-                                    SettingsCardItem(
-                                        icon = Icons.AutoMirrored.Filled.TextSnippet,
-                                        title = snippet,
-                                        subtitle = "Used in $photosCount ${if (photosCount == 1) "photo" else "photos"}",
-                                        position = position,
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        onClick = {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            showActionDialogForSnippet = snippet
-                                        },
-                                        trailingContent = {
-                                            Surface(
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = snippetColor.copy(alpha = 0.15f),
-                                                border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.3f)),
-                                                modifier = Modifier.padding(end = 4.dp)
-                                            ) {
-                                                Text(
-                                                    text = snippet,
-                                                    style = getSnippetTextStyle(snippetStyle, MaterialTheme.typography.labelMedium),
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (snippetColorInt == android.graphics.Color.WHITE) MaterialTheme.colorScheme.onSurface else snippetColor,
-                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                                )
-                                            }
-                                        }
+                            val uniqueSnippets = viewModel.allUniqueSnippets
+                            if (uniqueSnippets.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No snippets created yet.\nCreate a custom one above!",
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontFamily = com.android.snippets.ui.theme.GoogleSans
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                     )
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    uniqueSnippets.forEachIndexed { index, snippet ->
+                                        val position = when {
+                                            uniqueSnippets.size == 1 -> CardPosition.Single
+                                            index == 0 -> CardPosition.First
+                                            index == uniqueSnippets.size - 1 -> CardPosition.Last
+                                            else -> CardPosition.Middle
+                                        }
+                                        
+                                        val snippetStyle = viewModel.getSnippetStyle(snippet)
+                                        val snippetColorInt = viewModel.snippetColors[snippet] ?: android.graphics.Color.WHITE
+                                        val snippetColor = Color(snippetColorInt)
+                                        val photosCount = viewModel.photos.count { it.snippets.contains(snippet) }
+                                        
+                                        SettingsCardItem(
+                                            icon = Icons.AutoMirrored.Filled.TextSnippet,
+                                            title = snippet,
+                                            subtitle = "Used in $photosCount ${if (photosCount == 1) "photo" else "photos"}",
+                                            position = position,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            onClick = {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                showActionDialogForSnippet = snippet
+                                            },
+                                            trailingContent = {
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = snippetColor.copy(alpha = 0.15f),
+                                                    border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.3f)),
+                                                    modifier = Modifier.padding(end = 4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = snippet,
+                                                        style = getSnippetTextStyle(snippetStyle, MaterialTheme.typography.labelMedium),
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (snippetColorInt == android.graphics.Color.WHITE) MaterialTheme.colorScheme.onSurface else snippetColor,
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
                     } else {
-                        // Create Custom Location Button
-                        SettingsCardItem(
-                            icon = R.drawable.ic_add_location,
-                            title = "Add location to photos",
-                            subtitle = "Set a location and apply to photos",
-                            position = CardPosition.Single,
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                showCustomLocationDialog = true
-                            }
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(locationsScrollState)
+                                .padding(vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            // Create Custom Location Button
+                            SettingsCardItem(
+                                icon = R.drawable.ic_add_location,
+                                title = "Add location to photos",
+                                subtitle = "Set a location and apply to photos",
+                                position = CardPosition.Single,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    showCustomLocationDialog = true
+                                }
+                            )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "CHOOSE A LOCATION TEMPLATE",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 1.sp,
-                                fontFamily = com.android.snippets.ui.theme.GoogleSans
-                            ),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                        )
+                            Text(
+                                text = "CHOOSE A LOCATION TEMPLATE",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.sp,
+                                    fontFamily = com.android.snippets.ui.theme.GoogleSans
+                                ),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                            )
 
-                        val uniqueLocations = viewModel.allUniqueLocations
-                        val context = LocalContext.current
-                        if (uniqueLocations.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No location templates created yet.\nCreate one above!",
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontFamily = com.android.snippets.ui.theme.GoogleSans
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            }
-                        } else {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                uniqueLocations.forEachIndexed { index, location ->
-                                    val position = when {
-                                        uniqueLocations.size == 1 -> CardPosition.Single
-                                        index == 0 -> CardPosition.First
-                                        index == uniqueLocations.size - 1 -> CardPosition.Last
-                                        else -> CardPosition.Middle
-                                    }
-                                    
-                                    val cleanName = remember(location) {
-                                        com.android.snippets.ui.util.LocationUtils.getLocationFromExif(
-                                            context,
-                                            com.android.snippets.model.Photo(uriString = "", locationLink = location)
-                                        ) ?: location
-                                    }
-                                    
-                                    val photosCount = viewModel.photos.count { 
-                                        it.locationLink == location || it.locationName == location 
-                                    }
-                                    
-                                    SettingsCardItem(
-                                        icon = Icons.Default.LocationOn,
-                                        title = cleanName,
-                                        subtitle = if (location.startsWith("http")) {
-                                            "Maps Link • Used in $photosCount ${if (photosCount == 1) "photo" else "photos"}"
-                                        } else {
-                                            "Text Location • Used in $photosCount ${if (photosCount == 1) "photo" else "photos"}"
-                                        },
-                                        position = position,
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        onClick = {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            showActionDialogForLocation = location
-                                        }
+                            val uniqueLocations = viewModel.allUniqueLocations
+                            val context = LocalContext.current
+                            if (uniqueLocations.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No location templates created yet.\nCreate one above!",
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontFamily = com.android.snippets.ui.theme.GoogleSans
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                     )
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    uniqueLocations.forEachIndexed { index, location ->
+                                        val position = when {
+                                            uniqueLocations.size == 1 -> CardPosition.Single
+                                            index == 0 -> CardPosition.First
+                                            index == uniqueLocations.size - 1 -> CardPosition.Last
+                                            else -> CardPosition.Middle
+                                        }
+                                        
+                                        val cleanName = remember(location) {
+                                            com.android.snippets.ui.util.LocationUtils.getLocationFromExif(
+                                                context,
+                                                com.android.snippets.model.Photo(uriString = "", locationLink = location)
+                                            ) ?: location
+                                        }
+                                        
+                                        val photosCount = viewModel.photos.count { 
+                                            it.locationLink == location || it.locationName == location 
+                                        }
+                                        
+                                        SettingsCardItem(
+                                            icon = Icons.Default.LocationOn,
+                                            title = cleanName,
+                                            subtitle = if (location.startsWith("http")) {
+                                                "Maps Link • Used in $photosCount ${if (photosCount == 1) "photo" else "photos"}"
+                                            } else {
+                                                "Text Location • Used in $photosCount ${if (photosCount == 1) "photo" else "photos"}"
+                                            },
+                                            position = position,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            onClick = {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                showActionDialogForLocation = location
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
