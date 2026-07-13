@@ -248,7 +248,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
             }
 
             SettingsCardItem(
-                icon = Icons.Default.Schedule,
+                icon = com.ln.android.snippets.R.drawable.ic_daily_reminder,
                 title = "Daily notification reminder",
                 subtitle = reminderTimeStr,
                 onClick = { 
