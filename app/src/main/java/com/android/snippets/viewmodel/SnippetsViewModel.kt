@@ -275,7 +275,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
     val isSelectionMode: Boolean
-        get() = forceSelectionMode || selectedPhotoIds.isNotEmpty() || pendingCollectionAssignment != null || pendingCollectionRemoval != null || pendingSnippetToApply != null || pendingLocationToApply != null
+        get() = forceSelectionMode || selectedPhotoIds.isNotEmpty() || pendingCollectionAssignment != null || pendingCollectionRemoval != null || pendingSnippetToApply != null || pendingLocationToApply != null || pendingRatingToApply != 0
 
     var pendingCollectionAssignment by mutableStateOf<String?>(null)
         private set
@@ -418,6 +418,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var pendingOpenAddSnippetDialog by mutableStateOf(false)
     var pendingSnippetToApply by mutableStateOf<String?>(null)
     var pendingLocationToApply by mutableStateOf<String?>(null)
+    var pendingRatingToApply by mutableStateOf(0)
 
     private var _snippetSortType = mutableStateOf(SnippetSortType.New)
     var snippetSortType: SnippetSortType
@@ -954,10 +955,12 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         isAddingPhotos = true
         val targetSnippet = pendingSnippetToApply
         val targetLocation = pendingLocationToApply
+        val targetRating = pendingRatingToApply
         val shouldOpenDialog = pendingAddSnippetOnImport
         // Reset immediately
         pendingSnippetToApply = null
         pendingLocationToApply = null
+        pendingRatingToApply = 0
         pendingAddSnippetOnImport = false
 
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -995,6 +998,12 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                             )
                         }
                         
+                        if (targetRating in 1..5) {
+                            updatedPhoto = updatedPhoto.copy(
+                                rating = targetRating
+                            )
+                        }
+                        
                         if (updatedPhoto != duplicate) {
                             photos = photos.map {
                                 if (it.id == duplicate.id) updatedPhoto else it
@@ -1005,7 +1014,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                         if (shouldOpenDialog) {
                             pendingOpenAddSnippetDialog = true
                             openDetail(duplicate.id, Screen.Library)
-                        } else if (!targetSnippet.isNullOrBlank() || !targetLocation.isNullOrBlank()) {
+                        } else if (!targetSnippet.isNullOrBlank() || !targetLocation.isNullOrBlank() || targetRating != 0) {
                             openDetail(duplicate.id, Screen.Library)
                         }
 
@@ -1038,7 +1047,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     isLibraryUpload = true,
                     widthPx = widthPx,
                     heightPx = heightPx,
-                    locationLink = targetLocation?.trim()
+                    locationLink = targetLocation?.trim(),
+                    rating = targetRating
                 )
                 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -1048,7 +1058,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     if (shouldOpenDialog) {
                         pendingOpenAddSnippetDialog = true
                         openDetail(newPhoto.id, Screen.Library)
-                    } else if (!targetSnippet.isNullOrBlank() || !targetLocation.isNullOrBlank()) {
+                    } else if (!targetSnippet.isNullOrBlank() || !targetLocation.isNullOrBlank() || targetRating != 0) {
                         openDetail(newPhoto.id, Screen.Library)
                     }
 
@@ -1676,6 +1686,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         pendingCollectionRemoval = null
         pendingSnippetToApply = null
         pendingLocationToApply = null
+        pendingRatingToApply = 0
         forceSelectionMode = false
     }
 
@@ -1884,6 +1895,22 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         
         val count = selectedPhotoIds.size
         showSnackbar("Set location to '$target' for $count photos")
+        clearSelection()
+    }
+
+    fun confirmBulkRatingApply() {
+        val targetRating = pendingRatingToApply
+        if (targetRating !in 1..5) return
+        
+        photos = photos.map { photo ->
+            if (selectedPhotoIds.contains(photo.id)) {
+                photo.copy(rating = targetRating)
+            } else photo
+        }
+        savePhotos()
+        
+        val count = selectedPhotoIds.size
+        showSnackbar("Set rating to $targetRating ${if (targetRating == 1) "star" else "stars"} for $count photos")
         clearSelection()
     }
 

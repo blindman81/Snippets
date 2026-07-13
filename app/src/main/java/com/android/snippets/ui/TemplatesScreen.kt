@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.MainTopBar
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.ui.platform.LocalContext
@@ -44,15 +45,17 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
         initialPage = 0,
         initialPageOffsetFraction = 0f
     ) {
-        2
+        3
     }
     val coroutineScope = rememberCoroutineScope()
     val snippetsScrollState = rememberScrollState()
     val locationsScrollState = rememberScrollState()
+    val starsScrollState = rememberScrollState()
 
     val activeScrollState = when (pagerState.currentPage) {
         0 -> snippetsScrollState
-        else -> locationsScrollState
+        1 -> locationsScrollState
+        else -> starsScrollState
     }
     val isScrolled by remember { derivedStateOf { activeScrollState.value > 0 } }
 
@@ -71,6 +74,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
     var showCustomSnippetDialog by remember { mutableStateOf(false) }
     var showActionDialogForLocation by remember { mutableStateOf<String?>(null) }
     var showCustomLocationDialog by remember { mutableStateOf(false) }
+    var showActionDialogForRating by remember { mutableStateOf<Int?>(null) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
@@ -114,7 +118,8 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                 ) {
                     val tabs = listOf(
                         "Snippets" to Icons.AutoMirrored.Filled.TextSnippet,
-                        "Locations" to Icons.Default.LocationOn
+                        "Locations" to Icons.Default.LocationOn,
+                        "Stars" to R.drawable.ic_star_rating
                     )
                     tabs.forEachIndexed { index, (label, icon) ->
                         val isSelected = pagerState.currentPage == index
@@ -131,7 +136,11 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(if (isSelected) 2.dp else 4.dp)
                                 ) {
-                                    Icon(icon, null, modifier = Modifier.size(24.dp))
+                                    if (icon is androidx.compose.ui.graphics.vector.ImageVector) {
+                                        Icon(icon, null, modifier = Modifier.size(24.dp))
+                                    } else {
+                                        Icon(painterResource(id = icon as Int), null, modifier = Modifier.size(24.dp))
+                                    }
                                     Text(
                                         text = label,
                                         style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized else MaterialTheme.typography.titleMedium.copy(
@@ -243,7 +252,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                                         text = snippet,
                                                         style = getSnippetTextStyle(snippetStyle, MaterialTheme.typography.labelMedium),
                                                         fontWeight = FontWeight.Bold,
-                                                        color = if (snippetColorInt == android.graphics.Color.WHITE) MaterialTheme.colorScheme.onSurface else snippetColor,
+                                                        color = if (snippetColorInt == android.graphics.Color.WHITE) MaterialTheme.onSurface else snippetColor,
                                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                                     )
                                                 }
@@ -345,6 +354,52 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                             }
                                         )
                                     }
+                                }
+                            }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(starsScrollState)
+                                .padding(vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "CHOOSE A RATING TEMPLATE",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.sp,
+                                    fontFamily = com.android.snippets.ui.theme.GoogleSans
+                                ),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                            )
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                for (starValue in 5 downTo 1) {
+                                    val position = when (starValue) {
+                                        5 -> CardPosition.First
+                                        1 -> CardPosition.Last
+                                        else -> CardPosition.Middle
+                                    }
+                                    
+                                    val photosCount = viewModel.photos.count { it.rating == starValue }
+                                    
+                                    SettingsCardItem(
+                                        icon = R.drawable.ic_star_rating,
+                                        title = if (starValue == 1) "1 Star" else "$starValue Stars",
+                                        subtitle = "Used in $photosCount ${if (photosCount == 1) "photo" else "photos"}",
+                                        position = position,
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        onClick = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                            showActionDialogForRating = starValue
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -509,6 +564,37 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
             dismissButton = {
                 TextButton(onClick = { showCustomLocationDialog = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showActionDialogForRating != null) {
+        val rating = showActionDialogForRating!!
+        AlertDialog(
+            onDismissRequest = { showActionDialogForRating = null },
+            title = { Text(if (rating == 1) "Add 1 Star rating" else "Add $rating Stars rating") },
+            text = { Text("Where would you like to add this rating?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    viewModel.pendingRatingToApply = rating
+                    viewModel.pendingAddPhotoIntentToken = System.currentTimeMillis()
+                    showActionDialogForRating = null
+                    viewModel.navigateLibrary()
+                }) {
+                    Text("Import New Photo")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    viewModel.pendingRatingToApply = rating
+                    viewModel.forceSelectionMode = true
+                    showActionDialogForRating = null
+                    viewModel.navigateLibrary()
+                }) {
+                    Text("Select From Library")
                 }
             }
         )

@@ -135,6 +135,10 @@ fun SelectionToolbar(
                         ) ?: loc
                         "Set location '$clean' (${viewModel.selectedPhotoIds.size})"
                     }
+                    viewModel.pendingRatingToApply != 0 -> {
+                        val rating = viewModel.pendingRatingToApply
+                        "Set rating to $rating ★ (${viewModel.selectedPhotoIds.size})"
+                    }
                     else -> viewModel.selectedPhotoIds.size.toString()
                 }
                 Text(
@@ -145,7 +149,7 @@ fun SelectionToolbar(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null || viewModel.pendingSnippetToApply != null || viewModel.pendingLocationToApply != null) {
+                if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null || viewModel.pendingSnippetToApply != null || viewModel.pendingLocationToApply != null || viewModel.pendingRatingToApply != 0) {
                     AnimatedCookieButton(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -157,6 +161,8 @@ fun SelectionToolbar(
                                 viewModel.confirmBulkSnippetApply()
                             } else if (viewModel.pendingLocationToApply != null) {
                                 viewModel.confirmBulkLocationApply()
+                            } else if (viewModel.pendingRatingToApply != 0) {
+                                viewModel.confirmBulkRatingApply()
                             }
                         },
                         icon = Icons.Default.Check,
