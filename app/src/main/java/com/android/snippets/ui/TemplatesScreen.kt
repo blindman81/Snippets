@@ -231,7 +231,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                     } else {
                         // Create Custom Location Button
                         SettingsCardItem(
-                            icon = Icons.Default.LocationOn,
+                            icon = R.drawable.ic_add_location,
                             title = "Add location to photos",
                             subtitle = "Set a location and apply to photos",
                             position = CardPosition.Single,
