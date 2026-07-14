@@ -1,6 +1,7 @@
 package com.android.snippets.ui
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.boundsInParent
 
 import com.android.snippets.ui.components.*
 import androidx.compose.foundation.clickable
@@ -389,7 +390,7 @@ fun LibraryScreen(
                                                                      containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                                      contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                                                  ),
-                                                                 modifier = dragModifier.height(64.dp).widthIn(min = 120.dp, max = 200.dp)
+                                                                 modifier = dragModifier.then(positionModifier).height(64.dp).widthIn(min = 120.dp, max = 200.dp)
                                                              ) {
                                                                  Row(
                                                                      verticalAlignment = Alignment.CenterVertically,
