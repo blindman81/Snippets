@@ -27,6 +27,7 @@ import com.android.snippets.viewmodel.Screen
 import com.android.snippets.ui.SelectIcon
 import com.android.snippets.ui.CollectionIcon
 import com.android.snippets.ui.MoreSectionIcon
+import com.android.snippets.ui.ShapedSectionHeader
 import com.android.snippets.ui.SettingsCardItem
 import com.android.snippets.ui.CardPosition
 import androidx.compose.foundation.text.BasicTextField
@@ -204,6 +205,12 @@ fun CollectionOptionsBottomSheet(
                     .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                ShapedSectionHeader(
+                    icon = MoreSectionIcon(),
+                    modifier = Modifier
+                        .padding(horizontal = 28.dp)
+                        .padding(bottom = 8.dp)
+                )
 
                 Column(
                     modifier = Modifier
