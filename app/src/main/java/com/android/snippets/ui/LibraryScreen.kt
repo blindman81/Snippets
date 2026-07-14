@@ -441,7 +441,7 @@ fun LibraryScreen(
 
                                  HorizontalPager(
                                      state = pagerState,
-                                     modifier = Modifier.weight(1f).fillMaxWidth(),
+                                     modifier = Modifier.weight(1f).fillMaxWidth().fillMaxHeight(),
                                      pageSpacing = 16.dp
                                  ) { page ->
                                      val tabForPage = pageTabs.getOrNull(page) ?: "Library"
@@ -457,84 +457,93 @@ fun LibraryScreen(
                                          }
                                          viewModel.sortPhotos(filtered, tabSortType)
                                      }
-                                     
-                                     Box(modifier = Modifier.fillMaxSize()) {
-                                         if (pageFilteredPhotos.isEmpty()) {
-                                             Box(
-                                                 modifier = Modifier.fillMaxSize(),
-                                                 contentAlignment = Alignment.Center
+
+                                     if (pageFilteredPhotos.isEmpty()) {
+                                         Box(
+                                             modifier = Modifier
+                                                 .fillMaxWidth()
+                                                 .fillMaxHeight()
+                                                 .wrapContentSize(Alignment.Center)
+                                         ) {
+                                             Column(
+                                                 horizontalAlignment = Alignment.CenterHorizontally,
+                                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                                              ) {
-                                                 Column(
-                                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                                     verticalArrangement = Arrangement.spacedBy(16.dp)
-                                                 ) {
-                                                     Icon(
-                                                         Icons.Default.PhotoLibrary,
-                                                         contentDescription = null,
-                                                         modifier = Modifier.size(64.dp),
-                                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                                     )
-                                                     Text(
-                                                         text = "No snippets here yet",
-                                                         style = MaterialTheme.typography.bodyLarge,
-                                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                                     )
+                                                 val emptyIcon = when (tabForPage) {
+                                                     "Favorites" -> Icons.Default.FavoriteBorder
+                                                     else -> Icons.Default.PhotoLibrary
                                                  }
-                                             }
-                                         } else {
-                                             val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
-                                             val gridColumns = when (windowSizeClass?.widthSizeClass) {
-                                                 WindowWidthSizeClass.Expanded -> 4
-                                                 WindowWidthSizeClass.Medium -> 3
-                                                 else -> 2
-                                             }
-                                             LazyVerticalStaggeredGrid(
-                                                 columns = StaggeredGridCells.Fixed(gridColumns),
-                                                 state = pageListState,
-                                                 modifier = Modifier.fillMaxSize(),
-                                                 contentPadding = PaddingValues(
-                                                     start = 0.dp,
-                                                     end = 0.dp,
-                                                     top = 0.dp,
-                                                     bottom = 100.dp
-                                                 ),
-                                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                                 verticalItemSpacing = 4.dp
-                                             ) {
-                                                 items(pageFilteredPhotos, key = { it.id }) { photo ->
-                                                     PhotoMasonryItem(
-                                                         photo = photo,
-                                                         isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                         selectionMode = viewModel.isSelectionMode,
-                                                         showFavoriteIcon = tabForPage != "Favorites",
-                                                         matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
-                                                         sharedTransitionScope = sharedTransitionScope,
-                                                         animatedVisibilityScope = animatedVisibilityScope,
-                                                         shape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(0.dp),
-                                                         onClick = {
-                                                             if (viewModel.isSelectionMode) {
-                                                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                 viewModel.toggleSelection(photo.id)
-                                                             } else {
-                                                                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                 if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                     viewModel.activePhotoId = photo.id
-                                                                 } else {
-                                                                     viewModel.openDetail(photo.id, Screen.Library)
-                                                                 }
-                                                             }
-                                                         },
-                                                         onLongClick = {
-                                                             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                             if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                         },
-                                                         fillCard = false,
-                                                         modifier = Modifier.fillMaxWidth()
-                                                     )
+                                                 val emptyMessage = when (tabForPage) {
+                                                     "Favorites" -> "No favorites yet"
+                                                     "Library" -> "No photos yet"
+                                                     else -> "No photos in $tabForPage"
                                                  }
+                                                 Icon(
+                                                     emptyIcon,
+                                                     contentDescription = null,
+                                                     modifier = Modifier.size(64.dp),
+                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                                 )
+                                                 Text(
+                                                     text = emptyMessage,
+                                                     style = MaterialTheme.typography.bodyLarge,
+                                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                 )
                                              }
                                          }
-                                     } // end of Box
+                                     } else {
+                                         val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
+                                         val gridColumns = when (windowSizeClass?.widthSizeClass) {
+                                             WindowWidthSizeClass.Expanded -> 4
+                                             WindowWidthSizeClass.Medium -> 3
+                                             else -> 2
+                                         }
+                                         LazyVerticalStaggeredGrid(
+                                             columns = StaggeredGridCells.Fixed(gridColumns),
+                                             state = pageListState,
+                                             modifier = Modifier.fillMaxSize(),
+                                             contentPadding = PaddingValues(
+                                                 start = 0.dp,
+                                                 end = 0.dp,
+                                                 top = 0.dp,
+                                                 bottom = 100.dp
+                                             ),
+                                             horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                             verticalItemSpacing = 4.dp
+                                         ) {
+                                             items(pageFilteredPhotos, key = { it.id }) { photo ->
+                                                 PhotoMasonryItem(
+                                                     photo = photo,
+                                                     isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                                     selectionMode = viewModel.isSelectionMode,
+                                                     showFavoriteIcon = tabForPage != "Favorites",
+                                                     matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
+                                                     sharedTransitionScope = sharedTransitionScope,
+                                                     animatedVisibilityScope = animatedVisibilityScope,
+                                                     shape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(0.dp),
+                                                     onClick = {
+                                                         if (viewModel.isSelectionMode) {
+                                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                             viewModel.toggleSelection(photo.id)
+                                                         } else {
+                                                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                             if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                                                                 viewModel.activePhotoId = photo.id
+                                                             } else {
+                                                                 viewModel.openDetail(photo.id, Screen.Library)
+                                                             }
+                                                         }
+                                                     },
+                                                     onLongClick = {
+                                                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                         if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                                     },
+                                                     fillCard = false,
+                                                     modifier = Modifier.fillMaxWidth()
+                                                 )
+                                             }
+                                         }
+                                     }
                                  } // end of HorizontalPager
                              } // end of Column inside Surface
                          } // end of Surface
