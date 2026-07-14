@@ -22,8 +22,6 @@ import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.ui.shapes.LocalAppShapeType
 import com.android.snippets.ui.shapes.toComposeShape
 import com.android.snippets.ui.shapes.AppShape
-import com.android.snippets.ui.shapes.PolygonDrawable
-import com.android.snippets.ui.shapes.getNormalizedPolygon
 import com.ln.android.snippets.R
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -34,21 +32,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.material3.LoadingIndicator
 import kotlinx.coroutines.delay
 
 
@@ -172,7 +162,6 @@ class MainActivity : ComponentActivity() {
 
                             if (showSplashOverlay) {
                                 ComposeSplashScreen(
-                                    shapeType = viewModel.selectedShape,
                                     isDarkTheme = isDarkTheme,
                                     isInitialLoading = viewModel.isInitialLoading,
                                     onAnimationFinished = {
@@ -195,13 +184,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val AnticipateEasing = Easing { fraction ->
-    android.view.animation.AnticipateInterpolator().getInterpolation(fraction)
-}
+
 
 @Composable
 private fun ComposeSplashScreen(
-    shapeType: AppShape,
     isDarkTheme: Boolean,
     isInitialLoading: Boolean,
     onAnimationFinished: () -> Unit
@@ -218,43 +204,16 @@ private fun ComposeSplashScreen(
         }
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "SplashInfinite")
-    val infiniteSpin by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "infiniteSpin"
-    )
-    val infiniteSine by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "infiniteSine"
-    )
-
     val duration = 700
-    val animProgress = animateFloatAsState(
-        targetValue = if (startExitAnimation) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = duration,
-            easing = AnticipateEasing
-        ),
-        finishedListener = {
-            if (it == 1f) {
-                onAnimationFinished()
-            }
-        }
-    )
 
     val bgAlpha by animateFloatAsState(
         targetValue = if (startExitAnimation) 0f else 1f,
-        animationSpec = tween(durationMillis = duration)
+        animationSpec = tween(durationMillis = duration),
+        finishedListener = {
+            if (it == 0f) {
+                onAnimationFinished()
+            }
+        }
     )
 
     if (bgAlpha > 0f) {
@@ -265,111 +224,8 @@ private fun ComposeSplashScreen(
                 .background(bgColor),
             contentAlignment = Alignment.Center
         ) {
-            val shape = shapeType.toComposeShape()
-            val p = animProgress.value
-
-            var scaleX = 1f
-            var scaleY = 1f
-            var rotationZ = 0f
-            var translationX = 0f
-
-            val idleSine = kotlin.math.sin(infiniteSine.toDouble()).toFloat()
-
-            when (shapeType) {
-                AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
-                    scaleX = 1f - p
-                    scaleY = 1f - p
-                    rotationZ = infiniteSpin + p * 360f
-                }
-                AppShape.COOKIE_4_SIDED -> {
-                    val idleStamp = 1f + 0.08f * idleSine
-                    val exitStamp = if (startExitAnimation) {
-                        if (p < 0.2f) {
-                            1f - (p / 0.2f) * 0.35f
-                        } else if (p < 0.5f) {
-                            0.65f + ((p - 0.2f) / 0.3f) * 0.55f
-                        } else {
-                            1.2f - ((p - 0.5f) / 0.5f) * 1.2f
-                        }
-                    } else {
-                        1f
-                    }
-                    scaleX = idleStamp * exitStamp
-                    scaleY = idleStamp * exitStamp
-                }
-                AppShape.GEM, AppShape.SQUARE -> {
-                    scaleX = 1f - p
-                    scaleY = 1f - p
-                    val idleSway = idleSine * 12f
-                    val exitSway = (kotlin.math.sin(p.toDouble() * java.lang.Math.PI * 3.0) * 20.0).toFloat()
-                    rotationZ = idleSway * (1f - p) + exitSway * p
-                }
-                AppShape.PENTAGON -> {
-                    val idlePulse = 1f + 0.06f * idleSine
-                    val exitPulseScale = if (startExitAnimation) {
-                        if (p < 0.25f) {
-                            1f + (p / 0.25f) * 0.3f
-                        } else if (p < 0.5f) {
-                            1.3f - ((p - 0.25f) / 0.25f) * 0.6f
-                        } else if (p < 0.75f) {
-                            0.7f + ((p - 0.5f) / 0.25f) * 0.4f
-                        } else {
-                            1.1f - ((p - 0.75f) / 0.25f) * 1.1f
-                        }
-                    } else {
-                        1f
-                    }
-                    scaleX = idlePulse * exitPulseScale
-                    scaleY = idlePulse * exitPulseScale
-                }
-                AppShape.CLOVER_4_LEAF -> {
-                    val idleScaleX = 1f + 0.06f * idleSine
-                    val idleScaleY = 1f - 0.06f * idleSine
-                    if (startExitAnimation) {
-                        val exitScaleX = if (p < 0.25f) {
-                            1f + (p / 0.25f) * 0.3f
-                        } else if (p < 0.5f) {
-                            1.3f - ((p - 0.25f) / 0.25f) * 0.6f
-                        } else if (p < 0.75f) {
-                            0.7f + ((p - 0.5f) / 0.25f) * 0.4f
-                        } else {
-                            1.1f - ((p - 0.75f) / 0.25f) * 1.1f
-                        }
-                        val exitScaleY = if (p < 0.25f) {
-                            1f - (p / 0.25f) * 0.3f
-                        } else if (p < 0.5f) {
-                            0.7f + ((p - 0.25f) / 0.25f) * 0.6f
-                        } else if (p < 0.75f) {
-                            1.3f - ((p - 0.5f) / 0.25f) * 0.4f
-                        } else {
-                            0.9f - ((p - 0.75f) / 0.25f) * 0.9f
-                        }
-                        scaleX = idleScaleX * exitScaleX
-                        scaleY = idleScaleY * exitScaleY
-                    } else {
-                        scaleX = idleScaleX
-                        scaleY = idleScaleY
-                    }
-                }
-                AppShape.CLOVER_8_LEAF -> {
-                    scaleX = 1f - p
-                    scaleY = 1f - p
-                    val idleTranslationX = idleSine * 20f
-                    val exitTranslationX = (kotlin.math.sin(p.toDouble() * java.lang.Math.PI * 3.0) * 100.0).toFloat()
-                    translationX = idleTranslationX * (1f - p) + exitTranslationX * p
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(108.dp)
-                    .graphicsLayer {
-                        this.scaleX = scaleX
-                        this.scaleY = scaleY
-                        this.rotationZ = rotationZ
-                        this.translationX = translationX
-                    }
-                    .background(color = iconColor, shape = shape)
+            LoadingIndicator(
+                color = iconColor
             )
         }
     }

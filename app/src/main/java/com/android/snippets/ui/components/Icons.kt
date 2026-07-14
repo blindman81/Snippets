@@ -817,3 +817,359 @@ fun NoMemoriesIcon(
     }
 }
 
+@Composable
+fun CollectionsSectionIcon(): ImageVector {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return remember(primaryColor) {
+        ImageVector.Builder(
+            name = "CollectionsSectionIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(primaryColor)) {
+                    moveTo(680f, -80f)
+                    lineToRelative(-12f, -60f)
+                    quadToRelative(-12f, -5f, -22.5f, -10.5f)
+                    reflectiveQuadTo(624f, -164f)
+                    lineToRelative(-58f, 18f)
+                    lineToRelative(-40f, -68f)
+                    lineToRelative(46f, -40f)
+                    quadToRelative(-2f, -12f, -2f, -26f)
+                    reflectiveQuadToRelative(2f, -26f)
+                    lineToRelative(-46f, -40f)
+                    lineToRelative(40f, -68f)
+                    lineToRelative(58f, 18f)
+                    quadToRelative(11f, -8f, 21.5f, -13.5f)
+                    reflectiveQuadTo(668f, -420f)
+                    lineToRelative(12f, -60f)
+                    horizontalLineToRelative(80f)
+                    lineToRelative(12f, 60f)
+                    quadToRelative(12f, 5f, 22.5f, 10.5f)
+                    reflectiveQuadTo(816f, -396f)
+                    lineToRelative(58f, -18f)
+                    lineToRelative(40f, 68f)
+                    lineToRelative(-46f, 40f)
+                    quadToRelative(2f, 12f, 2f, 26f)
+                    reflectiveQuadToRelative(-2f, 26f)
+                    lineToRelative(46f, 40f)
+                    lineToRelative(-40f, 68f)
+                    lineToRelative(-58f, -18f)
+                    quadToRelative(-11f, 8f, -21.5f, 13.5f)
+                    reflectiveQuadTo(772f, -140f)
+                    lineToRelative(-12f, 60f)
+                    horizontalLineToRelative(-80f)
+                    close()
+                    moveTo(776.5f, -223.5f)
+                    quadTo(800f, -247f, 800f, -280f)
+                    reflectiveQuadToRelative(-23.5f, -56.5f)
+                    quadTo(753f, -360f, 720f, -360f)
+                    reflectiveQuadToRelative(-56.5f, 23.5f)
+                    quadTo(640f, -313f, 640f, -280f)
+                    reflectiveQuadToRelative(23.5f, 56.5f)
+                    quadTo(687f, -200f, 720f, -200f)
+                    reflectiveQuadToRelative(56.5f, -23.5f)
+                    close()
+                    moveTo(160f, -240f)
+                    verticalLineToRelative(-480f)
+                    verticalLineToRelative(172f)
+                    verticalLineToRelative(-12f)
+                    verticalLineToRelative(320f)
+                    close()
+                    moveTo(160f, -160f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(80f, -240f)
+                    verticalLineToRelative(-480f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(160f, -800f)
+                    horizontalLineToRelative(240f)
+                    lineToRelative(80f, 80f)
+                    horizontalLineToRelative(320f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(880f, -640f)
+                    verticalLineToRelative(131f)
+                    quadToRelative(-18f, -13f, -38f, -22.5f)
+                    reflectiveQuadTo(800f, -548f)
+                    verticalLineToRelative(-92f)
+                    horizontalLineTo(447f)
+                    lineToRelative(-80f, -80f)
+                    horizontalLineTo(160f)
+                    verticalLineToRelative(480f)
+                    horizontalLineToRelative(283f)
+                    quadToRelative(3f, 21f, 9.5f, 41f)
+                    reflectiveQuadToRelative(15.5f, 39f)
+                    horizontalLineTo(160f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
+fun ShapesSectionIcon(): ImageVector {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return remember(primaryColor) {
+        ImageVector.Builder(
+            name = "ShapesSectionIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(primaryColor)) {
+                    moveTo(600f, -360f)
+                    close()
+                    moveTo(320f, -242f)
+                    quadToRelative(10f, 1f, 19.5f, 1.5f)
+                    reflectiveQuadToRelative(20.5f, 0.5f)
+                    quadToRelative(11f, 0f, 20.5f, -0.5f)
+                    reflectiveQuadTo(400f, -242f)
+                    verticalLineToRelative(82f)
+                    horizontalLineToRelative(400f)
+                    verticalLineToRelative(-400f)
+                    horizontalLineToRelative(-82f)
+                    quadToRelative(1f, -10f, 1.5f, -19.5f)
+                    reflectiveQuadToRelative(0.5f, -20.5f)
+                    quadToRelative(0f, -11f, -0.5f, -20.5f)
+                    reflectiveQuadTo(718f, -640f)
+                    horizontalLineToRelative(82f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(880f, -560f)
+                    verticalLineToRelative(400f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(800f, -80f)
+                    horizontalLineTo(400f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(320f, -160f)
+                    verticalLineToRelative(-82f)
+                    close()
+                    moveTo(161.5f, -401.5f)
+                    quadTo(80f, -483f, 80f, -600f)
+                    reflectiveQuadToRelative(81.5f, -198.5f)
+                    quadTo(243f, -880f, 360f, -880f)
+                    reflectiveQuadToRelative(198.5f, 81.5f)
+                    quadTo(640f, -717f, 640f, -600f)
+                    reflectiveQuadToRelative(-81.5f, 198.5f)
+                    quadTo(477f, -320f, 360f, -320f)
+                    reflectiveQuadToRelative(-198.5f, -81.5f)
+                    close()
+                    moveTo(501.5f, -458.5f)
+                    quadTo(560f, -517f, 560f, -600f)
+                    reflectiveQuadToRelative(-58.5f, -141.5f)
+                    quadTo(443f, -800f, 360f, -800f)
+                    reflectiveQuadToRelative(-141.5f, 58.5f)
+                    quadTo(160f, -683f, 160f, -600f)
+                    reflectiveQuadToRelative(58.5f, 141.5f)
+                    quadTo(277f, -400f, 360f, -400f)
+                    reflectiveQuadToRelative(141.5f, -58.5f)
+                    close()
+                    moveTo(360f, -600f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
+fun MoreSectionIcon(): ImageVector {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return remember(primaryColor) {
+        ImageVector.Builder(
+            name = "MoreSectionIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(primaryColor)) {
+                    moveTo(240f, -400f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(160f, -480f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(240f, -560f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(320f, -480f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(240f, -400f)
+                    close()
+                    moveTo(480f, -400f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(400f, -480f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(480f, -560f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(560f, -480f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(480f, -400f)
+                    close()
+                    moveTo(720f, -400f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(640f, -480f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(720f, -560f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(800f, -480f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(720f, -400f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
+fun NotificationSectionIcon(): ImageVector {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return remember(primaryColor) {
+        ImageVector.Builder(
+            name = "NotificationSectionIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(primaryColor)) {
+                    moveTo(480f, -489f)
+                    close()
+                    moveTo(480f, -80f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(400f, -160f)
+                    horizontalLineToRelative(160f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(480f, -80f)
+                    close()
+                    moveTo(160f, -200f)
+                    verticalLineToRelative(-80f)
+                    horizontalLineToRelative(80f)
+                    verticalLineToRelative(-280f)
+                    quadToRelative(0f, -84f, 50.5f, -149f)
+                    reflectiveQuadTo(422f, -793f)
+                    quadToRelative(-10f, 22f, -15.5f, 46f)
+                    reflectiveQuadToRelative(-7.5f, 49f)
+                    quadToRelative(-35f, 21f, -57f, 57f)
+                    reflectiveQuadToRelative(-22f, 81f)
+                    verticalLineToRelative(280f)
+                    horizontalLineToRelative(320f)
+                    verticalLineToRelative(-122f)
+                    quadToRelative(20f, 3f, 40f, 3f)
+                    reflectiveQuadToRelative(40f, -3f)
+                    verticalLineToRelative(122f)
+                    horizontalLineToRelative(80f)
+                    verticalLineToRelative(80f)
+                    horizontalLineTo(160f)
+                    close()
+                    moveTo(640f, -480f)
+                    lineToRelative(-12f, -60f)
+                    quadToRelative(-12f, -5f, -22.5f, -10.5f)
+                    reflectiveQuadTo(584f, -564f)
+                    lineToRelative(-58f, 18f)
+                    lineToRelative(-40f, -68f)
+                    lineToRelative(46f, -40f)
+                    quadToRelative(-2f, -13f, -2f, -26f)
+                    reflectiveQuadToRelative(2f, -26f)
+                    lineToRelative(-46f, -40f)
+                    lineToRelative(40f, -68f)
+                    lineToRelative(58f, 18f)
+                    quadToRelative(11f, -8f, 21.5f, -13.5f)
+                    reflectiveQuadTo(628f, -820f)
+                    lineToRelative(12f, -60f)
+                    horizontalLineToRelative(80f)
+                    lineToRelative(12f, 60f)
+                    quadToRelative(12f, 5f, 22.5f, 10.5f)
+                    reflectiveQuadTo(776f, -796f)
+                    lineToRelative(58f, -18f)
+                    lineToRelative(40f, 68f)
+                    lineToRelative(-46f, 40f)
+                    quadToRelative(2f, 13f, 2f, 26f)
+                    reflectiveQuadToRelative(-2f, 26f)
+                    lineToRelative(46f, 40f)
+                    lineToRelative(-40f, 68f)
+                    lineToRelative(-58f, -18f)
+                    quadToRelative(-11f, 8f, -21.5f, 13.5f)
+                    reflectiveQuadTo(732f, -540f)
+                    lineToRelative(-12f, 60f)
+                    horizontalLineToRelative(-80f)
+                    close()
+                    moveTo(736.5f, -623.5f)
+                    quadTo(760f, -647f, 760f, -680f)
+                    reflectiveQuadToRelative(-23.5f, -56.5f)
+                    quadTo(713f, -760f, 680f, -760f)
+                    reflectiveQuadToRelative(-56.5f, 23.5f)
+                    quadTo(600f, -713f, 600f, -680f)
+                    reflectiveQuadToRelative(23.5f, 56.5f)
+                    quadTo(647f, -600f, 680f, -600f)
+                    reflectiveQuadToRelative(56.5f, -23.5f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
+fun SettingsSectionIcon(): ImageVector {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return remember(primaryColor) {
+        ImageVector.Builder(
+            name = "SettingsSectionIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(primaryColor)) {
+                    moveTo(120f, -120f)
+                    verticalLineToRelative(-190f)
+                    lineToRelative(358f, -358f)
+                    lineToRelative(-58f, -56f)
+                    lineToRelative(58f, -56f)
+                    lineToRelative(76f, 76f)
+                    lineToRelative(124f, -124f)
+                    quadToRelative(5f, -5f, 12.5f, -8f)
+                    reflectiveQuadToRelative(15.5f, -3f)
+                    quadToRelative(8f, 0f, 15f, 3f)
+                    reflectiveQuadToRelative(13f, 8f)
+                    lineToRelative(94f, 94f)
+                    quadToRelative(5f, 6f, 8f, 13f)
+                    reflectiveQuadToRelative(3f, 15f)
+                    quadToRelative(0f, 8f, -3f, 15.5f)
+                    reflectiveQuadToRelative(-8f, 12.5f)
+                    lineTo(705f, -555f)
+                    lineToRelative(76f, 78f)
+                    lineToRelative(-57f, 57f)
+                    lineToRelative(-56f, -58f)
+                    lineToRelative(-358f, 358f)
+                    horizontalLineTo(120f)
+                    close()
+                    moveTo(200f, -200f)
+                    horizontalLineToRelative(78f)
+                    lineToRelative(332f, -334f)
+                    lineToRelative(-76f, -76f)
+                    lineToRelative(-334f, 332f)
+                    verticalLineToRelative(78f)
+                    close()
+                    moveTo(647f, -610f)
+                    lineToRelative(96f, -96f)
+                    lineToRelative(-37f, -37f)
+                    lineToRelative(-96f, 96f)
+                    lineToRelative(37f, 37f)
+                    close()
+                    moveTo(647f, -610f)
+                    lineToRelative(-37f, -37f)
+                    lineToRelative(37f, 37f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+

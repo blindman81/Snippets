@@ -130,14 +130,14 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            Text(
-                text = "Theme",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.ExtraBold,
+            Icon(
+                imageVector = SettingsSectionIcon(),
+                contentDescription = "Palette section",
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .size(20.dp)
+                    .align(Alignment.Start)
             )
 
             val themeOptions = listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK)
@@ -168,19 +168,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 }
             }
 
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Color",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-            )
-
             SettingsCardItem(
                 icon = Icons.Default.FormatColorFill,
                 title = "Dynamic Colors",
@@ -200,35 +187,18 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 }
             )
 
+
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "Management",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.ExtraBold,
+
+            Icon(
+                imageVector = NotificationSectionIcon(),
+                contentDescription = "Notification section",
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 8.dp)
-            )
-
-            SettingsCardItem(
-                icon = Icons.Default.Schedule,
-                title = "Show time in memories and saved photos",
-                onClick = { 
-                    view.performHapticFeedback(if (!viewModel.showTimeInMemories) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                    viewModel.updateShowTimeInMemories(!viewModel.showTimeInMemories) 
-                },
-                position = CardPosition.First,
-                trailingContent = {
-
-                    PremiumSwitch(
-                        checked = viewModel.showTimeInMemories,
-                        onCheckedChange = { 
-                            viewModel.updateShowTimeInMemories(it) 
-                        }
-                    )
-                }
+                    .size(20.dp)
+                    .align(Alignment.Start)
             )
 
             var showTimePicker by remember { mutableStateOf(false) }
@@ -255,7 +225,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     showTimePicker = true
                 },
-                position = CardPosition.Last,
+                position = CardPosition.Single,
                 trailingContent = {
                     PremiumSwitch(
                         checked = viewModel.notificationReminderEnabled,
@@ -280,55 +250,17 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 }
             )
 
-            if (showTimePicker) {
-                val timePickerState = rememberTimePickerState(
-                    initialHour = viewModel.notificationReminderHour,
-                    initialMinute = viewModel.notificationReminderMinute,
-                    is24Hour = is24Hour
-                )
-                var showDial by remember { mutableStateOf(true) }
-                val toggleIcon = if (showDial) Icons.Filled.Keyboard else Icons.Filled.Schedule
-
-                AdvancedTimePickerDialog(
-                    title = "Select Reminder Time",
-                    onDismiss = {
-                        showTimePicker = false
-                    },
-                    onConfirm = {
-                        viewModel.updateNotificationReminder(
-                            enabled = true,
-                            hour = timePickerState.hour,
-                            minute = timePickerState.minute
-                        )
-                        showTimePicker = false
-                    },
-                    toggle = {
-                        IconButton(onClick = { showDial = !showDial }) {
-                            Icon(
-                                imageVector = toggleIcon,
-                                contentDescription = "Time picker type toggle"
-                            )
-                        }
-                    }
-                ) {
-                    if (showDial) {
-                        TimePicker(state = timePickerState)
-                    } else {
-                        TimeInput(state = timePickerState)
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            Text(
-                text = "Shape",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.ExtraBold,
+            Icon(
+                imageVector = ShapesSectionIcon(),
+                contentDescription = "Shape section",
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .size(20.dp)
+                    .align(Alignment.Start)
             )
 
             SettingsCardItem(
@@ -362,14 +294,14 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            Text(
-                text = "Collections",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.ExtraBold,
+            Icon(
+                imageVector = CollectionsSectionIcon(),
+                contentDescription = "Collections section",
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .size(20.dp)
+                    .align(Alignment.Start)
             )
 
             SettingsCardItem(
@@ -390,6 +322,36 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 }
             )
  
+             Spacer(modifier = Modifier.height(16.dp))
+
+             Icon(
+                 imageVector = MoreSectionIcon(),
+                 contentDescription = "More section",
+                 tint = MaterialTheme.colorScheme.primary,
+                 modifier = Modifier
+                     .padding(horizontal = 20.dp, vertical = 8.dp)
+                     .size(20.dp)
+                     .align(Alignment.Start)
+             )
+
+             SettingsCardItem(
+                 icon = Icons.Default.Schedule,
+                 title = "Show time in memories and saved photos",
+                 onClick = {
+                     view.performHapticFeedback(if (!viewModel.showTimeInMemories) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                     viewModel.updateShowTimeInMemories(!viewModel.showTimeInMemories)
+                 },
+                 position = CardPosition.Single,
+                 trailingContent = {
+                     PremiumSwitch(
+                         checked = viewModel.showTimeInMemories,
+                         onCheckedChange = {
+                             viewModel.updateShowTimeInMemories(it)
+                         }
+                     )
+                 }
+             )
+
              Spacer(modifier = Modifier.height(16.dp))
              
              Spacer(modifier = Modifier.height(32.dp))

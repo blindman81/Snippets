@@ -26,6 +26,7 @@ import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.ui.SelectIcon
 import com.android.snippets.ui.CollectionIcon
+import com.android.snippets.ui.MoreSectionIcon
 import com.android.snippets.ui.SettingsCardItem
 import com.android.snippets.ui.CardPosition
 import androidx.compose.foundation.text.BasicTextField
@@ -203,15 +204,14 @@ fun CollectionOptionsBottomSheet(
                     .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "ACTIONS",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
+                Icon(
+                    imageVector = MoreSectionIcon(),
+                    contentDescription = "Actions section",
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .fillMaxWidth()
                         .padding(horizontal = 28.dp)
                         .padding(bottom = 8.dp)
+                        .size(20.dp)
                 )
 
                 Column(

@@ -277,6 +277,17 @@ fun LibraryScreen(
                         ) {
                             Column(modifier = Modifier.fillMaxSize()) {
                                  val allTabs = pageTabs
+                                 val tabRowScrollState = rememberScrollState()
+                                 val tabPositions = remember { mutableStateMapOf<String, Float>() }
+                                 val tabWidths = remember { mutableStateMapOf<String, Float>() }
+                                 LaunchedEffect(currentTab) {
+                                     val tabX = tabPositions[currentTab] ?: return@LaunchedEffect
+                                     val tabW = tabWidths[currentTab] ?: return@LaunchedEffect
+                                     val rowW = tabRowScrollState.maxValue + 0f
+                                     val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
+                                         .coerceIn(0f, rowW)
+                                     tabRowScrollState.animateScrollTo(target.toInt())
+                                 }
                                  Surface(
                                      color = MaterialTheme.colorScheme.surface,
                                      modifier = Modifier.fillMaxWidth()
@@ -284,7 +295,7 @@ fun LibraryScreen(
                                      Row(
                                          modifier = Modifier
                                              .fillMaxWidth()
-                                             .horizontalScroll(rememberScrollState())
+                                             .horizontalScroll(tabRowScrollState)
                                              .padding(horizontal = 16.dp, vertical = 12.dp),
                                          verticalAlignment = Alignment.CenterVertically
                                      ) {
@@ -306,6 +317,10 @@ fun LibraryScreen(
                                                          key(tabName) {
                                                              val isDragged = draggedCollection == tabName
                                                              val density = androidx.compose.ui.platform.LocalDensity.current
+                                                             val positionModifier = Modifier.onGloballyPositioned { coords ->
+                                                                 tabPositions[tabName] = coords.boundsInParent().left
+                                                                 tabWidths[tabName] = coords.size.width.toFloat()
+                                                             }
                                                              val itemWidthPx = remember { with(density) { 120.dp.toPx() } }
 
                                                              val dragModifier = if (!isSystem) {
