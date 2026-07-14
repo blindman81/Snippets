@@ -868,7 +868,7 @@ fun LibraryScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         ShapedSectionHeader(
-                            icon = ViewSectionIcon(),
+                            icon = Icons.Default.ViewAgenda,
                             modifier = Modifier
                                 .align(Alignment.Start)
                                 .padding(horizontal = 28.dp)
