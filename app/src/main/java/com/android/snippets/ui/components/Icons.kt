@@ -1183,13 +1183,13 @@ fun ShapedSectionHeader(
         modifier = modifier
             .size(36.dp)
             .clip(LocalAppShape.current)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .background(MaterialTheme.colorScheme.secondaryContainer),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.size(20.dp)
         )
     }
