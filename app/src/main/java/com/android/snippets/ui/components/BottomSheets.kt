@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,10 +85,12 @@ fun MenuBottomSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                        val iconColor = if (isDark) Color.White else Color.Black
                         Surface(
                             shape = com.android.snippets.ui.shapes.LocalAppShape.current,
-                            color = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = iconColor,
                             modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -289,10 +292,12 @@ fun HistoryBottomSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                    val iconColor = if (isDark) Color.White else Color.Black
                     Surface(
                         shape = com.android.snippets.ui.shapes.LocalAppShape.current,
-                        color = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = iconColor,
                         modifier = Modifier.size(44.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {

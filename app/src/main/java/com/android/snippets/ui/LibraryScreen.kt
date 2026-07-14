@@ -57,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Brush
@@ -411,10 +412,10 @@ fun LibraryScreen(
                                                                      }
                                                                  },
                                                                  colors = ToggleButtonDefaults.toggleButtonColors(
-                                                                     checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                                                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                     checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                     checkedContentColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black,
+                                                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                                                  ),
                                                                  modifier = dragModifier.then(positionModifier).height(64.dp).widthIn(min = 120.dp, max = 200.dp)
                                                              ) {
@@ -838,10 +839,12 @@ fun LibraryScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
+                            val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                            val iconColor = if (isDark) Color.White else Color.Black
                             Surface(
                                 shape = LocalAppShape.current,
-                                color = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = iconColor,
                                 modifier = Modifier.size(44.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
