@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.wrapContentSize
 import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.ui.shapes.toComposeShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
@@ -1025,6 +1026,74 @@ fun MoreSectionIcon(): ImageVector {
 }
 
 @Composable
+fun ViewSectionIcon(): ImageVector {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return remember(primaryColor) {
+        ImageVector.Builder(
+            name = "ViewSectionIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(primaryColor)) {
+                    moveTo(200f, -520f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(120f, -600f)
+                    verticalLineToRelative(-160f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(200f, -840f)
+                    horizontalLineToRelative(560f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(840f, -760f)
+                    verticalLineToRelative(160f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(760f, -520f)
+                    horizontalLineTo(200f)
+                    close()
+                    moveTo(200f, -600f)
+                    horizontalLineToRelative(560f)
+                    verticalLineToRelative(-160f)
+                    horizontalLineTo(200f)
+                    verticalLineToRelative(160f)
+                    close()
+                    moveTo(200f, -120f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(120f, -200f)
+                    verticalLineToRelative(-160f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(200f, -440f)
+                    horizontalLineToRelative(560f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(840f, -360f)
+                    verticalLineToRelative(160f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(760f, -120f)
+                    horizontalLineTo(200f)
+                    close()
+                    moveTo(200f, -200f)
+                    horizontalLineToRelative(560f)
+                    verticalLineToRelative(-160f)
+                    horizontalLineTo(200f)
+                    verticalLineToRelative(160f)
+                    close()
+                    moveTo(200f, -760f)
+                    verticalLineToRelative(160f)
+                    verticalLineToRelative(-160f)
+                    close()
+                    moveTo(200f, -360f)
+                    verticalLineToRelative(160f)
+                    verticalLineToRelative(-160f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+
+@Composable
 fun NotificationSectionIcon(): ImageVector {
     val primaryColor = MaterialTheme.colorScheme.primary
     return remember(primaryColor) {
@@ -1170,6 +1239,27 @@ fun SettingsSectionIcon(): ImageVector {
                 }
             }
         }.build()
+    }
+}
+
+@Composable
+fun ShapedSectionHeader(
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .clip(LocalAppShape.current)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

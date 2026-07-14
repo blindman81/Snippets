@@ -867,13 +867,10 @@ fun LibraryScreen(
                         val isSystemCollection = longPressedCollection == "Library" || longPressedCollection == "Favorites" || longPressedCollection == "Eatlist"
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "VIEW",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold,
+                        ShapedSectionHeader(
+                            icon = ViewSectionIcon(),
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .align(Alignment.Start)
                                 .padding(horizontal = 28.dp)
                                 .padding(bottom = 8.dp)
                         )
@@ -974,13 +971,10 @@ fun LibraryScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            Text(
-                                text = "ACTIONS",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
+                            ShapedSectionHeader(
+                                icon = MoreSectionIcon(),
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .align(Alignment.Start)
                                     .padding(horizontal = 28.dp)
                                     .padding(bottom = 8.dp)
                             )

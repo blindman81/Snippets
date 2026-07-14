@@ -130,6 +130,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
+            ShapedSectionHeader(
+                icon = SettingsSectionIcon(),
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            )
 
 
             val themeOptions = listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK)
@@ -183,6 +189,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            ShapedSectionHeader(
+                icon = NotificationSectionIcon(),
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            )
 
 
             var showTimePicker by remember { mutableStateOf(false) }
@@ -237,6 +249,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
+            ShapedSectionHeader(
+                icon = ShapesSectionIcon(),
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            )
 
 
             SettingsCardItem(
@@ -270,6 +288,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
+            ShapedSectionHeader(
+                icon = CollectionsSectionIcon(),
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            )
 
 
             SettingsCardItem(
@@ -292,6 +316,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
  
              Spacer(modifier = Modifier.height(16.dp))
 
+             ShapedSectionHeader(
+                 icon = MoreSectionIcon(),
+                 modifier = Modifier
+                     .align(Alignment.Start)
+                     .padding(horizontal = 20.dp, vertical = 8.dp)
+             )
 
 
              SettingsCardItem(

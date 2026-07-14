@@ -638,25 +638,15 @@ fun SettingsCardItem(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val iconSize = if (isSelected) 44.dp else if (isExpressive) 36.dp else 32.dp
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(iconSize)
-                    .clip(LocalAppShape.current)
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.primaryContainer
-                    )
-            ) {
-                com.android.snippets.ui.CollectionIcon(
-                    icon = icon,
-                    modifier = Modifier.size(iconSize * 0.6f),
-                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                           else MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-
+            com.android.snippets.ui.CollectionIcon(
+                icon = icon,
+                modifier = Modifier.size(
+                    if (isSelected) 44.dp
+                    else if (isExpressive) 36.dp
+                    else 32.dp
+                ),
+                tint = if (isSelected) contentColor else MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Column(
                 modifier = Modifier
                     .weight(1f)
