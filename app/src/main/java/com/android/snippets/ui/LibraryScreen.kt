@@ -459,37 +459,11 @@ fun LibraryScreen(
                                      }
 
                                      if (pageFilteredPhotos.isEmpty()) {
-                                         Box(
-                                             modifier = Modifier
-                                                 .fillMaxWidth()
-                                                 .fillMaxHeight()
-                                                 .wrapContentSize(Alignment.Center)
-                                         ) {
-                                             Column(
-                                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                                 verticalArrangement = Arrangement.spacedBy(16.dp)
-                                             ) {
-                                                 val emptyIcon = when (tabForPage) {
-                                                     "Favorites" -> Icons.Default.FavoriteBorder
-                                                     else -> Icons.Default.PhotoLibrary
-                                                 }
-                                                 val emptyMessage = when (tabForPage) {
-                                                     "Favorites" -> "No favorites yet"
-                                                     "Library" -> "No photos yet"
-                                                     else -> "No photos in $tabForPage"
-                                                 }
-                                                 Icon(
-                                                     emptyIcon,
-                                                     contentDescription = null,
-                                                     modifier = Modifier.size(64.dp),
-                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                                 )
-                                                 Text(
-                                                     text = emptyMessage,
-                                                     style = MaterialTheme.typography.bodyLarge,
-                                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                                 )
-                                             }
+                                         when (tabForPage) {
+                                             "Favorites" -> EmptyFavoritesState()
+                                             "Eatlist"   -> EmptyEatlistState()
+                                             "Library"   -> EmptyLibraryState()
+                                             else        -> EmptyCollectionState()
                                          }
                                      } else {
                                          val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
