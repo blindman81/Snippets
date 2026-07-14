@@ -309,6 +309,8 @@ fun LibraryScreen(
                                                  val isSelected = tabName == currentTab
                                                  val iconOrEmoji = when (tabName) {
                                                      "Library" -> Icons.Default.PhotoLibrary
+                                                     "Favorites" -> Icons.Default.Favorite
+                                                     "Eatlist" -> com.ln.android.snippets.R.drawable.ic_eatlist
                                                      else -> viewModel.getCollectionIcon(tabName)
                                                  }
                                                  val isSystem = tabName == "Library" || tabName == "Favorites" || tabName == "Eatlist"
@@ -412,10 +414,10 @@ fun LibraryScreen(
                                                                      }
                                                                  },
                                                                  colors = ToggleButtonDefaults.toggleButtonColors(
-                                                                     checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                                     checkedContentColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black,
-                                                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                     checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                                                  ),
                                                                  modifier = dragModifier.then(positionModifier).height(64.dp).widthIn(min = 120.dp, max = 200.dp)
                                                              ) {
