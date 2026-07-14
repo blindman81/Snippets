@@ -144,7 +144,7 @@ fun LibraryScreen(
     var renamingCollection by remember { mutableStateOf<String?>(null) }
     var deletingCollection by remember { mutableStateOf<String?>(null) }
     var draggedCollection by remember { mutableStateOf<String?>(null) }
-    var dragOffset by remember { mutableStateOf(0f) }
+    val dragOffsetAnim = remember { androidx.compose.animation.core.Animatable(0f) }
     
     val pageTabs = remember(viewModel.userCollections, viewModel.showEatlist) {
         if (viewModel.showEatlist) {
@@ -331,38 +331,64 @@ fun LibraryScreen(
                                                                              onDragStart = {
                                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                                                                  draggedCollection = tabName
-                                                                                 dragOffset = 0f
+                                                                                 scope.launch { dragOffsetAnim.snapTo(0f) }
                                                                              },
                                                                              onDrag = { change, dragAmount ->
                                                                                  change.consume()
-                                                                                 dragOffset += dragAmount.x
+                                                                                 scope.launch { dragOffsetAnim.snapTo(dragOffsetAnim.value + dragAmount.x) }
                                                                                  
                                                                                  val index = viewModel.userCollections.indexOf(tabName)
                                                                                  if (index != -1) {
-                                                                                     if (dragOffset > itemWidthPx && index < viewModel.userCollections.size - 1) {
+                                                                                     if (dragOffsetAnim.value > itemWidthPx && index < viewModel.userCollections.size - 1) {
                                                                                          view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                                                                          viewModel.moveCollectionRight(tabName)
-                                                                                         dragOffset -= itemWidthPx
-                                                                                     } else if (dragOffset < -itemWidthPx && index > 0) {
+                                                                                         scope.launch {
+                                                                                             dragOffsetAnim.animateTo(
+                                                                                                 dragOffsetAnim.value - itemWidthPx,
+                                                                                                 androidx.compose.animation.core.spring(
+                                                                                                     dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                                                                                     stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                                                                                                 )
+                                                                                             )
+                                                                                         }
+                                                                                     } else if (dragOffsetAnim.value < -itemWidthPx && index > 0) {
                                                                                          view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                                                                          viewModel.moveCollectionLeft(tabName)
-                                                                                         dragOffset += itemWidthPx
+                                                                                         scope.launch {
+                                                                                             dragOffsetAnim.animateTo(
+                                                                                                 dragOffsetAnim.value + itemWidthPx,
+                                                                                                 androidx.compose.animation.core.spring(
+                                                                                                     dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                                                                                     stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                                                                                                 )
+                                                                                             )
+                                                                                         }
                                                                                      }
                                                                                  }
                                                                              },
                                                                              onDragEnd = {
-                                                                                 draggedCollection = null
-                                                                                 dragOffset = 0f
+                                                                                 scope.launch {
+                                                                                     dragOffsetAnim.animateTo(
+                                                                                         0f,
+                                                                                         androidx.compose.animation.core.spring(
+                                                                                             dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                                                                             stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                                                                         )
+                                                                                     )
+                                                                                     draggedCollection = null
+                                                                                 }
                                                                              },
                                                                              onDragCancel = {
-                                                                                 draggedCollection = null
-                                                                                 dragOffset = 0f
+                                                                                 scope.launch {
+                                                                                     dragOffsetAnim.snapTo(0f)
+                                                                                     draggedCollection = null
+                                                                                 }
                                                                              }
                                                                          )
                                                                      }
                                                                      .graphicsLayer {
                                                                          val currentlyDragged = draggedCollection == tabName
-                                                                         translationX = if (currentlyDragged) dragOffset else 0f
+                                                                         translationX = if (currentlyDragged) dragOffsetAnim.value else 0f
                                                                          scaleX = if (currentlyDragged) 1.08f else 1f
                                                                          scaleY = if (currentlyDragged) 1.08f else 1f
                                                                          alpha = if (currentlyDragged) 0.85f else 1f
