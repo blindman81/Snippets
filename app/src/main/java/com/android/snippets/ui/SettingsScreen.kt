@@ -130,15 +130,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            Icon(
-                imageVector = SettingsSectionIcon(),
-                contentDescription = "Palette section",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .size(20.dp)
-                    .align(Alignment.Start)
-            )
+
 
             val themeOptions = listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK)
             val themeLabels = listOf("System", "Light", "Dark")
@@ -191,15 +183,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Icon(
-                imageVector = NotificationSectionIcon(),
-                contentDescription = "Notification section",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .size(20.dp)
-                    .align(Alignment.Start)
-            )
+
 
             var showTimePicker by remember { mutableStateOf(false) }
             val context = LocalContext.current
@@ -253,15 +237,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            Icon(
-                imageVector = ShapesSectionIcon(),
-                contentDescription = "Shape section",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .size(20.dp)
-                    .align(Alignment.Start)
-            )
+
 
             SettingsCardItem(
                 icon = Icons.Default.Palette,
@@ -294,15 +270,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            Icon(
-                imageVector = CollectionsSectionIcon(),
-                contentDescription = "Collections section",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .size(20.dp)
-                    .align(Alignment.Start)
-            )
+
 
             SettingsCardItem(
                 icon = Icons.Default.Collections,
@@ -324,15 +292,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
  
              Spacer(modifier = Modifier.height(16.dp))
 
-             Icon(
-                 imageVector = MoreSectionIcon(),
-                 contentDescription = "More section",
-                 tint = MaterialTheme.colorScheme.primary,
-                 modifier = Modifier
-                     .padding(horizontal = 20.dp, vertical = 8.dp)
-                     .size(20.dp)
-                     .align(Alignment.Start)
-             )
+
 
              SettingsCardItem(
                  icon = Icons.Default.Schedule,

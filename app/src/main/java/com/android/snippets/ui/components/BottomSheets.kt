@@ -204,15 +204,6 @@ fun CollectionOptionsBottomSheet(
                     .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = MoreSectionIcon(),
-                    contentDescription = "Actions section",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .padding(horizontal = 28.dp)
-                        .padding(bottom = 8.dp)
-                        .size(20.dp)
-                )
 
                 Column(
                     modifier = Modifier
