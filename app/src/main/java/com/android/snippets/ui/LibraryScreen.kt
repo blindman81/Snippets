@@ -266,7 +266,7 @@ fun LibraryScreen(
                     )
 
                     Column(modifier = Modifier.fillMaxSize()) {
-                        Spacer(modifier = Modifier.height(currentTopPadding))
+                        Spacer(modifier = Modifier.height(currentTopPadding).fillMaxWidth().background(MaterialTheme.colorScheme.surface))
                         
                         Surface(
                             shape = RectangleShape,
