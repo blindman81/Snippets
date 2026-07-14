@@ -1,8 +1,8 @@
 package com.android.snippets.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -1180,20 +1181,19 @@ fun ShapedSectionHeader(
     icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
-    val isDark = isSystemInDarkTheme()
-    val backgroundColor = if (isDark) Color.White else Color.Black
-    val iconTint = if (isDark) Color.Black else Color.White
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val iconColor = if (isDark) Color.White else Color.Black
     Box(
         modifier = modifier
             .size(36.dp)
             .clip(LocalAppShape.current)
-            .background(backgroundColor),
+            .background(MaterialTheme.colorScheme.secondaryContainer),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = iconTint,
+            tint = iconColor,
             modifier = Modifier.size(20.dp)
         )
     }
