@@ -277,162 +277,167 @@ fun LibraryScreen(
                         ) {
                             Column(modifier = Modifier.fillMaxSize()) {
                                  val allTabs = pageTabs
-                                 Row(
-                                     modifier = Modifier
-                                         .fillMaxWidth()
-                                         .horizontalScroll(rememberScrollState())
-                                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                                     verticalAlignment = Alignment.CenterVertically
+                                 Surface(
+                                     color = MaterialTheme.colorScheme.surface,
+                                     modifier = Modifier.fillMaxWidth()
                                  ) {
-                                     androidx.compose.material3.ButtonGroup(
-                                         horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
-                                         overflowIndicator = {}
+                                     Row(
+                                         modifier = Modifier
+                                             .fillMaxWidth()
+                                             .horizontalScroll(rememberScrollState())
+                                             .padding(horizontal = 16.dp, vertical = 12.dp),
+                                         verticalAlignment = Alignment.CenterVertically
                                      ) {
-                                         allTabs.forEach { tabName ->
-                                             val isSelected = tabName == currentTab
-                                             val iconOrEmoji = when (tabName) {
-                                                 "Library" -> Icons.Default.PhotoLibrary
-                                                 else -> viewModel.getCollectionIcon(tabName)
-                                             }
-                                             val isSystem = tabName == "Library" || tabName == "Favorites" || tabName == "Eatlist"
-                                             val customIndex = viewModel.userCollections.indexOf(tabName)
+                                         androidx.compose.material3.ButtonGroup(
+                                             horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
+                                             overflowIndicator = {}
+                                         ) {
+                                             allTabs.forEach { tabName ->
+                                                 val isSelected = tabName == currentTab
+                                                 val iconOrEmoji = when (tabName) {
+                                                     "Library" -> Icons.Default.PhotoLibrary
+                                                     else -> viewModel.getCollectionIcon(tabName)
+                                                 }
+                                                 val isSystem = tabName == "Library" || tabName == "Favorites" || tabName == "Eatlist"
+                                                 val customIndex = viewModel.userCollections.indexOf(tabName)
 
-                                             customItem(
-                                                 buttonGroupContent = {
-                                                     key(tabName) {
-                                                         val isDragged = draggedCollection == tabName
-                                                         val density = androidx.compose.ui.platform.LocalDensity.current
-                                                         val itemWidthPx = remember { with(density) { 120.dp.toPx() } }
+                                                 customItem(
+                                                     buttonGroupContent = {
+                                                         key(tabName) {
+                                                             val isDragged = draggedCollection == tabName
+                                                             val density = androidx.compose.ui.platform.LocalDensity.current
+                                                             val itemWidthPx = remember { with(density) { 120.dp.toPx() } }
 
-                                                         val dragModifier = if (!isSystem) {
-                                                             Modifier
-                                                                 .pointerInput(tabName) {
-                                                                     detectDragGesturesAfterLongPress(
-                                                                         onDragStart = {
-                                                                             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                             draggedCollection = tabName
-                                                                             dragOffset = 0f
-                                                                         },
-                                                                         onDrag = { change, dragAmount ->
-                                                                             change.consume()
-                                                                             dragOffset += dragAmount.x
-                                                                             
-                                                                             val index = viewModel.userCollections.indexOf(tabName)
-                                                                             if (index != -1) {
-                                                                                 if (dragOffset > itemWidthPx && index < viewModel.userCollections.size - 1) {
-                                                                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                                     viewModel.moveCollectionRight(tabName)
-                                                                                     dragOffset -= itemWidthPx
-                                                                                 } else if (dragOffset < -itemWidthPx && index > 0) {
-                                                                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                                     viewModel.moveCollectionLeft(tabName)
-                                                                                     dragOffset += itemWidthPx
+                                                             val dragModifier = if (!isSystem) {
+                                                                 Modifier
+                                                                     .pointerInput(tabName) {
+                                                                         detectDragGesturesAfterLongPress(
+                                                                             onDragStart = {
+                                                                                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                                 draggedCollection = tabName
+                                                                                 dragOffset = 0f
+                                                                             },
+                                                                             onDrag = { change, dragAmount ->
+                                                                                 change.consume()
+                                                                                 dragOffset += dragAmount.x
+                                                                                 
+                                                                                 val index = viewModel.userCollections.indexOf(tabName)
+                                                                                 if (index != -1) {
+                                                                                     if (dragOffset > itemWidthPx && index < viewModel.userCollections.size - 1) {
+                                                                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                                         viewModel.moveCollectionRight(tabName)
+                                                                                         dragOffset -= itemWidthPx
+                                                                                     } else if (dragOffset < -itemWidthPx && index > 0) {
+                                                                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                                         viewModel.moveCollectionLeft(tabName)
+                                                                                         dragOffset += itemWidthPx
+                                                                                     }
                                                                                  }
+                                                                             },
+                                                                             onDragEnd = {
+                                                                                 draggedCollection = null
+                                                                                 dragOffset = 0f
+                                                                             },
+                                                                             onDragCancel = {
+                                                                                 draggedCollection = null
+                                                                                 dragOffset = 0f
                                                                              }
-                                                                         },
-                                                                         onDragEnd = {
-                                                                             draggedCollection = null
-                                                                             dragOffset = 0f
-                                                                         },
-                                                                         onDragCancel = {
-                                                                             draggedCollection = null
-                                                                             dragOffset = 0f
-                                                                         }
-                                                                     )
-                                                                 }
-                                                                 .graphicsLayer {
-                                                                     val currentlyDragged = draggedCollection == tabName
-                                                                     translationX = if (currentlyDragged) dragOffset else 0f
-                                                                     scaleX = if (currentlyDragged) 1.08f else 1f
-                                                                     scaleY = if (currentlyDragged) 1.08f else 1f
-                                                                     alpha = if (currentlyDragged) 0.85f else 1f
-                                                                     shadowElevation = if (currentlyDragged) 8.dp.toPx() else 0f
-                                                                 }
-                                                         } else {
-                                                             Modifier
-                                                         }
-
-                                                         ToggleButton(
-                                                             checked = isSelected,
-                                                             onCheckedChange = { checked ->
-                                                                 val pageIndex = pageTabs.indexOf(tabName)
-                                                                 if (pageIndex != -1) {
-                                                                     if (isSelected) {
-                                                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                     } else {
-                                                                         scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                                         )
                                                                      }
+                                                                     .graphicsLayer {
+                                                                         val currentlyDragged = draggedCollection == tabName
+                                                                         translationX = if (currentlyDragged) dragOffset else 0f
+                                                                         scaleX = if (currentlyDragged) 1.08f else 1f
+                                                                         scaleY = if (currentlyDragged) 1.08f else 1f
+                                                                         alpha = if (currentlyDragged) 0.85f else 1f
+                                                                         shadowElevation = if (currentlyDragged) 8.dp.toPx() else 0f
+                                                                     }
+                                                             } else {
+                                                                 Modifier
+                                                             }
+
+                                                             ToggleButton(
+                                                                 checked = isSelected,
+                                                                 onCheckedChange = { checked ->
+                                                                     val pageIndex = pageTabs.indexOf(tabName)
+                                                                     if (pageIndex != -1) {
+                                                                         if (isSelected) {
+                                                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                         } else {
+                                                                             scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                                         }
+                                                                     }
+                                                                 },
+                                                                 colors = ToggleButtonDefaults.toggleButtonColors(
+                                                                     checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                 ),
+                                                                 modifier = dragModifier.height(64.dp).widthIn(min = 120.dp, max = 200.dp)
+                                                             ) {
+                                                                 Row(
+                                                                     verticalAlignment = Alignment.CenterVertically,
+                                                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                                 ) {
+                                                                     Box(
+                                                                         contentAlignment = Alignment.Center,
+                                                                         modifier = Modifier.size(24.dp)
+                                                                     ) {
+                                                                         if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
+                                                                             Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
+                                                                         } else if (iconOrEmoji is String) {
+                                                                             Text(text = iconOrEmoji, fontSize = 16.sp)
+                                                                         } else if (iconOrEmoji is Int) {
+                                                                             Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(20.dp))
+                                                                         }
+                                                                     }
+                                                                     
+                                                                     if (isSelected) {
+                                                                         Text(
+                                                                             text = tabName,
+                                                                             style = com.android.snippets.ui.theme.titleMediumEmphasized.copy(
+                                                                                 fontSize = 14.sp
+                                                                             ),
+                                                                             fontWeight = FontWeight.Bold,
+                                                                             maxLines = 1
+                                                                         )
+                                                                     }
+                                                                 }
+                                                             }
+                                                         }
+                                                     },
+                                                     menuContent = { state ->
+                                                         DropdownMenuItem(
+                                                             leadingIcon = {
+                                                                 if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
+                                                                     Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
+                                                                 } else if (iconOrEmoji is String) {
+                                                                     Text(text = iconOrEmoji, fontSize = 16.sp)
+                                                                 } else if (iconOrEmoji is Int) {
+                                                                     Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(20.dp))
                                                                  }
                                                              },
-                                                             colors = ToggleButtonDefaults.toggleButtonColors(
-                                                                 checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                                                 checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                             ),
-                                                             modifier = dragModifier.height(64.dp).widthIn(min = 120.dp, max = 200.dp)
-                                                         ) {
-                                                             Row(
-                                                                 verticalAlignment = Alignment.CenterVertically,
-                                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                                             ) {
-                                                                 Box(
-                                                                     contentAlignment = Alignment.Center,
-                                                                     modifier = Modifier.size(24.dp)
-                                                                 ) {
-                                                                     if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
-                                                                         Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                                     } else if (iconOrEmoji is String) {
-                                                                         Text(text = iconOrEmoji, fontSize = 16.sp)
-                                                                     } else if (iconOrEmoji is Int) {
-                                                                         Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(20.dp))
-                                                                     }
+                                                             text = {
+                                                                 Text(
+                                                                     text = tabName,
+                                                                     style = MaterialTheme.typography.labelLarge
+                                                                 )
+                                                             },
+                                                             onClick = {
+                                                                 val pageIndex = pageTabs.indexOf(tabName)
+                                                                 if (pageIndex != -1) {
+                                                                     scope.launch { pagerState.animateScrollToPage(pageIndex) }
                                                                  }
-                                                                 
-                                                                 if (isSelected) {
-                                                                     Text(
-                                                                         text = tabName,
-                                                                         style = com.android.snippets.ui.theme.titleMediumEmphasized.copy(
-                                                                             fontSize = 14.sp
-                                                                         ),
-                                                                         fontWeight = FontWeight.Bold,
-                                                                         maxLines = 1
-                                                                     )
-                                                                 }
+                                                                 state.dismiss()
                                                              }
-                                                         }
+                                                         )
                                                      }
-                                                 },
-                                                 menuContent = { state ->
-                                                     DropdownMenuItem(
-                                                         leadingIcon = {
-                                                             if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
-                                                                 Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                             } else if (iconOrEmoji is String) {
-                                                                 Text(text = iconOrEmoji, fontSize = 16.sp)
-                                                             } else if (iconOrEmoji is Int) {
-                                                                 Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(20.dp))
-                                                             }
-                                                         },
-                                                         text = {
-                                                             Text(
-                                                                 text = tabName,
-                                                                 style = MaterialTheme.typography.labelLarge
-                                                             )
-                                                         },
-                                                         onClick = {
-                                                             val pageIndex = pageTabs.indexOf(tabName)
-                                                             if (pageIndex != -1) {
-                                                                 scope.launch { pagerState.animateScrollToPage(pageIndex) }
-                                                             }
-                                                             state.dismiss()
-                                                         }
-                                                     )
-                                                 }
-                                             )
+                                                 )
+                                             }
                                          }
                                      }
-                                 }
+                                 } // end tab Surface
 
                                  HorizontalPager(
                                      state = pagerState,
