@@ -2106,23 +2106,26 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         photos.filter { photo ->
             photo.isLibraryUpload &&
-            photo.snippets.isNotEmpty() && 
+            photo.snippets.isNotEmpty() &&
             photo.snippetsAddedTime != 0L &&
             (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
             (
+                // Notified: visible for 24h from surfaced time
                 (photo.surfacedTime != 0L && photo.surfacedTime <= now && now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
+                // Viewed: visible for 24h from last viewed time
                 (photo.isViewed && now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS)
             )
         }.sortedWith(
-            compareByDescending<Photo> { 
-                !it.isViewed 
-            }.thenByDescending { 
+            compareByDescending<Photo> {
+                !it.isViewed
+            }.thenByDescending {
                 it.isViewed && (now - it.lastViewedTime < RECENTLY_VIEWED_MEMORY_MS)
-            }.thenByDescending { 
-                if (it.isViewed) it.lastViewedTime else it.surfacedTime 
+            }.thenByDescending {
+                if (it.isViewed) it.lastViewedTime else it.surfacedTime
             }
-        )
+        ).take(5)
     }
+
 
     val hasUnviewedMemories: Boolean by derivedStateOf {
         curatedMemories.any { !it.isViewed }
