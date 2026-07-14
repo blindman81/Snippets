@@ -43,6 +43,89 @@ fun AnimatedCookieButton(
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
 ) {
+    AnimatedCookieButtonImpl(
+        onClick = onClick,
+        iconContent = { iconModifier, tint ->
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = iconModifier,
+                tint = tint
+            )
+        },
+        modifier = modifier,
+        tooltip = tooltip,
+        containerColor = containerColor,
+        contentColor = contentColor,
+        size = size,
+        shape = shape,
+        isSpinning = isSpinning,
+        spinOnEntry = spinOnEntry,
+        enabled = enabled,
+        hapticOnHold = hapticOnHold,
+        iconSize = iconSize
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AnimatedCookieButton(
+    onClick: () -> Unit,
+    icon: Int,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    tooltip: String? = null,
+    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    size: androidx.compose.ui.unit.Dp = 56.dp,
+    shape: androidx.compose.ui.graphics.Shape = LocalAppShape.current,
+    isSpinning: Boolean = true,
+    spinOnEntry: Boolean = false,
+    enabled: Boolean = true,
+    hapticOnHold: Boolean = true,
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
+) {
+    AnimatedCookieButtonImpl(
+        onClick = onClick,
+        iconContent = { iconModifier, tint ->
+            Icon(
+                painter = androidx.compose.ui.res.painterResource(id = icon),
+                contentDescription = contentDescription,
+                modifier = iconModifier,
+                tint = tint
+            )
+        },
+        modifier = modifier,
+        tooltip = tooltip,
+        containerColor = containerColor,
+        contentColor = contentColor,
+        size = size,
+        shape = shape,
+        isSpinning = isSpinning,
+        spinOnEntry = spinOnEntry,
+        enabled = enabled,
+        hapticOnHold = hapticOnHold,
+        iconSize = iconSize
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AnimatedCookieButtonImpl(
+    onClick: () -> Unit,
+    iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
+    modifier: Modifier = Modifier,
+    tooltip: String? = null,
+    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    size: androidx.compose.ui.unit.Dp = 56.dp,
+    shape: androidx.compose.ui.graphics.Shape = LocalAppShape.current,
+    isSpinning: Boolean = true,
+    spinOnEntry: Boolean = false,
+    enabled: Boolean = true,
+    hapticOnHold: Boolean = true,
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
+) {
     val view = LocalView.current
     var isHolding by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
@@ -51,10 +134,6 @@ fun AnimatedCookieButton(
     val animScaleY = remember { Animatable(1f) }
 
     val shapeType = LocalAppShapeType.current
-    val isSpinningShape = when (shapeType) {
-        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-        else -> false
-    }
 
     val isActive = isHolding || isTapped
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
@@ -106,20 +185,17 @@ fun AnimatedCookieButton(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                modifier = Modifier
-                    .size(iconSize)
-                    .graphicsLayer { 
-                        rotationZ = when (shapeType) {
-                            AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> -rotation.value
-                            AppShape.PENTAGON -> -rotation.value
-                            else -> 0f
-                        }
-                    },
-                tint = if (enabled) animatedContentColor else animatedContentColor.copy(alpha = 0.38f)
-            )
+            val iconModifier = Modifier
+                .size(iconSize)
+                .graphicsLayer { 
+                    rotationZ = when (shapeType) {
+                        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> -rotation.value
+                        AppShape.PENTAGON -> -rotation.value
+                        else -> 0f
+                    }
+                }
+            val tint = if (enabled) animatedContentColor else animatedContentColor.copy(alpha = 0.38f)
+            iconContent(iconModifier, tint)
         }
     }
 

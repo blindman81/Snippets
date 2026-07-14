@@ -204,6 +204,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var makePhotosFollowShape by mutableStateOf(false)
         private set
+    var showEatlist by mutableStateOf(true)
+        private set
     var showFilterSheet by mutableStateOf(false)
 
 
@@ -693,6 +695,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val savedShape = prefs.getString("selected_shape", AppShape.COOKIE_12_SIDED.name)
         selectedShape = try { AppShape.valueOf(savedShape!!) } catch (e: Exception) { AppShape.COOKIE_12_SIDED }
         makePhotosFollowShape = prefs.getBoolean("make_photos_follow_shape", false)
+        showEatlist = prefs.getBoolean("show_eatlist", true)
 
         showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
         searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
@@ -1247,6 +1250,17 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         if (selectedFilterSnippets.contains(trimmedOldName)) {
             selectedFilterSnippets = selectedFilterSnippets.map { if (it == trimmedOldName) trimmedNewName else it }
             saveFilterState()
+        }
+    }
+
+    fun swapCollections(fromIndex: Int, toIndex: Int) {
+        if (fromIndex in userCollections.indices && toIndex in userCollections.indices) {
+            val newList = userCollections.toMutableList()
+            val temp = newList[fromIndex]
+            newList[fromIndex] = newList[toIndex]
+            newList[toIndex] = temp
+            userCollections = newList
+            saveCollections()
         }
     }
 
@@ -1917,6 +1931,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateShowTimeInMemories(show: Boolean) {
         showTimeInMemories = show
         prefs.edit().putBoolean("show_time_in_memories", show).apply()
+    }
+
+    fun updateShowEatlist(show: Boolean) {
+        showEatlist = show
+        prefs.edit().putBoolean("show_eatlist", show).apply()
     }
 
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {

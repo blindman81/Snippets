@@ -58,8 +58,10 @@ fun MenuBottomSheet(
     view: android.view.View
 ) {
     if (show) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
+            sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
         ) {
@@ -133,6 +135,18 @@ fun MenuBottomSheet(
                             onDismissRequest()
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             viewModel.navigateTemplates()
+                        }
+                    )
+
+                    SettingsCardItem(
+                        icon = Icons.Default.Add,
+                        title = "New Collection",
+                        position = CardPosition.Middle,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        onClick = {
+                            onDismissRequest()
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            viewModel.navigateCollections(focusCreate = true)
                         }
                     )
 

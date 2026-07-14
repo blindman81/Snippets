@@ -12,6 +12,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.geometry.Offset
 
 import androidx.compose.animation.*
@@ -31,6 +32,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.res.painterResource
@@ -138,9 +141,16 @@ fun LibraryScreen(
     var longPressedCollection by remember { mutableStateOf<String?>(null) }
     var renamingCollection by remember { mutableStateOf<String?>(null) }
     var deletingCollection by remember { mutableStateOf<String?>(null) }
+    var isReorderMode by remember { mutableStateOf(false) }
+    var draggedIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffset by remember { mutableStateOf(0f) }
     
-    val pageTabs = remember(viewModel.userCollections) {
-        listOf("Eatlist", "Library", "Favorites") + viewModel.userCollections
+    val pageTabs = remember(viewModel.userCollections, viewModel.showEatlist) {
+        if (viewModel.showEatlist) {
+            listOf("Eatlist", "Library", "Favorites") + viewModel.userCollections
+        } else {
+            listOf("Library", "Favorites") + viewModel.userCollections
+        }
     }
     
     val initialPage = remember(pageTabs) { pageTabs.indexOf(viewModel.libraryCurrentTab).coerceAtLeast(0) }
@@ -266,76 +276,30 @@ Surface(
                                 .fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.fillMaxSize()) {
-                                val allTabs = listOf("Eatlist", "Library", "Favorites") + viewModel.userCollections + listOf("New Collection")
-                                val selectedTabIndex = allTabs.indexOf(currentTab).coerceAtLeast(0)
-                                PrimaryScrollableTabRow(
-                                    selectedTabIndex = selectedTabIndex,
-                                    edgePadding = 16.dp,
-                                    divider = {},
-                                    indicator = {
-                                        TabRowDefaults.PrimaryIndicator(
-                                            modifier = Modifier.tabIndicatorOffset(
-                                                selectedTabIndex = selectedTabIndex,
-                                                matchContentSize = true
-                                            ),
-                                            width = androidx.compose.ui.unit.Dp.Unspecified,
-                                            shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
-                                        )
-                                    }
-                                ) {
-                                    allTabs.forEach { tabName ->
-                                        val isSelected = tabName == currentTab
-                                        Tab(
-                                            selected = isSelected,
-                                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            onClick = {
-                                                if (tabName == "New Collection") {
-                                                    viewModel.navigateCollections(focusCreate = true)
-                                                } else if (isSelected) {
-                                                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                    longPressedCollection = tabName
-                                                } else {
-                                                    val pageIndex = pageTabs.indexOf(tabName)
-                                                    if (pageIndex != -1) {
-                                                        scope.launch { pagerState.animateScrollToPage(pageIndex) }
-                                                    }
-                                                }
-                                            },
-                                            modifier = Modifier.then(
-                                                if (tabName != "New Collection") {
-                                                    @OptIn(ExperimentalFoundationApi::class)
-                                                    Modifier.combinedClickable(
-                                                        onClick = { 
-                                                            val pageIndex = pageTabs.indexOf(tabName)
-                                                            if (pageIndex != -1) {
-                                                                if (pagerState.currentPage == pageIndex && tabName != "New Collection") {
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                    longPressedCollection = tabName
-                                                                } else {
-                                                                    scope.launch { pagerState.animateScrollToPage(pageIndex) }
-                                                                }
-                                                            }
-                                                        },
-                                                        onLongClick = {
-                                                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                            longPressedCollection = tabName
-                                                        }
-                                                    )
-                                                } else {
-                                                    Modifier
-                                                }
-                                            ),
-                                            text = {
-                                                Column(
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.spacedBy(if (isSelected) 2.dp else 4.dp),
-                                                    modifier = Modifier.padding(top = 2.dp, bottom = 0.dp)
-                                                ) {
-                                                    val iconOrEmoji = when (tabName) {
-                                                        "New Collection" -> Icons.Default.Add
-                                                        "Library" -> Icons.Default.PhotoLibrary
-                                                        else -> viewModel.getCollectionIcon(tabName)
-                                                    }
+                                 val allTabs = pageTabs
+                                 Row(
+                                     modifier = Modifier
+                                         .fillMaxWidth()
+                                         .horizontalScroll(rememberScrollState())
+                                         .padding(horizontal = 16.dp, vertical = 12.dp),
+                                     verticalAlignment = Alignment.CenterVertically
+                                 ) {
+                                     androidx.compose.material3.ButtonGroup(
+                                         horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
+                                         overflowIndicator = {}
+                                     ) {
+                                         allTabs.forEach { tabName ->
+                                             val isSelected = tabName == currentTab
+                                             val iconOrEmoji = when (tabName) {
+                                                 "Library" -> Icons.Default.PhotoLibrary
+                                                 else -> viewModel.getCollectionIcon(tabName)
+                                             }
+                                             val isSystem = tabName == "Library" || tabName == "Favorites" || tabName == "Eatlist"
+                                             val customIndex = viewModel.userCollections.indexOf(tabName)
+                                             val isDragged = draggedIndex == customIndex
+
+                                             customItem(
+                                                 buttonGroupContent = {
                                                      val rotation = remember { Animatable(0f) }
                                                      val animScaleX = remember { Animatable(1f) }
                                                      val animScaleY = remember { Animatable(1f) }
@@ -360,106 +324,231 @@ Surface(
                                                                   }
                                                                   AppShape.COOKIE_4_SIDED -> {
                                                                       launch {
-                                                                          animScaleX.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
+                                                                          animScaleX.animateTo(0.75f, animationSpec = tween(80, easing = FastOutLinearInEasing))
                                                                           animScaleX.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
                                                                           animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
                                                                       }
                                                                       launch {
-                                                                          animScaleY.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
+                                                                          animScaleY.animateTo(0.75f, animationSpec = tween(80, easing = FastOutLinearInEasing))
                                                                           animScaleY.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
                                                                           animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
                                                                       }
                                                                   }
                                                                   AppShape.GEM, AppShape.SQUARE, AppShape.CLOVER_8_LEAF -> {
-                                                                     launch {
-                                                                         animScaleX.animateTo(1.15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
-                                                                         animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                                                                     }
-                                                                     launch {
-                                                                         animScaleY.animateTo(1.15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
-                                                                         animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                                                                     }
-                                                                 }
-                                                                 AppShape.PENTAGON -> {
-                                                                     rotation.animateTo(-15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                                                                     rotation.animateTo(15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
-                                                                     rotation.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                                                                 }
-                                                                 AppShape.CLOVER_4_LEAF -> {
-                                                                     launch {
-                                                                         animScaleX.animateTo(1.25f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                                                                         animScaleX.animateTo(0.8f, animationSpec = tween(100, easing = FastOutSlowInEasing))
-                                                                         animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                                                                     }
-                                                                     launch {
-                                                                         animScaleY.animateTo(0.75f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                                                                         animScaleY.animateTo(1.2f, animationSpec = tween(100, easing = FastOutSlowInEasing))
-                                                                         animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                                                                     }
-                                                                 }
-                                                             }
+                                                                      launch {
+                                                                          animScaleX.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                                                                          animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                      }
+                                                                      launch {
+                                                                          animScaleY.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                                                                          animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                      }
+                                                                  }
+                                                                  AppShape.PENTAGON -> {
+                                                                      rotation.animateTo(-15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                                                                      rotation.animateTo(15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
+                                                                      rotation.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                  }
+                                                                  AppShape.CLOVER_4_LEAF -> {
+                                                                      launch {
+                                                                          animScaleX.animateTo(1.25f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                                                                          animScaleX.animateTo(0.8f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                                                                          animScaleX.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                      }
+                                                                      launch {
+                                                                          animScaleY.animateTo(0.75f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                                                                          animScaleY.animateTo(1.2f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                                                                          animScaleY.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                                                                      }
+                                                                  }
+                                                              }
                                                          }
                                                      }
 
-                                                     Surface(
-                                                         shape = LocalAppShape.current,
-                                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                                         contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                         modifier = Modifier
-                                                             .size(44.dp)
-                                                             .graphicsLayer { 
-                                                                 rotationZ = if (isSpinningShape || shapeType == AppShape.PENTAGON) rotation.value else 0f 
-                                                                 scaleX = animScaleX.value
-                                                                 scaleY = animScaleY.value
+                                                     val density = androidx.compose.ui.platform.LocalDensity.current
+                                                     val itemWidthPx = remember { with(density) { 120.dp.toPx() } }
+
+                                                     val dragModifier = if (isReorderMode && !isSystem) {
+                                                         Modifier
+                                                             .pointerInput(tabName) {
+                                                                 detectDragGestures(
+                                                                     onDragStart = {
+                                                                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                         draggedIndex = customIndex
+                                                                         dragOffset = 0f
+                                                                     },
+                                                                     onDrag = { change, dragAmount ->
+                                                                         change.consume()
+                                                                         dragOffset += dragAmount.x
+                                                                         
+                                                                         val index = draggedIndex
+                                                                         if (index != null) {
+                                                                             if (dragOffset > itemWidthPx && index < viewModel.userCollections.size - 1) {
+                                                                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                                 viewModel.moveCollectionRight(tabName)
+                                                                                 draggedIndex = index + 1
+                                                                                 dragOffset -= itemWidthPx
+                                                                             } else if (dragOffset < -itemWidthPx && index > 0) {
+                                                                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                                 viewModel.moveCollectionLeft(tabName)
+                                                                                 draggedIndex = index - 1
+                                                                                 dragOffset += itemWidthPx
+                                                                             }
+                                                                         }
+                                                                     },
+                                                                     onDragEnd = {
+                                                                         draggedIndex = null
+                                                                         dragOffset = 0f
+                                                                     },
+                                                                     onDragCancel = {
+                                                                         draggedIndex = null
+                                                                         dragOffset = 0f
+                                                                     }
+                                                                 )
                                                              }
+                                                             .graphicsLayer {
+                                                                 translationX = if (isDragged) dragOffset else 0f
+                                                                 scaleX = if (isDragged) 1.08f else 1f
+                                                                 scaleY = if (isDragged) 1.08f else 1f
+                                                                 alpha = if (isDragged) 0.85f else 1f
+                                                                 shadowElevation = if (isDragged) 8.dp.toPx() else 0f
+                                                             }
+                                                     } else {
+                                                         Modifier
+                                                     }
+
+                                                     ToggleButton(
+                                                         checked = isSelected,
+                                                         onCheckedChange = { checked ->
+                                                             if (!isReorderMode) {
+                                                                 val pageIndex = pageTabs.indexOf(tabName)
+                                                                 if (pageIndex != -1) {
+                                                                     if (isSelected) {
+                                                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                     } else {
+                                                                         scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                                     }
+                                                                 }
+                                                             }
+                                                         },
+                                                         colors = ToggleButtonDefaults.toggleButtonColors(
+                                                             checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                             checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                         ),
+                                                         modifier = dragModifier
                                                      ) {
-                                                         Box(
-                                                             contentAlignment = Alignment.Center,
-                                                             modifier = Modifier.graphicsLayer { rotationZ = if (isSpinningShape || shapeType == AppShape.PENTAGON) -rotation.value else 0f }
+                                                         Row(
+                                                             verticalAlignment = Alignment.CenterVertically,
+                                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                                          ) {
+                                                             if (!isSystem && isReorderMode) {
+                                                                 Icon(
+                                                                     painter = painterResource(id = R.drawable.ic_reorder_collections),
+                                                                     contentDescription = "Drag to reorder",
+                                                                     modifier = Modifier.size(20.dp),
+                                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                 )
+                                                             }
+
+                                                             Box(
+                                                                 contentAlignment = Alignment.Center,
+                                                                 modifier = Modifier
+                                                                     .size(24.dp)
+                                                                     .graphicsLayer { 
+                                                                         rotationZ = if (isSpinningShape || shapeType == AppShape.PENTAGON) rotation.value else 0f 
+                                                                         scaleX = animScaleX.value
+                                                                         scaleY = animScaleY.value
+                                                                     }
+                                                             ) {
+                                                                 Box(
+                                                                     modifier = Modifier.graphicsLayer { rotationZ = if (isSpinningShape || shapeType == AppShape.PENTAGON) -rotation.value else 0f }
+                                                                 ) {
+                                                                     if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
+                                                                         Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
+                                                                     } else if (iconOrEmoji is String) {
+                                                                         Text(text = iconOrEmoji, fontSize = 16.sp)
+                                                                     } else if (iconOrEmoji is Int) {
+                                                                         Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(20.dp))
+                                                                     }
+                                                                 }
+                                                             }
+                                                             
+                                                             if (isSelected || isReorderMode) {
+                                                                 Text(
+                                                                     text = tabName,
+                                                                     style = com.android.snippets.ui.theme.titleMediumEmphasized.copy(
+                                                                         fontSize = 14.sp
+                                                                     ),
+                                                                     fontWeight = FontWeight.Bold,
+                                                                     maxLines = 1
+                                                                 )
+                                                             }
+                                                         }
+                                                     }
+                                                 },
+                                                 menuContent = { state ->
+                                                     DropdownMenuItem(
+                                                         leadingIcon = {
                                                              if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
                                                                  Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
                                                              } else if (iconOrEmoji is String) {
-                                                                 Text(text = iconOrEmoji, fontSize = 18.sp)
+                                                                 Text(text = iconOrEmoji, fontSize = 16.sp)
                                                              } else if (iconOrEmoji is Int) {
                                                                  Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(20.dp))
                                                              }
+                                                         },
+                                                         text = {
+                                                             Text(
+                                                                 text = tabName,
+                                                                 style = MaterialTheme.typography.labelLarge
+                                                             )
+                                                         },
+                                                         onClick = {
+                                                             val pageIndex = pageTabs.indexOf(tabName)
+                                                             if (pageIndex != -1) {
+                                                                 scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                             }
+                                                             state.dismiss()
                                                          }
-                                                    }
+                                                     )
+                                                 }
+                                             )
+                                         }
 
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                                    ) {
-                                                        if (isSelected && tabName != "New Collection") {
-                                                            Spacer(modifier = Modifier.size(16.dp))
-                                                        }
-                                                        Text(
-                                                            text = tabName,
-                                                            style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized else MaterialTheme.typography.titleMedium.copy(
-                                                                fontFamily = com.android.snippets.ui.theme.GoogleSans
-                                                            ),
-                                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                                        )
-                                                        if (isSelected && tabName != "New Collection") {
-                                                            val isBottomSheetOpen = longPressedCollection == tabName
-                                                            Icon(
-                                                                painter = painterResource(
-                                                                    id = if (isBottomSheetOpen) R.drawable.ic_arrow_dropdown_filled else R.drawable.ic_arrow_dropdown
-                                                                ),
-                                                                contentDescription = null,
-                                                                modifier = Modifier.size(16.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                                
-
-                                HorizontalPager(
+                                         if (isReorderMode) {
+                                             customItem(
+                                                 buttonGroupContent = {
+                                                     Button(
+                                                         onClick = { isReorderMode = false },
+                                                         colors = ButtonDefaults.buttonColors(
+                                                             containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                                         ),
+                                                         shape = CircleShape
+                                                     ) {
+                                                         Icon(Icons.Default.Check, contentDescription = "Done")
+                                                         Spacer(Modifier.size(4.dp))
+                                                         Text("Done")
+                                                     }
+                                                 },
+                                                 menuContent = { state ->
+                                                     DropdownMenuItem(
+                                                         leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                                                         text = { Text("Done Reordering") },
+                                                         onClick = {
+                                                             isReorderMode = false
+                                                             state.dismiss()
+                                                         }
+                                                     )
+                                                 }
+                                             )
+                                         }
+                                     }
+                                 }
+                                 
+                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.weight(1f).fillMaxWidth(),
                                     pageSpacing = 16.dp
@@ -995,7 +1084,7 @@ Surface(
                             }
                             
                             if (!isSystemCollection) {
-                                class Option(val name: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val isDestructive: Boolean = false, val action: () -> Unit)
+                                class Option(val name: String, val icon: Any, val isDestructive: Boolean = false, val action: () -> Unit)
                                 val options = buildList {
                                     add(Option("Edit name", Icons.Default.Edit) {
                                         renamingCollection = longPressedCollection
@@ -1005,29 +1094,10 @@ Surface(
                                         viewModel.navigateSelectIcon(longPressedCollection!!)
                                         longPressedCollection = null
                                     })
-                                    val collectionIndex = viewModel.userCollections.indexOf(longPressedCollection)
-                                    if (collectionIndex > 0) {
-                                        add(Option("Move left", Icons.AutoMirrored.Filled.ArrowBack) {
-                                            val col = longPressedCollection!!
-                                            viewModel.moveCollectionLeft(col)
-                                            longPressedCollection = null
-                                            val currentIndex = pageTabs.indexOf(col)
-                                            if (currentIndex > 2) {
-                                                scope.launch { pagerState.scrollToPage(currentIndex - 1) }
-                                            }
-                                        })
-                                    }
-                                    if (collectionIndex != -1 && collectionIndex < viewModel.userCollections.size - 1) {
-                                        add(Option("Move right", Icons.AutoMirrored.Filled.ArrowForward) {
-                                            val col = longPressedCollection!!
-                                            viewModel.moveCollectionRight(col)
-                                            longPressedCollection = null
-                                            val currentIndex = pageTabs.indexOf(col)
-                                            if (currentIndex != -1 && currentIndex < pageTabs.size - 1) {
-                                                scope.launch { pagerState.scrollToPage(currentIndex + 1) }
-                                            }
-                                        })
-                                    }
+                                    add(Option("Reorder collections", R.drawable.ic_reorder_collections) {
+                                        isReorderMode = true
+                                        longPressedCollection = null
+                                    })
                                     add(Option("Delete", Icons.Default.Delete, isDestructive = true) {
                                         deletingCollection = longPressedCollection
                                         longPressedCollection = null
@@ -1055,7 +1125,14 @@ Surface(
                                         ) {
                                             ListItem(
                                                 headlineContent = { Text(option.name, fontWeight = FontWeight.Bold) },
-                                                leadingContent = { Icon(option.icon, contentDescription = null) },
+                                                leadingContent = { 
+                                                     val icon = option.icon
+                                                     if (icon is androidx.compose.ui.graphics.vector.ImageVector) {
+                                                         Icon(icon, contentDescription = null)
+                                                     } else if (icon is Int) {
+                                                         Icon(painterResource(id = icon), contentDescription = null)
+                                                     }
+                                                 },
                                                 colors = ListItemDefaults.colors(
                                                     containerColor = Color.Transparent,
                                                     headlineColor = Color.Unspecified,

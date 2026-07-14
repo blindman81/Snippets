@@ -359,6 +359,36 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     )
                 }
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = "Collections",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+
+            SettingsCardItem(
+                icon = Icons.Default.Collections,
+                title = "Show Eatlist",
+                onClick = { 
+                    view.performHapticFeedback(if (!viewModel.showEatlist) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                    viewModel.updateShowEatlist(!viewModel.showEatlist) 
+                },
+                position = CardPosition.Single,
+                trailingContent = {
+                    PremiumSwitch(
+                        checked = viewModel.showEatlist,
+                        onCheckedChange = { 
+                            viewModel.updateShowEatlist(it) 
+                        }
+                    )
+                }
+            )
  
              Spacer(modifier = Modifier.height(16.dp))
              
