@@ -130,12 +130,21 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            ShapedSectionHeader(
-                icon = SettingsSectionIcon(),
+            Row(
                 modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ShapedSectionHeader(icon = SettingsSectionIcon())
+                Text(
+                    text = "palette",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
 
 
             val themeOptions = listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK)
@@ -189,12 +198,21 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            ShapedSectionHeader(
-                icon = NotificationSectionIcon(),
+            Row(
                 modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ShapedSectionHeader(icon = NotificationSectionIcon())
+                Text(
+                    text = "Notifications",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
 
 
             var showTimePicker by remember { mutableStateOf(false) }
@@ -249,12 +267,21 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            ShapedSectionHeader(
-                icon = ShapesSectionIcon(),
+            Row(
                 modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ShapedSectionHeader(icon = ShapesSectionIcon())
+                Text(
+                    text = "Shape",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
 
 
             SettingsCardItem(
@@ -288,12 +315,21 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            ShapedSectionHeader(
-                icon = CollectionsSectionIcon(),
+            Row(
                 modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ShapedSectionHeader(icon = CollectionsSectionIcon())
+                Text(
+                    text = "Collections",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
 
 
             SettingsCardItem(
@@ -316,12 +352,21 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
  
              Spacer(modifier = Modifier.height(16.dp))
 
-             ShapedSectionHeader(
-                 icon = MoreSectionIcon(),
+             Row(
                  modifier = Modifier
-                     .align(Alignment.Start)
-                     .padding(horizontal = 20.dp, vertical = 8.dp)
-             )
+                     .fillMaxWidth()
+                     .padding(horizontal = 20.dp, vertical = 8.dp),
+                 verticalAlignment = Alignment.CenterVertically,
+                 horizontalArrangement = Arrangement.spacedBy(12.dp)
+             ) {
+                 ShapedSectionHeader(icon = MoreSectionIcon())
+                 Text(
+                     text = "more",
+                     style = MaterialTheme.typography.labelLarge,
+                     color = MaterialTheme.colorScheme.primary,
+                     fontWeight = FontWeight.ExtraBold
+                 )
+             }
 
 
              SettingsCardItem(

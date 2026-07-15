@@ -208,12 +208,22 @@ fun CollectionOptionsBottomSheet(
                     .padding(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ShapedSectionHeader(
-                    icon = MoreSectionIcon(),
+                Row(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .padding(horizontal = 28.dp)
-                        .padding(bottom = 8.dp)
-                )
+                        .padding(bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ShapedSectionHeader(icon = MoreSectionIcon())
+                    Text(
+                        text = "actions",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 Column(
                     modifier = Modifier
