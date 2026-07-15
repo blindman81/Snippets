@@ -884,7 +884,7 @@ fun LibraryScreen(
                             Text(
                                 text = "View",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = headerTextColor,
                                 fontWeight = FontWeight.Bold
                             )
                         }
