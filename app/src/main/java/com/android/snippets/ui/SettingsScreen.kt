@@ -142,7 +142,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     text = "palette",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -210,7 +210,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     text = "Notifications",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -279,7 +279,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     text = "Shape",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -327,7 +327,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     text = "Collections",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -364,7 +364,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                      text = "more",
                      style = MaterialTheme.typography.labelLarge,
                      color = MaterialTheme.colorScheme.primary,
-                     fontWeight = FontWeight.ExtraBold
+                     fontWeight = FontWeight.Bold
                  )
              }
 
