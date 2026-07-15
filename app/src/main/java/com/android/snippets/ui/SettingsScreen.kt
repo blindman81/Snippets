@@ -81,7 +81,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
         ThemePreference.LIGHT -> false
         ThemePreference.DARK -> true
     }
-    val headerTextColor = if (useDarkTheme) Color.White else Color.Black
     
     var showThemeDialog by remember { mutableStateOf(false) }
     var showCanvasDialog by remember { mutableStateOf(false) }
@@ -143,7 +142,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 Text(
                     text = "Palette",
                     style = MaterialTheme.typography.titleMedium,
-                    color = headerTextColor,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -211,7 +210,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 Text(
                     text = "Notifications",
                     style = MaterialTheme.typography.titleMedium,
-                    color = headerTextColor,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -280,7 +279,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 Text(
                     text = "Shape",
                     style = MaterialTheme.typography.titleMedium,
-                    color = headerTextColor,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -328,7 +327,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 Text(
                     text = "Collections",
                     style = MaterialTheme.typography.titleMedium,
-                    color = headerTextColor,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -365,7 +364,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                  Text(
                      text = "More",
                      style = MaterialTheme.typography.titleMedium,
-                     color = headerTextColor,
+                     color = MaterialTheme.colorScheme.primary,
                      fontWeight = FontWeight.Bold
                  )
              }

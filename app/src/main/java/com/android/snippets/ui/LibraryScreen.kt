@@ -828,8 +828,6 @@ fun LibraryScreen(
                             .padding(bottom = 32.dp)
                     ) {
                         val colName = longPressedCollection ?: ""
-                        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                        val headerTextColor = if (isDark) Color.White else Color.Black
                         val iconOrEmoji = when (colName) {
                             "Library" -> Icons.Default.PhotoLibrary
                             "Favorites" -> Icons.Default.Favorite
@@ -884,7 +882,7 @@ fun LibraryScreen(
                             Text(
                                 text = "View",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = headerTextColor,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -997,7 +995,7 @@ fun LibraryScreen(
                                 Text(
                                     text = "Actions",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = headerTextColor,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
