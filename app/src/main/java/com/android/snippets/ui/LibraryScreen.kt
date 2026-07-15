@@ -395,7 +395,7 @@ fun LibraryScreen(
                                                                          scaleX = if (currentlyDragged) 1.08f else 1f
                                                                          scaleY = if (currentlyDragged) 1.08f else 1f
                                                                          alpha = if (currentlyDragged) 0.85f else 1f
-                                                                         shadowElevation = if (currentlyDragged) 8.dp.toPx() else 0f
+                                                                         shadowElevation = 0f
                                                                      }
                                                              } else {
                                                                  Modifier
