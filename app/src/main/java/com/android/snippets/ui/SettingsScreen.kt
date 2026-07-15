@@ -139,7 +139,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
             ) {
                 ShapedSectionHeader(icon = SettingsSectionIcon())
                 Text(
-                    text = "palette",
+                    text = "Palette",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -361,7 +361,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
              ) {
                  ShapedSectionHeader(icon = MoreSectionIcon())
                  Text(
-                     text = "more",
+                     text = "More",
                      style = MaterialTheme.typography.labelLarge,
                      color = MaterialTheme.colorScheme.primary,
                      fontWeight = FontWeight.Bold

@@ -395,7 +395,7 @@ fun LibraryScreen(
                                                                          scaleX = if (currentlyDragged) 1.08f else 1f
                                                                          scaleY = if (currentlyDragged) 1.08f else 1f
                                                                          alpha = if (currentlyDragged) 0.85f else 1f
-                                                                         shadowElevation = 0f
+                                                                         shadowElevation = if (currentlyDragged) 8.dp.toPx() else 0f
                                                                      }
                                                              } else {
                                                                  Modifier
@@ -995,7 +995,7 @@ fun LibraryScreen(
                             ) {
                                 ShapedSectionHeader(icon = MoreSectionIcon())
                                 Text(
-                                    text = "actions",
+                                    text = "Actions",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold
