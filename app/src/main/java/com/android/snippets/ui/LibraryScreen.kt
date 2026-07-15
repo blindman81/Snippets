@@ -883,7 +883,7 @@ fun LibraryScreen(
                             ShapedSectionHeader(icon = Icons.Default.ViewAgenda)
                             Text(
                                 text = "View",
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = headerTextColor,
                                 fontWeight = FontWeight.Bold
                             )
@@ -996,7 +996,7 @@ fun LibraryScreen(
                                 ShapedSectionHeader(icon = MoreSectionIcon())
                                 Text(
                                     text = "Actions",
-                                    style = MaterialTheme.typography.labelLarge,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = headerTextColor,
                                     fontWeight = FontWeight.Bold
                                 )

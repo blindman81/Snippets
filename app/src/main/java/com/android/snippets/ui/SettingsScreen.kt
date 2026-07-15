@@ -142,7 +142,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 ShapedSectionHeader(icon = SettingsSectionIcon())
                 Text(
                     text = "Palette",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = headerTextColor,
                     fontWeight = FontWeight.Bold
                 )
@@ -210,7 +210,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 ShapedSectionHeader(icon = NotificationSectionIcon())
                 Text(
                     text = "Notifications",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = headerTextColor,
                     fontWeight = FontWeight.Bold
                 )
@@ -279,7 +279,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 ShapedSectionHeader(icon = ShapesSectionIcon())
                 Text(
                     text = "Shape",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = headerTextColor,
                     fontWeight = FontWeight.Bold
                 )
@@ -327,7 +327,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 ShapedSectionHeader(icon = CollectionsSectionIcon())
                 Text(
                     text = "Collections",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = headerTextColor,
                     fontWeight = FontWeight.Bold
                 )
@@ -364,7 +364,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                  ShapedSectionHeader(icon = MoreSectionIcon())
                  Text(
                      text = "More",
-                     style = MaterialTheme.typography.labelLarge,
+                     style = MaterialTheme.typography.titleMedium,
                      color = headerTextColor,
                      fontWeight = FontWeight.Bold
                  )
