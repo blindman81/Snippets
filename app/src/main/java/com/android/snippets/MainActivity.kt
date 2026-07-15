@@ -126,10 +126,8 @@ class MainActivity : ComponentActivity() {
                             val notificationToken = pendingNotificationToken
                             androidx.compose.runtime.LaunchedEffect(notificationToken, photos) {
                                 if (photos.isNotEmpty() && notificationToken != 0L) {
-                                    val index = viewModel.curatedMemories.indexOfFirst { it.id == targetPhotoId }
-                                    
-                                    if (index != -1) {
-                                        viewModel.openMemory(index)
+                                    if (targetPhotoId != null) {
+                                        viewModel.openMemoryForPhoto(targetPhotoId)
                                     } else if (viewModel.curatedMemories.isNotEmpty()) {
                                         viewModel.openMemory(0)
                                     }

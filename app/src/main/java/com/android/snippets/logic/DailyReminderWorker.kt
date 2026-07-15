@@ -32,8 +32,11 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
             return Result.success()
         }
 
-        // Post notification
-        postReminderNotification()
+        // Post notification only if there are no memory notifications to show
+        val count = getNewMemoriesCount()
+        if (count == 0) {
+            postReminderNotification()
+        }
 
         // Reschedule for next day
         rescheduleNext(prefs)

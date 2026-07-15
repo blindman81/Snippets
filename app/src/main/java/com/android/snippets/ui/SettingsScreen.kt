@@ -234,7 +234,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
             SettingsCardItem(
                 icon = com.ln.android.snippets.R.drawable.ic_daily_reminder,
-                title = "Daily notification reminder",
+                title = "Memory notification scheduling",
                 subtitle = reminderTimeStr,
                 onClick = { 
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)

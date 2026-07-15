@@ -583,7 +583,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     snippets = p.snippets ?: emptyList(),
                     isViewed = p.isViewed,
                     lastViewedTime = p.lastViewedTime,
-                    snippetsAddedTime = p.snippetsAddedTime,
+                    snippetsAddedTime = if (p.snippetsAddedTime != 0L) p.snippetsAddedTime else (if ((p.snippets ?: emptyList()).isNotEmpty()) p.date else 0L),
                     surfacedTime = p.surfacedTime,
                     isFavorite = p.isFavorite,
                     isLibraryUpload = p.isLibraryUpload,
@@ -2062,6 +2062,20 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         previousScreen = currentScreen
         currentScreen = Screen.Memory
         activeMemoriesSnapshot.getOrNull(currentMemoryIndex)?.let { markAsViewed(it.id) }
+    }
+
+    fun openMemoryForPhoto(photoId: String) {
+        val targetPhoto = photos.find { it.id == photoId } ?: return
+        val index = curatedMemories.indexOfFirst { it.id == photoId }
+        if (index != -1) {
+            openMemory(index)
+            return
+        }
+        activeMemoriesSnapshot = listOf(targetPhoto) + curatedMemories
+        currentMemoryIndex = 0
+        previousScreen = currentScreen
+        currentScreen = Screen.Memory
+        markAsViewed(photoId)
     }
 
     fun onMemoryViewed(index: Int) {

@@ -107,12 +107,6 @@ class MemoryWorker(context: Context, params: WorkerParameters) : Worker(context,
         if (photoId.isBlank()) return Result.success()
         if (!canPostNotifications(applicationContext)) return Result.failure()
 
-        val prefs = applicationContext.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
-        val reminderEnabled = prefs.getBoolean("notification_reminder_enabled", false)
-        if (reminderEnabled) {
-            return Result.success()
-        }
-
         val notificationType = inputData.getString(INPUT_NOTIFICATION_TYPE) ?: TYPE_NEW
         postNotification(photoId, notificationType)
         return Result.success()
