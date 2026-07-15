@@ -200,8 +200,6 @@ fun CollectionOptionsBottomSheet(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
         ) {
-            val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-            val headerTextColor = if (isDark) Color.White else Color.Black
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -220,7 +218,7 @@ fun CollectionOptionsBottomSheet(
                     Text(
                         text = "Actions",
                         style = MaterialTheme.typography.titleMedium,
-                        color = headerTextColor,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
