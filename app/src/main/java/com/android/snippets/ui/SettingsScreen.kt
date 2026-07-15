@@ -74,8 +74,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
         viewModel.navigateLibrary()
     }
     val view = LocalView.current
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val headerTextColor = if (isDark) Color.White else Color.Black
     val scope = rememberCoroutineScope()
     val systemDarkTheme = isSystemInDarkTheme()
     val useDarkTheme = when (viewModel.themePreference) {
@@ -83,6 +81,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
         ThemePreference.LIGHT -> false
         ThemePreference.DARK -> true
     }
+    val headerTextColor = if (useDarkTheme) Color.White else Color.Black
     
     var showThemeDialog by remember { mutableStateOf(false) }
     var showCanvasDialog by remember { mutableStateOf(false) }
