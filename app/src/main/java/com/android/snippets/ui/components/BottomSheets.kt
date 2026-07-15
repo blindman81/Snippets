@@ -85,12 +85,10 @@ fun MenuBottomSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                        val iconColor = if (isDark) Color.White else Color.Black
                         Surface(
                             shape = com.android.snippets.ui.shapes.LocalAppShape.current,
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = iconColor,
+                            color = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -302,12 +300,10 @@ fun HistoryBottomSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                    val iconColor = if (isDark) Color.White else Color.Black
                     Surface(
                         shape = com.android.snippets.ui.shapes.LocalAppShape.current,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = iconColor,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(44.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {

@@ -59,6 +59,7 @@ import androidx.compose.foundation.clickable
 import com.android.snippets.ui.shapes.AppShape
 import com.android.snippets.ui.shapes.toComposeShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -73,6 +74,8 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
         viewModel.navigateLibrary()
     }
     val view = LocalView.current
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val headerTextColor = if (isDark) Color.White else Color.Black
     val scope = rememberCoroutineScope()
     val systemDarkTheme = isSystemInDarkTheme()
     val useDarkTheme = when (viewModel.themePreference) {
@@ -141,7 +144,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 Text(
                     text = "Palette",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = headerTextColor,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -209,7 +212,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 Text(
                     text = "Notifications",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = headerTextColor,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -278,7 +281,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 Text(
                     text = "Shape",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = headerTextColor,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -326,7 +329,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 Text(
                     text = "Collections",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = headerTextColor,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -363,7 +366,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                  Text(
                      text = "More",
                      style = MaterialTheme.typography.labelLarge,
-                     color = MaterialTheme.colorScheme.primary,
+                     color = headerTextColor,
                      fontWeight = FontWeight.Bold
                  )
              }

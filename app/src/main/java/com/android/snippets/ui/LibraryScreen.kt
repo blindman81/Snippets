@@ -771,7 +771,7 @@ fun LibraryScreen(
                                                 .offset(x = (-4).dp, y = 4.dp)
                                                 .size(8.dp)
                                                 .background(
-                                                    color = MaterialTheme.colorScheme.tertiary,
+                                                    color = headerTextColor,
                                                     shape = CircleShape
                                                 )
                                         )
@@ -828,6 +828,8 @@ fun LibraryScreen(
                             .padding(bottom = 32.dp)
                     ) {
                         val colName = longPressedCollection ?: ""
+                        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                        val headerTextColor = if (isDark) Color.White else Color.Black
                         val iconOrEmoji = when (colName) {
                             "Library" -> Icons.Default.PhotoLibrary
                             "Favorites" -> Icons.Default.Favorite
@@ -841,12 +843,10 @@ fun LibraryScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                            val iconColor = if (isDark) Color.White else Color.Black
                             Surface(
                                 shape = LocalAppShape.current,
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = iconColor,
+                                color = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(44.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -997,7 +997,7 @@ fun LibraryScreen(
                                 Text(
                                     text = "Actions",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = headerTextColor,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
