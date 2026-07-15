@@ -1181,8 +1181,6 @@ fun ShapedSectionHeader(
     icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val iconColor = if (isDark) Color.White else Color.Black
     Box(
         modifier = modifier
             .size(36.dp)
@@ -1193,7 +1191,7 @@ fun ShapedSectionHeader(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = iconColor,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp)
         )
     }
