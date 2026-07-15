@@ -771,7 +771,7 @@ fun LibraryScreen(
                                                 .offset(x = (-4).dp, y = 4.dp)
                                                 .size(8.dp)
                                                 .background(
-                                                    color = headerTextColor,
+                                                    color = MaterialTheme.colorScheme.tertiary,
                                                     shape = CircleShape
                                                 )
                                         )
