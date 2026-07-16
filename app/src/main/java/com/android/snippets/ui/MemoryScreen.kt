@@ -25,6 +25,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
@@ -283,8 +284,8 @@ fun MemoryScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Spacer to clear the status bar / date header
-                    Spacer(modifier = Modifier.height(72.dp))
+                    // Spacer to clear the status bar / date header (progress bar + rating icon + date row ≈ 100dp)
+                    Spacer(modifier = Modifier.height(140.dp))
 
                     Card(
                         onClick = {
@@ -401,6 +402,7 @@ fun MemoryScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .alpha(uiAlpha)
+                .zIndex(1f)
         ) {
             // Segmented M3 Wavy / Flat Progress Bar
             MemoryStoryProgressBar(
