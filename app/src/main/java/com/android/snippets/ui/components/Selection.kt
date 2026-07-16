@@ -61,7 +61,8 @@ fun PremiumSwitch(
             .size(40.dp)
             .graphicsLayer { rotationZ = rotation }
             .clip(LocalAppShape.current)
-            .background(if (enabled) containerColor.value else containerColor.value.copy(alpha = 0.38f)),
+            .background(if (enabled) containerColor.value else containerColor.value.copy(alpha = 0.38f))
+            .clickable(enabled = enabled) { onCheckedChange(!checked) },
         contentAlignment = Alignment.Center
     ) {
         AnimatedContent(

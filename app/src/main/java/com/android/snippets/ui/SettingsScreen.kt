@@ -66,6 +66,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -264,6 +266,28 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     )
                 }
             )
+
+            val timePickerState = rememberTimePickerState(
+                initialHour = viewModel.notificationReminderHour,
+                initialMinute = viewModel.notificationReminderMinute,
+                is24Hour = is24Hour
+            )
+
+            if (showTimePicker) {
+                AdvancedTimePickerDialog(
+                    title = "Set reminder time",
+                    onDismiss = { showTimePicker = false },
+                    onConfirm = {
+                        showTimePicker = false
+                        viewModel.updateNotificationReminder(
+                            enabled = true,
+                            hour = timePickerState.hour,
+                            minute = timePickerState.minute
+                        )
+                    },
+                    content = { TimePicker(state = timePickerState) }
+                )
+            }
 
 
             Spacer(modifier = Modifier.height(16.dp))

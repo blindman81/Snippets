@@ -778,24 +778,29 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         if (changed) {
             photos = updatedPhotos
             savePhotos()
-            scheduledNotifications.forEach { (id, targetTime) ->
-                val delayMs = maxOf(0L, targetTime - now)
-                val photo = photos.find { it.id == id }
-                val notificationType = if (photo?.isViewed == true) {
-                    MemoryWorker.TYPE_UPDATED
-                } else if (photo != null && photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
-                    MemoryWorker.TYPE_RESURFACED
-                } else {
-                    MemoryWorker.TYPE_NEW
+            // When the daily reminder is on, the DailyReminderWorker posts a
+            // single summarised notification at the scheduled time. Individual
+            // per-photo workers must not be enqueued.
+            if (!notificationReminderEnabled) {
+                scheduledNotifications.forEach { (id, targetTime) ->
+                    val delayMs = maxOf(0L, targetTime - now)
+                    val photo = photos.find { it.id == id }
+                    val notificationType = if (photo?.isViewed == true) {
+                        MemoryWorker.TYPE_UPDATED
+                    } else if (photo != null && photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
+                        MemoryWorker.TYPE_RESURFACED
+                    } else {
+                        MemoryWorker.TYPE_NEW
+                    }
+                    scheduleMemoryNotification(
+                        photoId = id,
+                        delay = delayMs,
+                        delayUnit = TimeUnit.MILLISECONDS,
+                        notificationType = notificationType,
+                        policy = androidx.work.ExistingWorkPolicy.REPLACE,
+                        resetPostedState = true
+                    )
                 }
-                scheduleMemoryNotification(
-                    photoId = id,
-                    delay = delayMs,
-                    delayUnit = TimeUnit.MILLISECONDS,
-                    notificationType = notificationType,
-                    policy = androidx.work.ExistingWorkPolicy.REPLACE,
-                    resetPostedState = true
-                )
             }
         }
     }
@@ -1293,6 +1298,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     private fun memoryReminderName(photoId: String) = "$MEMORY_REMINDER_PREFIX$photoId"
 
     private fun scheduleNewMemoryNotification(photoId: String) {
+        // When the daily reminder is on, the DailyReminderWorker delivers
+        // a single summarised notification at the scheduled time instead.
+        if (notificationReminderEnabled) return
         scheduleMemoryNotification(
             photoId = photoId,
             delay = NEW_MEMORY_NOTIFICATION_DELAY_HOURS,
@@ -1302,6 +1310,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun scheduleUpdatedMemoryNotification(photoId: String) {
+        if (notificationReminderEnabled) return
         scheduleMemoryNotification(
             photoId = photoId,
             delay = NEW_MEMORY_NOTIFICATION_DELAY_HOURS,
@@ -1353,6 +1362,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun reconcileMemoryNotifications() {
+        // When the daily reminder is on, per-photo workers are not used;
+        // the DailyReminderWorker delivers a single summarised notification.
+        if (notificationReminderEnabled) return
         val now = System.currentTimeMillis()
         photos
             .filter { !it.isViewed || it.snippetsAddedTime > it.lastViewedTime }
@@ -1399,6 +1411,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             .apply()
 
         if (enabled) {
+            // Cancel all existing per-photo workers so they don't fire
+            // while the daily summary is in charge of delivery.
+            cancelAllPerPhotoMemoryWorkers()
             scheduleDailyReminderWork(hour, minute)
         } else {
             cancelDailyReminderWork()
@@ -1420,6 +1435,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         savePhotos()
 
         reconcileSurfacedMemories()
+        // reconcileMemoryNotifications is a no-op when the reminder is enabled,
+        // so calling it here is safe regardless of the new state.
         reconcileMemoryNotifications()
     }
 
@@ -1449,6 +1466,16 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     private fun cancelDailyReminderWork() {
         WorkManager.getInstance(getApplication()).cancelUniqueWork(DAILY_REMINDER_WORK_TAG)
+    }
+
+    /** Cancels every pending per-photo MemoryWorker job. Called when the
+     *  daily reminder is enabled so individual notifications no longer fire. */
+    private fun cancelAllPerPhotoMemoryWorkers() {
+        photos.forEach { photo ->
+            val reminderName = memoryReminderName(photo.id)
+            WorkManager.getInstance(getApplication()).cancelUniqueWork(reminderName)
+            WorkManager.getInstance(getApplication()).cancelAllWorkByTag(reminderName)
+        }
     }
 
     fun testNotification() {

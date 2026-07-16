@@ -32,33 +32,39 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
             return Result.success()
         }
 
-        // Post notification only if there are no memory notifications to show
-        val count = getNewMemoriesCount()
-        if (count == 0) {
-            postReminderNotification()
+        if (!MemoryWorker.canPostNotifications(applicationContext)) {
+            rescheduleNext(prefs)
+            return Result.success()
         }
 
-        // Reschedule for next day
+        // Always post the summarised notification at the scheduled time.
+        postSummaryNotification()
+
+        // Reschedule for next day at the same time.
         rescheduleNext(prefs)
 
         return Result.success()
     }
 
-    private fun getNewMemoriesCount(): Int {
+    private fun pendingMemoriesCount(): Int {
         return try {
             val file = File(applicationContext.filesDir, "photos_v2.json")
             if (!file.exists()) return 0
             val json = file.readText()
             val type = object : TypeToken<List<Photo>>() {}.type
             val photos: List<Photo> = Gson().fromJson(json, type) ?: emptyList()
-            photos.count { !it.isViewed || it.snippetsAddedTime > it.lastViewedTime }
+            photos.count { photo ->
+                photo.isLibraryUpload &&
+                    photo.snippets.isNotEmpty() &&
+                    (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             0
         }
     }
 
-    private fun postReminderNotification() {
+    private fun postSummaryNotification() {
         val notificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -73,20 +79,18 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val count = getNewMemoriesCount()
-        val title = "Review your memories"
-        val text = if (count == 1) {
-            "There is 1 new memory"
-        } else if (count > 1) {
-            "There are $count new memories"
-        } else {
-            "Take a look at your photos and add new snippets today!"
+        val count = pendingMemoriesCount()
+        val (title, text) = when {
+            count == 1 -> "1 memory has surfaced" to "A memory is waiting for you to revisit"
+            count > 1  -> "$count memories have surfaced" to "Tap to explore your surfaced memories"
+            else       -> "Take a look at your memories" to "Open the app to add new snippets today"
         }
 
         val notification = NotificationCompat.Builder(applicationContext, MemoryWorker.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
@@ -107,7 +111,7 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
-        // Force it to be in the future (next day)
+        // Always push to the next occurrence (this worker already fired for today).
         if (calendar.timeInMillis <= System.currentTimeMillis()) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
