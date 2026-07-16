@@ -142,7 +142,7 @@ fun MenuBottomSheet(
                     )
 
                     SettingsCardItem(
-                        icon = com.android.snippets.R.drawable.ic_create_new_folder,
+                        icon = com.ln.android.snippets.R.drawable.ic_create_new_folder,
                         title = "New Collection",
                         position = CardPosition.Middle,
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
