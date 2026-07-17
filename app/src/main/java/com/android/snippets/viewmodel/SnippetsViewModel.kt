@@ -206,6 +206,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var showEatlist by mutableStateOf(true)
         private set
+    var googleDriveBackupEnabled by mutableStateOf(true)
+        private set
     var showFilterSheet by mutableStateOf(false)
 
 
@@ -696,6 +698,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         selectedShape = try { AppShape.valueOf(savedShape!!) } catch (e: Exception) { AppShape.COOKIE_12_SIDED }
         makePhotosFollowShape = prefs.getBoolean("make_photos_follow_shape", false)
         showEatlist = prefs.getBoolean("show_eatlist", true)
+        googleDriveBackupEnabled = prefs.getBoolean("google_drive_backup_enabled", true)
 
         showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
         searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
@@ -1963,6 +1966,45 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateShowEatlist(show: Boolean) {
         showEatlist = show
         prefs.edit().putBoolean("show_eatlist", show).apply()
+    }
+
+    fun updateGoogleDriveBackupEnabled(enabled: Boolean) {
+        googleDriveBackupEnabled = enabled
+        prefs.edit().putBoolean("google_drive_backup_enabled", enabled).apply()
+        try {
+            BackupManager(getApplication()).dataChanged()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun openSystemBackupSettings(context: Context) {
+        try {
+            val intent = android.content.Intent().apply {
+                component = android.content.ComponentName(
+                    "com.google.android.gms",
+                    "com.google.android.gms.backup.component.BackupSettingsActivity"
+                )
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_PRIVACY_SETTINGS).apply {
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (e2: Exception) {
+                try {
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                } catch (e3: Exception) {
+                    android.widget.Toast.makeText(context, "Could not open backup settings", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {

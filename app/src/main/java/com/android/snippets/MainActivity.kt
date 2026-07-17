@@ -47,6 +47,8 @@ class MainActivity : ComponentActivity() {
     private val viewModel: SnippetsViewModel by viewModels()
     private var pendingNotificationPhotoId by mutableStateOf<String?>(null)
     private var pendingNotificationToken by mutableStateOf(0L)
+    private var pendingSharedImageUri by mutableStateOf<android.net.Uri?>(null)
+    private var pendingShareToken by mutableStateOf(0L)
 
     private fun handleNotificationIntent(intent: android.content.Intent?) {
         if (intent?.getBooleanExtra("open_memory", false) == true) {
@@ -60,6 +62,22 @@ class MainActivity : ComponentActivity() {
         if (intent?.getBooleanExtra("open_add_photo", false) == true || intent?.action == "com.android.snippets.action.ADD_PHOTO") {
             viewModel.pendingAddPhotoIntentToken = System.currentTimeMillis()
             intent.removeExtra("open_add_photo")
+        }
+    }
+
+    private fun handleShareIntent(intent: android.content.Intent?) {
+        if (intent?.action == android.content.Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
+            val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM) as? android.net.Uri
+            }
+            if (uri != null) {
+                pendingSharedImageUri = uri
+                pendingShareToken = System.currentTimeMillis()
+            }
+            intent.action = null
         }
     }
 
@@ -86,6 +104,7 @@ class MainActivity : ComponentActivity() {
 
         handleNotificationIntent(intent)
         handleTileIntent(intent)
+        handleShareIntent(intent)
 
         setContent {
             val isDarkTheme = when (viewModel.themePreference) {
@@ -137,6 +156,20 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            val shareToken = pendingShareToken
+                            val sharedUri = pendingSharedImageUri
+                            androidx.compose.runtime.LaunchedEffect(shareToken, viewModel.isInitialLoading) {
+                                if (!viewModel.isInitialLoading && shareToken != 0L && sharedUri != null) {
+                                    viewModel.updateShowEatlist(true)
+                                    viewModel.addPhotoToCollection(sharedUri, "Eatlist")
+                                    viewModel.currentScreen = com.android.snippets.viewmodel.Screen.Library
+                                    viewModel.libraryCurrentTab = "Eatlist"
+                                    
+                                    pendingShareToken = 0L
+                                    pendingSharedImageUri = null
+                                }
+                            }
+
                             val requestPermission = viewModel.requestNotificationPermission
                             androidx.compose.runtime.LaunchedEffect(requestPermission) {
                                 if (requestPermission) {
@@ -179,6 +212,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         handleNotificationIntent(intent)
         handleTileIntent(intent)
+        handleShareIntent(intent)
     }
 }
 

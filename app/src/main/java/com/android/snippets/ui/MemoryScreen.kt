@@ -121,7 +121,7 @@ fun MemoryScreen(
         }
     }
 
-    var showShareSheet by remember { mutableStateOf(false) }
+
 
     val uiAlpha by animateFloatAsState(
         targetValue = if (pagerState.isScrollInProgress) 0f else 1f,

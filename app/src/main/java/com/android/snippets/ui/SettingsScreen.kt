@@ -384,6 +384,55 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                  verticalAlignment = Alignment.CenterVertically,
                  horizontalArrangement = Arrangement.spacedBy(12.dp)
              ) {
+                 ShapedSectionHeader(icon = BackupSectionIcon())
+                 Text(
+                     text = "Cloud Backup",
+                     style = MaterialTheme.typography.titleMedium,
+                     color = MaterialTheme.colorScheme.onSurface,
+                     fontWeight = FontWeight.Bold
+                 )
+             }
+
+             SettingsCardItem(
+                 icon = BackupSectionIcon(),
+                 title = "Back up to Google Drive",
+                 subtitle = "Keep your snippets and collections safe",
+                 onClick = {
+                     view.performHapticFeedback(if (!viewModel.googleDriveBackupEnabled) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                     viewModel.updateGoogleDriveBackupEnabled(!viewModel.googleDriveBackupEnabled)
+                 },
+                 position = CardPosition.First,
+                 trailingContent = {
+                     PremiumSwitch(
+                         checked = viewModel.googleDriveBackupEnabled,
+                         onCheckedChange = {
+                             viewModel.updateGoogleDriveBackupEnabled(it)
+                         }
+                     )
+                 }
+             )
+
+             val settingsContext = LocalContext.current
+             SettingsCardItem(
+                 icon = Icons.Default.Settings,
+                 title = "Google Backup settings",
+                 subtitle = "Manage account, schedule, and restore settings",
+                 onClick = {
+                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                     viewModel.openSystemBackupSettings(settingsContext)
+                 },
+                 position = CardPosition.Last
+             )
+
+             Spacer(modifier = Modifier.height(16.dp))
+
+             Row(
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .padding(horizontal = 20.dp, vertical = 8.dp),
+                 verticalAlignment = Alignment.CenterVertically,
+                 horizontalArrangement = Arrangement.spacedBy(12.dp)
+             ) {
                  ShapedSectionHeader(icon = MoreSectionIcon())
                  Text(
                      text = "More",

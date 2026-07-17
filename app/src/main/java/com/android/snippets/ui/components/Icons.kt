@@ -1197,3 +1197,48 @@ fun ShapedSectionHeader(
     }
 }
 
+@Composable
+fun BackupSectionIcon(): ImageVector {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return remember(primaryColor) {
+        ImageVector.Builder(
+            name = "BackupSectionIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(primaryColor)) {
+                    moveTo(260f, -160f)
+                    quadToRelative(-91f, 0f, -155.5f, -63f)
+                    reflectiveQuadTo(40f, -380f)
+                    quadToRelative(0f, -78f, 47f, -139f)
+                    reflectiveQuadToRelative(123f, -77f)
+                    quadToRelative(29f, -107f, 118f, -175.5f)
+                    reflectiveQuadTo(528f, -840f)
+                    quadToRelative(122f, 0f, 212.5f, 82f)
+                    reflectiveQuadTo(840f, -550f)
+                    quadToRelative(68f, 8f, 114f, 57.5f)
+                    reflectiveQuadTo(1000f, -380f)
+                    quadToRelative(0f, 92f, -64f, 156f)
+                    reflectiveQuadTo(780f, -160f)
+                    lineTo(260f, -160f)
+                    close()
+                    moveTo(480f, -280f)
+                    lineTo(680f, -480f)
+                    lineTo(624f, -536f)
+                    lineTo(520f, -432f)
+                    verticalLineToRelative(-248f)
+                    horizontalLineToRelative(-80f)
+                    verticalLineToRelative(248f)
+                    lineTo(336f, -536f)
+                    lineTo(280f, -480f)
+                    lineTo(480f, -280f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
