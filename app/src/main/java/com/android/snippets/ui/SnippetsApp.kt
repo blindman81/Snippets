@@ -44,10 +44,20 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     val view = androidx.compose.ui.platform.LocalView.current
     val scope = rememberCoroutineScope()
 
+    var pendingCollectionForPicker by remember { mutableStateOf<String?>(null) }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let { viewModel.addPhoto(it, isFavorite = viewModel.pendingFavoriteIntent) }
+        uri?.let {
+            val pendingColl = pendingCollectionForPicker
+            if (pendingColl != null && pendingColl != "Library" && pendingColl != "Favorites") {
+                viewModel.addPhotoToCollection(it, pendingColl)
+            } else {
+                viewModel.addPhoto(it, isFavorite = viewModel.pendingFavoriteIntent)
+            }
+            pendingCollectionForPicker = null
+        }
     }
 
     val multiPhotoPickerLauncher = rememberLauncherForActivityResult(
@@ -141,17 +151,21 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                                     windowSizeClass = windowSizeClass,
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     animatedVisibilityScope = this@AnimatedContent,
-                                    onAddPhotos = { tab ->
-                                        when (tab) {
-                                            "Library" -> {
-                                                viewModel.pendingFavoriteIntent = false
-                                                photoPickerLauncher.launch("image/*")
-                                            }
-                                            "Favorites" -> viewModel.startCollectionAssignment("Favorites")
-                                            "Eatlist" -> photoPickerLauncher.launch("image/*")
-                                            else -> viewModel.startCollectionAssignment(tab)
-                                        }
-                                    }
+                                     onAddPhotos = { tab ->
+                                         when (tab) {
+                                             "Library" -> {
+                                                 viewModel.pendingFavoriteIntent = false
+                                                 pendingCollectionForPicker = null
+                                                 photoPickerLauncher.launch("image/*")
+                                             }
+                                             "Favorites" -> viewModel.startCollectionAssignment("Favorites")
+                                             "Eatlist" -> {
+                                                 pendingCollectionForPicker = "Eatlist"
+                                                 photoPickerLauncher.launch("image/*")
+                                             }
+                                             else -> viewModel.startCollectionAssignment(tab)
+                                         }
+                                     }
                                 )
                             }
                             Screen.Memory -> MemoryScreen(viewModel, sharedTransitionScope = this@SharedTransitionLayout, animatedVisibilityScope = this@AnimatedContent)
