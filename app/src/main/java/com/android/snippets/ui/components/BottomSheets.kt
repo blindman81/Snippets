@@ -216,7 +216,7 @@ fun CollectionOptionsBottomSheet(
                 ) {
                     ShapedSectionHeader(icon = MoreSectionIcon())
                     Text(
-                        text = "Actions",
+                        text = "Action",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
