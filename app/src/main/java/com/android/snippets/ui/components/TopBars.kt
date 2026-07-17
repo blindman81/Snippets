@@ -959,12 +959,18 @@ fun LargeMainTopBar(
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val collapsedFraction = scrollBehavior.state.collapsedFraction
+    val fontSize = (34f - 12f * collapsedFraction).sp
+    val lineHeight = (42f - 14f * collapsedFraction).sp
+
     LargeTopAppBar(
         title = {
             Text(
                 text = title,
                 fontFamily = com.android.snippets.ui.theme.GoogleSans,
                 fontWeight = FontWeight.Bold,
+                fontSize = fontSize,
+                lineHeight = lineHeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

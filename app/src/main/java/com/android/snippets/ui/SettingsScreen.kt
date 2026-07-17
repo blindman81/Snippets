@@ -394,7 +394,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
              ) {
                  ShapedSectionHeader(icon = BackupSectionIcon())
                  Text(
-                     text = "File Backup",
+                     text = "Backup",
                      style = MaterialTheme.typography.titleMedium,
                      color = MaterialTheme.colorScheme.onSurface,
                      fontWeight = FontWeight.Bold
@@ -403,7 +403,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
              SettingsCardItem(
                  icon = BackupSectionIcon(),
-                 title = "Export Backup File",
+                 title = "Export",
                  subtitle = "Save snippets, collections, and photos to a file",
                  onClick = {
                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
@@ -414,30 +414,11 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
              SettingsCardItem(
                  icon = BackupSectionIcon(),
-                 title = "Import Backup File",
+                 title = "Import",
                  subtitle = "Restore snippets, collections, and photos from a file",
                  onClick = {
                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                      importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
-                 },
-                 position = CardPosition.Middle
-             )
-
-             val latestFile = viewModel.getLatestAutoBackupFile()
-             val autoRestoreSubtitle = if (latestFile != null) {
-                 val date = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(latestFile.lastModified()))
-                 "Restore from auto backup ($date)"
-             } else {
-                 "No automatic backup file found to restore"
-             }
-
-             SettingsCardItem(
-                 icon = BackupSectionIcon(),
-                 title = "Restore Auto Backup",
-                 subtitle = autoRestoreSubtitle,
-                 onClick = {
-                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                     viewModel.restoreLatestAutoBackup(context)
                  },
                  position = CardPosition.Middle
              )
