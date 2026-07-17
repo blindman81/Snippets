@@ -82,13 +82,18 @@ fun MemoryScreen(
     val transitionTargetId by remember { derivedStateOf { photoList.getOrNull(pagerState.currentPage - 1)?.id } }
     
     // Sync pager state back to ViewModel and handle swipe-to-close
-    LaunchedEffect(pagerState.targetPage) {
-        if (pagerState.targetPage == 0 || pagerState.targetPage == photoList.size + 1) {
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage == 0 || pagerState.currentPage == photoList.size + 1) {
             // Immediate transition trigger
             viewModel.navigateLibrary()
-            return@LaunchedEffect
         }
-        viewModel.onMemoryViewed(pagerState.targetPage - 1)
+    }
+
+    // Sync viewed state back to ViewModel only when a page settles
+    LaunchedEffect(pagerState.settledPage) {
+        if (pagerState.settledPage in 1..photoList.size) {
+            viewModel.onMemoryViewed(pagerState.settledPage - 1)
+        }
     }
 
     val coroutineScope = rememberCoroutineScope()
@@ -194,14 +199,16 @@ fun MemoryScreen(
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             currentMemoryProgress = 0f
 
-            var lastTime = withFrameNanos { it }
+            var lastTime = 0L
             while (currentMemoryProgress < 1f) {
                 withFrameNanos { frameTime ->
                     if (!isPressed) {
-                        val deltaNano = frameTime - lastTime
-                        val deltaSec = deltaNano / 1_000_000_000f
-                        currentMemoryProgress = (currentMemoryProgress + deltaSec / 10f).coerceAtMost(1f)
-                        wavePhase = (wavePhase + deltaSec * 8f) % (2f * PI.toFloat())
+                        if (lastTime != 0L) {
+                            val deltaNano = frameTime - lastTime
+                            val deltaSec = (deltaNano / 1_000_000_000f).coerceAtMost(0.05f)
+                            currentMemoryProgress = (currentMemoryProgress + deltaSec / 10f).coerceAtMost(1f)
+                            wavePhase = (wavePhase + deltaSec * 8f) % (2f * PI.toFloat())
+                        }
                     }
                     lastTime = frameTime
                 }
