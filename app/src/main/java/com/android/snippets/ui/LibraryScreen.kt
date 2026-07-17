@@ -488,13 +488,13 @@ fun LibraryScreen(
                                      state = pagerState,
                                      modifier = Modifier.weight(1f).fillMaxWidth().fillMaxHeight(),
                                      pageSpacing = 16.dp
-                                 ) { page ->
+) { page ->
                                      val tabForPage = pageTabs.getOrNull(page) ?: "Library"
                                      val tabSortType = viewModel.getPhotoSortTypeFor(tabForPage)
                                      val pageFilteredPhotos = remember(flatPhotosRaw, tabForPage, tabSortType) {
                                          val filtered = flatPhotosRaw.filter { photo ->
                                              when (tabForPage) {
-                                                 "Library" -> true
+                                                 "Library" -> !photo.collections.contains("Eatlist")
                                                  "Favorites" -> photo.isFavorite
                                                  "Eatlist" -> photo.collections.contains("Eatlist")
                                                  else -> photo.collections.contains(tabForPage)
