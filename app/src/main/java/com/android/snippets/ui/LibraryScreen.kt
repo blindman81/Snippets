@@ -57,6 +57,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -925,6 +927,74 @@ fun LibraryScreen(
                             )
                         }
 
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 28.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val currentCols = viewModel.customGridColumns?.coerceIn(1, 3) ?: when (windowSizeClass?.widthSizeClass) {
+                                androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Expanded -> 3
+                                else -> 2
+                            }
+
+                            ViewOptionItem(
+                                columnCount = 1,
+                                isSelected = currentCols == 1,
+                                onClick = {
+                                    viewModel.updateCustomGridColumns(1)
+                                    listStates.values.forEach { state ->
+                                        scope.launch { state.scrollToItem(0) }
+                                    }
+                                },
+                                icon = ViewListIcon()
+                            )
+
+                            ViewOptionItem(
+                                columnCount = 2,
+                                isSelected = currentCols == 2,
+                                onClick = {
+                                    viewModel.updateCustomGridColumns(2)
+                                    listStates.values.forEach { state ->
+                                        scope.launch { state.scrollToItem(0) }
+                                    }
+                                },
+                                icon = ViewGrid2Icon()
+                            )
+
+                            ViewOptionItem(
+                                columnCount = 3,
+                                isSelected = currentCols == 3,
+                                onClick = {
+                                    viewModel.updateCustomGridColumns(3)
+                                    listStates.values.forEach { state ->
+                                        scope.launch { state.scrollToItem(0) }
+                                    }
+                                },
+                                icon = ViewGrid3Icon()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 28.dp)
+                                .padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ShapedSectionHeader(icon = SortIcon())
+                            Text(
+                                text = "Sort",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
                             androidx.compose.material3.ButtonGroup(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1266,3 +1336,141 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
         }
     )
 }
+
+@Composable
+private fun ViewOptionItem(
+    columnCount: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector
+) {
+    val view = LocalView.current
+    val shapeType = LocalAppShapeType.current
+    val shape = LocalAppShape.current
+
+    val rotation = remember { Animatable(0f) }
+    val scaleX = remember { Animatable(1f) }
+    val scaleY = remember { Animatable(1f) }
+
+    LaunchedEffect(isSelected) {
+        if (isSelected) {
+            when (shapeType) {
+                AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
+                    rotation.animateTo(
+                        targetValue = rotation.value + 360f,
+                        animationSpec = tween(500, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+                    )
+                }
+                AppShape.COOKIE_4_SIDED -> {
+                    launch {
+                        scaleX.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
+                        scaleX.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
+                        scaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        scaleY.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
+                        scaleY.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
+                        scaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+                AppShape.GEM, AppShape.SQUARE -> {
+                    launch {
+                        scaleX.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                        scaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        scaleY.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                        scaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+                AppShape.PENTAGON -> {
+                    rotation.animateTo(-15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                    rotation.animateTo(15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
+                    rotation.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                }
+                AppShape.CLOVER_4_LEAF -> {
+                    launch {
+                        scaleX.animateTo(1.25f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                        scaleX.animateTo(0.8f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                        scaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        scaleY.animateTo(0.75f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                        scaleY.animateTo(1.2f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                        scaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+                AppShape.CLOVER_8_LEAF -> {
+                    launch {
+                        scaleX.animateTo(1.15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                        scaleX.animateTo(1.03f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                        scaleX.animateTo(1.20f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                        scaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        scaleY.animateTo(0.85f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                        scaleY.animateTo(1.08f, animationSpec = tween(80, easing = FastOutSlowInEasing))
+                        scaleY.animateTo(0.90f, animationSpec = tween(100, easing = FastOutSlowInEasing))
+                        scaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+            }
+        }
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                if (!isSelected) {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    onClick()
+                }
+            }
+    ) {
+        val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        
+        Box(
+            modifier = Modifier.size(64.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        this.rotationZ = rotation.value
+                        this.scaleX = scaleX.value
+                        this.scaleY = scaleY.value
+                    }
+                    .clip(shape)
+                    .background(containerColor)
+            )
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+        
+        RadioButton(
+            selected = isSelected,
+            onClick = {
+                if (!isSelected) {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    onClick()
+                }
+            },
+            colors = RadioButtonDefaults.colors(
+                selectedColor = MaterialTheme.colorScheme.primary,
+                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        )
+    }
+}
+

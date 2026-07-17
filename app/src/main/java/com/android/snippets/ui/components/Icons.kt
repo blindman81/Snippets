@@ -1317,11 +1317,241 @@ fun ImportSectionIcon(): ImageVector {
                     reflectiveQuadTo(740f, -160f)
                     horizontalLineTo(260f)
                     close()
-                    moveToRelative(220f, -358f)
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
+fun SortIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+): ImageVector {
+    return remember(tint) {
+        ImageVector.Builder(
+            name = "SortIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(tint)) {
+                    moveTo(120f, -240f)
+                    verticalLineToRelative(-80f)
+                    horizontalLineToRelative(240f)
+                    verticalLineToRelative(80f)
+                    horizontalLineTo(120f)
+                    close()
+                    moveTo(120f, -440f)
+                    verticalLineToRelative(-80f)
+                    horizontalLineToRelative(480f)
+                    verticalLineToRelative(80f)
+                    horizontalLineTo(120f)
+                    close()
+                    moveTo(120f, -640f)
+                    verticalLineToRelative(-80f)
+                    horizontalLineToRelative(720f)
+                    verticalLineToRelative(80f)
+                    horizontalLineTo(120f)
                     close()
                 }
             }
         }.build()
     }
 }
+
+@Composable
+fun ViewListIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+): ImageVector {
+    return remember(tint) {
+        ImageVector.Builder(
+            name = "ViewListIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(tint)) {
+                    moveTo(200f, -520f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(120f, -600f)
+                    verticalLineToRelative(-160f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(200f, -840f)
+                    horizontalLineToRelative(560f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(840f, -760f)
+                    verticalLineToRelative(160f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(760f, -520f)
+                    horizontalLineTo(200f)
+                    close()
+                    moveTo(200f, -600f)
+                    horizontalLineToRelative(560f)
+                    verticalLineToRelative(-160f)
+                    horizontalLineTo(200f)
+                    verticalLineToRelative(160f)
+                    close()
+                    moveTo(200f, -120f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(120f, -200f)
+                    verticalLineToRelative(-160f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(200f, -440f)
+                    horizontalLineToRelative(560f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(840f, -360f)
+                    verticalLineToRelative(160f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(760f, -120f)
+                    horizontalLineTo(200f)
+                    close()
+                    moveTo(200f, -200f)
+                    horizontalLineToRelative(560f)
+                    verticalLineToRelative(-160f)
+                    horizontalLineTo(200f)
+                    verticalLineToRelative(160f)
+                    close()
+                    moveTo(200f, -760f)
+                    verticalLineToRelative(160f)
+                    verticalLineToRelative(-160f)
+                    close()
+                    moveTo(200f, -360f)
+                    verticalLineToRelative(160f)
+                    verticalLineToRelative(-160f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
+fun ViewGrid2Icon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+): ImageVector {
+    return remember(tint) {
+        ImageVector.Builder(
+            name = "ViewGrid2Icon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(tint)) {
+                    moveTo(600f, -120f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(520f, -200f)
+                    verticalLineToRelative(-560f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(600f, -840f)
+                    horizontalLineToRelative(160f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(840f, -760f)
+                    verticalLineToRelative(560f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(760f, -120f)
+                    horizontalLineTo(600f)
+                    close()
+                    moveTo(600f, -760f)
+                    verticalLineToRelative(560f)
+                    horizontalLineToRelative(160f)
+                    verticalLineToRelative(-560f)
+                    horizontalLineTo(600f)
+                    close()
+                    moveTo(200f, -120f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(120f, -200f)
+                    verticalLineToRelative(-560f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(200f, -840f)
+                    horizontalLineToRelative(160f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(440f, -760f)
+                    verticalLineToRelative(560f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(360f, -120f)
+                    horizontalLineTo(200f)
+                    close()
+                    moveTo(200f, -760f)
+                    verticalLineToRelative(560f)
+                    horizontalLineToRelative(160f)
+                    verticalLineToRelative(-560f)
+                    horizontalLineTo(200f)
+                    close()
+                    moveTo(760f, -760f)
+                    horizontalLineTo(600f)
+                    horizontalLineToRelative(160f)
+                    close()
+                    moveTo(360f, -760f)
+                    horizontalLineTo(200f)
+                    horizontalLineToRelative(160f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
+fun ViewGrid3Icon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+): ImageVector {
+    return remember(tint) {
+        ImageVector.Builder(
+            name = "ViewGrid3Icon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(tint)) {
+                    moveTo(121f, -280f)
+                    verticalLineToRelative(-400f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(201f, -760f)
+                    horizontalLineToRelative(559f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(840f, -680f)
+                    verticalLineToRelative(400f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(760f, -200f)
+                    horizontalLineTo(201f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(121f, -280f)
+                    close()
+                    moveTo(200f, -280f)
+                    horizontalLineToRelative(133f)
+                    verticalLineToRelative(-400f)
+                    horizontalLineTo(200f)
+                    verticalLineToRelative(400f)
+                    close()
+                    moveTo(413f, -280f)
+                    horizontalLineToRelative(133f)
+                    verticalLineToRelative(-400f)
+                    horizontalLineTo(413f)
+                    verticalLineToRelative(400f)
+                    close()
+                    moveTo(626f, -280f)
+                    horizontalLineToRelative(133f)
+                    verticalLineToRelative(-400f)
+                    horizontalLineTo(626f)
+                    verticalLineToRelative(400f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+
 
