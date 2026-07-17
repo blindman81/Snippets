@@ -15,6 +15,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.geometry.Offset
 
 import androidx.compose.animation.*
@@ -512,15 +515,50 @@ fun LibraryScreen(
                                          }
                                      } else {
                                          val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
-                                         val gridColumns = when (windowSizeClass?.widthSizeClass) {
-                                             WindowWidthSizeClass.Expanded -> 4
+                                         val currentGridColumns = viewModel.customGridColumns?.coerceIn(1, 3) ?: when (windowSizeClass?.widthSizeClass) {
+                                             WindowWidthSizeClass.Expanded -> 3
                                              WindowWidthSizeClass.Medium -> 3
                                              else -> 2
                                          }
+                                         val minColumns = 1
+                                         val maxColumns = 3
                                          LazyVerticalStaggeredGrid(
-                                             columns = StaggeredGridCells.Fixed(gridColumns),
+                                             columns = StaggeredGridCells.Fixed(currentGridColumns),
                                              state = pageListState,
-                                             modifier = Modifier.fillMaxSize(),
+                                             modifier = Modifier
+                                                 .fillMaxSize()
+                                                 .pointerInput(currentGridColumns) {
+                                                     awaitEachGesture {
+                                                         awaitFirstDown(requireUnconsumed = false)
+                                                         var zoomAccumulator = 1f
+                                                         do {
+                                                             val event = awaitPointerEvent()
+                                                             val numPointers = event.changes.filter { it.pressed }.size
+                                                             if (numPointers >= 2) {
+                                                                 val zoomChange = event.calculateZoom()
+                                                                 if (zoomChange != 1f) {
+                                                                     zoomAccumulator *= zoomChange
+                                                                     event.changes.forEach { it.consume() }
+                                                                     if (zoomAccumulator > 1.25f) {
+                                                                         // Pinch out (expanding fingers) -> fewer columns -> larger items
+                                                                         if (currentGridColumns > minColumns) {
+                                                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                             viewModel.updateCustomGridColumns(currentGridColumns - 1)
+                                                                         }
+                                                                         zoomAccumulator = 1f
+                                                                     } else if (zoomAccumulator < 0.8f) {
+                                                                         // Pinch in (contracting fingers) -> more columns -> smaller items
+                                                                         if (currentGridColumns < maxColumns) {
+                                                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                             viewModel.updateCustomGridColumns(currentGridColumns + 1)
+                                                                         }
+                                                                         zoomAccumulator = 1f
+                                                                     }
+                                                                 }
+                                                             }
+                                                         } while (event.changes.any { it.pressed })
+                                                     }
+                                                 },
                                              contentPadding = PaddingValues(
                                                  start = 0.dp,
                                                  end = 0.dp,

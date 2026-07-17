@@ -204,6 +204,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var makePhotosFollowShape by mutableStateOf(false)
         private set
+    var customGridColumns by mutableStateOf<Int?>(null)
+        private set
     var showEatlist by mutableStateOf(true)
         private set
     var autoBackupSchedule by mutableStateOf("Disabled")
@@ -706,6 +708,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         notificationReminderEnabled = prefs.getBoolean("notification_reminder_enabled", false)
         notificationReminderHour = prefs.getInt("notification_reminder_hour", 9)
         notificationReminderMinute = prefs.getInt("notification_reminder_minute", 0)
+
+        val savedGridCols = prefs.getInt("custom_grid_columns", -1)
+        customGridColumns = if (savedGridCols != -1) savedGridCols else null
     }
 
     private fun savePhotos(): kotlinx.coroutines.Job {
@@ -959,6 +964,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateMakePhotosFollowShape(follow: Boolean) {
         makePhotosFollowShape = follow
         prefs.edit().putBoolean("make_photos_follow_shape", follow).apply()
+    }
+
+    fun updateCustomGridColumns(columns: Int) {
+        customGridColumns = columns
+        prefs.edit().putInt("custom_grid_columns", columns).apply()
     }
 
 
