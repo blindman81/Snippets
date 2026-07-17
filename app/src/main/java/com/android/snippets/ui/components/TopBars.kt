@@ -977,6 +977,7 @@ fun LargeMainTopBar(
         },
         navigationIcon = {
             AnimatedCookieButton(
+                modifier = Modifier.padding(start = 12.dp),
                 onClick = {
                     focusManager.clearFocus()
                     onNavigationClick()

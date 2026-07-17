@@ -413,7 +413,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
              )
 
              SettingsCardItem(
-                 icon = BackupSectionIcon(),
+                 icon = ImportSectionIcon(),
                  title = "Import",
                  subtitle = "Restore snippets, collections, and photos from a file",
                  onClick = {
