@@ -177,7 +177,7 @@ fun LibraryScreen(
     val filteredFlatPhotos = remember(flatPhotosRaw, currentTab, currentTabSort) {
         val filtered = flatPhotosRaw.filter { photo ->
             when (currentTab) {
-                "Library" -> true
+                                "Library" -> !photo.collections.contains("Eatlist")
                 "Favorites" -> photo.isFavorite
                 "Eatlist" -> photo.collections.contains("Eatlist")
                 else -> photo.collections.contains(currentTab)
