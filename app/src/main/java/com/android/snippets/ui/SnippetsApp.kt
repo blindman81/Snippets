@@ -142,13 +142,14 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     animatedVisibilityScope = this@AnimatedContent,
                                     onAddPhotos = { tab ->
-                                        if (tab == "Library") {
-                                            viewModel.pendingFavoriteIntent = false
-                                            photoPickerLauncher.launch("image/*")
-                                        } else if (tab == "Favorites") {
-                                            viewModel.startCollectionAssignment("Favorites")
-                                        } else {
-                                            viewModel.startCollectionAssignment(tab)
+                                        when (tab) {
+                                            "Library" -> {
+                                                viewModel.pendingFavoriteIntent = false
+                                                photoPickerLauncher.launch("image/*")
+                                            }
+                                            "Favorites" -> viewModel.startCollectionAssignment("Favorites")
+                                            "Eatlist" -> photoPickerLauncher.launch("image/*")
+                                            else -> viewModel.startCollectionAssignment(tab)
                                         }
                                     }
                                 )
