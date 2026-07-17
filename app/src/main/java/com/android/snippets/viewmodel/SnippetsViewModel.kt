@@ -206,7 +206,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var showEatlist by mutableStateOf(true)
         private set
-    var googleDriveBackupEnabled by mutableStateOf(true)
+    var autoBackupSchedule by mutableStateOf("Disabled")
         private set
     var showFilterSheet by mutableStateOf(false)
 
@@ -698,7 +698,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         selectedShape = try { AppShape.valueOf(savedShape!!) } catch (e: Exception) { AppShape.COOKIE_12_SIDED }
         makePhotosFollowShape = prefs.getBoolean("make_photos_follow_shape", false)
         showEatlist = prefs.getBoolean("show_eatlist", true)
-        googleDriveBackupEnabled = prefs.getBoolean("google_drive_backup_enabled", true)
+        autoBackupSchedule = prefs.getString("auto_backup_schedule", "Disabled") ?: "Disabled"
+        scheduleAutoBackup()
 
         showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
         searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
@@ -1968,44 +1969,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit().putBoolean("show_eatlist", show).apply()
     }
 
-    fun updateGoogleDriveBackupEnabled(enabled: Boolean) {
-        googleDriveBackupEnabled = enabled
-        prefs.edit().putBoolean("google_drive_backup_enabled", enabled).apply()
-        try {
-            BackupManager(getApplication()).dataChanged()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    fun openSystemBackupSettings(context: Context) {
-        try {
-            val intent = android.content.Intent().apply {
-                component = android.content.ComponentName(
-                    "com.google.android.gms",
-                    "com.google.android.gms.backup.component.BackupSettingsActivity"
-                )
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            try {
-                val intent = android.content.Intent(android.provider.Settings.ACTION_PRIVACY_SETTINGS).apply {
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-            } catch (e2: Exception) {
-                try {
-                    val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS).apply {
-                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    context.startActivity(intent)
-                } catch (e3: Exception) {
-                    android.widget.Toast.makeText(context, "Could not open backup settings", android.widget.Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
@@ -2722,5 +2685,185 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
         savePhotos()
         reconcileSurfacedMemories()
+    }
+
+    fun exportBackupToFile(context: Context, uri: Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    java.util.zip.ZipOutputStream(outputStream).use { zipOut ->
+                        // 1. Pack JSON files
+                        val filesToBackup = listOf(
+                            "photos_v2.json",
+                            "collections_v2.json",
+                            "collection_icons_v2.json",
+                            "snippet_colors_v2.json",
+                            "snippet_styles_v2.json",
+                            "snippet_first_seen_v1.json"
+                        )
+                        for (fileName in filesToBackup) {
+                            val file = File(context.filesDir, fileName)
+                            if (file.exists()) {
+                                zipOut.putNextEntry(java.util.zip.ZipEntry(fileName))
+                                file.inputStream().use { input ->
+                                    input.copyTo(zipOut)
+                                }
+                                zipOut.closeEntry()
+                            }
+                        }
+
+                        // 2. Pack shared preferences
+                        val sharedPrefsFile = File(context.dataDir, "shared_prefs/snippets_prefs.xml")
+                        if (sharedPrefsFile.exists()) {
+                            zipOut.putNextEntry(java.util.zip.ZipEntry("shared_prefs/snippets_prefs.xml"))
+                            sharedPrefsFile.inputStream().use { input ->
+                                input.copyTo(zipOut)
+                            }
+                            zipOut.closeEntry()
+                        }
+
+                        // 3. Pack photo files
+                        val photosDir = File(context.filesDir, "photos")
+                        if (photosDir.exists() && photosDir.isDirectory) {
+                            photosDir.listFiles()?.forEach { photoFile ->
+                                if (photoFile.isFile) {
+                                    zipOut.putNextEntry(java.util.zip.ZipEntry("photos/${photoFile.name}"))
+                                    photoFile.inputStream().use { input ->
+                                        input.copyTo(zipOut)
+                                    }
+                                    zipOut.closeEntry()
+                                }
+                            }
+                        }
+                    }
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(context, "Backup file exported successfully!", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    fun importBackupFromFile(context: Context, uri: Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    java.util.zip.ZipInputStream(inputStream).use { zipIn ->
+                        var entry = zipIn.nextEntry
+                        while (entry != null) {
+                            val name = entry.name
+                            if (name.startsWith("photos/")) {
+                                val photosDir = File(context.filesDir, "photos")
+                                if (!photosDir.exists()) photosDir.mkdirs()
+                                val photoName = name.substringAfter("photos/")
+                                if (photoName.isNotEmpty()) {
+                                    val photoFile = File(photosDir, photoName)
+                                    FileOutputStream(photoFile).use { output ->
+                                        zipIn.copyTo(output)
+                                    }
+                                }
+                            } else if (name.startsWith("shared_prefs/")) {
+                                val sharedPrefsDir = File(context.dataDir, "shared_prefs")
+                                if (!sharedPrefsDir.exists()) sharedPrefsDir.mkdirs()
+                                val prefsName = name.substringAfter("shared_prefs/")
+                                if (prefsName.isNotEmpty()) {
+                                    val prefsFile = File(sharedPrefsDir, prefsName)
+                                    FileOutputStream(prefsFile).use { output ->
+                                        zipIn.copyTo(output)
+                                    }
+                                }
+                            } else {
+                                val file = File(context.filesDir, name)
+                                FileOutputStream(file).use { output ->
+                                    zipIn.copyTo(output)
+                                }
+                            }
+                            zipIn.closeEntry()
+                            entry = zipIn.nextEntry
+                        }
+                    }
+                }
+
+                // Force reload all settings and data
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    loadFilterState()
+                    loadSettingsState()
+                    loadPhotos()
+                    loadSnippetColors()
+                    loadSnippetStyles()
+                    loadSnippetFirstSeenTimes()
+                    pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
+                    loadRecentSearches()
+                    
+                    Toast.makeText(context, "Backup file imported successfully!", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    fun updateAutoBackupSchedule(schedule: String) {
+        autoBackupSchedule = schedule
+        prefs.edit().putString("auto_backup_schedule", schedule).apply()
+        scheduleAutoBackup()
+    }
+
+    private fun scheduleAutoBackup() {
+        val workManager = androidx.work.WorkManager.getInstance(getApplication())
+        if (autoBackupSchedule == "Disabled") {
+            workManager.cancelUniqueWork("auto_backup_work")
+            android.util.Log.d("SnippetsViewModel", "Cancelled auto backup work.")
+        } else {
+            val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.android.snippets.logic.AutoBackupWorker>(
+                24, java.util.concurrent.TimeUnit.HOURS
+            ).setConstraints(
+                androidx.work.Constraints.Builder()
+                    .setRequiresBatteryNotLow(true)
+                    .setRequiresStorageNotLow(true)
+                    .build()
+            ).build()
+            
+            workManager.enqueueUniquePeriodicWork(
+                "auto_backup_work",
+                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
+            android.util.Log.d("SnippetsViewModel", "Scheduled auto backup work: $autoBackupSchedule")
+        }
+    }
+
+    fun getLatestAutoBackupFile(): java.io.File? {
+        val backupDir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "SnippetsBackups")
+        if (!backupDir.exists() || !backupDir.isDirectory) return null
+        
+        val files = backupDir.listFiles { _, name ->
+            name.startsWith("snippets_backup_auto_") && name.endsWith(".zip")
+        } ?: return null
+        
+        return files.maxByOrNull { it.lastModified() }
+    }
+
+    fun hasLatestAutoBackup(): Boolean {
+        val file = getLatestAutoBackupFile()
+        return file != null && file.exists()
+    }
+
+    fun restoreLatestAutoBackup(context: Context) {
+        val latestFile = getLatestAutoBackupFile()
+        if (latestFile == null || !latestFile.exists()) {
+            Toast.makeText(context, "No auto backup file found in Downloads/SnippetsBackups/", Toast.LENGTH_LONG).show()
+            return
+        }
+        
+        importBackupFromFile(context, Uri.fromFile(latestFile))
     }
 }

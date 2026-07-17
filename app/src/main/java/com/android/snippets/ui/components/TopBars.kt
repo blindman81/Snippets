@@ -948,3 +948,46 @@ fun getStatsSubtext(photos: List<Photo>): String? {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LargeMainTopBar(
+    title: String,
+    onNavigationClick: () -> Unit,
+    navigationIcon: ImageVector = Icons.AutoMirrored.Filled.ArrowBack,
+    isSpinning: Boolean = true,
+    scrollBehavior: TopAppBarScrollBehavior,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    LargeTopAppBar(
+        title = {
+            Text(
+                text = title,
+                fontFamily = com.android.snippets.ui.theme.GoogleSans,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        navigationIcon = {
+            AnimatedCookieButton(
+                onClick = {
+                    focusManager.clearFocus()
+                    onNavigationClick()
+                },
+                icon = navigationIcon,
+                contentDescription = "Navigation",
+                tooltip = if (navigationIcon == Icons.Default.Menu) "Menu" else "Back",
+                isSpinning = isSpinning
+            )
+        },
+        actions = actions,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        scrollBehavior = scrollBehavior
+    )
+}
+
+

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.TextSnippet
 import com.android.snippets.ui.components.MainTopBar
+import com.android.snippets.ui.components.LargeMainTopBar
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SnippetStyle
 import java.util.Calendar
@@ -46,11 +47,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
     }
     val view = LocalView.current
     val scrollState = rememberScrollState()
-    val isScrolled by remember { derivedStateOf { scrollState.value > 0 } }
-
-    val nestedScrollConnection = remember {
-        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {}
-    }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     val photos = viewModel.photos
 
@@ -165,9 +162,9 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
     }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            MainTopBar(
+            LargeMainTopBar(
                 title = "Stats",
                 onNavigationClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
@@ -175,19 +172,22 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                 },
                 navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
                 isSpinning = true,
-                isScrolled = isScrolled,
-                leftAlignTitle = true
+                scrollBehavior = scrollBehavior
             )
         }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(
+                    bottom = innerPadding.calculateBottomPadding() + 12.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding() + 12.dp))
             // Header summary cards
             Surface(
                 shape = RoundedCornerShape(28.dp),

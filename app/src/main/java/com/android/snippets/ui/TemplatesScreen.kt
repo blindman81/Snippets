@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.MainTopBar
+import com.android.snippets.ui.components.LargeMainTopBar
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.ui.platform.LocalContext
 import com.android.snippets.viewmodel.SnippetsViewModel
@@ -53,23 +54,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
     val locationsScrollState = rememberScrollState()
     val starsScrollState = rememberScrollState()
 
-    val activeScrollState = when (pagerState.currentPage) {
-        0 -> snippetsScrollState
-        1 -> locationsScrollState
-        else -> starsScrollState
-    }
-    val isScrolled by remember { derivedStateOf { activeScrollState.value > 0 } }
-
-    val nestedScrollConnection = remember {
-        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
-            override fun onPreScroll(
-                available: androidx.compose.ui.geometry.Offset,
-                source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
-            ): androidx.compose.ui.geometry.Offset {
-                return androidx.compose.ui.geometry.Offset.Zero
-            }
-        }
-    }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     var showActionDialogForSnippet by remember { mutableStateOf<String?>(null) }
     var showCustomSnippetDialog by remember { mutableStateOf(false) }
@@ -78,10 +63,10 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
     var showActionDialogForRating by remember { mutableStateOf<Int?>(null) }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            MainTopBar(
+            LargeMainTopBar(
                 title = "Templates",
                 onNavigationClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
@@ -89,8 +74,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                 },
                 navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
                 isSpinning = true,
-                isScrolled = isScrolled,
-                leftAlignTitle = true
+                scrollBehavior = scrollBehavior
             )
         }
     ) { padding ->

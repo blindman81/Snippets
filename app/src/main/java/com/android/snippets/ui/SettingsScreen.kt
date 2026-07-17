@@ -77,6 +77,22 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
     }
     val view = LocalView.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportBackupToFile(context, uri)
+        }
+    }
+
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importBackupFromFile(context, uri)
+        }
+    }
     val systemDarkTheme = isSystemInDarkTheme()
     val useDarkTheme = when (viewModel.themePreference) {
         ThemePreference.SYSTEM -> systemDarkTheme
@@ -86,22 +102,15 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
     
     var showThemeDialog by remember { mutableStateOf(false) }
     var showCanvasDialog by remember { mutableStateOf(false) }
+    var showAutoBackupDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
-    val isScrolled by remember { derivedStateOf<Boolean> { scrollState.value > 0 } }
-    
-    val nestedScrollConnection = remember {
-        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
-            override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                return androidx.compose.ui.geometry.Offset.Zero
-            }
-        }
-    }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            MainTopBar(
+            LargeMainTopBar(
                 title = "Settings",
                 onNavigationClick = { 
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
@@ -109,15 +118,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 },
                 navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
                 isSpinning = !(showThemeDialog || showCanvasDialog),
-                isScrolled = isScrolled,
-                leftAlignTitle = true
+                scrollBehavior = scrollBehavior
             )
         }
     ) { padding ->
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = padding.calculateTopPadding()),
+            modifier = Modifier.fillMaxSize(),
             shape = RectangleShape,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp
@@ -126,10 +132,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
+                    .padding(bottom = padding.calculateBottomPadding())
                     .animateContentSize(spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
+                Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
 
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -386,7 +394,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
              ) {
                  ShapedSectionHeader(icon = BackupSectionIcon())
                  Text(
-                     text = "Cloud Backup",
+                     text = "File Backup",
                      style = MaterialTheme.typography.titleMedium,
                      color = MaterialTheme.colorScheme.onSurface,
                      fontWeight = FontWeight.Bold
@@ -395,31 +403,58 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
              SettingsCardItem(
                  icon = BackupSectionIcon(),
-                 title = "Back up to Google Drive",
-                 subtitle = "Keep your snippets and collections safe",
-                 onClick = {
-                     view.performHapticFeedback(if (!viewModel.googleDriveBackupEnabled) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                     viewModel.updateGoogleDriveBackupEnabled(!viewModel.googleDriveBackupEnabled)
-                 },
-                 position = CardPosition.First,
-                 trailingContent = {
-                     PremiumSwitch(
-                         checked = viewModel.googleDriveBackupEnabled,
-                         onCheckedChange = {
-                             viewModel.updateGoogleDriveBackupEnabled(it)
-                         }
-                     )
-                 }
-             )
-
-             val settingsContext = LocalContext.current
-             SettingsCardItem(
-                 icon = Icons.Default.Settings,
-                 title = "Google Backup settings",
-                 subtitle = "Manage account, schedule, and restore settings",
+                 title = "Export Backup File",
+                 subtitle = "Save snippets, collections, and photos to a file",
                  onClick = {
                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                     viewModel.openSystemBackupSettings(settingsContext)
+                     exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.zip")
+                 },
+                 position = CardPosition.First
+             )
+
+             SettingsCardItem(
+                 icon = BackupSectionIcon(),
+                 title = "Import Backup File",
+                 subtitle = "Restore snippets, collections, and photos from a file",
+                 onClick = {
+                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                     importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
+                 },
+                 position = CardPosition.Middle
+             )
+
+             val latestFile = viewModel.getLatestAutoBackupFile()
+             val autoRestoreSubtitle = if (latestFile != null) {
+                 val date = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(latestFile.lastModified()))
+                 "Restore from auto backup ($date)"
+             } else {
+                 "No automatic backup file found to restore"
+             }
+
+             SettingsCardItem(
+                 icon = BackupSectionIcon(),
+                 title = "Restore Auto Backup",
+                 subtitle = autoRestoreSubtitle,
+                 onClick = {
+                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                     viewModel.restoreLatestAutoBackup(context)
+                 },
+                 position = CardPosition.Middle
+             )
+
+             val autoBackupSubtitle = when (viewModel.autoBackupSchedule) {
+                 "Daily" -> "Back up automatically every day"
+                 "Weekly" -> "Back up automatically every Sunday"
+                 "Monthly" -> "Back up automatically on 1st of month"
+                 else -> "Automatic backups are turned off"
+             }
+             SettingsCardItem(
+                 icon = BackupSectionIcon(),
+                 title = "Auto Backup",
+                 subtitle = autoBackupSubtitle,
+                 onClick = {
+                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                     showAutoBackupDialog = true
                  },
                  position = CardPosition.Last
              )
@@ -466,6 +501,17 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
              Spacer(modifier = Modifier.height(32.dp))
          }
      }
+ }
+
+ if (showAutoBackupDialog) {
+     AutoBackupScheduleDialog(
+         currentSchedule = viewModel.autoBackupSchedule,
+         onDismiss = { showAutoBackupDialog = false },
+         onConfirm = { selected ->
+             viewModel.updateAutoBackupSchedule(selected)
+             showAutoBackupDialog = false
+         }
+     )
  }
 }
 
@@ -595,3 +641,73 @@ fun AdvancedTimePickerDialog(
         }
     }
 }
+
+@Composable
+fun AutoBackupScheduleDialog(
+    currentSchedule: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var selectedSchedule by remember { mutableStateOf(currentSchedule) }
+    val options = listOf("Disabled", "Daily", "Weekly", "Monthly")
+    val labels = listOf("Disabled", "Daily", "Weekly (Sunday)", "Monthly (1st of month)")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Auto Backup Schedule",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                options.forEachIndexed { index, option ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .selectable(
+                                selected = (selectedSchedule == option),
+                                onClick = { selectedSchedule = option },
+                                role = androidx.compose.ui.semantics.Role.RadioButton
+                            )
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (selectedSchedule == option),
+                            onClick = null
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = labels[index],
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(selectedSchedule) }
+            ) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text("Cancel")
+            }
+        },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = true)
+    )
+}
+
