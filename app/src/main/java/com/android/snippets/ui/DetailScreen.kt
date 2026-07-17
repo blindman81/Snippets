@@ -258,6 +258,7 @@ fun DetailScreen(
                     isScrolled = isScrolled,
                     onPhotoThumbnailClick = { scrollToTopActions[pagerState.currentPage]?.invoke() },
                     hasSnippets = hasSnippetsCurrent,
+                    showAddButton = viewModel.libraryCurrentTab != "Eatlist",
                     onAdd = { showAddModal = true },
                     onDownload = { 
                         viewModel.downloadPhotoCard(context, photo, true, android.graphics.Color.BLACK) 

@@ -94,6 +94,7 @@ fun DetailTopBar(
     isScrolled: Boolean = false,
     onPhotoThumbnailClick: () -> Unit = {},
     hasSnippets: Boolean,
+    showAddButton: Boolean = true,
     onAdd: () -> Unit,
     onDownload: () -> Unit,
     onEdit: () -> Unit,
@@ -147,7 +148,7 @@ fun DetailTopBar(
                 )
             }
 
-            SplitButton(
+            if (showAddButton) SplitButton(
                 primaryIcon = Icons.Default.Add,
                 primaryText = "Add snippets",
                 onPrimaryClick = {
