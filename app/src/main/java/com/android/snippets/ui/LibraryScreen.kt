@@ -878,8 +878,8 @@ fun LibraryScreen(
                         icon = Icons.Default.KeyboardArrowUp,
                         contentDescription = "Scroll to top",
                         tooltip = "Scroll to top",
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         size = 48.dp,
                         isSpinning = false
                     )
