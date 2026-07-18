@@ -5,6 +5,9 @@ import android.os.Environment
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.android.snippets.model.Photo
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Calendar
@@ -86,16 +89,40 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
                     zipOut.closeEntry()
                 }
 
+                // Get active photo names from photos_v2.json
+                val activePhotoNames = mutableSetOf<String>()
+                val photosFile = File(applicationContext.filesDir, "photos_v2.json")
+                if (photosFile.exists()) {
+                    try {
+                        val json = photosFile.readText()
+                        val type = object : TypeToken<List<Photo>>() {}.type
+                        val photos: List<Photo> = Gson().fromJson(json, type) ?: emptyList()
+                        photos.forEach { photo ->
+                            val uriStr = photo.uriString
+                            val fileName = uriStr.substringAfterLast('/')
+                            if (fileName.isNotEmpty()) {
+                                activePhotoNames.add(fileName)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing photos_v2.json for active photo filtering in auto backup", e)
+                    }
+                }
+
                 // 3. Pack photo files
                 val photosDir = File(applicationContext.filesDir, "photos")
                 if (photosDir.exists() && photosDir.isDirectory) {
                     photosDir.listFiles()?.forEach { photoFile ->
                         if (photoFile.isFile) {
-                            zipOut.putNextEntry(ZipEntry("photos/${photoFile.name}"))
-                            photoFile.inputStream().use { input ->
-                                input.copyTo(zipOut)
+                            if (activePhotoNames.contains(photoFile.name)) {
+                                zipOut.putNextEntry(ZipEntry("photos/${photoFile.name}"))
+                                photoFile.inputStream().use { input ->
+                                    input.copyTo(zipOut)
+                                }
+                                zipOut.closeEntry()
+                            } else {
+                                Log.d(TAG, "Auto backup: Skipping orphaned/deleted photo file: ${photoFile.name}")
                             }
-                            zipOut.closeEntry()
                         }
                     }
                 }

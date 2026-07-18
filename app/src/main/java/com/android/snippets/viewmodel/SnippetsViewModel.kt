@@ -47,6 +47,21 @@ enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, Fle
 
 
 class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
+    init {
+        // Auto‑heal any photos that were previously stored with a temporary content:// URI
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val brokenPhotos = photos.filter { it.uriString.startsWith("content://") }
+            brokenPhotos.forEach { p ->
+                val healedUri = saveToInternalStorage(android.net.Uri.parse(p.uriString))
+                if (healedUri != null) {
+                    val (newW, newH) = extractImageDimensions(android.net.Uri.parse(healedUri))
+                    val updated = p.copy(uriString = healedUri, widthPx = newW, heightPx = newH)
+                    photos = photos.map { if (it.id == p.id) updated else it }
+                    savePhotos()
+                }
+            }
+        }
+    }
     private companion object {
         const val MEMORY_REMINDER_PREFIX = "memory_reminder_"
         const val NEW_MEMORY_NOTIFICATION_DELAY_HOURS = 12L
@@ -90,6 +105,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     
     var activePhotoId by mutableStateOf<String?>(null)
     var detailReturnScreen by mutableStateOf(Screen.Library)
+    var detailReturnTab by mutableStateOf<String?>(null)
     var filterReturnScreen by mutableStateOf(Screen.Library)
     var rotatingSearchHint by mutableStateOf("Library")
         private set
@@ -992,12 +1008,25 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 val duplicate = photos.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
                 
                 if (duplicate != null) {
+                    val healedUri = if (duplicate.uriString.startsWith("content://")) {
+                        saveToInternalStorage(uri)
+                    } else null
+
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFavorite && !duplicate.isFavorite) {
                             toggleFavorite(duplicate.id)
                         }
 
                         var updatedPhoto = duplicate
+                        if (healedUri != null) {
+                            // Extract dimensions from the newly saved internal file
+                            val (newW, newH) = extractImageDimensions(Uri.parse(healedUri))
+                            updatedPhoto = updatedPhoto.copy(
+                                uriString = healedUri,
+                                widthPx = newW,
+                                heightPx = newH
+                            )
+                        }
                         if (!targetSnippet.isNullOrBlank()) {
                             val trimmed = targetSnippet.trim()
                             if (duplicate.snippets.size < 6 && !duplicate.snippets.contains(trimmed)) {
@@ -1036,9 +1065,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
                         if (shouldOpenDialog) {
                             pendingOpenAddSnippetDialog = true
-                            openDetail(duplicate.id, Screen.Library)
+                            openDetail(duplicate.id, tab = "Library", overrideReturnScreen = Screen.Library)
                         } else if (!targetSnippet.isNullOrBlank() || !targetLocation.isNullOrBlank() || targetRating != 0) {
-                            openDetail(duplicate.id, Screen.Library)
+                            openDetail(duplicate.id, tab = "Library", overrideReturnScreen = Screen.Library)
                         }
 
                         isAddingPhotos = false
@@ -1080,9 +1109,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
                     if (shouldOpenDialog) {
                         pendingOpenAddSnippetDialog = true
-                        openDetail(newPhoto.id, Screen.Library)
+                        openDetail(newPhoto.id, tab = "Library", overrideReturnScreen = Screen.Library)
                     } else if (!targetSnippet.isNullOrBlank() || !targetLocation.isNullOrBlank() || targetRating != 0) {
-                        openDetail(newPhoto.id, Screen.Library)
+                        openDetail(newPhoto.id, tab = "Library", overrideReturnScreen = Screen.Library)
                     }
 
                     isAddingPhotos = false
@@ -1101,10 +1130,27 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             
             val duplicate = photos.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
             if (duplicate != null) {
+                val healedUri = if (duplicate.uriString.startsWith("content://")) {
+                    saveToInternalStorage(uri)
+                } else null
+
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    var updatedPhoto = duplicate
                     if (!duplicate.collections.contains(collectionName)) {
+                        updatedPhoto = updatedPhoto.copy(collections = duplicate.collections + collectionName)
+                    }
+                    if (healedUri != null) {
+                        // Extract dimensions from the healed internal file
+                        val (newW, newH) = extractImageDimensions(Uri.parse(healedUri))
+                        updatedPhoto = updatedPhoto.copy(
+                            uriString = healedUri,
+                            widthPx = newW,
+                            heightPx = newH
+                        )
+                    }
+                    if (updatedPhoto != duplicate) {
                         photos = photos.map {
-                            if (it.id == duplicate.id) it.copy(collections = it.collections + collectionName) else it
+                            if (it.id == duplicate.id) updatedPhoto else it
                         }
                         savePhotos()
                     }
@@ -1576,6 +1622,25 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    private fun deletePhotoFile(uriString: String) {
+        try {
+            if (uriString.startsWith("file://") || uriString.contains("/files/photos/")) {
+                val path = if (uriString.startsWith("file://")) {
+                    uriString.substring(7)
+                } else {
+                    uriString
+                }
+                val file = File(path)
+                if (file.exists()) {
+                    val deleted = file.delete()
+                    android.util.Log.d("SnippetsViewModel", "Deleted photo file: ${file.absolutePath}, success: $deleted")
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     fun updateSnippets(photoId: String, text: String, color: Int, style: SnippetStyle) {
         val targetPhoto = photos.find { it.id == photoId }
         if (targetPhoto != null && targetPhoto.snippets.size >= 6) {
@@ -1709,6 +1774,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun deletePhoto(photoId: String, unpublish: Boolean = true) {
         val deletedPhoto = photos.find { it.id == photoId }
+        deletedPhoto?.let { deletePhotoFile(it.uriString) }
         photos = photos.filter { it.id != photoId }
         savePhotos()
         cancelMemoryNotification(photoId)
@@ -1748,6 +1814,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteSelectedPhotos(unpublish: Boolean = true) {
         isBusy = true
+        photos.filter { selectedPhotoIds.contains(it.id) }.forEach { photo ->
+            deletePhotoFile(photo.uriString)
+        }
         photos = photos.filter { !selectedPhotoIds.contains(it.id) }
         savePhotos()
         selectedPhotoIds.forEach { cancelMemoryNotification(it) }
@@ -2009,9 +2078,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun openDetail(id: String, overrideReturnScreen: Screen? = null) {
+    fun openDetail(id: String, tab: String? = null, overrideReturnScreen: Screen? = null) {
         if (currentScreen != Screen.Detail) {
             detailReturnScreen = overrideReturnScreen ?: currentScreen
+            detailReturnTab = tab ?: libraryCurrentTab
         }
         activePhotoId = id
         previousScreen = currentScreen
@@ -2734,15 +2804,20 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                         }
 
                         // 3. Pack photo files
+                        val activePhotoNames = photos.map { it.uriString.substringAfterLast('/') }.toSet()
                         val photosDir = File(context.filesDir, "photos")
                         if (photosDir.exists() && photosDir.isDirectory) {
                             photosDir.listFiles()?.forEach { photoFile ->
                                 if (photoFile.isFile) {
-                                    zipOut.putNextEntry(java.util.zip.ZipEntry("photos/${photoFile.name}"))
-                                    photoFile.inputStream().use { input ->
-                                        input.copyTo(zipOut)
+                                    if (activePhotoNames.contains(photoFile.name)) {
+                                        zipOut.putNextEntry(java.util.zip.ZipEntry("photos/${photoFile.name}"))
+                                        photoFile.inputStream().use { input ->
+                                            input.copyTo(zipOut)
+                                        }
+                                        zipOut.closeEntry()
+                                    } else {
+                                        android.util.Log.d("SnippetsViewModel", "Export backup: Skipping orphaned/deleted photo file: ${photoFile.name}")
                                     }
-                                    zipOut.closeEntry()
                                 }
                             }
                         }
