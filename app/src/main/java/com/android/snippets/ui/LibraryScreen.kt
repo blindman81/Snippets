@@ -123,18 +123,17 @@ fun LibraryScreen(
 
 
     var isSearchOpen by remember { mutableStateOf(false) }
-    var showHistoryBottomSheet by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
 
-    val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
+    val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || viewModel.showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
     BackHandler(enabled = isBackHandlerEnabled) {
         if (isSearchOpen) {
             isSearchOpen = false
             viewModel.searchQuery = ""
         } else if (viewModel.isSelectionMode) {
             viewModel.clearSelection()
-        } else if (showHistoryBottomSheet) {
-            showHistoryBottomSheet = false
+        } else if (viewModel.showHistoryBottomSheet) {
+            viewModel.showHistoryBottomSheet = false
         } else if (showMenuPopup) {
             showMenuPopup = false
         } else if (showCollectionsPopup) {
@@ -142,7 +141,7 @@ fun LibraryScreen(
         }
     }
     
-    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet
+    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || viewModel.showHistoryBottomSheet
     val allowMemorySpin = !isAnyPopupActive
     val curated = viewModel.curatedMemories
     
@@ -793,7 +792,7 @@ fun LibraryScreen(
                                     AnimatedCookieButton(
                                         onClick = {
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            showHistoryBottomSheet = true
+                                            viewModel.showHistoryBottomSheet = true
                                         },
                                         icon = Icons.Default.History,
                                         contentDescription = "History",
@@ -848,8 +847,8 @@ fun LibraryScreen(
                         )
 
                         HistoryBottomSheet(
-                            show = showHistoryBottomSheet,
-                            onDismissRequest = { showHistoryBottomSheet = false },
+                            show = viewModel.showHistoryBottomSheet,
+                            onDismissRequest = { viewModel.showHistoryBottomSheet = false },
                             viewModel = viewModel,
                             view = view
                         )

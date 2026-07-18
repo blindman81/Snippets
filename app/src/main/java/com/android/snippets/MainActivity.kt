@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
     private var pendingNotificationToken by mutableStateOf(0L)
     private var pendingSharedImageUri by mutableStateOf<android.net.Uri?>(null)
     private var pendingShareToken by mutableStateOf(0L)
+    private var pendingHistoryIntentToken by mutableStateOf(0L)
 
     private fun handleNotificationIntent(intent: android.content.Intent?) {
         if (intent?.getBooleanExtra("open_memory", false) == true) {
@@ -81,6 +82,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleHistoryIntent(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra("open_history", false) == true) {
+            if (intent.getBooleanExtra("history_intent_processed", false)) return
+            pendingHistoryIntentToken = System.currentTimeMillis()
+            intent.putExtra("history_intent_processed", true)
+            intent.removeExtra("open_history")
+        }
+    }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
@@ -105,6 +115,7 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
         handleTileIntent(intent)
         handleShareIntent(intent)
+        handleHistoryIntent(intent)
 
         setContent {
             val isDarkTheme = when (viewModel.themePreference) {
@@ -170,6 +181,15 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            val historyToken = pendingHistoryIntentToken
+                            androidx.compose.runtime.LaunchedEffect(historyToken, viewModel.isInitialLoading) {
+                                if (!viewModel.isInitialLoading && historyToken != 0L) {
+                                    viewModel.currentScreen = com.android.snippets.viewmodel.Screen.Library
+                                    viewModel.showHistoryBottomSheet = true
+                                    pendingHistoryIntentToken = 0L
+                                }
+                            }
+
                             val requestPermission = viewModel.requestNotificationPermission
                             androidx.compose.runtime.LaunchedEffect(requestPermission) {
                                 if (requestPermission) {
@@ -213,6 +233,7 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
         handleTileIntent(intent)
         handleShareIntent(intent)
+        handleHistoryIntent(intent)
     }
 }
 

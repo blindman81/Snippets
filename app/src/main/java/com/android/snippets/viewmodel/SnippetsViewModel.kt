@@ -155,6 +155,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var currentMemoryIndex by mutableStateOf(0)
     var activeMemoriesSnapshot by mutableStateOf<List<Photo>>(emptyList())
     var showCreateDialog by mutableStateOf(false)
+    var showHistoryBottomSheet by mutableStateOf(false)
     var editingCollectionIcon by mutableStateOf<String?>(null)
     var collectionIcons by mutableStateOf<Map<String, String>>(emptyMap())
     var focusCreateCollection by mutableStateOf(false)
