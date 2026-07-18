@@ -53,11 +53,34 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
             val json = file.readText()
             val type = object : TypeToken<List<Photo>>() {}.type
             val photos: List<Photo> = Gson().fromJson(json, type) ?: emptyList()
-            photos.count { photo ->
+
+            val now = System.currentTimeMillis()
+            val newMemoryWaitMs = TimeUnit.HOURS.toMillis(12)
+            val viewedMemoryVisibleMs = TimeUnit.HOURS.toMillis(24)
+            val recentlyViewedMemoryMs = TimeUnit.HOURS.toMillis(24)
+
+            val curated = photos.filter { photo ->
                 photo.isLibraryUpload &&
-                    photo.snippets.isNotEmpty() &&
-                    (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)
-            }
+                photo.snippets.isNotEmpty() &&
+                photo.snippetsAddedTime != 0L &&
+                (now - photo.snippetsAddedTime >= newMemoryWaitMs) &&
+                (
+                    // Notified: visible for 24h from surfaced time
+                    (photo.surfacedTime != 0L && photo.surfacedTime <= now && now - photo.surfacedTime < viewedMemoryVisibleMs && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
+                    // Viewed: visible for 24h from last viewed time
+                    (photo.isViewed && now - photo.lastViewedTime < viewedMemoryVisibleMs)
+                )
+            }.sortedWith(
+                compareByDescending<Photo> {
+                    !it.isViewed
+                }.thenByDescending {
+                    it.isViewed && (now - it.lastViewedTime < recentlyViewedMemoryMs)
+                }.thenByDescending {
+                    if (it.isViewed) it.lastViewedTime else it.surfacedTime
+                }
+            ).take(5)
+
+            curated.count { !it.isViewed || it.snippetsAddedTime > it.lastViewedTime }
         } catch (e: Exception) {
             e.printStackTrace()
             0
