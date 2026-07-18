@@ -58,6 +58,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -598,7 +599,7 @@ fun LibraryScreen(
                                                          if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
                                                      },
                                                      fillCard = false,
-                                                     modifier = Modifier.fillMaxWidth()
+                                                     modifier = Modifier.fillMaxWidth().alpha(if (viewModel.currentScreen == Screen.Detail && viewModel.activePhotoId == photo.id) 0f else 1f)
                                                  )
                                              }
                                          }

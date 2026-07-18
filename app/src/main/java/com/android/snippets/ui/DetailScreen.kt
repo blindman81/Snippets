@@ -94,7 +94,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.min
 import kotlin.random.Random
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import kotlin.math.abs
 
