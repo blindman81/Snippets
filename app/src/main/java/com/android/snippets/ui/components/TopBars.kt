@@ -967,6 +967,7 @@ fun LargeMainTopBar(
         title = {
             Text(
                 text = title,
+                modifier = Modifier.padding(start = (16f * collapsedFraction).dp),
                 fontFamily = com.android.snippets.ui.theme.GoogleSans,
                 fontWeight = FontWeight.Bold,
                 fontSize = fontSize,
