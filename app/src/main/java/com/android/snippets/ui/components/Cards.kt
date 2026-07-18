@@ -9,6 +9,8 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -452,12 +454,16 @@ fun PhotoMasonryItem(
                             rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                             animatedVisibilityScope = animatedVisibilityScope,
                             boundsTransform = { _, _ ->
-                                tween(
-                                    durationMillis = 380,
-                                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                                androidx.compose.animation.core.spring(
+                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                    stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
                                 )
                             },
-                            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Crop)
+                            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
+                                contentScale = ContentScale.Crop,
+                                alignment = Alignment.Center
+                            ),
+                            clipInOverlayDuringTransition = OverlayClip(finalShape)
                         )
                     }
                 } else {
