@@ -134,17 +134,14 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         @OptIn(ExperimentalSharedTransitionApi::class)
         SharedTransitionLayout {
             val showDetail = viewModel.currentScreen == Screen.Detail
-            val baseScreen = if (showDetail) viewModel.detailReturnScreen else viewModel.currentScreen
-            val showDetailOverlay = showDetail
             val isGestureActive = predictiveBackProgress.value > 0f
 
-            val backScreen = if (showDetail) {
-                viewModel.detailReturnScreen
-            } else if (isGestureActive) {
+            val backScreen = if (isGestureActive) {
                 when (viewModel.currentScreen) {
                     Screen.Memory, Screen.Settings, Screen.About, Screen.Stats, Screen.Templates -> Screen.Library
                     Screen.SelectIcon, Screen.ChooseShape -> viewModel.previousScreen
                     Screen.PhotosCarousel -> Screen.Settings
+                    Screen.Detail -> viewModel.detailReturnScreen
                     else -> null
                 }
             } else {
@@ -205,10 +202,10 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                         .fillMaxSize()
                         .graphicsLayer {
                             val progress = predictiveBackProgress.value
-                            val scale = 0.96f + (0.04f * (1f - progress))
+                            val scale = 0.96f + (0.04f * progress)
                             scaleX = scale
                             scaleY = scale
-                            alpha = 0.5f + (0.5f * (1f - progress))
+                            alpha = 0.5f + (0.5f * progress)
                         }
                 ) {
                     RenderScreenContent(backScreen, null)
@@ -235,9 +232,9 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                         }
                     }
             ) {
-                // AnimatedContent for baseScreen transitions
+                // Unified AnimatedContent targeting viewModel.currentScreen directly
                 AnimatedContent(
-                    targetState = baseScreen,
+                    targetState = viewModel.currentScreen,
                     transitionSpec = {
                         if (isNavigatingBackFromGesture) {
                             fadeIn(tween(0)) togetherWith fadeOut(tween(0))
@@ -248,31 +245,16 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     label = "screen_transition",
                     modifier = Modifier.fillMaxSize()
                 ) { screen ->
-                    if (showDetail) {
-                        // If detail overlay is shown, we render a blank box in AnimatedContent
-                        // since the base screen is already rendered in the underlay layer!
-                        Box(Modifier.fillMaxSize())
+                    if (screen == Screen.Detail) {
+                        DetailScreen(
+                            viewModel = viewModel,
+                            windowSizeClass = windowSizeClass,
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            animatedVisibilityScope = this@AnimatedContent
+                        )
                     } else {
                         RenderScreenContent(screen, this@AnimatedContent)
                     }
-                }
-
-                AnimatedVisibility(
-                    visible = showDetailOverlay,
-                    enter = fadeIn(
-                        animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing)
-                    ),
-                    exit = fadeOut(
-                        animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing)
-                    ),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    DetailScreen(
-                        viewModel = viewModel,
-                        windowSizeClass = windowSizeClass,
-                        sharedTransitionScope = this@SharedTransitionLayout,
-                        animatedVisibilityScope = this
-                    )
                 }
             }
         }
@@ -388,4 +370,3 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             )
         }
     }
-}
