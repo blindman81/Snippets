@@ -444,6 +444,25 @@ fun PhotoMasonryItem(
                 scaleY = animatedScale
             }
             .alpha(animatedAlpha)
+            .then(
+                if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                    with(sharedTransitionScope) {
+                        Modifier.sharedBounds(
+                            rememberSharedContentState(key = "photo_${photo.id}"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ ->
+                                androidx.compose.animation.core.spring(
+                                    dampingRatio = 0.82f,
+                                    stiffness = 420f
+                                )
+                            },
+                            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Crop)
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .clip(finalShape)
             .combinedClickable(
                 onClick = onClick,

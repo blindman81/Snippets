@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(viewModel: SnippetsViewModel) {
-    androidx.activity.compose.BackHandler {
+    AppPredictiveBackHandler {
         viewModel.navigateLibrary()
     }
     val view = LocalView.current

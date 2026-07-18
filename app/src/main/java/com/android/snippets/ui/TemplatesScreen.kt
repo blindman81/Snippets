@@ -38,7 +38,7 @@ import com.ln.android.snippets.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TemplatesScreen(viewModel: SnippetsViewModel) {
-    androidx.activity.compose.BackHandler {
+    AppPredictiveBackHandler {
         viewModel.navigateLibrary()
     }
     val view = LocalView.current

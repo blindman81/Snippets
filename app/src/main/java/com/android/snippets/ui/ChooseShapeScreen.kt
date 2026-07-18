@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChooseShapeScreen(viewModel: SnippetsViewModel) {
-    androidx.activity.compose.BackHandler {
+    AppPredictiveBackHandler {
         viewModel.currentScreen = viewModel.previousScreen
     }
     val view = LocalView.current

@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.graphics.drawable.BitmapDrawable
 import android.view.HapticFeedbackConstants
-import androidx.activity.compose.BackHandler
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import androidx.palette.graphics.Palette
@@ -72,7 +71,7 @@ fun MemoryScreen(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
-    BackHandler {
+    AppPredictiveBackHandler {
         viewModel.navigateLibrary()
     }
     val photoList = viewModel.activeMemoriesSnapshot.ifEmpty { viewModel.curatedMemories }
@@ -89,12 +88,7 @@ fun MemoryScreen(
         }
     }
 
-    // Sync viewed state back to ViewModel only when a page settles
-    LaunchedEffect(pagerState.settledPage) {
-        if (pagerState.settledPage in 1..photoList.size) {
-            viewModel.onMemoryViewed(pagerState.settledPage - 1)
-        }
-    }
+
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -238,6 +232,13 @@ fun MemoryScreen(
             if (photo == null) {
                 Box(modifier = Modifier.fillMaxSize())
                 return@HorizontalPager
+            }
+
+            val isSettled = pagerState.settledPage == pageIndex
+            LaunchedEffect(isSettled) {
+                if (isSettled) {
+                    viewModel.onMemoryViewed(pageIndex - 1)
+                }
             }
 
             Box(

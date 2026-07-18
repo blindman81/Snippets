@@ -75,7 +75,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.em
 import com.android.snippets.ui.util.rotateWithBounds
-import androidx.activity.compose.BackHandler
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
@@ -155,7 +154,7 @@ fun DetailScreen(
     
     val photo = photos.getOrNull(pagerState.currentPage) ?: return
     
-    BackHandler {
+    AppPredictiveBackHandler {
         viewModel.closeDetail()
     }
 
@@ -504,12 +503,28 @@ private fun DetailPhotoFrame(
     modifier: Modifier = Modifier,
     showLoading: Boolean = false
 ) {
-    val motionScheme = MaterialTheme.motionScheme
-
     Card(
         shape = RectangleShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = modifier,
+        modifier = modifier.then(
+            if (isTransitionTarget && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    Modifier.sharedBounds(
+                        rememberSharedContentState(key = sharedKey),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = { _, _ ->
+                            spring(
+                                dampingRatio = 0.82f,
+                                stiffness = 420f
+                            )
+                        },
+                        resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Fit)
+                    )
+                }
+            } else {
+                Modifier
+            }
+        ),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(
@@ -525,10 +540,6 @@ private fun DetailPhotoFrame(
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
-                    .then(
-                        // Disabled shared element transition as per user request to slide from left instead
-                        Modifier
-                    )
             )
         }
     }

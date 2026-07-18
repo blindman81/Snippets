@@ -1,11 +1,8 @@
 package com.android.snippets.ui
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 import androidx.activity.BackEventCompat
-import androidx.activity.ExperimentalActivityApi
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -38,7 +35,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import com.android.snippets.ui.util.Motion
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalActivityApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) {
     val view = androidx.compose.ui.platform.LocalView.current
@@ -79,6 +76,12 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     val motionScheme = MaterialTheme.motionScheme
     val predictiveBackProgress = remember { Animatable(0f) }
     var predictiveBackEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
+    val predictiveBackMotionController = remember {
+        PredictiveBackMotionController(
+            progress = predictiveBackProgress,
+            onEdgeChanged = { edge -> predictiveBackEdge = edge }
+        )
+    }
     val predictiveBackEnabled = viewModel.currentScreen != Screen.Library
 
     LaunchedEffect(viewModel.snackbarMessage) {
@@ -107,10 +110,13 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
+    CompositionLocalProvider(
+        LocalPredictiveBackMotionController provides predictiveBackMotionController
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
         @OptIn(ExperimentalSharedTransitionApi::class)
         SharedTransitionLayout {
             val showDetail = viewModel.currentScreen == Screen.Detail
@@ -229,38 +235,22 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                 }
             )
         }
-    }
-
-    PredictiveBackHandler(enabled = predictiveBackEnabled) { backEvents ->
-        var completed = false
-        try {
-            backEvents.collect { backEvent ->
-                predictiveBackEdge = backEvent.swipeEdge
-                predictiveBackProgress.snapTo(backEvent.progress)
-            }
-            completed = true
-            predictiveBackProgress.snapTo(1f)
-            viewModel.navigateBack()
-        } catch (e: CancellationException) {
-            predictiveBackProgress.animateTo(0f, motionScheme.fastEffectsSpec())
-            throw e
-        } finally {
-            if (completed) {
-                predictiveBackProgress.snapTo(0f)
-            }
         }
-    }
 
-    if (viewModel.showBulkDeleteModal) {
-        DeleteConfirmationModal(
-            count = viewModel.selectedPhotoIds.size,
-            onDismiss = { viewModel.showBulkDeleteModal = false },
-            onConfirm = {
-                viewModel.showBulkDeleteModal = false
-                viewModel.deleteSelectedPhotos(unpublish = false)
-            }
-        )
-    }
+        AppPredictiveBackHandler(enabled = predictiveBackEnabled) {
+            viewModel.navigateBack()
+        }
+
+        if (viewModel.showBulkDeleteModal) {
+            DeleteConfirmationModal(
+                count = viewModel.selectedPhotoIds.size,
+                onDismiss = { viewModel.showBulkDeleteModal = false },
+                onConfirm = {
+                    viewModel.showBulkDeleteModal = false
+                    viewModel.deleteSelectedPhotos(unpublish = false)
+                }
+            )
+        }
 
     // Global Busy Overlays
     if (viewModel.isAddingPhotos) {
@@ -322,10 +312,11 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         )
     }
 
-    if (viewModel.showBulkEditSnippetsDialog) {
-        BulkEditSnippetsDialog(
-            viewModel = viewModel,
-            onDismiss = { viewModel.showBulkEditSnippetsDialog = false }
-        )
+        if (viewModel.showBulkEditSnippetsDialog) {
+            BulkEditSnippetsDialog(
+                viewModel = viewModel,
+                onDismiss = { viewModel.showBulkEditSnippetsDialog = false }
+            )
+        }
     }
 }

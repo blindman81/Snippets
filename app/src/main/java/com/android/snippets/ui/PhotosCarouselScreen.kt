@@ -2,7 +2,6 @@ package com.android.snippets.ui
 import com.android.snippets.ui.components.*
 
 import android.view.HapticFeedbackConstants
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 
@@ -39,7 +38,7 @@ fun PhotosCarouselScreen(viewModel: SnippetsViewModel) {
     val scrollState = rememberScrollState()
     val isScrolled by remember { derivedStateOf<Boolean> { scrollState.value > 0 } }
     
-    BackHandler {
+    AppPredictiveBackHandler {
         viewModel.navigateSettings()
     }
 

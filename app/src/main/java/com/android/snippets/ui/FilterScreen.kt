@@ -3,7 +3,6 @@ package com.android.snippets.ui
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
@@ -100,7 +99,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
 
 
 
-    BackHandler {
+    AppPredictiveBackHandler {
         viewModel.closeFilter()
     }
     val snippetsScrollState = rememberScrollState()

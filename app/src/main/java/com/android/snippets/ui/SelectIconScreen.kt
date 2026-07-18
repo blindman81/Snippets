@@ -44,7 +44,7 @@ import android.view.HapticFeedbackConstants
 
 @Composable
 fun SelectIconScreen(viewModel: SnippetsViewModel) {
-    androidx.activity.compose.BackHandler {
+    AppPredictiveBackHandler {
         viewModel.currentScreen = viewModel.previousScreen
 
     }

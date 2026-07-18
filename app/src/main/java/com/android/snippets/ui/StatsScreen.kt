@@ -9,7 +9,6 @@ import androidx.compose.ui.draw.clip
  */
 
 import android.view.HapticFeedbackConstants
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -42,7 +41,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(viewModel: SnippetsViewModel) {
-    BackHandler {
+    AppPredictiveBackHandler {
         viewModel.navigateLibrary()
     }
     val view = LocalView.current

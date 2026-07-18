@@ -54,7 +54,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -127,7 +126,7 @@ fun LibraryScreen(
     val searchFocusRequester = remember { FocusRequester() }
 
     val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
-    BackHandler(enabled = isBackHandlerEnabled) {
+    AppPredictiveBackHandler(enabled = isBackHandlerEnabled) {
         if (isSearchOpen) {
             isSearchOpen = false
             viewModel.searchQuery = ""

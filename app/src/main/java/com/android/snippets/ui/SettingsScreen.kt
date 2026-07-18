@@ -72,7 +72,7 @@ import androidx.compose.material3.rememberTimePickerState
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(viewModel: SnippetsViewModel) {
-    androidx.activity.compose.BackHandler {
+    AppPredictiveBackHandler {
         viewModel.navigateLibrary()
     }
     val view = LocalView.current
