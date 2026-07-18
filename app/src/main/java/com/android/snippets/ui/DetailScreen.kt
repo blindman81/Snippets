@@ -302,7 +302,11 @@ fun DetailScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                         if (!hasSnippets) {
-                            val sharedKey = if (viewModel.detailReturnScreen == Screen.Memory) "memory_${pagePhoto.id}" else "photo_${pagePhoto.id}"
+                            val sharedKey = if (viewModel.detailReturnScreen == Screen.Memory) {
+                                "memory_${pagePhoto.id}"
+                            } else {
+                                "photo_${viewModel.libraryCurrentTab}_${pagePhoto.id}"
+                            }
                             EmptyDetailContent(
                                 photo = pagePhoto,
                                 sharedKey = sharedKey,
@@ -318,7 +322,11 @@ fun DetailScreen(
                                 pageOffset = pageOffset
                             )
                         } else {
-                            val sharedKey = if (viewModel.detailReturnScreen == Screen.Memory) "memory_${pagePhoto.id}" else "photo_${pagePhoto.id}"
+                            val sharedKey = if (viewModel.detailReturnScreen == Screen.Memory) {
+                                "memory_${pagePhoto.id}"
+                            } else {
+                                "photo_${viewModel.libraryCurrentTab}_${pagePhoto.id}"
+                            }
                             SnippetsDetailContent(
                                 photo = pagePhoto,
                                 sharedKey = sharedKey,
@@ -513,10 +521,7 @@ private fun DetailPhotoFrame(
                         rememberSharedContentState(key = sharedKey),
                         animatedVisibilityScope = animatedVisibilityScope,
                         boundsTransform = { _, _ ->
-                            spring(
-                                dampingRatio = 0.82f,
-                                stiffness = 420f
-                            )
+                            tween(durationMillis = 380, easing = FastOutSlowInEasing)
                         },
                         resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Fit)
                     )
@@ -535,6 +540,7 @@ private fun DetailPhotoFrame(
                 model = coil.request.ImageRequest.Builder(LocalContext.current)
                     .data(photo.uriString)
                     .crossfade(false)
+                    .memoryCacheKey(photo.uriString)
                     .placeholderMemoryCacheKey(photo.uriString)
                     .build(),
                 contentDescription = null,

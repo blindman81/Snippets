@@ -413,7 +413,8 @@ fun PhotoMasonryItem(
     showFavoriteIcon: Boolean = true,
     fillCard: Boolean = false,
     grayOutIfViewed: Boolean = false,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp)
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
+    tab: String? = null
 ) {
     val finalShape = if (isSelected) RoundedCornerShape(4.dp) else shape
     val isCustomPolygon = shape is com.android.snippets.ui.shapes.RoundedPolygonShape
@@ -448,12 +449,12 @@ fun PhotoMasonryItem(
                 if (sharedTransitionScope != null && animatedVisibilityScope != null) {
                     with(sharedTransitionScope) {
                         Modifier.sharedBounds(
-                            rememberSharedContentState(key = "photo_${photo.id}"),
+                            rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                             animatedVisibilityScope = animatedVisibilityScope,
                             boundsTransform = { _, _ ->
-                                androidx.compose.animation.core.spring(
-                                    dampingRatio = 0.82f,
-                                    stiffness = 420f
+                                tween(
+                                    durationMillis = 380,
+                                    easing = androidx.compose.animation.core.FastOutSlowInEasing
                                 )
                             },
                             resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Crop)

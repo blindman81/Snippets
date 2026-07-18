@@ -84,6 +84,13 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         )
     }
     val predictiveBackEnabled = viewModel.currentScreen != Screen.Library
+    var isNavigatingBackFromGesture by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel.currentScreen) {
+        if (isNavigatingBackFromGesture) {
+            isNavigatingBackFromGesture = false
+        }
+    }
 
     LaunchedEffect(viewModel.snackbarMessage) {
         viewModel.snackbarMessage?.let { message ->
@@ -118,15 +125,10 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            val predictiveBackProgressValue = predictiveBackProgress.value
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        MaterialTheme.colorScheme.inverseSurface.copy(
-                            alpha = 0.18f + (0.42f * predictiveBackProgressValue)
-                        )
-                    )
+                    .background(MaterialTheme.colorScheme.background)
             )
 
         @OptIn(ExperimentalSharedTransitionApi::class)
@@ -134,78 +136,134 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             val showDetail = viewModel.currentScreen == Screen.Detail
             val baseScreen = if (showDetail) viewModel.detailReturnScreen else viewModel.currentScreen
             val showDetailOverlay = showDetail
+            val isGestureActive = predictiveBackProgress.value > 0f
 
+            val backScreen = if (showDetail) {
+                viewModel.detailReturnScreen
+            } else if (isGestureActive) {
+                when (viewModel.currentScreen) {
+                    Screen.Memory, Screen.Settings, Screen.About, Screen.Stats, Screen.Templates -> Screen.Library
+                    Screen.SelectIcon, Screen.ChooseShape -> viewModel.previousScreen
+                    Screen.PhotosCarousel -> Screen.Settings
+                    else -> null
+                }
+            } else {
+                null
+            }
+
+            @Composable
+            fun RenderScreenContent(
+                screen: Screen,
+                animatedVisibilityScope: AnimatedVisibilityScope?
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (screen) {
+                        Screen.Library -> {
+                            LibraryScreen(
+                                viewModel = viewModel,
+                                windowSizeClass = windowSizeClass,
+                                sharedTransitionScope = this@SharedTransitionLayout,
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                onAddPhotos = { tab ->
+                                    when (tab) {
+                                        "Library" -> {
+                                            viewModel.pendingFavoriteIntent = false
+                                            pendingCollectionForPicker = null
+                                            photoPickerLauncher.launch("image/*")
+                                        }
+                                        "Favorites" -> viewModel.startCollectionAssignment("Favorites")
+                                        "Eatlist" -> {
+                                            pendingCollectionForPicker = "Eatlist"
+                                            photoPickerLauncher.launch("image/*")
+                                        }
+                                        else -> viewModel.startCollectionAssignment(tab)
+                                    }
+                                }
+                            )
+                        }
+                        Screen.Memory -> MemoryScreen(
+                            viewModel = viewModel,
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            animatedVisibilityScope = animatedVisibilityScope
+                        )
+                        Screen.About -> AboutScreen(viewModel)
+                        Screen.Settings -> SettingsScreen(viewModel)
+                        Screen.SelectIcon -> SelectIconScreen(viewModel)
+                        Screen.ChooseShape -> ChooseShapeScreen(viewModel)
+                        Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
+                        Screen.Stats -> StatsScreen(viewModel)
+                        Screen.Templates -> TemplatesScreen(viewModel)
+                        else -> Box(Modifier.fillMaxSize())
+                    }
+                }
+            }
+
+            // 1. Underlay container (only rendered when backScreen is not null)
+            if (backScreen != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val progress = predictiveBackProgress.value
+                            val scale = 0.96f + (0.04f * (1f - progress))
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = 0.5f + (0.5f * (1f - progress))
+                        }
+                ) {
+                    RenderScreenContent(backScreen, null)
+                }
+            }
+
+            // 2. Foreground container (scales/translates during the gesture)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        val progress = predictiveBackProgress.value
-                        val edgeDirection = when (predictiveBackEdge) {
-                            BackEventCompat.EDGE_RIGHT -> -1f
-                            else -> 1f
-                        }
-                        translationX = edgeDirection * size.width * 0.12f * progress
-                        scaleX = 1f - (0.08f * progress)
-                        scaleY = 1f - (0.08f * progress)
-                        alpha = 1f - (0.06f * progress)
-                        clip = progress > 0f
-                        if (clip) {
+                        if (isGestureActive) {
+                            val progress = predictiveBackProgress.value
+                            val edgeDirection = when (predictiveBackEdge) {
+                                BackEventCompat.EDGE_RIGHT -> -1f
+                                else -> 1f
+                            }
+                            translationX = edgeDirection * size.width * 0.12f * progress
+                            scaleX = 1f - (0.08f * progress)
+                            scaleY = 1f - (0.08f * progress)
+                            alpha = 1f - (0.06f * progress)
+                            clip = true
                             shape = RoundedCornerShape(32.dp * progress)
                         }
                     }
             ) {
-                // Single‑pane (original behaviour)
+                // AnimatedContent for baseScreen transitions
                 AnimatedContent(
                     targetState = baseScreen,
-                    transitionSpec = { Motion.screenTransition(initialState, targetState, motionScheme) },
+                    transitionSpec = {
+                        if (isNavigatingBackFromGesture) {
+                            fadeIn(tween(0)) togetherWith fadeOut(tween(0))
+                        } else {
+                            Motion.screenTransition(initialState, targetState, motionScheme)
+                        }
+                    },
                     label = "screen_transition",
                     modifier = Modifier.fillMaxSize()
                 ) { screen ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        when (screen) {
-                            Screen.Library -> {
-                                LibraryScreen(
-                                    viewModel,
-                                    windowSizeClass = windowSizeClass,
-                                    sharedTransitionScope = this@SharedTransitionLayout,
-                                    animatedVisibilityScope = this@AnimatedContent,
-                                     onAddPhotos = { tab ->
-                                         when (tab) {
-                                             "Library" -> {
-                                                 viewModel.pendingFavoriteIntent = false
-                                                 pendingCollectionForPicker = null
-                                                 photoPickerLauncher.launch("image/*")
-                                             }
-                                             "Favorites" -> viewModel.startCollectionAssignment("Favorites")
-                                             "Eatlist" -> {
-                                                 pendingCollectionForPicker = "Eatlist"
-                                                 photoPickerLauncher.launch("image/*")
-                                             }
-                                             else -> viewModel.startCollectionAssignment(tab)
-                                         }
-                                     }
-                                )
-                            }
-                            Screen.Memory -> MemoryScreen(viewModel, sharedTransitionScope = this@SharedTransitionLayout, animatedVisibilityScope = this@AnimatedContent)
-                            Screen.About -> AboutScreen(viewModel)
-                            Screen.Settings -> SettingsScreen(viewModel)
-                            Screen.SelectIcon -> SelectIconScreen(viewModel)
-                            Screen.ChooseShape -> ChooseShapeScreen(viewModel)
-                            Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
-                            Screen.Stats -> StatsScreen(viewModel)
-                            Screen.Templates -> TemplatesScreen(viewModel)
-                            else -> Box(Modifier.fillMaxSize())
-                        }
+                    if (showDetail) {
+                        // If detail overlay is shown, we render a blank box in AnimatedContent
+                        // since the base screen is already rendered in the underlay layer!
+                        Box(Modifier.fillMaxSize())
+                    } else {
+                        RenderScreenContent(screen, this@AnimatedContent)
                     }
                 }
 
                 AnimatedVisibility(
                     visible = showDetailOverlay,
                     enter = fadeIn(
-                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                        animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing)
                     ),
                     exit = fadeOut(
-                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                        animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing)
                     ),
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -217,6 +275,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     )
                 }
             }
+        }
 
             SnackbarHost(
                 hostState = snackbarHostState,
