@@ -4,6 +4,7 @@ import kotlinx.coroutines.launch
 
 import androidx.activity.BackEventCompat
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -117,6 +118,17 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             modifier = Modifier
                 .fillMaxSize()
         ) {
+            val predictiveBackProgressValue = predictiveBackProgress.value
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        MaterialTheme.colorScheme.inverseSurface.copy(
+                            alpha = 0.18f + (0.42f * predictiveBackProgressValue)
+                        )
+                    )
+            )
+
         @OptIn(ExperimentalSharedTransitionApi::class)
         SharedTransitionLayout {
             val showDetail = viewModel.currentScreen == Screen.Detail
@@ -132,13 +144,13 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             BackEventCompat.EDGE_RIGHT -> -1f
                             else -> 1f
                         }
-                        translationX = edgeDirection * size.width * 0.08f * progress
-                        scaleX = 1f - (0.04f * progress)
-                        scaleY = 1f - (0.04f * progress)
-                        alpha = 1f - (0.08f * progress)
+                        translationX = edgeDirection * size.width * 0.12f * progress
+                        scaleX = 1f - (0.08f * progress)
+                        scaleY = 1f - (0.08f * progress)
+                        alpha = 1f - (0.06f * progress)
                         clip = progress > 0f
                         if (clip) {
-                            shape = RoundedCornerShape(28.dp * progress)
+                            shape = RoundedCornerShape(32.dp * progress)
                         }
                     }
             ) {
@@ -189,14 +201,12 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
 
                 AnimatedVisibility(
                     visible = showDetailOverlay,
-                    enter = slideInHorizontally(
-                        initialOffsetX = { -it },
-                        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
-                    ) + fadeIn(animationSpec = tween(durationMillis = 250)),
-                    exit = slideOutHorizontally(
-                        targetOffsetX = { -it },
-                        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
-                    ) + fadeOut(animationSpec = tween(durationMillis = 250)),
+                    enter = fadeIn(
+                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                    ),
+                    exit = fadeOut(
+                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                    ),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     DetailScreen(
