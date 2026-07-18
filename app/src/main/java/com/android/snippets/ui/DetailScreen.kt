@@ -93,6 +93,10 @@ import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.launch
 import kotlin.math.min
 import kotlin.random.Random
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import kotlin.math.abs
 
 internal val DetailPhotoCornerRadius = 0.dp
 
@@ -279,7 +283,6 @@ fun DetailScreen(
                     .pointerInput(Unit) {
                     detectTapGestures(onTap = { focusManager.clearFocus() })
                 }
-                .nestedScroll(nestedScrollConnection)
             ) {
                 HorizontalPager(
                     state = pagerState,
@@ -566,15 +569,17 @@ fun EmptyDetailContent(
     onRegisterScrollToTop: (() -> Unit) -> Unit = {},
     pageOffset: Float = 0f
 ) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        DetailPhotoFrame(
-            photo = photo,
-            sharedKey = sharedKey,
-            sharedTransitionScope = sharedTransitionScope,
-            animatedVisibilityScope = animatedVisibilityScope,
-            isTransitionTarget = isTransitionTarget,
-            modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize()
-        )
+    SwipeToDismissContainer(onDismiss = onDismissRequest) { backgroundAlpha ->
+        Box(modifier = Modifier.fillMaxSize().alpha(backgroundAlpha), contentAlignment = Alignment.Center) {
+            DetailPhotoFrame(
+                photo = photo,
+                sharedKey = sharedKey,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
+                isTransitionTarget = isTransitionTarget,
+                modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize()
+            )
+        }
     }
 }
 
@@ -596,7 +601,8 @@ fun SnippetsDetailContent(
     viewModel: SnippetsViewModel,
     pageOffset: Float = 0f
 ) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    SwipeToDismissContainer(onDismiss = onDismissRequest) { bgAlpha ->
+        Box(modifier = Modifier.fillMaxSize().alpha(bgAlpha), contentAlignment = Alignment.Center) {
         DetailPhotoFrame(
             photo = photo,
             sharedKey = sharedKey,
@@ -653,6 +659,7 @@ fun SnippetsDetailContent(
                 }
             }
         }
+    }
     }
 }
 
@@ -864,6 +871,109 @@ fun LocationLinkModal(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SwipeToDismissContainer(
+    onDismiss: () -> Unit,
+    content: @Composable (backgroundAlpha: Float) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Use Animatable so we can smoothly spring back if the swipe is canceled
+    val offsetX = remember { androidx.compose.animation.core.Animatable(0f) }
+    val offsetY = remember { androidx.compose.animation.core.Animatable(0f) }
+
+    // Define how far the user needs to drag to trigger the dismissal
+    val dismissThreshold = with(androidx.compose.ui.platform.LocalDensity.current) { 150.dp.toPx() }
+    
+    // Define the maximum drag distance used to calculate scale/alpha fading
+    val maxDrag = with(androidx.compose.ui.platform.LocalDensity.current) { 300.dp.toPx() }
+
+    // Calculate dynamic values based on how far the user has dragged
+    val dragProgress = (abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
+    
+    // Scale down to 85% at maximum drag
+    val currentScale = 1f - (0.15f * dragProgress) 
+    
+    // Fade the background out as the user drags
+    val currentAlpha = 1f - dragProgress
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                var previousPosition = androidx.compose.ui.geometry.Offset.Unspecified
+                
+                // Use detectVerticalDragGestures so HorizontalPager can still intercept left/right swipes!
+                detectVerticalDragGestures(
+                    onDragStart = { previousPosition = it },
+                    onDragEnd = {
+                        coroutineScope.launch {
+                            // If the user dragged past the threshold, trigger the back navigation!
+                            if (abs(offsetY.value) > dismissThreshold) {
+                                onDismiss()
+                            } else {
+                                // Otherwise, smoothly spring the image back to the center
+                                launch {
+                                    offsetX.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = androidx.compose.animation.core.spring(
+                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                        )
+                                    )
+                                }
+                                launch {
+                                    offsetY.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = androidx.compose.animation.core.spring(
+                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        coroutineScope.launch {
+                            launch { offsetX.animateTo(0f) }
+                            launch { offsetY.animateTo(0f) }
+                        }
+                    },
+                    onVerticalDrag = { change, dragAmountY ->
+                        change.consume()
+                        
+                        // We intercept vertically, but we still track exact X delta for true 2D motion!
+                        val dragAmountX = if (previousPosition != androidx.compose.ui.geometry.Offset.Unspecified) {
+                            change.position.x - previousPosition.x
+                        } else 0f
+                        previousPosition = change.position
+                        
+                        coroutineScope.launch {
+                            // Instantly snap the animatable to follow the finger in 2D space
+                            offsetX.snapTo(offsetX.value + dragAmountX)
+                            offsetY.snapTo(offsetY.value + dragAmountY)
+                        }
+                    }
+                )
+            }
+    ) {
+        // Apply the layout transformations to the wrapper surrounding your image
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
+                .graphicsLayer {
+                    scaleX = currentScale
+                    scaleY = currentScale
+                }
+        ) {
+            // Pass the alpha value down so your DetailScreen background can fade out
+            content(currentAlpha)
         }
     }
 }

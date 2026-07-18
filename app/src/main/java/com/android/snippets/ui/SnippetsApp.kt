@@ -205,7 +205,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             val scale = 0.96f + (0.04f * progress)
                             scaleX = scale
                             scaleY = scale
-                            alpha = 0.5f + (0.5f * progress)
                         }
                 ) {
                     RenderScreenContent(backScreen, null)
@@ -226,7 +225,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             translationX = edgeDirection * size.width * 0.12f * progress
                             scaleX = 1f - (0.08f * progress)
                             scaleY = 1f - (0.08f * progress)
-                            alpha = 1f - (0.06f * progress)
                             clip = true
                             shape = RoundedCornerShape(32.dp * progress)
                         }
