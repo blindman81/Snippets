@@ -123,17 +123,18 @@ fun LibraryScreen(
 
 
     var isSearchOpen by remember { mutableStateOf(false) }
+    var showHistoryBottomSheet by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
 
-    val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || viewModel.showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
+    val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
     BackHandler(enabled = isBackHandlerEnabled) {
         if (isSearchOpen) {
             isSearchOpen = false
             viewModel.searchQuery = ""
         } else if (viewModel.isSelectionMode) {
             viewModel.clearSelection()
-        } else if (viewModel.showHistoryBottomSheet) {
-            viewModel.showHistoryBottomSheet = false
+        } else if (showHistoryBottomSheet) {
+            showHistoryBottomSheet = false
         } else if (showMenuPopup) {
             showMenuPopup = false
         } else if (showCollectionsPopup) {
@@ -141,7 +142,7 @@ fun LibraryScreen(
         }
     }
     
-    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || viewModel.showHistoryBottomSheet
+    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet
     val allowMemorySpin = !isAnyPopupActive
     val curated = viewModel.curatedMemories
     
@@ -792,7 +793,7 @@ fun LibraryScreen(
                                     AnimatedCookieButton(
                                         onClick = {
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            viewModel.showHistoryBottomSheet = true
+                                            showHistoryBottomSheet = true
                                         },
                                         icon = Icons.Default.History,
                                         contentDescription = "History",
@@ -847,12 +848,41 @@ fun LibraryScreen(
                         )
 
                         HistoryBottomSheet(
-                            show = viewModel.showHistoryBottomSheet,
-                            onDismissRequest = { viewModel.showHistoryBottomSheet = false },
+                            show = showHistoryBottomSheet,
+                            onDismissRequest = { showHistoryBottomSheet = false },
                             viewModel = viewModel,
                             view = view
                         )
                     }
+                }
+
+                AnimatedVisibility(
+                    visible = isScrolled && !viewModel.isSelectionMode && !isSearchOpen,
+                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                    exit = fadeOut() + scaleOut(targetScale = 0.8f),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .safeDrawingPadding()
+                        .padding(bottom = 96.dp)
+                        .offset(y = toolbarOffset)
+                ) {
+                    AnimatedCookieButton(
+                        onClick = {
+                            val state = listStates[currentTab]
+                            if (state != null) {
+                                scope.launch {
+                                    state.animateScrollToItem(0)
+                                }
+                            }
+                        },
+                        icon = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Scroll to top",
+                        tooltip = "Scroll to top",
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        size = 48.dp,
+                        isSpinning = false
+                    )
                 }
                 }
             if (longPressedCollection != null) {
