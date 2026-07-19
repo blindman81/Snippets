@@ -47,21 +47,7 @@ enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, Fle
 
 
 class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
-    init {
-        // Auto‑heal any photos that were previously stored with a temporary content:// URI
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val brokenPhotos = photos.filter { it.uriString.startsWith("content://") }
-            brokenPhotos.forEach { p ->
-                val healedUri = saveToInternalStorage(android.net.Uri.parse(p.uriString))
-                if (healedUri != null) {
-                    val (newW, newH) = extractImageDimensions(android.net.Uri.parse(healedUri))
-                    val updated = p.copy(uriString = healedUri, widthPx = newW, heightPx = newH)
-                    photos = photos.map { if (it.id == p.id) updated else it }
-                    savePhotos()
-                }
-            }
-        }
-    }
+
     private companion object {
         const val MEMORY_REMINDER_PREFIX = "memory_reminder_"
         const val NEW_MEMORY_NOTIFICATION_DELAY_HOURS = 12L
@@ -638,6 +624,22 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 snippetFirstSeenTimes = updatedSnippetTimes
                 userCollections = loadedCollections
                 collectionIcons = loadedIcons
+                
+                // Auto-heal any photos that were previously stored with a temporary content:// URI
+                viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val brokenPhotos = photos.filter { it.uriString.startsWith("content://") }
+                    brokenPhotos.forEach { p ->
+                        val healedUri = saveToInternalStorage(android.net.Uri.parse(p.uriString))
+                        if (healedUri != null) {
+                            val (newW, newH) = extractImageDimensions(android.net.Uri.parse(healedUri))
+                            val updated = p.copy(uriString = healedUri, widthPx = newW, heightPx = newH)
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                photos = photos.map { if (it.id == p.id) updated else it }
+                            }
+                            savePhotos()
+                        }
+                    }
+                }
                 isInitialLoading = false
 
                 // Clean up any filter snippets that no longer exist in any photo (prevents stuck empty state)

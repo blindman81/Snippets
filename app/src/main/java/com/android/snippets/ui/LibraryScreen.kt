@@ -107,9 +107,10 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 @Composable
 fun LibraryScreen(
     viewModel: SnippetsViewModel,
-    windowSizeClass: WindowSizeClass? = null,
+    windowSizeClass: WindowSizeClass?,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    isDetailTransitioning: Boolean = false,
     onAddPhotos: (String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -150,6 +151,7 @@ fun LibraryScreen(
     var renamingCollection by remember { mutableStateOf<String?>(null) }
     var deletingCollection by remember { mutableStateOf<String?>(null) }
     var draggedCollection by remember { mutableStateOf<String?>(null) }
+    var photoToDeleteFromEatlist by remember { mutableStateOf<Photo?>(null) }
     val dragOffsetAnim = remember { androidx.compose.animation.core.Animatable(0f) }
     
     val pageTabs = remember(viewModel.userCollections, viewModel.showEatlist) {
@@ -590,7 +592,7 @@ fun LibraryScreen(
                                                              if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
                                                                  viewModel.activePhotoId = photo.id
                                                              } else {
-                                                                 viewModel.openDetail(photo.id, Screen.Library)
+                                                                 viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
                                                              }
                                                          }
                                                      },
@@ -598,8 +600,11 @@ fun LibraryScreen(
                                                          view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                                          if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
                                                      },
+                                                     onEatlistCheckClick = {
+                                                         photoToDeleteFromEatlist = photo
+                                                     },
                                                      fillCard = false,
-                                                     modifier = Modifier.fillMaxWidth().alpha(if (viewModel.currentScreen == Screen.Detail && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                     modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
                                                  )
                                              }
                                          }
@@ -1297,6 +1302,29 @@ fun LibraryScreen(
                         },
                         dismissButton = {
                             TextButton(onClick = { deletingCollection = null }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
+
+                photoToDeleteFromEatlist?.let { photo ->
+                    AlertDialog(
+                        onDismissRequest = { photoToDeleteFromEatlist = null },
+                        title = { Text("Delete photo") },
+                        text = { Text("Are you sure you want to delete this photo? This cannot be undone.") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    viewModel.deletePhoto(photo.id)
+                                    photoToDeleteFromEatlist = null
+                                }
+                            ) {
+                                Text("Delete", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { photoToDeleteFromEatlist = null }) {
                                 Text("Cancel")
                             }
                         }

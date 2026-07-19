@@ -16,6 +16,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -416,7 +417,8 @@ fun PhotoMasonryItem(
     fillCard: Boolean = false,
     grayOutIfViewed: Boolean = false,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
-    tab: String? = null
+    tab: String? = null,
+    onEatlistCheckClick: (() -> Unit)? = null
 ) {
     val finalShape = if (isSelected) RoundedCornerShape(4.dp) else shape
     val isCustomPolygon = shape is com.android.snippets.ui.shapes.RoundedPolygonShape
@@ -577,6 +579,27 @@ fun PhotoMasonryItem(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onTertiary
+                        )
+                    }
+                }
+            }
+            
+            if (tab == "Eatlist" && !isSelected) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = LocalAppShape.current,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp)
+                        .size(32.dp)
+                        .clickable { onEatlistCheckClick?.invoke() }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "Remove from Eatlist",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -797,7 +820,7 @@ fun SameDayPhotoCarousel(
                         viewModel.toggleSelection(photo.id)
                     } else {
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                        viewModel.openDetail(photo.id, screen)
+                        viewModel.openDetail(photo.id, overrideReturnScreen = screen)
                     }
                 },
                 onLongClick = {

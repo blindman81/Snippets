@@ -136,14 +136,23 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             val showDetail = viewModel.currentScreen == Screen.Detail
             val isGestureActive = predictiveBackProgress.value > 0f
 
+            val transition = androidx.compose.animation.core.updateTransition(
+                targetState = viewModel.currentScreen,
+                label = "screen_transition"
+            )
+            
+            val isDetailTransitioning = transition.currentState == Screen.Detail || transition.targetState == Screen.Detail
+
             val backScreen = if (isGestureActive) {
                 when (viewModel.currentScreen) {
+                    Screen.Library -> null
                     Screen.Memory, Screen.Settings, Screen.About, Screen.Stats, Screen.Templates -> Screen.Library
                     Screen.SelectIcon, Screen.ChooseShape -> viewModel.previousScreen
                     Screen.PhotosCarousel -> Screen.Settings
-                    Screen.Detail -> viewModel.detailReturnScreen
                     else -> null
                 }
+            } else if (isDetailTransitioning) {
+                viewModel.detailReturnScreen ?: Screen.Library
             } else {
                 null
             }
@@ -151,7 +160,8 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             @Composable
             fun RenderScreenContent(
                 screen: Screen,
-                animatedVisibilityScope: AnimatedVisibilityScope?
+                animatedVisibilityScope: AnimatedVisibilityScope?,
+                isDetailTransitioning: Boolean = false
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (screen) {
@@ -161,6 +171,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                                 windowSizeClass = windowSizeClass,
                                 sharedTransitionScope = this@SharedTransitionLayout,
                                 animatedVisibilityScope = animatedVisibilityScope,
+                                isDetailTransitioning = isDetailTransitioning,
                                 onAddPhotos = { tab ->
                                     when (tab) {
                                         "Library" -> {
@@ -201,13 +212,15 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            val progress = predictiveBackProgress.value
-                            val scale = 0.96f + (0.04f * progress)
-                            scaleX = scale
-                            scaleY = scale
+                            if (isGestureActive) {
+                                val progress = predictiveBackProgress.value
+                                val scale = 0.96f + (0.04f * progress)
+                                scaleX = scale
+                                scaleY = scale
+                            }
                         }
                 ) {
-                    RenderScreenContent(backScreen, null)
+                    RenderScreenContent(backScreen, null, isDetailTransitioning)
                 }
             }
 
@@ -230,17 +243,20 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                         }
                     }
             ) {
-                // Unified AnimatedContent targeting viewModel.currentScreen directly
-                AnimatedContent(
-                    targetState = viewModel.currentScreen,
+                transition.AnimatedContent(
                     transitionSpec = {
                         if (isNavigatingBackFromGesture) {
                             fadeIn(tween(0)) togetherWith fadeOut(tween(0))
                         } else {
-                            Motion.screenTransition(initialState, targetState, motionScheme)
+                            if (targetState == Screen.Detail) {
+                                fadeIn(tween(300)) togetherWith fadeOut(tween(0))
+                            } else if (initialState == Screen.Detail) {
+                                fadeIn(tween(0, delayMillis = 300)) togetherWith fadeOut(tween(300))
+                            } else {
+                                Motion.screenTransition(initialState, targetState, motionScheme)
+                            }
                         }
                     },
-                    label = "screen_transition",
                     modifier = Modifier.fillMaxSize()
                 ) { screen ->
                     if (screen == Screen.Detail) {
@@ -248,10 +264,10 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             viewModel = viewModel,
                             windowSizeClass = windowSizeClass,
                             sharedTransitionScope = this@SharedTransitionLayout,
-                            animatedVisibilityScope = this@AnimatedContent
+                            animatedVisibilityScope = this
                         )
                     } else {
-                        RenderScreenContent(screen, this@AnimatedContent)
+                        RenderScreenContent(screen, this)
                     }
                 }
             }

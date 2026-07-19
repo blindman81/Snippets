@@ -111,6 +111,9 @@ fun DetailScreen(
 ) {
     val view = LocalView.current
     
+    val sharedUiAlpha = remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+    val sharedBgAlpha = remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+    
     val photos = remember(
         viewModel.libraryCurrentTab,
         viewModel.filteredPhotos,
@@ -246,35 +249,43 @@ fun DetailScreen(
     val focusManager = LocalFocusManager.current
 
     Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = sharedBgAlpha.floatValue }
+                .background(MaterialTheme.colorScheme.surface)
+        )
         Scaffold(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
             modifier = Modifier.fillMaxSize(),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
-                val hasSnippetsCurrent = photo.snippets.isNotEmpty()
-                DetailTopBar(
-                    photo = photo,
-                    viewModel = viewModel,
-                    onBack = { viewModel.closeDetail() },
-                    isSpinning = !isAnyPopupActive,
-                    isScrolled = isScrolled,
-                    onPhotoThumbnailClick = { scrollToTopActions[pagerState.currentPage]?.invoke() },
-                    hasSnippets = hasSnippetsCurrent,
-                    showAddButton = viewModel.libraryCurrentTab != "Eatlist",
-                    onAdd = { showAddModal = true },
-                    onDownload = { 
-                        viewModel.downloadPhotoCard(context, photo, true, android.graphics.Color.BLACK) 
-                    },
-                    onEdit = { showCurrentSnippetsModal = true },
-                    onShare = { viewModel.sharePhotoCard(context, photo, true, android.graphics.Color.BLACK) },
-                    onDelete = { showDeleteModal = true },
-                    onRate = { showRateModal = true },
-                    isFavorite = photo.isFavorite,
-                    onToggleFavorite = { viewModel.toggleFavorite(photo.id) },
-                    hasLocationLink = !photo.locationLink.isNullOrBlank(),
-                    onAddLinkClick = { showLinkModal = true },
-                    animatedVisibilityScope = animatedVisibilityScope
-                )
+                Box(modifier = Modifier.graphicsLayer { alpha = sharedUiAlpha.floatValue }) {
+                    val hasSnippetsCurrent = photo.snippets.isNotEmpty()
+                    DetailTopBar(
+                        photo = photo,
+                        viewModel = viewModel,
+                        onBack = { viewModel.closeDetail() },
+                        isSpinning = !isAnyPopupActive,
+                        isScrolled = isScrolled,
+                        onPhotoThumbnailClick = { scrollToTopActions[pagerState.currentPage]?.invoke() },
+                        hasSnippets = hasSnippetsCurrent,
+                        showAddButton = viewModel.libraryCurrentTab != "Eatlist",
+                        onAdd = { showAddModal = true },
+                        onDownload = { 
+                            viewModel.downloadPhotoCard(context, photo, true, android.graphics.Color.BLACK) 
+                        },
+                        onEdit = { showCurrentSnippetsModal = true },
+                        onShare = { viewModel.sharePhotoCard(context, photo, true, android.graphics.Color.BLACK) },
+                        onDelete = { showDeleteModal = true },
+                        onRate = { showRateModal = true },
+                        isFavorite = photo.isFavorite,
+                        onToggleFavorite = { viewModel.toggleFavorite(photo.id) },
+                        hasLocationLink = !photo.locationLink.isNullOrBlank(),
+                        onAddLinkClick = { showLinkModal = true },
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )
+                }
             }
         ) { paddingValues ->
             Box(
@@ -319,8 +330,10 @@ fun DetailScreen(
                                 dismissOffsetY = dismissOffsetY,
                                 onDismissOffsetYChange = { dismissOffsetY = it },
                                 onDismissRequest = { viewModel.closeDetail() },
-                                onScrollChanged = { scrollStates[page] = it },
-                                onRegisterScrollToTop = { scrollToTopActions[page] = it },
+                                onScrollChanged = { scrolled -> scrollStates[page] = scrolled },
+                                onRegisterScrollToTop = { action -> scrollToTopActions[page] = action },
+                                onUiAlphaChange = { if (pagerState.currentPage == page) sharedUiAlpha.floatValue = it },
+                                onBgAlphaChange = { if (pagerState.currentPage == page) sharedBgAlpha.floatValue = it },
                                 pageOffset = pageOffset
                             )
                         } else {
@@ -343,6 +356,8 @@ fun DetailScreen(
                                 onScrollChanged = { scrollStates[page] = it },
                                 onRegisterScrollToTop = { scrollToTopActions[page] = it },
                                 viewModel = viewModel,
+                                onUiAlphaChange = { if (pagerState.currentPage == page) sharedUiAlpha.floatValue = it },
+                                onBgAlphaChange = { if (pagerState.currentPage == page) sharedBgAlpha.floatValue = it },
                                 pageOffset = pageOffset
                             )
                         }
@@ -566,10 +581,17 @@ fun EmptyDetailContent(
     onDismissRequest: () -> Unit = {},
     onScrollChanged: (Boolean) -> Unit = {},
     onRegisterScrollToTop: (() -> Unit) -> Unit = {},
+    onUiAlphaChange: (Float) -> Unit = {},
+    onBgAlphaChange: (Float) -> Unit = {},
     pageOffset: Float = 0f
 ) {
-    SwipeToDismissContainer(onDismiss = onDismissRequest) { backgroundAlpha ->
-        Box(modifier = Modifier.fillMaxSize().alpha(backgroundAlpha), contentAlignment = Alignment.Center) {
+    SwipeToDismissContainer(
+        onDismiss = onDismissRequest,
+        onUiAlphaChange = onUiAlphaChange,
+        onBgAlphaChange = onBgAlphaChange,
+        overlayContent = { _, _ -> }
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DetailPhotoFrame(
                 photo = photo,
                 sharedKey = sharedKey,
@@ -598,67 +620,76 @@ fun SnippetsDetailContent(
     onScrollChanged: (Boolean) -> Unit = {},
     onRegisterScrollToTop: (() -> Unit) -> Unit = {},
     viewModel: SnippetsViewModel,
+    onUiAlphaChange: (Float) -> Unit = {},
+    onBgAlphaChange: (Float) -> Unit = {},
     pageOffset: Float = 0f
 ) {
-    SwipeToDismissContainer(onDismiss = onDismissRequest) { bgAlpha ->
-        Box(modifier = Modifier.fillMaxSize().alpha(bgAlpha), contentAlignment = Alignment.Center) {
-        DetailPhotoFrame(
-            photo = photo,
-            sharedKey = sharedKey,
-            sharedTransitionScope = sharedTransitionScope,
-            animatedVisibilityScope = animatedVisibilityScope,
-            isTransitionTarget = isTransitionTarget,
-            modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize()
-        )
+    SwipeToDismissContainer(
+        onDismiss = onDismissRequest,
+        onUiAlphaChange = onUiAlphaChange,
+        onBgAlphaChange = onBgAlphaChange,
+        overlayContent = { _, uiAlphaProvider ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .then(
+                            if (animatedVisibilityScope != null) {
+                                with(animatedVisibilityScope) {
+                                    val motionScheme = MaterialTheme.motionScheme
+                                    Modifier.animateEnterExit(
+                                        enter = fadeIn(animationSpec = motionScheme.fastEffectsSpec()) + slideInVertically(animationSpec = motionScheme.fastSpatialSpec()) { it / 2 },
+                                        exit = fadeOut(animationSpec = motionScheme.fastEffectsSpec()) + slideOutVertically(animationSpec = motionScheme.fastSpatialSpec()) { it / 2 }
+                                    )
+                                }
+                            } else Modifier
+                        )
+                        .graphicsLayer { alpha = uiAlphaProvider() }
+                        .padding(bottom = 36.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val pureSnippets = photo.snippets
+                    val total = pureSnippets.size
+                    val lazyListState = rememberLazyListState()
 
-        // Snippets on the bottom of the screen (Horizontal Pill Carousel)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .then(
-                    if (animatedVisibilityScope != null) {
-                        with(animatedVisibilityScope) {
-                            val motionScheme = MaterialTheme.motionScheme
-                            Modifier.animateEnterExit(
-                                enter = fadeIn(animationSpec = motionScheme.fastEffectsSpec()) + slideInVertically(animationSpec = motionScheme.fastSpatialSpec()) { it / 2 },
-                                exit = fadeOut(animationSpec = motionScheme.fastEffectsSpec()) + slideOutVertically(animationSpec = motionScheme.fastSpatialSpec()) { it / 2 }
+                    LazyRow(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .widthIn(max = 600.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                    ) {
+                        itemsIndexed(pureSnippets) { index, snippet ->
+                            CloudSnippetItem(
+                                text = snippet,
+                                index = index,
+                                totalCount = total,
+                                photoColors = emptyList(),
+                                forcedColor = viewModel.getSnippetColor(snippet),
+                                forcedStyle = viewModel.getSnippetStyle(snippet),
+                                isSegmented = true
                             )
                         }
-                    } else Modifier
-                )
-                .padding(bottom = 36.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            val pureSnippets = photo.snippets
-            val total = pureSnippets.size
-            val lazyListState = rememberLazyListState()
-
-            LazyRow(
-                state = lazyListState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .widthIn(max = 600.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-            ) {
-                itemsIndexed(pureSnippets) { index, snippet ->
-                    CloudSnippetItem(
-                        text = snippet,
-                        index = index,
-                        totalCount = total,
-                        photoColors = emptyList(),
-                        forcedColor = viewModel.getSnippetColor(snippet),
-                        forcedStyle = viewModel.getSnippetStyle(snippet),
-                        isSegmented = true
-                    )
+                    }
                 }
             }
         }
-    }
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            DetailPhotoFrame(
+                photo = photo,
+                sharedKey = sharedKey,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
+                isTransitionTarget = isTransitionTarget,
+                modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize()
+            )
+        }
     }
 }
 
@@ -877,7 +908,10 @@ fun LocationLinkModal(
 @Composable
 fun SwipeToDismissContainer(
     onDismiss: () -> Unit,
-    content: @Composable (backgroundAlpha: Float) -> Unit
+    onUiAlphaChange: (Float) -> Unit = {},
+    onBgAlphaChange: (Float) -> Unit = {},
+    overlayContent: @Composable (bgAlphaProvider: () -> Float, uiAlphaProvider: () -> Float) -> Unit = { _, _ -> },
+    content: @Composable () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     
@@ -887,18 +921,32 @@ fun SwipeToDismissContainer(
 
     // Define how far the user needs to drag to trigger the dismissal
     val dismissThreshold = with(androidx.compose.ui.platform.LocalDensity.current) { 150.dp.toPx() }
-    
-    // Define the maximum drag distance used to calculate scale/alpha fading
     val maxDrag = with(androidx.compose.ui.platform.LocalDensity.current) { 300.dp.toPx() }
 
-    // Calculate dynamic values based on how far the user has dragged
-    val dragProgress = (abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
+    LaunchedEffect(offsetY) {
+        androidx.compose.runtime.snapshotFlow { offsetY.value }.collect { y ->
+            val progress = (kotlin.math.abs(y) / maxDrag).coerceIn(0f, 1f)
+            val uiAlpha = (1f - (progress * 5f)).coerceIn(0f, 1f)
+            val bgAlpha = 1f - progress
+            onUiAlphaChange(uiAlpha)
+            onBgAlphaChange(bgAlpha)
+        }
+    }
+
+    val bgAlphaProvider = {
+        val progress = (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
+        1f - progress
+    }
     
-    // Scale down to 85% at maximum drag
-    val currentScale = 1f - (0.15f * dragProgress) 
-    
-    // Fade the background out as the user drags
-    val currentAlpha = 1f - dragProgress
+    val uiAlphaProvider = {
+        val progress = (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
+        (1f - (progress * 5f)).coerceIn(0f, 1f)
+    }
+
+    val scaleProvider = {
+        val progress = (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
+        1f - (0.15f * progress)
+    }
 
     Box(
         modifier = Modifier
@@ -961,18 +1009,19 @@ fun SwipeToDismissContainer(
                 )
             }
     ) {
-        // Apply the layout transformations to the wrapper surrounding your image
+        // Apply the background and other overlay elements underneath the moving photo
+        overlayContent(bgAlphaProvider, uiAlphaProvider)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
+                .offset { androidx.compose.ui.unit.IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
                 .graphicsLayer {
+                    val currentScale = scaleProvider()
                     scaleX = currentScale
                     scaleY = currentScale
                 }
         ) {
-            // Pass the alpha value down so your DetailScreen background can fade out
-            content(currentAlpha)
+            content()
         }
     }
 }
