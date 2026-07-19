@@ -236,7 +236,10 @@ fun CollectionOptionsBottomSheet(
                             onDismissRequest()
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = CircleShape,
+                        shapes = ButtonDefaults.shapes(
+                            shape = CircleShape,
+                            pressedShape = RoundedCornerShape(12.dp)
+                        ),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -254,7 +257,10 @@ fun CollectionOptionsBottomSheet(
                             onDismissRequest()
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = CircleShape,
+                        shapes = ButtonDefaults.shapes(
+                            shape = CircleShape,
+                            pressedShape = RoundedCornerShape(12.dp)
+                        ),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer

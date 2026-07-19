@@ -1175,7 +1175,10 @@ fun LibraryScreen(
                                             longPressedCollection = null
                                         },
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = CircleShape,
+                                        shapes = ButtonDefaults.shapes(
+                                            shape = CircleShape,
+                                            pressedShape = RoundedCornerShape(12.dp)
+                                        ),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
