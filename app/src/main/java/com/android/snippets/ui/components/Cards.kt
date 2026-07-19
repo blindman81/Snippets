@@ -19,6 +19,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
@@ -35,8 +37,11 @@ import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
 import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.ui.shapes.LocalAppShapeType
 import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.components.*
+import com.android.snippets.ui.theme.GoogleSansFlexWide
 import androidx.compose.material3.carousel.rememberCarouselState
 import com.android.snippets.viewmodel.Screen
+import com.android.snippets.viewmodel.SnippetsViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.launch
@@ -408,6 +413,8 @@ fun PhotoMasonryItem(
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
     matchingSnippetsCount: Int = 0,
+    isMostSnippets: Boolean = false,
+    isLeastSnippets: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -564,9 +571,20 @@ fun PhotoMasonryItem(
                 }
             }
             
-            if (matchingSnippetsCount > 0 && !isSelected) {
+            val displaySnippetCount = if (matchingSnippetsCount > 0) matchingSnippetsCount else photo.snippets.size
+            if ((displaySnippetCount > 0 || isMostSnippets || isLeastSnippets) && !isSelected && photo.snippets.isNotEmpty()) {
+                val badgeContainerColor = when {
+                    isMostSnippets -> MaterialTheme.colorScheme.primary
+                    isLeastSnippets -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.secondaryContainer
+                }
+                val badgeContentColor = when {
+                    isMostSnippets -> MaterialTheme.colorScheme.onPrimary
+                    isLeastSnippets -> MaterialTheme.colorScheme.onTertiary
+                    else -> MaterialTheme.colorScheme.onSecondaryContainer
+                }
                 Surface(
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = badgeContainerColor,
                     shape = LocalAppShape.current,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -575,10 +593,10 @@ fun PhotoMasonryItem(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = matchingSnippetsCount.toString(),
+                            text = displaySnippetCount.toString(),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onTertiary
+                            color = badgeContentColor
                         )
                     }
                 }
@@ -608,20 +626,276 @@ fun PhotoMasonryItem(
     }
 }
 
-enum class CardPosition {
-    Single, First, Middle, Last
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun PhotoListItem(
+    photo: Photo, 
+    isSelected: Boolean = false,
+    selectionMode: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    showFavoriteIcon: Boolean = true,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
+    tab: String? = null,
+    isMostSnippets: Boolean = false,
+    isLeastSnippets: Boolean = false,
+    grayOutIfViewed: Boolean = false,
+    viewModel: SnippetsViewModel,
+    onEatlistCheckClick: (() -> Unit)? = null
+) {
+    val finalShape = if (isSelected) RoundedCornerShape(4.dp) else shape
+    val cardShape = if (isSelected) RoundedCornerShape(4.dp) else RoundedCornerShape(8.dp)
+    val photoShape = if (viewModel.makePhotosFollowShape) {
+        LocalAppShape.current
+    } else {
+        RoundedCornerShape(12.dp)
+    }
+
+    val saturation by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 600),
+        label = "saturation"
+    )
+    val animatedAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (grayOutIfViewed && photo.isViewed) 0.8f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 600),
+        label = "alpha"
+    )
+    val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isSelected) 0.95f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 400f),
+        label = "scale"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = animatedScale
+                scaleY = animatedScale
+            }
+            .alpha(animatedAlpha)
+            .clip(cardShape)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 1.dp),
+        border = if (isSelected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .then(
+                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                            with(sharedTransitionScope) {
+                                Modifier.sharedBounds(
+                                    rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    boundsTransform = { _, _ ->
+                                        androidx.compose.animation.core.spring(
+                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                        )
+                                    },
+                                    resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
+                                        contentScale = ContentScale.Crop,
+                                        alignment = Alignment.Center
+                                    ),
+                                    clipInOverlayDuringTransition = OverlayClip(photoShape)
+                                )
+                            }
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .clip(photoShape)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(photo.uriString)
+                        .crossfade(true)
+                        .memoryCacheKey(photo.uriString)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                        androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                    ),
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                if (tab == "Eatlist" && !isSelected) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(4.dp)
+                            .size(24.dp)
+                            .clickable { onEatlistCheckClick?.invoke() }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Remove from Eatlist",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .align(Alignment.CenterVertically)
+            ) {
+                if (photo.snippets.isEmpty()) {
+                    if (tab != "Eatlist") {
+                        Text(
+                            text = "No snippets",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                } else {
+                    val topSnippets = photo.snippets.take(2)
+                    val total = photo.snippets.size
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        topSnippets.forEachIndexed { index, snippet ->
+                            CloudSnippetItem(
+                                text = snippet,
+                                index = index,
+                                totalCount = total,
+                                photoColors = emptyList(),
+                                forcedColor = viewModel.getSnippetColor(snippet),
+                                forcedStyle = viewModel.getSnippetStyle(snippet),
+                                isSegmented = true
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(end = 4.dp)
+            ) {
+                val iconColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+
+                if (photo.rating > 0) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = LocalAppShape.current,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_star_rating),
+                                contentDescription = null,
+                                tint = iconColor,
+                                modifier = Modifier.fillMaxSize().padding(4.dp)
+                            )
+                            Text(
+                                text = photo.rating.toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.padding(top = 1.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (photo.isFavorite && showFavoriteIcon) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = LocalAppShape.current,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Favorite",
+                                tint = iconColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                if ((isMostSnippets || isLeastSnippets || photo.snippets.isNotEmpty()) && !isSelected && photo.snippets.isNotEmpty()) {
+                    val badgeContainerColor = when {
+                        isMostSnippets -> MaterialTheme.colorScheme.primary
+                        isLeastSnippets -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.secondaryContainer
+                    }
+                    val badgeContentColor = when {
+                        isMostSnippets -> MaterialTheme.colorScheme.onPrimary
+                        isLeastSnippets -> MaterialTheme.colorScheme.onTertiary
+                        else -> MaterialTheme.colorScheme.onSecondaryContainer
+                    }
+                    Surface(
+                        color = badgeContainerColor,
+                        shape = LocalAppShape.current,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = photo.snippets.size.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = badgeContentColor
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun DynamicCardContainer(
-    modifier: Modifier = Modifier,
-    position: CardPosition = CardPosition.Single,
+fun PhotoCardListItem(
+    photo: Photo,
+    position: CardPosition,
     isSelected: Boolean = false,
-    containerColor: Color? = null,
-    onClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit
+    selectionMode: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    showFavoriteIcon: Boolean = true,
+    tab: String? = null,
+    isMostSnippets: Boolean = false,
+    isLeastSnippets: Boolean = false,
+    grayOutIfViewed: Boolean = false,
+    viewModel: SnippetsViewModel,
+    onEatlistCheckClick: (() -> Unit)? = null
 ) {
-    val shape = if (isSelected) {
+    val finalShape = if (isSelected) {
         RoundedCornerShape(24.dp)
     } else {
         when (position) {
@@ -632,25 +906,460 @@ fun DynamicCardContainer(
         }
     }
 
+    val photoShape = LocalAppShape.current
+
+    val saturation by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 600),
+        label = "saturation"
+    )
+    val animatedAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (grayOutIfViewed && photo.isViewed) 0.8f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 600),
+        label = "alpha"
+    )
+    val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isSelected) 0.95f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 400f),
+        label = "scale"
+    )
+
+    val animRotation = remember { androidx.compose.animation.core.Animatable(0f) }
+    val animScaleX = remember { androidx.compose.animation.core.Animatable(1f) }
+    val animScaleY = remember { androidx.compose.animation.core.Animatable(1f) }
+    val shapeType = com.android.snippets.ui.shapes.LocalAppShapeType.current
+    var wasInDetail by remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    LaunchedEffect(viewModel.currentScreen, viewModel.activePhotoId) {
+        if (viewModel.currentScreen == Screen.Detail && viewModel.activePhotoId == photo.id) {
+            wasInDetail = true
+        } else if (wasInDetail && viewModel.currentScreen != Screen.Detail && viewModel.activePhotoId == photo.id) {
+            wasInDetail = false
+            // Trigger animation like the icon shape buttons!
+            when (shapeType) {
+                com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
+                com.android.snippets.ui.shapes.AppShape.PILL,
+                com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> {
+                    animRotation.snapTo(0f)
+                    animRotation.animateTo(
+                        targetValue = 360f,
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 500,
+                            easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
+                        )
+                    )
+                }
+                com.android.snippets.ui.shapes.AppShape.COOKIE_4_SIDED -> {
+                    launch {
+                        animScaleX.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+                        animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+                        animScaleY.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                }
+                com.android.snippets.ui.shapes.AppShape.GEM,
+                com.android.snippets.ui.shapes.AppShape.SQUARE -> {
+                    launch {
+                        animScaleX.animateTo(1.18f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(1.18f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                }
+                com.android.snippets.ui.shapes.AppShape.PENTAGON -> {
+                    animRotation.animateTo(-15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    animRotation.animateTo(15f, animationSpec = androidx.compose.animation.core.tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    animRotation.animateTo(0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                }
+                com.android.snippets.ui.shapes.AppShape.CLOVER_4_LEAF -> {
+                    launch {
+                        animScaleX.animateTo(1.25f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(0.8f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.2f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                }
+                com.android.snippets.ui.shapes.AppShape.CLOVER_8_LEAF -> {
+                    launch {
+                        animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.03f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.20f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.03f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.20f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
+                    }
+                }
+            }
+        }
+    }
+
+    DynamicCardContainer(
+        position = position,
+        isSelected = isSelected,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = animatedScale
+                scaleY = animatedScale
+            }
+            .alpha(animatedAlpha)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(225.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left side: Photo Box takes 60% of card space, centered
+            Box(
+                modifier = Modifier
+                    .weight(0.60f)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight(0.88f)
+                        .fillMaxWidth(0.90f)
+                        .aspectRatio(1f)
+                        .padding(4.dp)
+                        .then(
+                            if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                with(sharedTransitionScope) {
+                                    Modifier.sharedBounds(
+                                        rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        boundsTransform = { _, _ ->
+                                            androidx.compose.animation.core.spring(
+                                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                            )
+                                        },
+                                        resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
+                                            contentScale = ContentScale.Crop,
+                                            alignment = Alignment.Center
+                                        ),
+                                        clipInOverlayDuringTransition = OverlayClip(photoShape)
+                                    )
+                                }
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .graphicsLayer {
+                            this.rotationZ = when (shapeType) {
+                                com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
+                                com.android.snippets.ui.shapes.AppShape.PILL,
+                                com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> animRotation.value
+                                com.android.snippets.ui.shapes.AppShape.PENTAGON -> animRotation.value
+                                else -> 0f
+                            }
+                            this.scaleX = animScaleX.value
+                            this.scaleY = animScaleY.value
+                        }
+                        .clip(photoShape)
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(photo.uriString)
+                            .crossfade(true)
+                            .memoryCacheKey(photo.uriString)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                        ),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                this.rotationZ = when (shapeType) {
+                                    com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
+                                    com.android.snippets.ui.shapes.AppShape.PILL,
+                                    com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> -animRotation.value
+                                    com.android.snippets.ui.shapes.AppShape.PENTAGON -> -animRotation.value
+                                    else -> 0f
+                                }
+                            }
+                    )
+
+                    if (tab == "Eatlist" && !isSelected) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                            shape = CircleShape,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(4.dp)
+                                .size(24.dp)
+                                .clickable { onEatlistCheckClick?.invoke() }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = "Remove from Eatlist",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(2.dp))
+
+            // Right side column takes 40% of space
+            Column(
+                modifier = Modifier
+                    .weight(0.40f)
+                    .fillMaxHeight()
+            ) {
+                // 2dp gap above the first section
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // Top section (compact width, 18% height of right column)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .wrapContentWidth()
+                        .weight(0.18f)
+                        .clip(RoundedCornerShape(2.dp))
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                ) {
+                    val iconColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+
+                    if (photo.rating > 0) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = LocalAppShape.current,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_star_rating),
+                                    contentDescription = null,
+                                    tint = iconColor,
+                                    modifier = Modifier.fillMaxSize().padding(4.dp)
+                                )
+                                Text(
+                                    text = photo.rating.toString(),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    modifier = Modifier.padding(top = 1.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (photo.isFavorite && showFavoriteIcon) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = LocalAppShape.current,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = "Favorite",
+                                    tint = iconColor,
+                                    modifier = Modifier
+                                        .size(15.dp)
+                                        .align(Alignment.Center)
+                                )
+                            }
+                        }
+                    }
+
+                    if ((isMostSnippets || isLeastSnippets || photo.snippets.isNotEmpty()) && !isSelected && photo.snippets.isNotEmpty()) {
+                        val badgeContainerColor = when {
+                            isMostSnippets -> MaterialTheme.colorScheme.primary
+                            isLeastSnippets -> MaterialTheme.colorScheme.tertiary
+                            else -> MaterialTheme.colorScheme.secondaryContainer
+                        }
+                        val badgeContentColor = when {
+                            isMostSnippets -> MaterialTheme.colorScheme.onPrimary
+                            isLeastSnippets -> MaterialTheme.colorScheme.onTertiary
+                            else -> MaterialTheme.colorScheme.onSecondaryContainer
+                        }
+                        Surface(
+                            color = badgeContainerColor,
+                            shape = LocalAppShape.current,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = photo.snippets.size.toString(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = badgeContentColor
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 2dp gap channel between top section and bottom section
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // Bottom section: Snippets text (82% height of right column)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(0.82f)
+                        .clip(RoundedCornerShape(2.dp))
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.TopStart
+                ) {
+                    if (photo.snippets.isEmpty()) {
+                        if (tab != "Eatlist") {
+                            Text(
+                                text = "No snippets",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    } else {
+                        val topSnippets = photo.snippets.take(3)
+                        val total = topSnippets.size
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            topSnippets.forEachIndexed { index, snippet ->
+                                val snippetPosition = when {
+                                    total == 1 -> CardPosition.Single
+                                    index == 0 -> CardPosition.First
+                                    index == total - 1 -> CardPosition.Last
+                                    else -> CardPosition.Middle
+                                }
+                                val snippetShape = when (snippetPosition) {
+                                    CardPosition.Single -> RoundedCornerShape(12.dp)
+                                    CardPosition.First -> RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
+                                    CardPosition.Middle -> RoundedCornerShape(2.dp)
+                                    CardPosition.Last -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
+                                }
+
+                                val snippetStyle = viewModel.getSnippetStyle(snippet)
+                                val forcedColor = viewModel.getSnippetColor(snippet)
+                                val baseColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
+                                val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                                val snippetColor = remember(baseColor, isDark) {
+                                    val lum = 0.299f * baseColor.red + 0.587f * baseColor.green + 0.114f * baseColor.blue
+                                    if (isDark && lum < 0.3f) baseColor.copy(red = (baseColor.red + 0.4f).coerceAtMost(1f), green = (baseColor.green + 0.4f).coerceAtMost(1f), blue = (baseColor.blue + 0.4f).coerceAtMost(1f))
+                                    else if (!isDark && lum > 0.7f) baseColor.copy(red = (baseColor.red - 0.4f).coerceAtLeast(0f), green = (baseColor.green - 0.4f).coerceAtLeast(0f), blue = (baseColor.blue - 0.4f).coerceAtLeast(0f))
+                                    else baseColor
+                                }
+
+                                val snippetGradient = remember(snippetColor) {
+                                    androidx.compose.ui.graphics.Brush.linearGradient(
+                                        colors = listOf(snippetColor, snippetColor.copy(alpha = 0.65f))
+                                    )
+                                }
+
+                                Surface(
+                                    shape = snippetShape,
+                                    color = snippetColor.copy(alpha = 0.18f),
+                                    border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Box(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        Text(
+                                            text = snippet,
+                                            style = getSnippetTextStyle(
+                                                snippetStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                                MaterialTheme.typography.bodySmall,
+                                                isCloud = true
+                                            ).copy(brush = snippetGradient),
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum class CardPosition {
+    Single, First, Middle, Last
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun DynamicCardContainer(
+    modifier: Modifier = Modifier,
+    position: CardPosition = CardPosition.Single,
+    isSelected: Boolean = false,
+    containerColor: Color? = null,
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val shape = if (isSelected) {
+        RoundedCornerShape(24.dp)
+    } else {
+        when (position) {
+            CardPosition.Single -> RoundedCornerShape(16.dp)
+            CardPosition.First -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
+            CardPosition.Middle -> RoundedCornerShape(2.dp)
+            CardPosition.Last -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+        }
+    }
+
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val view = LocalView.current
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 12.dp)
+            .clip(shape)
+            .combinedClickable(
+                enabled = onClick != null || onLongClick != null,
+                onClick = {
+                    onClick?.let {
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        it.invoke()
+                    }
+                },
+                onLongClick = {
+                    onLongClick?.let {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        it.invoke()
+                    }
+                }
+            ),
         shape = shape,
         color = if (isSelected) {
             MaterialTheme.colorScheme.primary
         } else {
             containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest
-        },
-        onClick = { 
-            onClick?.let {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                it.invoke()
-            }
-        },
-        enabled = onClick != null
+        }
     ) {
         content()
     }
@@ -667,7 +1376,8 @@ fun SettingsCardItem(
     titleContent: @Composable (() -> Unit)? = null,
     position: CardPosition = CardPosition.Single,
     isExpressive: Boolean = false,
-    containerColor: Color? = null
+    containerColor: Color? = null,
+    modifier: Modifier = Modifier
 ) {
     val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
     val secondaryColor = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
@@ -676,7 +1386,8 @@ fun SettingsCardItem(
         onClick = onClick,
         position = position,
         isSelected = isSelected,
-        containerColor = containerColor
+        containerColor = containerColor,
+        modifier = modifier
     ) {
         Row(
             modifier = Modifier

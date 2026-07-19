@@ -22,11 +22,7 @@ fun getMatchingSnippetsCount(photo: Photo, viewModel: SnippetsViewModel): Int {
         viewModel.selectedFilterSnippets.isNotEmpty() -> {
             photo.snippets.count { s -> viewModel.selectedFilterSnippets.any { it.equals(s, ignoreCase = true) } }
         }
-        viewModel.photoSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets || 
-        viewModel.photoSortType == com.android.snippets.viewmodel.PhotoSortType.LeastSnippets -> {
-            photo.snippets.size
-        }
-        else -> 0
+        else -> photo.snippets.size
     }
 }
 

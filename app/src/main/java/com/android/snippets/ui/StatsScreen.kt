@@ -129,6 +129,19 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
         if (totalPhotos == 0) 0f else totalSnippetsCount.toFloat() / totalPhotos
     }
 
+    // 6b. Most snippets on a photo
+    val maxSnippetsOnPhoto = remember(photos) {
+        if (photos.isEmpty()) 0 else photos.maxOf { it.snippets.size }
+    }
+
+    // 6c. Least snippets on a photo
+    val minSnippetsOnPhoto = remember(photos) {
+        if (photos.isEmpty()) 0 else {
+            val nonZero = photos.map { it.snippets.size }.filter { it > 0 }
+            if (nonZero.isNotEmpty()) nonZero.minOrNull() ?: 0 else 0
+        }
+    }
+
     // 7. Most used style
     val mostUsedStyleEntry = remember(allSnippets) {
         if (allSnippets.isEmpty()) null
@@ -305,6 +318,24 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     title = "Average snippets",
                     value = String.format(Locale.US, "%.1f", averageSnippets),
                     subtitle = "Average number of snippets per photo",
+                    position = CardPosition.Middle
+                )
+
+                // 6b. Most snippets on a photo card
+                InsightCard(
+                    icon = Icons.Default.VerticalAlignTop,
+                    title = "Most snippets on a photo",
+                    value = "$maxSnippetsOnPhoto ${if (maxSnippetsOnPhoto == 1) "snippet" else "snippets"}",
+                    subtitle = "Highest snippet count on a single photo",
+                    position = CardPosition.Middle
+                )
+
+                // 6c. Least snippets on a photo card
+                InsightCard(
+                    icon = Icons.Default.VerticalAlignBottom,
+                    title = "Least snippets on a photo",
+                    value = "$minSnippetsOnPhoto ${if (minSnippetsOnPhoto == 1) "snippet" else "snippets"}",
+                    subtitle = "Lowest snippet count on a single photo",
                     position = CardPosition.Middle
                 )
 
