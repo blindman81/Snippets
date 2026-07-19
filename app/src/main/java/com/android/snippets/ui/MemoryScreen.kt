@@ -237,6 +237,7 @@ fun MemoryScreen(
             val isSettled = pagerState.settledPage == pageIndex
             LaunchedEffect(isSettled) {
                 if (isSettled) {
+                    kotlinx.coroutines.delay(1500)
                     viewModel.onMemoryViewed(pageIndex - 1)
                 }
             }

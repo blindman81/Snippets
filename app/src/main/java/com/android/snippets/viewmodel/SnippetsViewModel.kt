@@ -2176,7 +2176,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         currentMemoryIndex = index.coerceIn(0, activeMemoriesSnapshot.size - 1)
         previousScreen = currentScreen
         currentScreen = Screen.Memory
-        activeMemoriesSnapshot.getOrNull(currentMemoryIndex)?.let { markAsViewed(it.id) }
     }
 
     fun openMemoryForPhoto(photoId: String) {
@@ -2190,7 +2189,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         currentMemoryIndex = 0
         previousScreen = currentScreen
         currentScreen = Screen.Memory
-        markAsViewed(photoId)
     }
 
     fun onMemoryViewed(index: Int) {

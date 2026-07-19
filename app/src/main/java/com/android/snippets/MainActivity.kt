@@ -112,10 +112,12 @@ class MainActivity : ComponentActivity() {
             splashScreenView.remove()
         }
 
-        handleNotificationIntent(intent)
-        handleTileIntent(intent)
-        handleShareIntent(intent)
-        handleHistoryIntent(intent)
+        if (savedInstanceState == null) {
+            handleNotificationIntent(intent)
+            handleTileIntent(intent)
+            handleShareIntent(intent)
+            handleHistoryIntent(intent)
+        }
 
         setContent {
             val isDarkTheme = when (viewModel.themePreference) {
