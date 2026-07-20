@@ -63,6 +63,20 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name="com.android.snippets.widget.HistoryWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_history_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.android.snippets.action.ROTATE_WIDGET" />
+                <action android:name="com.android.snippets.action.WIDGET_TAP" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_history_info" />
+        </receiver>
     </application>
 
 </manifest>

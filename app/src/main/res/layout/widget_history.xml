@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_widget_card">
+
+    <!-- Card Content (Side-by-side layout) -->
+    <LinearLayout
+        android:id="@+id/widget_card_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <!-- Left Column: Photo Image (60% width) -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.60">
+
+            <ImageView
+                android:id="@+id/widget_image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="@string/widget_history_name" />
+        </FrameLayout>
+
+        <!-- Right Column: Badges & Snippets (40% width) -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.40"
+            android:orientation="vertical">
+
+            <!-- Top Header Box (Star Badge & Favorite Heart Icon) -->
+            <RelativeLayout
+                android:id="@+id/widget_top_panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_widget_top_panel"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp">
+
+                <!-- Left: Star Rating Badge with App Shape Background -->
+                <FrameLayout
+                    android:id="@+id/widget_star_badge_container"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/widget_star_badge_background"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitCenter"
+                        android:contentDescription="Star Background" />
+
+                    <ImageView
+                        android:id="@+id/widget_star_icon"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_star_rating"
+                        android:contentDescription="Rating Star" />
+
+                    <TextView
+                        android:id="@+id/widget_star_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="0"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
+                </FrameLayout>
+
+                <!-- Right: Favorite Heart Icon with App Shape Background -->
+                <FrameLayout
+                    android:id="@+id/widget_favorite_container"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/widget_favorite_background"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitCenter"
+                        android:contentDescription="Favorite Background" />
+
+                    <ImageView
+                        android:id="@+id/widget_favorite_icon"
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_heart_filled_custom"
+                        android:contentDescription="Favorite Heart" />
+                </FrameLayout>
+            </RelativeLayout>
+
+            <!-- Bottom Snippets Box -->
+            <LinearLayout
+                android:id="@+id/widget_snippets_container"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_widget_bottom_panel"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="6dp">
+
+                <TextView
+                    android:id="@+id/widget_snippet_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="2dp"
+                    android:background="@drawable/bg_widget_snippet_pill"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="5dp"
+                    android:textColor="#FFCA28"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/widget_snippet_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="2dp"
+                    android:background="@drawable/bg_widget_snippet_pill"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="5dp"
+                    android:textColor="#66BB6A"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/widget_snippet_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_widget_snippet_pill"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="5dp"
+                    android:textColor="#29B6F6"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/widget_no_snippets_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="No snippets"
+                    android:textColor="#66FFFFFF"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Empty State View -->
+    <TextView
+        android:id="@+id/widget_empty_text"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="No photos in History"
+        android:textColor="#99FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+</FrameLayout>

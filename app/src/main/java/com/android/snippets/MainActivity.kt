@@ -50,6 +50,19 @@ class MainActivity : ComponentActivity() {
     private var pendingSharedImageUri by mutableStateOf<android.net.Uri?>(null)
     private var pendingShareToken by mutableStateOf(0L)
     private var pendingHistoryIntentToken by mutableStateOf(0L)
+    private var pendingWidgetPhotoId by mutableStateOf<String?>(null)
+    private var pendingWidgetToken by mutableStateOf(0L)
+
+    private fun handleWidgetIntent(intent: android.content.Intent?) {
+        if (intent?.hasExtra("open_photo_id") == true) {
+            val photoId = intent.getStringExtra("open_photo_id")
+            if (!photoId.isNullOrEmpty()) {
+                pendingWidgetPhotoId = photoId
+                pendingWidgetToken = System.currentTimeMillis()
+            }
+            intent.removeExtra("open_photo_id")
+        }
+    }
 
     private fun handleNotificationIntent(intent: android.content.Intent?) {
         if (intent?.getBooleanExtra("open_memory", false) == true) {
@@ -117,6 +130,7 @@ class MainActivity : ComponentActivity() {
             handleTileIntent(intent)
             handleShareIntent(intent)
             handleHistoryIntent(intent)
+            handleWidgetIntent(intent)
         }
 
         setContent {
@@ -192,6 +206,16 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            val widgetPhotoId = pendingWidgetPhotoId
+                            val widgetToken = pendingWidgetToken
+                            androidx.compose.runtime.LaunchedEffect(widgetToken, viewModel.isInitialLoading) {
+                                if (!viewModel.isInitialLoading && widgetToken != 0L && widgetPhotoId != null) {
+                                    viewModel.openDetail(widgetPhotoId)
+                                    pendingWidgetToken = 0L
+                                    pendingWidgetPhotoId = null
+                                }
+                            }
+
                             val requestPermission = viewModel.requestNotificationPermission
                             androidx.compose.runtime.LaunchedEffect(requestPermission) {
                                 if (requestPermission) {
@@ -236,6 +260,7 @@ class MainActivity : ComponentActivity() {
         handleTileIntent(intent)
         handleShareIntent(intent)
         handleHistoryIntent(intent)
+        handleWidgetIntent(intent)
     }
 }
 

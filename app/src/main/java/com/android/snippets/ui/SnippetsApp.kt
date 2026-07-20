@@ -147,7 +147,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                 when (viewModel.currentScreen) {
                     Screen.Library -> null
                     Screen.Memory, Screen.Settings, Screen.About, Screen.Stats, Screen.Templates -> Screen.Library
-                    Screen.SelectIcon, Screen.ChooseShape -> viewModel.previousScreen
+                    Screen.SelectIcon, Screen.ChooseShape, Screen.MonthlyRecap, Screen.YearlyRecap -> viewModel.previousScreen
                     Screen.PhotosCarousel -> Screen.Settings
                     Screen.Detail -> viewModel.detailReturnScreen
                     else -> null
@@ -202,6 +202,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                         Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
                         Screen.Stats -> StatsScreen(viewModel)
                         Screen.Templates -> TemplatesScreen(viewModel)
+                        Screen.MonthlyRecap, Screen.YearlyRecap -> MonthlyRecapScreen(viewModel = viewModel)
                         else -> Box(Modifier.fillMaxSize())
                     }
                 }

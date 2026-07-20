@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Keyboard
 
 import androidx.compose.material3.*
@@ -300,6 +301,59 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 )
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ShapedSectionHeader(icon = NotificationSectionIcon())
+                Text(
+                    text = "Recaps & Memories",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            SettingsCardItem(
+                icon = Icons.Default.Collections,
+                title = "Preview Monthly Recap",
+                subtitle = "View large card stack of top-rated photos & snippets",
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                    viewModel.triggerMonthlyRecap()
+                },
+                position = CardPosition.First,
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            )
+
+            SettingsCardItem(
+                icon = Icons.Default.Star,
+                title = "Preview Yearly Recap",
+                subtitle = "View top memories from the past year",
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                    viewModel.triggerYearlyRecap()
+                },
+                position = CardPosition.Last,
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
             
