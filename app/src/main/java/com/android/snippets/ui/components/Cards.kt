@@ -1346,23 +1346,11 @@ fun PhotoCardListItem(
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.ic_more_options),
-                                                contentDescription = "More snippets",
-                                                tint = snippetColor,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = "+${photo.snippets.size - 3}",
-                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = snippetColor
-                                            )
-                                        }
+                                        Text(
+                                            text = "... +${photo.snippets.size - 3}",
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                            color = snippetColor
+                                        )
                                     }
                                 }
                             }
