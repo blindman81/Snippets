@@ -1014,6 +1014,7 @@ fun PhotoCardListItem(
     }
 
     val fullSizePhotoInCard = viewModel?.fullSizePhotoInCard ?: false
+    val effectivePhotoShape = if (fullSizePhotoInCard) androidx.compose.ui.graphics.RectangleShape else photoShape
     val blockColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
     DynamicCardContainer(
         position = position,
@@ -1069,7 +1070,7 @@ fun PhotoCardListItem(
                                             contentScale = ContentScale.Crop,
                                             alignment = Alignment.Center
                                         ),
-                                        clipInOverlayDuringTransition = OverlayClip(photoShape)
+                                        clipInOverlayDuringTransition = OverlayClip(effectivePhotoShape)
                                     )
                                 }
                             } else {
@@ -1077,17 +1078,17 @@ fun PhotoCardListItem(
                             }
                         )
                         .graphicsLayer {
-                            this.rotationZ = when (shapeType) {
+                            this.rotationZ = if (fullSizePhotoInCard) 0f else when (shapeType) {
                                 com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
                                 com.android.snippets.ui.shapes.AppShape.PILL,
                                 com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> animRotation.value
                                 com.android.snippets.ui.shapes.AppShape.PENTAGON -> animRotation.value
                                 else -> 0f
                             }
-                            this.scaleX = animScaleX.value
-                            this.scaleY = animScaleY.value
+                            this.scaleX = if (fullSizePhotoInCard) 1f else animScaleX.value
+                            this.scaleY = if (fullSizePhotoInCard) 1f else animScaleY.value
                         }
-                        .clip(photoShape)
+                        .clip(effectivePhotoShape)
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
@@ -1103,7 +1104,7 @@ fun PhotoCardListItem(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                this.rotationZ = when (shapeType) {
+                                this.rotationZ = if (fullSizePhotoInCard) 0f else when (shapeType) {
                                     com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
                                     com.android.snippets.ui.shapes.AppShape.PILL,
                                     com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> -animRotation.value
