@@ -158,56 +158,54 @@ fun DetailTopBar(
                 dropdownContent = { closeMenu ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         // Group 1: Download, Share, Favorite
-                        DropdownMenuGroup {
-                            DropdownMenuItem(
-                                text = { Text("Download") },
-                                leadingIcon = { Icon(Icons.Default.FileDownload, null) },
-                                enabled = hasSnippets,
-                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onDownload(); closeMenu() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Share") },
-                                leadingIcon = { Icon(Icons.Default.Share, null) },
-                                enabled = hasSnippets,
-                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onShare(); closeMenu() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(if (isFavorite) "Unfavorite" else "Favorite") },
-                                leadingIcon = { Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null) },
-                                enabled = hasSnippets,
-                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onToggleFavorite(); closeMenu() }
-                            )
-                        }
+                        DropdownMenuItem(
+                            text = { Text("Download") },
+                            leadingIcon = { Icon(Icons.Default.FileDownload, null) },
+                            enabled = hasSnippets,
+                            onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onDownload(); closeMenu() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            leadingIcon = { Icon(Icons.Default.Share, null) },
+                            enabled = hasSnippets,
+                            onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onShare(); closeMenu() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (isFavorite) "Unfavorite" else "Favorite") },
+                            leadingIcon = { Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null) },
+                            enabled = hasSnippets,
+                            onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onToggleFavorite(); closeMenu() }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                         // Group 2: Location link
-                        DropdownMenuGroup {
-                            DropdownMenuItem(
-                                text = { Text(if (hasLocationLink) "Edit location link" else "Link a place") },
-                                leadingIcon = { Icon(Icons.Default.Place, null) },
-                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onAddLinkClick(); closeMenu() }
-                            )
-                        }
+                        DropdownMenuItem(
+                            text = { Text(if (hasLocationLink) "Edit location link" else "Link a place") },
+                            leadingIcon = { Icon(Icons.Default.Place, null) },
+                            onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onAddLinkClick(); closeMenu() }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                         // Group 3: Edit & Delete
-                        DropdownMenuGroup {
-                            if (hasSnippets) {
-                                DropdownMenuItem(
-                                    text = { Text("Edit snippets") },
-                                    leadingIcon = { Icon(Icons.Default.Edit, null) },
-                                    onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onEdit(); closeMenu() }
-                                )
-                            }
+                        if (hasSnippets) {
                             DropdownMenuItem(
-                                text = { Text("Rate") },
-                                leadingIcon = { Icon(painterResource(id = R.drawable.ic_star_rating), null) },
-                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onRate(); closeMenu() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Delete") },
-                                leadingIcon = { Icon(Icons.Default.Delete, null) },
-                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onDelete(); closeMenu() }
+                                text = { Text("Edit snippets") },
+                                leadingIcon = { Icon(Icons.Default.Edit, null) },
+                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onEdit(); closeMenu() }
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text("Rate") },
+                            leadingIcon = { Icon(painterResource(id = R.drawable.ic_star_rating), null) },
+                            onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onRate(); closeMenu() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            leadingIcon = { Icon(Icons.Default.Delete, null) },
+                            onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onDelete(); closeMenu() }
+                        )
                     }
                 }
             )
