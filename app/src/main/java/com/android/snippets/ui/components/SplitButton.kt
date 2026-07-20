@@ -70,11 +70,9 @@ fun SplitButton(
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
-                        offset = androidx.compose.ui.unit.DpOffset(0.dp, 0.dp),
-                        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                        shadowElevation = 0.dp,
-                        tonalElevation = 0.dp,
-                        border = null
+                        offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shadowElevation = 6.dp
                     ) {
                         dropdownContent { expanded = false }
                     }
