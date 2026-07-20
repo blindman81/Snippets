@@ -583,7 +583,7 @@ fun LibraryScreen(
                                               bottom = 100.dp
                                               ),
                                               horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                              verticalItemSpacing = 2.dp
+                                              verticalItemSpacing = 4.dp
                                           ) {
                                               itemsIndexed(pageFilteredPhotos, key = { _, photo -> photo.id }) { index, photo ->
                                                    val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()

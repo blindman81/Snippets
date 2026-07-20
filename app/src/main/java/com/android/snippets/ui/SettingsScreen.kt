@@ -474,30 +474,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                      view.performHapticFeedback(if (!viewModel.showTimeInMemories) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
                      viewModel.updateShowTimeInMemories(!viewModel.showTimeInMemories)
                  },
-                 position = CardPosition.First,
+                 position = CardPosition.Single,
                  trailingContent = {
                      PremiumSwitch(
                          checked = viewModel.showTimeInMemories,
                          onCheckedChange = {
                              viewModel.updateShowTimeInMemories(it)
-                         }
-                     )
-                 }
-             )
-
-             SettingsCardItem(
-                 icon = Icons.Default.Image,
-                 title = "Photo takes full width and height in section",
-                 onClick = {
-                     view.performHapticFeedback(if (!viewModel.fullSizePhotoInCard) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                     viewModel.updateFullSizePhotoInCard(!viewModel.fullSizePhotoInCard)
-                 },
-                 position = CardPosition.Last,
-                 trailingContent = {
-                     PremiumSwitch(
-                         checked = viewModel.fullSizePhotoInCard,
-                         onCheckedChange = {
-                             viewModel.updateFullSizePhotoInCard(it)
                          }
                      )
                  }

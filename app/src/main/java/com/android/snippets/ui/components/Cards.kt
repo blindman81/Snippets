@@ -1013,8 +1013,8 @@ fun PhotoCardListItem(
         }
     }
 
-    val fullSizePhotoInCard = viewModel?.fullSizePhotoInCard ?: false
-    val effectivePhotoShape = if (fullSizePhotoInCard) androidx.compose.ui.graphics.RectangleShape else photoShape
+    val makePhotosFollowShape = viewModel?.makePhotosFollowShape ?: false
+    val cardPhotoShape = if (makePhotosFollowShape) photoShape else androidx.compose.ui.graphics.RectangleShape
     val blockColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
     DynamicCardContainer(
         position = position,
@@ -1049,70 +1049,70 @@ fun PhotoCardListItem(
                     androidx.compose.foundation.layout.BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(if (fullSizePhotoInCard) 0.dp else 12.dp),
+                            .padding(if (makePhotosFollowShape) 12.dp else 0.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         val size = androidx.compose.ui.unit.min(maxWidth, maxHeight)
                         Box(
-                            modifier = (if (fullSizePhotoInCard) Modifier.fillMaxSize() else Modifier.size(size)).then(
-                            if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                                with(sharedTransitionScope) {
-                                    Modifier.sharedBounds(
-                                        rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
-                                        animatedVisibilityScope = animatedVisibilityScope,
-                                        boundsTransform = { _, _ ->
-                                            androidx.compose.animation.core.spring(
-                                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                            modifier = (if (makePhotosFollowShape) Modifier.size(size) else Modifier.fillMaxSize()).then(
+                                    if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                        with(sharedTransitionScope) {
+                                            Modifier.sharedBounds(
+                                                rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
+                                                animatedVisibilityScope = animatedVisibilityScope,
+                                                boundsTransform = { _, _ ->
+                                                    androidx.compose.animation.core.spring(
+                                                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                                    )
+                                                },
+                                                resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
+                                                    contentScale = ContentScale.Crop,
+                                                    alignment = Alignment.Center
+                                                ),
+                                                clipInOverlayDuringTransition = OverlayClip(cardPhotoShape)
                                             )
-                                        },
-                                        resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
-                                            contentScale = ContentScale.Crop,
-                                            alignment = Alignment.Center
-                                        ),
-                                        clipInOverlayDuringTransition = OverlayClip(effectivePhotoShape)
-                                    )
+                                        }
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .graphicsLayer {
+                                    this.rotationZ = if (makePhotosFollowShape) when (shapeType) {
+                                        com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
+                                        com.android.snippets.ui.shapes.AppShape.PILL,
+                                        com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> animRotation.value
+                                        com.android.snippets.ui.shapes.AppShape.PENTAGON -> animRotation.value
+                                        else -> 0f
+                                    } else 0f
+                                    this.scaleX = if (makePhotosFollowShape) animScaleX.value else 1f
+                                    this.scaleY = if (makePhotosFollowShape) animScaleY.value else 1f
                                 }
-                            } else {
-                                Modifier
-                            }
-                        )
-                        .graphicsLayer {
-                            this.rotationZ = if (fullSizePhotoInCard) 0f else when (shapeType) {
-                                com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
-                                com.android.snippets.ui.shapes.AppShape.PILL,
-                                com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> animRotation.value
-                                com.android.snippets.ui.shapes.AppShape.PENTAGON -> animRotation.value
-                                else -> 0f
-                            }
-                            this.scaleX = if (fullSizePhotoInCard) 1f else animScaleX.value
-                            this.scaleY = if (fullSizePhotoInCard) 1f else animScaleY.value
-                        }
-                        .clip(effectivePhotoShape)
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(photo.uriString)
-                            .crossfade(true)
-                            .memoryCacheKey(photo.uriString)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                        ),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                this.rotationZ = if (fullSizePhotoInCard) 0f else when (shapeType) {
-                                    com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
-                                    com.android.snippets.ui.shapes.AppShape.PILL,
-                                    com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> -animRotation.value
-                                    com.android.snippets.ui.shapes.AppShape.PENTAGON -> -animRotation.value
-                                    else -> 0f
-                                }
-                            }
-                    )
+                                .clip(cardPhotoShape)
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(photo.uriString)
+                                    .crossfade(true)
+                                    .memoryCacheKey(photo.uriString)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                                    androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                                ),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        this.rotationZ = if (makePhotosFollowShape) when (shapeType) {
+                                            com.android.snippets.ui.shapes.AppShape.COOKIE_12_SIDED,
+                                            com.android.snippets.ui.shapes.AppShape.PILL,
+                                            com.android.snippets.ui.shapes.AppShape.VERY_SUNNY -> -animRotation.value
+                                            com.android.snippets.ui.shapes.AppShape.PENTAGON -> -animRotation.value
+                                            else -> 0f
+                                        } else 0f
+                                    }
+                            )
 
                     if (tab == "Eatlist" && !isSelected) {
                         Surface(

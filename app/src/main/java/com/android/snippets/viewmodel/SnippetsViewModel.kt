@@ -203,8 +203,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var showTimeInMemories by mutableStateOf(false)
         private set
-    var fullSizePhotoInCard by mutableStateOf(false)
-        private set
     var selectedShape by mutableStateOf(AppShape.COOKIE_12_SIDED)
         private set
     var makePhotosFollowShape by mutableStateOf(false)
@@ -719,7 +717,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
         useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
-        fullSizePhotoInCard = prefs.getBoolean("full_size_photo_in_card", false)
         val savedShape = prefs.getString("selected_shape", AppShape.COOKIE_12_SIDED.name)
         selectedShape = try { AppShape.valueOf(savedShape!!) } catch (e: Exception) { AppShape.COOKIE_12_SIDED }
         makePhotosFollowShape = prefs.getBoolean("make_photos_follow_shape", false)
@@ -2061,11 +2058,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateShowTimeInMemories(show: Boolean) {
         showTimeInMemories = show
         prefs.edit().putBoolean("show_time_in_memories", show).apply()
-    }
-
-    fun updateFullSizePhotoInCard(fullSize: Boolean) {
-        fullSizePhotoInCard = fullSize
-        prefs.edit().putBoolean("full_size_photo_in_card", fullSize).apply()
     }
 
     fun updateShowEatlist(show: Boolean) {
