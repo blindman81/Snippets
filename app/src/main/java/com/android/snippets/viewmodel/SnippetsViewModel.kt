@@ -37,7 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, ChooseShape, Filter, PhotosCarousel, Stats, Templates }
+enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, ChooseShape, Filter, PhotosCarousel, Stats, Templates, MonthlyRecap, YearlyRecap }
 enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, MostStarred, LeastStarred }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
@@ -178,6 +178,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     
     // Filter Context
     var filteringCategory by mutableStateOf<String?>(null)
+
+    // Recap State
+    var recapTitle by mutableStateOf("This Month")
+        private set
+    var recapPhotos by mutableStateOf<List<Photo>>(emptyList())
+        private set
+    var isYearlyRecap by mutableStateOf(false)
+        private set
 
     // Snackbar State
     var snackbarMessage by mutableStateOf<String?>(null)
@@ -657,6 +665,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 saveSnippetFirstSeenTimes()
                 reconcileSurfacedMemories()
                 reconcileMemoryNotifications()
+                checkAndTriggerRecapOnLaunch()
             }
         }
     }
@@ -743,6 +752,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     try {
                         val json = gson.toJson(snapshot)
                         photosFile.writeText(json)
+                        com.android.snippets.widget.HistoryWidgetProvider.updateAllWidgets(getApplication())
                         BackupManager(getApplication()).dataChanged()
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -776,8 +786,12 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val scheduledNotifications = mutableListOf<Pair<String, Long>>()
         val updatedPhotos = photos.map { photo ->
             val isErroneouslyViewed = photo.isViewed && photo.snippetsAddedTime != 0L && photo.lastViewedTime < photo.snippetsAddedTime + NEW_MEMORY_WAIT_MS
-            if (shouldResurfaceMemory(photo, now) || isErroneouslyViewed) {
+            val isEatlistPhotoWithMemory = photo.collections.contains("Eatlist") && (photo.surfacedTime != 0L || photo.isViewed || photo.lastViewedTime != 0L)
+            if (shouldResurfaceMemory(photo, now) || isErroneouslyViewed || isEatlistPhotoWithMemory) {
                 changed = true
+                if (isEatlistPhotoWithMemory) {
+                    cancelMemoryNotification(photo.id)
+                }
                 photo.copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
             } else photo
         }.toMutableList()
@@ -786,6 +800,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         val queuedCandidates = updatedPhotos.filter { photo ->
             photo.isLibraryUpload &&
+            !photo.collections.contains("Eatlist") &&
             photo.snippets.isNotEmpty() &&
             photo.snippetsAddedTime != 0L &&
             (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
@@ -945,7 +960,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun shouldResurfaceMemory(photo: Photo, now: Long): Boolean {
-        if (!photo.isLibraryUpload || photo.snippets.isEmpty() || photo.snippetsAddedTime == 0L) {
+        if (!photo.isLibraryUpload || photo.snippets.isEmpty() || photo.snippetsAddedTime == 0L || photo.collections.contains("Eatlist")) {
             return false
         }
         if (photo.isViewed) {
@@ -2119,11 +2134,113 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             Screen.Templates -> navigateLibrary()
             Screen.SelectIcon,
             Screen.ChooseShape,
-            Screen.PhotosCarousel -> {
+            Screen.PhotosCarousel,
+            Screen.MonthlyRecap,
+            Screen.YearlyRecap -> {
                 currentScreen = previousScreen
             }
             Screen.Filter,
             Screen.Library -> Unit
+        }
+    }
+
+    fun dismissRecapPhoto(photoId: String) {
+        recapPhotos = recapPhotos.filter { it.id != photoId }
+    }
+
+    fun getPhotosForPeriod(month: Int?, year: Int): List<Photo> {
+        val matched = photos.filter { photo ->
+            val c = Calendar.getInstance().apply { timeInMillis = photo.date }
+            val matchesYear = c.get(Calendar.YEAR) == year
+            val matchesMonth = month == null || c.get(Calendar.MONTH) == month
+            val isEatlist = photo.collections.contains("Eatlist")
+            
+            val matchesPeriod = matchesYear && matchesMonth && !isEatlist
+            if (matchesPeriod) {
+                if (month == null) {
+                    photo.isFavorite || photo.rating >= 3
+                } else {
+                    true
+                }
+            } else {
+                false
+            }
+        }
+        return matched.sortedWith(
+            compareByDescending<Photo> { it.isFavorite }
+                .thenByDescending { it.rating }
+                .thenByDescending { it.snippets.size }
+                .thenByDescending { it.date }
+        )
+    }
+
+    fun triggerMonthlyRecap(month: Int? = null, year: Int? = null) {
+        val cal = Calendar.getInstance()
+        val targetMonth = month ?: if (cal.get(Calendar.DAY_OF_MONTH) == 1) {
+            (cal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }.get(Calendar.MONTH)
+        } else {
+            cal.get(Calendar.MONTH)
+        }
+        val targetYear = year ?: if (cal.get(Calendar.DAY_OF_MONTH) == 1 && targetMonth == 11) {
+            cal.get(Calendar.YEAR) - 1
+        } else {
+            cal.get(Calendar.YEAR)
+        }
+
+        val monthCal = Calendar.getInstance().apply {
+            set(Calendar.MONTH, targetMonth)
+            set(Calendar.YEAR, targetYear)
+        }
+        val monthName = SimpleDateFormat("MMMM", Locale.getDefault()).format(monthCal.time)
+
+        isYearlyRecap = false
+        recapTitle = "This $monthName"
+        recapPhotos = getPhotosForPeriod(month = targetMonth, year = targetYear)
+        previousScreen = currentScreen
+        currentScreen = Screen.MonthlyRecap
+    }
+
+    fun triggerYearlyRecap(year: Int? = null) {
+        val cal = Calendar.getInstance()
+        val targetYear = year ?: (cal.get(Calendar.YEAR) - 1).coerceAtLeast(2020)
+
+        isYearlyRecap = true
+        recapTitle = "This $targetYear"
+        recapPhotos = getPhotosForPeriod(month = null, year = targetYear)
+        previousScreen = currentScreen
+        currentScreen = Screen.YearlyRecap
+    }
+
+    fun checkAndTriggerRecapOnLaunch() {
+        val now = Calendar.getInstance()
+        val dayOfMonth = now.get(Calendar.DAY_OF_MONTH)
+        val dayOfYear = now.get(Calendar.DAY_OF_YEAR)
+        val currentYear = now.get(Calendar.YEAR)
+        val currentMonth = now.get(Calendar.MONTH)
+
+        if (dayOfYear == 1) {
+            val lastSeenYearly = prefs.getInt("last_seen_yearly_recap_year", -1)
+            val targetYear = currentYear - 1
+            if (lastSeenYearly != targetYear) {
+                val yearlyPhotos = getPhotosForPeriod(month = null, year = targetYear)
+                if (yearlyPhotos.isNotEmpty()) {
+                    prefs.edit().putInt("last_seen_yearly_recap_year", targetYear).apply()
+                    triggerYearlyRecap(targetYear)
+                }
+            }
+        } else if (dayOfMonth == 1) {
+            val prevCal = (now.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+            val targetMonth = prevCal.get(Calendar.MONTH)
+            val targetYear = prevCal.get(Calendar.YEAR)
+            val recapKey = "${targetYear}_${targetMonth}"
+            val lastSeenKey = prefs.getString("last_seen_monthly_recap_period", "")
+            if (lastSeenKey != recapKey) {
+                val monthlyPhotos = getPhotosForPeriod(month = targetMonth, year = targetYear)
+                if (monthlyPhotos.isNotEmpty()) {
+                    prefs.edit().putString("last_seen_monthly_recap_period", recapKey).apply()
+                    triggerMonthlyRecap(targetMonth, targetYear)
+                }
+            }
         }
     }
 
@@ -2187,6 +2304,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun openMemoryForPhoto(photoId: String) {
         val targetPhoto = photos.find { it.id == photoId } ?: return
+        if (targetPhoto.collections.contains("Eatlist")) return
         val index = curatedMemories.indexOfFirst { it.id == photoId }
         if (index != -1) {
             openMemory(index)
@@ -2240,6 +2358,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         photos.filter { photo ->
             photo.isLibraryUpload &&
+            !photo.collections.contains("Eatlist") &&
             photo.snippets.isNotEmpty() &&
             photo.snippetsAddedTime != 0L &&
             (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&

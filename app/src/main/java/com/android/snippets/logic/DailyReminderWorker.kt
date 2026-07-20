@@ -61,6 +61,7 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
 
             val curated = photos.filter { photo ->
                 photo.isLibraryUpload &&
+                !photo.collections.contains("Eatlist") &&
                 photo.snippets.isNotEmpty() &&
                 photo.snippetsAddedTime != 0L &&
                 (now - photo.snippetsAddedTime >= newMemoryWaitMs) &&
