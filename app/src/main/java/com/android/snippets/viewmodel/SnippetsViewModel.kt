@@ -203,6 +203,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var showTimeInMemories by mutableStateOf(false)
         private set
+    var fullSizePhotoInCard by mutableStateOf(false)
+        private set
     var selectedShape by mutableStateOf(AppShape.COOKIE_12_SIDED)
         private set
     var makePhotosFollowShape by mutableStateOf(false)
@@ -717,6 +719,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
         useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
+        fullSizePhotoInCard = prefs.getBoolean("full_size_photo_in_card", false)
         val savedShape = prefs.getString("selected_shape", AppShape.COOKIE_12_SIDED.name)
         selectedShape = try { AppShape.valueOf(savedShape!!) } catch (e: Exception) { AppShape.COOKIE_12_SIDED }
         makePhotosFollowShape = prefs.getBoolean("make_photos_follow_shape", false)
@@ -1438,29 +1441,34 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         // the DailyReminderWorker delivers a single summarised notification.
         if (notificationReminderEnabled) return
         val now = System.currentTimeMillis()
-        photos
+        var nextAvailableTime = now
+        val unpostedPhotos = photos
             .filter { !it.isViewed || it.snippetsAddedTime > it.lastViewedTime }
             .filterNot { MemoryWorker.wasNotificationPosted(getApplication(), it.id) }
-            .forEach { photo ->
-                if (photo.surfacedTime != 0L) {
-                    val delayMs = maxOf(0L, photo.surfacedTime - now)
-                    val notificationType = if (photo.isViewed) {
-                        MemoryWorker.TYPE_UPDATED
-                    } else if (photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
-                        MemoryWorker.TYPE_RESURFACED
-                    } else {
-                        MemoryWorker.TYPE_NEW
-                    }
-                    scheduleMemoryNotification(
-                        photoId = photo.id,
-                        delay = delayMs,
-                        delayUnit = TimeUnit.MILLISECONDS,
-                        notificationType = notificationType,
-                        policy = androidx.work.ExistingWorkPolicy.KEEP,
-                        resetPostedState = false
-                    )
-                }
+            .filter { it.surfacedTime != 0L }
+            .sortedBy { it.surfacedTime }
+
+        unpostedPhotos.forEach { photo ->
+            val scheduledTime = maxOf(photo.surfacedTime, nextAvailableTime)
+            val delayMs = maxOf(0L, scheduledTime - now)
+            nextAvailableTime = scheduledTime + SURFACED_MEMORY_SPACING_MS
+
+            val notificationType = if (photo.isViewed) {
+                MemoryWorker.TYPE_UPDATED
+            } else if (photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
+                MemoryWorker.TYPE_RESURFACED
+            } else {
+                MemoryWorker.TYPE_NEW
             }
+            scheduleMemoryNotification(
+                photoId = photo.id,
+                delay = delayMs,
+                delayUnit = TimeUnit.MILLISECONDS,
+                notificationType = notificationType,
+                policy = androidx.work.ExistingWorkPolicy.KEEP,
+                resetPostedState = false
+            )
+        }
     }
 
     private fun cancelMemoryNotification(photoId: String) {
@@ -2053,6 +2061,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateShowTimeInMemories(show: Boolean) {
         showTimeInMemories = show
         prefs.edit().putBoolean("show_time_in_memories", show).apply()
+    }
+
+    fun updateFullSizePhotoInCard(fullSize: Boolean) {
+        fullSizePhotoInCard = fullSize
+        prefs.edit().putBoolean("full_size_photo_in_card", fullSize).apply()
     }
 
     fun updateShowEatlist(show: Boolean) {
