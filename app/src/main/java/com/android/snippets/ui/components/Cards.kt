@@ -1250,7 +1250,7 @@ fun PhotoCardListItem(
                                 color = blockColor,
                                 shape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, topEnd = 2.dp)
                             )
-                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                            .padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 4.dp),
                         contentAlignment = Alignment.TopStart
                     ) {
                     if (photo.snippets.isEmpty()) {

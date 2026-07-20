@@ -149,6 +149,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     Screen.Memory, Screen.Settings, Screen.About, Screen.Stats, Screen.Templates -> Screen.Library
                     Screen.SelectIcon, Screen.ChooseShape -> viewModel.previousScreen
                     Screen.PhotosCarousel -> Screen.Settings
+                    Screen.Detail -> viewModel.detailReturnScreen
                     else -> null
                 }
             } else if (isDetailTransitioning) {
