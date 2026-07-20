@@ -522,7 +522,7 @@ fun LibraryScreen(
                                           val currentGridColumns = viewModel.customGridColumns?.coerceIn(-1, 3) ?: when (windowSizeClass?.widthSizeClass) {
                                               WindowWidthSizeClass.Expanded -> 3
                                               WindowWidthSizeClass.Medium -> 3
-                                              else -> 2
+                                              else -> -1
                                           }
                                           val displayColumns = if (currentGridColumns <= 0) 1 else currentGridColumns
                                           val minColumns = -1
@@ -583,11 +583,11 @@ fun LibraryScreen(
                                               bottom = 100.dp
                                               ),
                                               horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                              verticalItemSpacing = 4.dp
+                                              verticalItemSpacing = 2.dp
                                           ) {
                                               itemsIndexed(pageFilteredPhotos, key = { _, photo -> photo.id }) { index, photo ->
-                                                  val isMost = photo.snippets.size == maxSnippets && photo.snippets.size > 0 && maxSnippets > minSnippets
-                                                  val isLeast = photo.snippets.size == minSnippets && photo.snippets.size > 0 && maxSnippets > minSnippets
+                                                   val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
+                                                   val isLeast = tabSortType == com.android.snippets.viewmodel.PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
                                                   
                                                   when (currentGridColumns) {
                                                       -1 -> {

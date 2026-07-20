@@ -1553,5 +1553,151 @@ fun ViewGrid3Icon(
     }
 }
 
+@Composable
+fun FormatListBulletedIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+): ImageVector {
+    return remember(tint) {
+        ImageVector.Builder(
+            name = "FormatListBulletedIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(tint)) {
+                    // Lines
+                    moveTo(280f, -600f)
+                    verticalLineToRelative(-80f)
+                    horizontalLineToRelative(560f)
+                    verticalLineToRelative(80f)
+                    horizontalLineTo(280f)
+                    close()
+
+                    moveTo(280f, -440f)
+                    verticalLineToRelative(-80f)
+                    horizontalLineToRelative(560f)
+                    verticalLineToRelative(80f)
+                    horizontalLineTo(280f)
+                    close()
+
+                    moveTo(280f, -280f)
+                    verticalLineToRelative(-80f)
+                    horizontalLineToRelative(560f)
+                    verticalLineToRelative(80f)
+                    horizontalLineTo(280f)
+                    close()
+
+                    // Bullet 1
+                    moveTo(160f, -600f)
+                    quadToRelative(-17f, 0f, -28.5f, -11.5f)
+                    reflectiveQuadTo(120f, -640f)
+                    quadToRelative(0f, -17f, 11.5f, -28.5f)
+                    reflectiveQuadTo(160f, -680f)
+                    quadToRelative(17f, 0f, 28.5f, 11.5f)
+                    reflectiveQuadTo(200f, -640f)
+                    quadToRelative(0f, 17f, -11.5f, 28.5f)
+                    reflectiveQuadTo(160f, -600f)
+                    close()
+
+                    // Bullet 2
+                    moveTo(160f, -440f)
+                    quadToRelative(-17f, 0f, -28.5f, -11.5f)
+                    reflectiveQuadTo(120f, -480f)
+                    quadToRelative(0f, -17f, 11.5f, -28.5f)
+                    reflectiveQuadTo(160f, -520f)
+                    quadToRelative(17f, 0f, 28.5f, 11.5f)
+                    reflectiveQuadTo(200f, -480f)
+                    quadToRelative(0f, 17f, -11.5f, 28.5f)
+                    reflectiveQuadTo(160f, -440f)
+                    close()
+
+                    // Bullet 3
+                    moveTo(160f, -280f)
+                    quadToRelative(-17f, 0f, -28.5f, -11.5f)
+                    reflectiveQuadTo(120f, -320f)
+                    quadToRelative(0f, -17f, 11.5f, -28.5f)
+                    reflectiveQuadTo(160f, -360f)
+                    quadToRelative(17f, 0f, 28.5f, 11.5f)
+                    reflectiveQuadTo(200f, -320f)
+                    quadToRelative(0f, 17f, -11.5f, 28.5f)
+                    reflectiveQuadTo(160f, -280f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
+fun ViewAgendaCustomIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+): ImageVector {
+    return remember(tint) {
+        ImageVector.Builder(
+            name = "ViewAgendaCustomIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(tint)) {
+                    moveTo(160f, -200f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(80f, -280f)
+                    verticalLineToRelative(-400f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(160f, -760f)
+                    horizontalLineToRelative(640f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(880f, -680f)
+                    verticalLineToRelative(400f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(800f, -200f)
+                    horizontalLineTo(160f)
+                    close()
+
+                    moveTo(560f, -520f)
+                    horizontalLineToRelative(240f)
+                    verticalLineToRelative(-160f)
+                    horizontalLineTo(560f)
+                    verticalLineToRelative(160f)
+                    close()
+
+                    moveTo(160f, -280f)
+                    horizontalLineToRelative(320f)
+                    verticalLineToRelative(-400f)
+                    horizontalLineTo(160f)
+                    verticalLineToRelative(400f)
+                    close()
+
+                    moveTo(320f, -420f)
+                    quadToRelative(-25f, 0f, -42.5f, -17.5f)
+                    reflectiveQuadTo(260f, -480f)
+                    quadToRelative(0f, -25f, 17.5f, -42.5f)
+                    reflectiveQuadTo(320f, -540f)
+                    quadToRelative(25f, 0f, 42.5f, 17.5f)
+                    reflectiveQuadTo(380f, -480f)
+                    quadToRelative(0f, 25f, -17.5f, 42.5f)
+                    reflectiveQuadTo(320f, -420f)
+                    close()
+
+                    moveTo(560f, -280f)
+                    horizontalLineToRelative(240f)
+                    verticalLineToRelative(-160f)
+                    horizontalLineTo(560f)
+                    verticalLineToRelative(160f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+
 
 

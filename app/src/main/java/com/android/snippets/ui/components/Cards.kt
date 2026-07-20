@@ -571,18 +571,19 @@ fun PhotoMasonryItem(
                 }
             }
             
-            val displaySnippetCount = if (matchingSnippetsCount > 0) matchingSnippetsCount else photo.snippets.size
-            if ((displaySnippetCount > 0 || isMostSnippets || isLeastSnippets) && !isSelected && photo.snippets.isNotEmpty()) {
+            val showBadge = matchingSnippetsCount > 0 || isMostSnippets || isLeastSnippets
+            if (showBadge && !isSelected && photo.snippets.isNotEmpty()) {
                 val badgeContainerColor = when {
+                    matchingSnippetsCount > 0 -> MaterialTheme.colorScheme.tertiary
                     isMostSnippets -> MaterialTheme.colorScheme.primary
-                    isLeastSnippets -> MaterialTheme.colorScheme.tertiary
-                    else -> MaterialTheme.colorScheme.secondaryContainer
+                    else -> MaterialTheme.colorScheme.tertiary
                 }
                 val badgeContentColor = when {
+                    matchingSnippetsCount > 0 -> MaterialTheme.colorScheme.onTertiary
                     isMostSnippets -> MaterialTheme.colorScheme.onPrimary
-                    isLeastSnippets -> MaterialTheme.colorScheme.onTertiary
-                    else -> MaterialTheme.colorScheme.onSecondaryContainer
+                    else -> MaterialTheme.colorScheme.onTertiary
                 }
+                val displayCount = if (matchingSnippetsCount > 0) matchingSnippetsCount else photo.snippets.size
                 Surface(
                     color = badgeContainerColor,
                     shape = LocalAppShape.current,
@@ -593,7 +594,7 @@ fun PhotoMasonryItem(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = displaySnippetCount.toString(),
+                            text = displayCount.toString(),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = badgeContentColor
@@ -684,13 +685,14 @@ fun PhotoListItem(
                 onLongClick = onLongClick
             ),
         shape = cardShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 1.dp),
         border = if (isSelected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Min)
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -795,12 +797,23 @@ fun PhotoListItem(
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            if (tab != "Eatlist") {
+                Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            } else {
+                Spacer(modifier = Modifier.width(12.dp))
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(end = 4.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth().padding(end = 4.dp)
             ) {
                 val iconColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
 
@@ -844,17 +857,9 @@ fun PhotoListItem(
                     }
                 }
 
-                if ((isMostSnippets || isLeastSnippets || photo.snippets.isNotEmpty()) && !isSelected && photo.snippets.isNotEmpty()) {
-                    val badgeContainerColor = when {
-                        isMostSnippets -> MaterialTheme.colorScheme.primary
-                        isLeastSnippets -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.secondaryContainer
-                    }
-                    val badgeContentColor = when {
-                        isMostSnippets -> MaterialTheme.colorScheme.onPrimary
-                        isLeastSnippets -> MaterialTheme.colorScheme.onTertiary
-                        else -> MaterialTheme.colorScheme.onSecondaryContainer
-                    }
+                if ((isMostSnippets || isLeastSnippets) && !isSelected) {
+                    val badgeContainerColor = if (isMostSnippets) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                    val badgeContentColor = if (isMostSnippets) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
                     Surface(
                         color = badgeContainerColor,
                         shape = LocalAppShape.current,
@@ -1007,11 +1012,13 @@ fun PhotoCardListItem(
         }
     }
 
+    val blockColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
     DynamicCardContainer(
         position = position,
         isSelected = isSelected,
         onClick = onClick,
         onLongClick = onLongClick,
+        containerColor = Color.Transparent,
         modifier = modifier
             .graphicsLayer {
                 scaleX = animatedScale
@@ -1029,16 +1036,24 @@ fun PhotoCardListItem(
             Box(
                 modifier = Modifier
                     .weight(0.60f)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .background(
+                        color = blockColor,
+                        shape = RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight(0.88f)
-                        .fillMaxWidth(0.90f)
-                        .aspectRatio(1f)
-                        .padding(4.dp)
-                        .then(
+                    androidx.compose.foundation.layout.BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val size = androidx.compose.ui.unit.min(maxWidth, maxHeight)
+                        Box(
+                            modifier = Modifier
+                                .size(size)
+                                .then(
                             if (sharedTransitionScope != null && animatedVisibilityScope != null) {
                                 with(sharedTransitionScope) {
                                     Modifier.sharedBounds(
@@ -1119,34 +1134,46 @@ fun PhotoCardListItem(
                         }
                     }
                 }
-            }
+                    }
+                }
 
-            Spacer(modifier = Modifier.width(2.dp))
+            if (tab != "Eatlist") {
+                // Vertical gap running all the way down
+                Spacer(modifier = Modifier.width(2.dp))
 
-            // Right side column takes 40% of space
-            Column(
-                modifier = Modifier
-                    .weight(0.40f)
-                    .fillMaxHeight()
-            ) {
-                // 2dp gap above the first section
-                Spacer(modifier = Modifier.height(2.dp))
-
-                // Top section (compact width, 18% height of right column)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                // Right side column takes 40% of space
+                Column(
                     modifier = Modifier
-                        .wrapContentWidth()
-                        .weight(0.18f)
-                        .clip(RoundedCornerShape(2.dp))
-                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                        .weight(0.40f)
+                        .fillMaxHeight()
                 ) {
-                    val iconColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+                    // Top section (icons)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(0.18f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    color = blockColor,
+                                    shape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
+                                )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                            ) {
+                    val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+                    val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
 
                     if (photo.rating > 0) {
                         Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            color = iconContainerColor,
                             shape = LocalAppShape.current,
                             modifier = Modifier.size(28.dp)
                         ) {
@@ -1160,7 +1187,7 @@ fun PhotoCardListItem(
                                 Text(
                                     text = photo.rating.toString(),
                                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
-                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    color = iconContainerColor,
                                     modifier = Modifier.padding(top = 1.dp)
                                 )
                             }
@@ -1169,7 +1196,7 @@ fun PhotoCardListItem(
 
                     if (photo.isFavorite && showFavoriteIcon) {
                         Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            color = iconContainerColor,
                             shape = LocalAppShape.current,
                             modifier = Modifier.size(28.dp)
                         ) {
@@ -1189,17 +1216,9 @@ fun PhotoCardListItem(
                         }
                     }
 
-                    if ((isMostSnippets || isLeastSnippets || photo.snippets.isNotEmpty()) && !isSelected && photo.snippets.isNotEmpty()) {
-                        val badgeContainerColor = when {
-                            isMostSnippets -> MaterialTheme.colorScheme.primary
-                            isLeastSnippets -> MaterialTheme.colorScheme.tertiary
-                            else -> MaterialTheme.colorScheme.secondaryContainer
-                        }
-                        val badgeContentColor = when {
-                            isMostSnippets -> MaterialTheme.colorScheme.onPrimary
-                            isLeastSnippets -> MaterialTheme.colorScheme.onTertiary
-                            else -> MaterialTheme.colorScheme.onSecondaryContainer
-                        }
+                    if ((isMostSnippets || isLeastSnippets) && !isSelected) {
+                        val badgeContainerColor = if (isMostSnippets) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                        val badgeContentColor = if (isMostSnippets) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
                         Surface(
                             color = badgeContainerColor,
                             shape = LocalAppShape.current,
@@ -1214,31 +1233,36 @@ fun PhotoCardListItem(
                                 )
                             }
                         }
-                    }
-                }
+                    } // closes if block
+                            } // Close Row inside Box
+                        } // Close Icons Box
+                    } // close top section row
 
-                // 2dp gap channel between top section and bottom section
-                Spacer(modifier = Modifier.height(2.dp))
+                    // Horizontal Gap
+                    Spacer(modifier = Modifier.height(2.dp))
 
-                // Bottom section: Snippets text (82% height of right column)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.82f)
-                        .clip(RoundedCornerShape(2.dp))
-                        .padding(horizontal = 6.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.TopStart
-                ) {
+                    // Bottom section: Snippets text
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(0.82f)
+                            .background(
+                                color = blockColor,
+                                shape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, topEnd = 2.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.TopStart
+                    ) {
                     if (photo.snippets.isEmpty()) {
                         if (tab != "Eatlist") {
                             Text(
                                 text = "No snippets",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                color = (if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.5f)
                             )
                         }
                     } else {
-                        val topSnippets = photo.snippets.take(3)
+                        val topSnippets = photo.snippets.take(4)
                         val total = topSnippets.size
                         Column(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -1260,7 +1284,7 @@ fun PhotoCardListItem(
 
                                 val snippetStyle = viewModel.getSnippetStyle(snippet)
                                 val forcedColor = viewModel.getSnippetColor(snippet)
-                                val baseColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
+                                val baseColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
                                 val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
                                 val snippetColor = remember(baseColor, isDark) {
                                     val lum = 0.299f * baseColor.red + 0.587f * baseColor.green + 0.114f * baseColor.blue
@@ -1282,14 +1306,14 @@ fun PhotoCardListItem(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Box(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
                                         contentAlignment = Alignment.CenterStart
                                     ) {
                                         Text(
                                             text = snippet,
                                             style = getSnippetTextStyle(
                                                 snippetStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                                MaterialTheme.typography.bodySmall,
+                                                MaterialTheme.typography.bodyMedium,
                                                 isCloud = true
                                             ).copy(brush = snippetGradient),
                                             maxLines = 1,
@@ -1300,11 +1324,12 @@ fun PhotoCardListItem(
                             }
                         }
                     }
-                }
-            }
-        }
-    }
-}
+                    } // closes Box (Bottom Section)
+                } // closes Column (Right side)
+            } // closes if (tab != "Eatlist")
+        } // closes Row
+    } // closes DynamicCardContainer
+} // closes PhotoCardListItem
 
 enum class CardPosition {
     Single, First, Middle, Last
@@ -1356,7 +1381,7 @@ fun DynamicCardContainer(
             ),
         shape = shape,
         color = if (isSelected) {
-            MaterialTheme.colorScheme.primary
+            if (containerColor == Color.Transparent) Color.Transparent else MaterialTheme.colorScheme.primary
         } else {
             containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest
         }

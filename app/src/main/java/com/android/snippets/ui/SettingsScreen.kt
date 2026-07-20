@@ -3,6 +3,7 @@ import com.android.snippets.ui.components.*
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +14,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Keyboard
@@ -328,19 +331,24 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 position = CardPosition.First
             )
 
+            val isCardView = viewModel.customGridColumns == -1
             SettingsCardItem(
                 icon = Icons.Default.Image,
                 title = "Make photos follow the shape",
-                onClick = { 
-                    view.performHapticFeedback(if (!viewModel.makePhotosFollowShape) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                    viewModel.updateMakePhotosFollowShape(!viewModel.makePhotosFollowShape) 
+                onClick = if (isCardView) null else { 
+                    {
+                        view.performHapticFeedback(if (!viewModel.makePhotosFollowShape) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                        viewModel.updateMakePhotosFollowShape(!viewModel.makePhotosFollowShape) 
+                    }
                 },
                 position = CardPosition.Last,
+                modifier = Modifier.alpha(if (isCardView) 0.5f else 1f),
                 trailingContent = {
                     PremiumSwitch(
-                        checked = viewModel.makePhotosFollowShape,
+                        checked = if (isCardView) true else viewModel.makePhotosFollowShape,
+                        enabled = !isCardView,
                         onCheckedChange = { 
-                            viewModel.updateMakePhotosFollowShape(it) 
+                            if (!isCardView) viewModel.updateMakePhotosFollowShape(it) 
                         }
                     )
                 }
