@@ -920,8 +920,12 @@ fun SwipeToDismissContainer(
     val offsetY = remember { androidx.compose.animation.core.Animatable(0f) }
 
     // Define how far the user needs to drag to trigger the dismissal
-    val dismissThreshold = with(androidx.compose.ui.platform.LocalDensity.current) { 150.dp.toPx() }
-    val maxDrag = with(androidx.compose.ui.platform.LocalDensity.current) { 300.dp.toPx() }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val dismissThreshold = with(density) { 40.dp.toPx() }
+    val maxDrag = with(density) { 100.dp.toPx() }
+    val flingVelocityThreshold = with(density) { 200.dp.toPx() }
+
+    val velocityTracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
 
     LaunchedEffect(offsetY) {
         androidx.compose.runtime.snapshotFlow { offsetY.value }.collect { y ->
@@ -956,11 +960,16 @@ fun SwipeToDismissContainer(
                 
                 // Use detectVerticalDragGestures so HorizontalPager can still intercept left/right swipes!
                 detectVerticalDragGestures(
-                    onDragStart = { previousPosition = it },
+                    onDragStart = { position ->
+                        previousPosition = position
+                        velocityTracker.resetTracking()
+                    },
                     onDragEnd = {
+                        val velocityY = velocityTracker.calculateVelocity().y
+                        val speedY = abs(velocityY)
                         coroutineScope.launch {
-                            // If the user dragged past the threshold, trigger the back navigation!
-                            if (abs(offsetY.value) > dismissThreshold) {
+                            // If the user dragged past the threshold or flicked quickly, trigger the back navigation!
+                            if (abs(offsetY.value) > dismissThreshold || speedY > flingVelocityThreshold) {
                                 onDismiss()
                             } else {
                                 // Otherwise, smoothly spring the image back to the center
@@ -993,6 +1002,7 @@ fun SwipeToDismissContainer(
                     },
                     onVerticalDrag = { change, dragAmountY ->
                         change.consume()
+                        velocityTracker.addPosition(change.uptimeMillis, change.position)
                         
                         // We intercept vertically, but we still track exact X delta for true 2D motion!
                         val dragAmountX = if (previousPosition != androidx.compose.ui.geometry.Offset.Unspecified) {

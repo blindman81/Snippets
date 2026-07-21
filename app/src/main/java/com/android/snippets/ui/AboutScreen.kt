@@ -121,12 +121,13 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
             }
             Box(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.TopCenter
             ) {
             Column(
                 modifier = Modifier
-                    .padding(32.dp)
-                    .verticalScroll(scrollState),
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {

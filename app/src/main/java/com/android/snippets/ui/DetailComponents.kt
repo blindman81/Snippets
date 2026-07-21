@@ -863,7 +863,7 @@ fun AddSnippetsModal(
                                 2 -> { // Style Step
                                     @OptIn(ExperimentalLayoutApi::class)
                                     FlowRow(
-                                        modifier = Modifier.fillMaxWidth().height(290.dp).verticalScroll(rememberScrollState()),
+                                        modifier = Modifier.fillMaxWidth().heightIn(max = 290.dp),
                                         horizontalArrangement = Arrangement.Center,
                                         verticalArrangement = Arrangement.spacedBy(16.dp),
                                         maxItemsInEachRow = 4

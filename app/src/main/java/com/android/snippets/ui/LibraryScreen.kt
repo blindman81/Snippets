@@ -12,6 +12,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -228,7 +229,7 @@ fun LibraryScreen(
     }
 
     val topBarOffset by animateDpAsState(
-        targetValue = 0.dp,
+        targetValue = if (isFabVisible) 0.dp else (-160).dp,
         animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         label = "topbar_offset"
     )
@@ -266,46 +267,268 @@ fun LibraryScreen(
                 }
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    val maxTopPadding = 12.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                    val minTopPadding = 4.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                    val currentTopPadding by animateDpAsState(
-                        targetValue = if (isScrolled) minTopPadding else maxTopPadding,
-                        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-                        label = "top_padding_anim"
-                    )
+                    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                    val topGridPadding = statusBarTop + 88.dp
 
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Spacer(modifier = Modifier.height(currentTopPadding).fillMaxWidth().background(MaterialTheme.colorScheme.surface))
-                        
-                        Surface(
-                            shape = RectangleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                 val allTabs = pageTabs
-                                 val tabRowScrollState = rememberScrollState()
-                                 val tabPositions = remember { mutableStateMapOf<String, Float>() }
-                                 val tabWidths = remember { mutableStateMapOf<String, Float>() }
-                                 LaunchedEffect(currentTab) {
-                                     val tabX = tabPositions[currentTab] ?: return@LaunchedEffect
-                                     val tabW = tabWidths[currentTab] ?: return@LaunchedEffect
-                                     val rowW = tabRowScrollState.maxValue + 0f
-                                     val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
-                                         .coerceIn(0f, rowW)
-                                     tabRowScrollState.animateScrollTo(target.toInt())
-                                 }
+                    val allTabs = pageTabs
+                    val tabRowScrollState = rememberScrollState()
+                    val tabPositions = remember { mutableStateMapOf<String, Float>() }
+                    val tabWidths = remember { mutableStateMapOf<String, Float>() }
+                    LaunchedEffect(currentTab) {
+                        val tabX = tabPositions[currentTab] ?: return@LaunchedEffect
+                        val tabW = tabWidths[currentTab] ?: return@LaunchedEffect
+                        val rowW = tabRowScrollState.maxValue + 0f
+                        val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
+                            .coerceIn(0f, rowW)
+                        tabRowScrollState.animateScrollTo(target.toInt())
+                    }
+
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        pageSpacing = 16.dp
+                    ) { page ->
+                        val tabForPage = pageTabs.getOrNull(page) ?: "Library"
+                        val tabSortType = viewModel.getPhotoSortTypeFor(tabForPage)
+                        val pageFilteredPhotos = remember(flatPhotosRaw, tabForPage, tabSortType) {
+                            val filtered = flatPhotosRaw.filter { photo ->
+                                when (tabForPage) {
+                                    "Library" -> !photo.collections.contains("Eatlist")
+                                    "Favorites" -> photo.isFavorite
+                                    "Eatlist" -> photo.collections.contains("Eatlist")
+                                    else -> photo.collections.contains(tabForPage)
+                                }
+                            }
+                            viewModel.sortPhotos(filtered, tabSortType)
+                        }
+
+                        if (pageFilteredPhotos.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(top = topGridPadding),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                when (tabForPage) {
+                                    "Favorites" -> EmptyFavoritesState()
+                                    "Eatlist"   -> EmptyEatlistState()
+                                    "Library"   -> EmptyLibraryState()
+                                    else        -> EmptyCollectionState()
+                                }
+                            }
+                        } else {
+                            val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
+                            val currentGridColumns = viewModel.customGridColumns?.coerceIn(-1, 3) ?: when (windowSizeClass?.widthSizeClass) {
+                                WindowWidthSizeClass.Expanded -> 3
+                                WindowWidthSizeClass.Medium -> 3
+                                else -> -1
+                            }
+                            val displayColumns = if (currentGridColumns <= 0) 1 else currentGridColumns
+                            val minColumns = -1
+                            val maxColumns = 3
+
+                            // Calculate max and min snippets counts once for the whole page/list:
+                            val nonZeroSnippetCounts = remember(pageFilteredPhotos) {
+                                pageFilteredPhotos.map { it.snippets.size }.filter { it > 0 }
+                            }
+                            val maxSnippets = remember(nonZeroSnippetCounts) {
+                                nonZeroSnippetCounts.maxOrNull() ?: 0
+                            }
+                            val minSnippets = remember(nonZeroSnippetCounts) {
+                                nonZeroSnippetCounts.minOrNull() ?: 0
+                            }
+
+                            LazyVerticalStaggeredGrid(
+                                columns = StaggeredGridCells.Fixed(displayColumns),
+                                state = pageListState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .pointerInput(currentGridColumns) {
+                                        awaitEachGesture {
+                                            awaitFirstDown(requireUnconsumed = false)
+                                            var zoomAccumulator = 1f
+                                            do {
+                                                val event = awaitPointerEvent()
+                                                val numPointers = event.changes.filter { it.pressed }.size
+                                                if (numPointers >= 2) {
+                                                    val zoomChange = event.calculateZoom()
+                                                    if (zoomChange != 1f) {
+                                                        zoomAccumulator *= zoomChange
+                                                        event.changes.forEach { it.consume() }
+                                                        if (zoomAccumulator > 1.25f) {
+                                                            // Pinch out (expanding fingers) -> fewer columns -> larger items
+                                                            if (currentGridColumns > minColumns) {
+                                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                viewModel.updateCustomGridColumns(currentGridColumns - 1)
+                                                            }
+                                                            zoomAccumulator = 1f
+                                                        } else if (zoomAccumulator < 0.8f) {
+                                                            // Pinch in (contracting fingers) -> more columns -> smaller items
+                                                            if (currentGridColumns < maxColumns) {
+                                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                viewModel.updateCustomGridColumns(currentGridColumns + 1)
+                                                            }
+                                                            zoomAccumulator = 1f
+                                                        }
+                                                    }
+                                                }
+                                            } while (event.changes.any { it.pressed })
+                                        }
+                                    },
+                                contentPadding = PaddingValues(
+                                    start = 0.dp,
+                                    end = 0.dp,
+                                    top = topGridPadding,
+                                    bottom = 100.dp
+                                ),
+                                              horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                              verticalItemSpacing = 4.dp
+                                          ) {
+                                              itemsIndexed(pageFilteredPhotos, key = { _, photo -> photo.id }) { index, photo ->
+                                                   val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
+                                                   val isLeast = tabSortType == com.android.snippets.viewmodel.PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
+                                                  
+                                                  when (currentGridColumns) {
+                                                      -1 -> {
+                                                          // Calculate card position: First, Middle, Last, or Single
+                                                          val totalCount = pageFilteredPhotos.size
+                                                          val cardPos = when {
+                                                              totalCount == 1 -> CardPosition.Single
+                                                              index == 0 -> CardPosition.First
+                                                              index == totalCount - 1 -> CardPosition.Last
+                                                              else -> CardPosition.Middle
+                                                          }
+
+                                                          PhotoCardListItem(
+                                                              photo = photo,
+                                                              position = cardPos,
+                                                              isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                                              selectionMode = viewModel.isSelectionMode,
+                                                              showFavoriteIcon = tabForPage != "Favorites",
+                                                              tab = tabForPage,
+                                                              isMostSnippets = isMost,
+                                                              isLeastSnippets = isLeast,
+                                                              viewModel = viewModel,
+                                                              onClick = {
+                                                                  if (viewModel.isSelectionMode) {
+                                                                      view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                      viewModel.toggleSelection(photo.id)
+                                                                  } else {
+                                                                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                                      if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                                                                          viewModel.activePhotoId = photo.id
+                                                                      } else {
+                                                                          viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
+                                                                      }
+                                                                  }
+                                                              },
+                                                              onLongClick = {
+                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                  if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                                              },
+                                                              onEatlistCheckClick = {
+                                                                  photoToDeleteFromEatlist = photo
+                                                              },
+                                                              sharedTransitionScope = sharedTransitionScope,
+                                                              animatedVisibilityScope = animatedVisibilityScope,
+                                                              modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                          )
+                                                      }
+                                                      0 -> {
+                                                          PhotoListItem(
+                                                              photo = photo,
+                                                              isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                                              selectionMode = viewModel.isSelectionMode,
+                                                              showFavoriteIcon = tabForPage != "Favorites",
+                                                              tab = tabForPage,
+                                                              isMostSnippets = isMost,
+                                                              isLeastSnippets = isLeast,
+                                                              viewModel = viewModel,
+                                                              onClick = {
+                                                                  if (viewModel.isSelectionMode) {
+                                                                      view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                      viewModel.toggleSelection(photo.id)
+                                                                  } else {
+                                                                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                                      if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                                                                          viewModel.activePhotoId = photo.id
+                                                                      } else {
+                                                                          viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
+                                                                      }
+                                                                  }
+                                                              },
+                                                              onLongClick = {
+                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                  if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                                              },
+                                                              onEatlistCheckClick = {
+                                                                  photoToDeleteFromEatlist = photo
+                                                              },
+                                                              shape = RoundedCornerShape(12.dp),
+                                                              sharedTransitionScope = sharedTransitionScope,
+                                                              animatedVisibilityScope = animatedVisibilityScope,
+                                                              modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                          )
+                                                      }
+                                                      else -> {
+                                                          PhotoMasonryItem(
+                                                              photo = photo,
+                                                              isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                                              selectionMode = viewModel.isSelectionMode,
+                                                              showFavoriteIcon = tabForPage != "Favorites",
+                                                              matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
+                                                              isMostSnippets = isMost,
+                                                              isLeastSnippets = isLeast,
+                                                              sharedTransitionScope = sharedTransitionScope,
+                                                              animatedVisibilityScope = animatedVisibilityScope,
+                                                              shape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(0.dp),
+                                                              tab = tabForPage,
+                                                              onClick = {
+                                                                  if (viewModel.isSelectionMode) {
+                                                                      view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                      viewModel.toggleSelection(photo.id)
+                                                                  } else {
+                                                                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                                      if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                                                                          viewModel.activePhotoId = photo.id
+                                                                      } else {
+                                                                          viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
+                                                                      }
+                                                                  }
+                                                              },
+                                                              onLongClick = {
+                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                  if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                                              },
+                                                              onEatlistCheckClick = {
+                                                                  photoToDeleteFromEatlist = photo
+                                                              },
+                                                              fillCard = false,
+                                                              modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                          )
+                                                      }
+                                                  }
+                                              }
+                                          }
+                                     }
+                                 } // end of HorizontalPager
+
+                                 // Floating Tab Bar (Pill Shape)
                                  Surface(
+                                     shape = CircleShape,
                                      color = MaterialTheme.colorScheme.surface,
-                                     modifier = Modifier.fillMaxWidth()
+                                     shadowElevation = 0.dp,
+                                     tonalElevation = 0.dp,
+                                     modifier = Modifier
+                                         .align(Alignment.TopCenter)
+                                         .padding(top = statusBarTop + 8.dp)
+                                         .padding(horizontal = 16.dp)
+                                         .graphicsLayer { translationY = topBarOffset.toPx() }
                                  ) {
                                      Row(
                                          modifier = Modifier
-                                             .fillMaxWidth()
                                              .horizontalScroll(tabRowScrollState)
-                                             .padding(horizontal = 16.dp, vertical = 12.dp),
+                                             .padding(horizontal = 8.dp, vertical = 6.dp),
                                          verticalAlignment = Alignment.CenterVertically
                                      ) {
                                          androidx.compose.material3.ButtonGroup(
@@ -426,7 +649,7 @@ fun LibraryScreen(
                                                                      containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                                      contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                                                  ),
-                                                                 modifier = dragModifier.then(positionModifier).height(64.dp).widthIn(min = 120.dp, max = 200.dp)
+                                                                 modifier = dragModifier.then(positionModifier).height(48.dp).widthIn(min = 100.dp, max = 200.dp)
                                                              ) {
                                                                  Row(
                                                                      verticalAlignment = Alignment.CenterVertically,
@@ -434,14 +657,14 @@ fun LibraryScreen(
                                                                  ) {
                                                                      Box(
                                                                          contentAlignment = Alignment.Center,
-                                                                         modifier = Modifier.size(24.dp)
+                                                                         modifier = Modifier.size(20.dp)
                                                                      ) {
                                                                          if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
-                                                                             Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
+                                                                             Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(16.dp))
                                                                          } else if (iconOrEmoji is String) {
-                                                                             Text(text = iconOrEmoji, fontSize = 16.sp)
+                                                                             Text(text = iconOrEmoji, fontSize = 14.sp)
                                                                          } else if (iconOrEmoji is Int) {
-                                                                             Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(20.dp))
+                                                                             Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(16.dp))
                                                                          }
                                                                      }
                                                                      
@@ -449,7 +672,7 @@ fun LibraryScreen(
                                                                          Text(
                                                                              text = tabName,
                                                                              style = com.android.snippets.ui.theme.titleMediumEmphasized.copy(
-                                                                                 fontSize = 14.sp
+                                                                                 fontSize = 12.sp
                                                                              ),
                                                                              fontWeight = FontWeight.Bold,
                                                                              maxLines = 1
@@ -489,104 +712,6 @@ fun LibraryScreen(
                                              }
                                          }
                                      }
-                                 } // end tab Surface
-
-                                 HorizontalPager(
-                                     state = pagerState,
-                                     modifier = Modifier.weight(1f).fillMaxWidth().fillMaxHeight(),
-                                     pageSpacing = 16.dp
-) { page ->
-                                     val tabForPage = pageTabs.getOrNull(page) ?: "Library"
-                                     val tabSortType = viewModel.getPhotoSortTypeFor(tabForPage)
-                                     val pageFilteredPhotos = remember(flatPhotosRaw, tabForPage, tabSortType) {
-                                         val filtered = flatPhotosRaw.filter { photo ->
-                                             when (tabForPage) {
-                                                 "Library" -> !photo.collections.contains("Eatlist")
-                                                 "Favorites" -> photo.isFavorite
-                                                 "Eatlist" -> photo.collections.contains("Eatlist")
-                                                 else -> photo.collections.contains(tabForPage)
-                                             }
-                                         }
-                                         viewModel.sortPhotos(filtered, tabSortType)
-                                     }
-
-                                     if (pageFilteredPhotos.isEmpty()) {
-                                         when (tabForPage) {
-                                             "Favorites" -> EmptyFavoritesState()
-                                             "Eatlist"   -> EmptyEatlistState()
-                                             "Library"   -> EmptyLibraryState()
-                                             else        -> EmptyCollectionState()
-                                         }
-                                     } else {
-                                          val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
-                                          val currentGridColumns = viewModel.customGridColumns?.coerceIn(-1, 3) ?: when (windowSizeClass?.widthSizeClass) {
-                                              WindowWidthSizeClass.Expanded -> 3
-                                              WindowWidthSizeClass.Medium -> 3
-                                              else -> -1
-                                          }
-                                          val displayColumns = if (currentGridColumns <= 0) 1 else currentGridColumns
-                                          val minColumns = -1
-                                          val maxColumns = 3
-
-                                          // Calculate max and min snippets counts once for the whole page/list:
-                                          val nonZeroSnippetCounts = remember(pageFilteredPhotos) {
-                                              pageFilteredPhotos.map { it.snippets.size }.filter { it > 0 }
-                                          }
-                                          val maxSnippets = remember(nonZeroSnippetCounts) {
-                                              nonZeroSnippetCounts.maxOrNull() ?: 0
-                                          }
-                                          val minSnippets = remember(nonZeroSnippetCounts) {
-                                              nonZeroSnippetCounts.minOrNull() ?: 0
-                                          }
-
-                                          LazyVerticalStaggeredGrid(
-                                              columns = StaggeredGridCells.Fixed(displayColumns),
-                                              state = pageListState,
-                                              modifier = Modifier
-                                                  .fillMaxSize()
-                                                  .pointerInput(currentGridColumns) {
-                                                      awaitEachGesture {
-                                                          awaitFirstDown(requireUnconsumed = false)
-                                                          var zoomAccumulator = 1f
-                                                          do {
-                                                              val event = awaitPointerEvent()
-                                                              val numPointers = event.changes.filter { it.pressed }.size
-                                                              if (numPointers >= 2) {
-                                                                  val zoomChange = event.calculateZoom()
-                                                                  if (zoomChange != 1f) {
-                                                                      zoomAccumulator *= zoomChange
-                                                                      event.changes.forEach { it.consume() }
-                                                                      if (zoomAccumulator > 1.25f) {
-                                                                          // Pinch out (expanding fingers) -> fewer columns -> larger items
-                                                                          if (currentGridColumns > minColumns) {
-                                                                              view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                              viewModel.updateCustomGridColumns(currentGridColumns - 1)
-                                                                          }
-                                                                          zoomAccumulator = 1f
-                                                                      } else if (zoomAccumulator < 0.8f) {
-                                                                          // Pinch in (contracting fingers) -> more columns -> smaller items
-                                                                          if (currentGridColumns < maxColumns) {
-                                                                              view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                              viewModel.updateCustomGridColumns(currentGridColumns + 1)
-                                                                          }
-                                                                          zoomAccumulator = 1f
-                                                                      }
-                                                                  }
-                                                              }
-                                                          } while (event.changes.any { it.pressed })
-                                                      }
-                                                  },
-                                              contentPadding = PaddingValues(
-                                                  start = 0.dp,
-                                                  end = 0.dp,
-                                                  top = 8.dp,
-                                              bottom = 100.dp
-                                              ),
-                                              horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                              verticalItemSpacing = 4.dp
-                                          ) {
-                                              itemsIndexed(pageFilteredPhotos, key = { _, photo -> photo.id }) { index, photo ->
-                                                   val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
                                                    val isLeast = tabSortType == com.android.snippets.viewmodel.PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
                                                   
                                                   when (currentGridColumns) {

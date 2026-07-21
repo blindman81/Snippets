@@ -342,12 +342,9 @@ private fun RecapHeroCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                     } else {
-                        val scrollState = rememberScrollState()
                         Column(
                             verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .verticalScroll(scrollState)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             snippets.take(6).forEachIndexed { index, snippet ->
                                 val snippetPosition = when {
