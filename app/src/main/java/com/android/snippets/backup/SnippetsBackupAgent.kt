@@ -5,9 +5,6 @@ import android.app.backup.FullBackupDataOutput
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import com.android.snippets.model.Photo
 import java.io.File
 
 class SnippetsBackupAgent : BackupAgent() {
@@ -51,46 +48,7 @@ class SnippetsBackupAgent : BackupAgent() {
             }
         }
 
-        // Get active photo names from photos_v2.json
-        val activePhotoNames = mutableSetOf<String>()
-        val photosFile = File(filesDir, "photos_v2.json")
-        if (photosFile.exists()) {
-            try {
-                val json = photosFile.readText()
-                val type = object : TypeToken<List<Photo>>() {}.type
-                val photos: List<Photo> = Gson().fromJson(json, type) ?: emptyList()
-                photos.forEach { photo ->
-                    val uriStr = photo.uriString
-                    val fileName = uriStr.substringAfterLast('/')
-                    if (fileName.isNotEmpty()) {
-                        activePhotoNames.add(fileName)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error parsing photos_v2.json for active photo filtering in D2D", e)
-            }
-        }
-
-        // 2. Back up photo images in filesDir/photos in original full quality (D2D limit is 2GB)
-        val photosDir = File(filesDir, "photos")
-        if (photosDir.exists() && photosDir.isDirectory) {
-            photosDir.listFiles()?.forEach { photoFile ->
-                if (photoFile.isFile) {
-                    if (activePhotoNames.contains(photoFile.name)) {
-                        Log.d(TAG, "D2D transfer: Backing up original photo: ${photoFile.name}")
-                        try {
-                            fullBackupFile(photoFile, data)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error backing up photo ${photoFile.name}", e)
-                        }
-                    } else {
-                        Log.d(TAG, "D2D transfer: Skipping orphaned/deleted photo file: ${photoFile.name}")
-                    }
-                }
-            }
-        }
-
-        // 3. Back up shared preferences
+        // 2. Back up shared preferences
         val sharedPrefsFile = File(dataDir, "shared_prefs/snippets_prefs.xml")
         if (sharedPrefsFile.exists()) {
             Log.d(TAG, "D2D transfer: Backing up shared preferences: ${sharedPrefsFile.absolutePath}")

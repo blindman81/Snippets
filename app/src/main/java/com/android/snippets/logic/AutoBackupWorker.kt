@@ -6,13 +6,13 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import com.android.snippets.model.Photo
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Calendar
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     private companion object {
@@ -54,79 +54,55 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val backupDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SnippetsBackups")
         if (!backupDir.exists()) backupDir.mkdirs()
 
-        val backupFile = File(backupDir, "snippets_backup_auto_$suffix.zip")
+        val backupFile = File(backupDir, "snippets_backup_auto_$suffix.json")
         Log.d(TAG, "Creating auto backup file: ${backupFile.absolutePath}")
 
-        FileOutputStream(backupFile).use { outputStream ->
-            ZipOutputStream(outputStream).use { zipOut ->
-                // 1. Pack JSON files
-                val filesToBackup = listOf(
-                    "photos_v2.json",
-                    "collections_v2.json",
-                    "collection_icons_v2.json",
-                    "snippet_colors_v2.json",
-                    "snippet_styles_v2.json",
-                    "snippet_first_seen_v1.json"
-                )
-                for (fileName in filesToBackup) {
-                    val file = File(applicationContext.filesDir, fileName)
-                    if (file.exists()) {
-                        zipOut.putNextEntry(ZipEntry(fileName))
-                        file.inputStream().use { input ->
-                            input.copyTo(zipOut)
-                        }
-                        zipOut.closeEntry()
-                    }
-                }
+        val gson = Gson()
+        val prettyGson = GsonBuilder().setPrettyPrinting().create()
 
-                // 2. Pack shared preferences
-                val sharedPrefsFile = File(applicationContext.dataDir, "shared_prefs/snippets_prefs.xml")
-                if (sharedPrefsFile.exists()) {
-                    zipOut.putNextEntry(ZipEntry("shared_prefs/snippets_prefs.xml"))
-                    sharedPrefsFile.inputStream().use { input ->
-                        input.copyTo(zipOut)
-                    }
-                    zipOut.closeEntry()
-                }
+        val backupJsonObj = JsonObject().apply {
+            addProperty("version", 2)
+            addProperty("exportedAt", System.currentTimeMillis())
 
-                // Get active photo names from photos_v2.json
-                val activePhotoNames = mutableSetOf<String>()
-                val photosFile = File(applicationContext.filesDir, "photos_v2.json")
-                if (photosFile.exists()) {
+            fun addJsonFileIfExists(key: String, fileName: String) {
+                val file = File(applicationContext.filesDir, fileName)
+                if (file.exists()) {
                     try {
-                        val json = photosFile.readText()
-                        val type = object : TypeToken<List<Photo>>() {}.type
-                        val photos: List<Photo> = Gson().fromJson(json, type) ?: emptyList()
-                        photos.forEach { photo ->
-                            val uriStr = photo.uriString
-                            val fileName = uriStr.substringAfterLast('/')
-                            if (fileName.isNotEmpty()) {
-                                activePhotoNames.add(fileName)
-                            }
-                        }
+                        val elem = gson.fromJson(file.readText(), JsonElement::class.java)
+                        add(key, elem)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing photos_v2.json for active photo filtering in auto backup", e)
+                        Log.e(TAG, "Error reading $fileName for auto backup", e)
                     }
                 }
+            }
 
-                // 3. Pack photo files
-                val photosDir = File(applicationContext.filesDir, "photos")
-                if (photosDir.exists() && photosDir.isDirectory) {
-                    photosDir.listFiles()?.forEach { photoFile ->
-                        if (photoFile.isFile) {
-                            if (activePhotoNames.contains(photoFile.name)) {
-                                zipOut.putNextEntry(ZipEntry("photos/${photoFile.name}"))
-                                photoFile.inputStream().use { input ->
-                                    input.copyTo(zipOut)
-                                }
-                                zipOut.closeEntry()
-                            } else {
-                                Log.d(TAG, "Auto backup: Skipping orphaned/deleted photo file: ${photoFile.name}")
-                            }
+            addJsonFileIfExists("photos", "photos_v2.json")
+            addJsonFileIfExists("collections", "collections_v2.json")
+            addJsonFileIfExists("collectionIcons", "collection_icons_v2.json")
+            addJsonFileIfExists("snippetColors", "snippet_colors_v2.json")
+            addJsonFileIfExists("snippetStyles", "snippet_styles_v2.json")
+            addJsonFileIfExists("snippetFirstSeenTimes", "snippet_first_seen_v1.json")
+
+            val prefs = applicationContext.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
+            val prefsObj = JsonObject().apply {
+                prefs.all.forEach { (key, value) ->
+                    when (value) {
+                        is Boolean -> addProperty(key, value)
+                        is Number -> addProperty(key, value)
+                        is String -> addProperty(key, value)
+                        is Set<*> -> {
+                            val arr = JsonArray()
+                            value.forEach { item -> if (item is String) arr.add(item) }
+                            add(key, arr)
                         }
                     }
                 }
             }
+            add("settings", prefsObj)
+        }
+
+        FileOutputStream(backupFile).use { outputStream ->
+            outputStream.write(prettyGson.toJson(backupJsonObj).toByteArray(Charsets.UTF_8))
         }
         Log.d(TAG, "Auto backup completed successfully.")
     }

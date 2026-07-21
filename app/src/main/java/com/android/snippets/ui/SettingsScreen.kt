@@ -83,7 +83,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")
+        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         if (uri != null) {
             viewModel.exportBackupToFile(context, uri)
@@ -466,10 +466,10 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
              SettingsCardItem(
                  icon = BackupSectionIcon(),
                  title = "Export",
-                 subtitle = "Save snippets, collections, and photos to a file",
+                 subtitle = "Save snippets, collections, and settings to a JSON file",
                  onClick = {
                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                     exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.zip")
+                     exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.json")
                  },
                  position = CardPosition.First
              )
@@ -477,10 +477,10 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
              SettingsCardItem(
                  icon = ImportSectionIcon(),
                  title = "Import",
-                 subtitle = "Restore snippets, collections, and photos from a file",
+                 subtitle = "Restore snippets, collections, and settings from a JSON file",
                  onClick = {
                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                     importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
+                     importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*"))
                  },
                  position = CardPosition.Middle
              )

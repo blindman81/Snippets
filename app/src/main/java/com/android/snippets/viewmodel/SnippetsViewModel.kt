@@ -752,7 +752,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     try {
                         val json = gson.toJson(snapshot)
                         photosFile.writeText(json)
-                        com.android.snippets.widget.HistoryWidgetProvider.updateAllWidgets(getApplication())
                         BackupManager(getApplication()).dataChanged()
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -2894,60 +2893,126 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         reconcileSurfacedMemories()
     }
 
+    fun generateBackupJson(): String {
+        val prettyGson = com.google.gson.GsonBuilder().setPrettyPrinting().create()
+        val backupJsonObj = com.google.gson.JsonObject().apply {
+            addProperty("version", 2)
+            addProperty("exportedAt", System.currentTimeMillis())
+
+            fun addJsonFileOrMemory(key: String, file: File, fallbackObject: Any) {
+                if (file.exists()) {
+                    try {
+                        val elem = gson.fromJson(file.readText(), com.google.gson.JsonElement::class.java)
+                        add(key, elem)
+                    } catch (e: Exception) {
+                        add(key, gson.toJsonTree(fallbackObject))
+                    }
+                } else {
+                    add(key, gson.toJsonTree(fallbackObject))
+                }
+            }
+
+            addJsonFileOrMemory("photos", photosFile, photos)
+            addJsonFileOrMemory("collections", collectionsFile, userCollections)
+            addJsonFileOrMemory("collectionIcons", collectionIconsFile, collectionIcons)
+            addJsonFileOrMemory("snippetColors", snippetColorsFile, snippetColors)
+            addJsonFileOrMemory("snippetStyles", snippetStylesFile, snippetStyles)
+            addJsonFileOrMemory("snippetFirstSeenTimes", snippetFirstSeenFile, snippetFirstSeenTimes)
+
+            val prefsObj = com.google.gson.JsonObject().apply {
+                prefs.all.forEach { (key, value) ->
+                    when (value) {
+                        is Boolean -> addProperty(key, value)
+                        is Number -> addProperty(key, value)
+                        is String -> addProperty(key, value)
+                        is Set<*> -> {
+                            val arr = com.google.gson.JsonArray()
+                            value.forEach { item -> if (item is String) arr.add(item) }
+                            add(key, arr)
+                        }
+                    }
+                }
+            }
+            add("settings", prefsObj)
+        }
+        return prettyGson.toJson(backupJsonObj)
+    }
+
+    fun restoreFromJsonString(jsonString: String) {
+        val rootElement = gson.fromJson(jsonString, com.google.gson.JsonElement::class.java)
+        if (rootElement.isJsonObject) {
+            val rootObj = rootElement.asJsonObject
+
+            if (rootObj.has("photos")) {
+                val photosElem = rootObj.get("photos")
+                photosFile.writeText(gson.toJson(photosElem))
+            }
+
+            if (rootObj.has("collections")) {
+                val collElem = rootObj.get("collections")
+                collectionsFile.writeText(gson.toJson(collElem))
+            }
+
+            if (rootObj.has("collectionIcons")) {
+                val iconsElem = rootObj.get("collectionIcons")
+                collectionIconsFile.writeText(gson.toJson(iconsElem))
+            }
+
+            if (rootObj.has("snippetColors")) {
+                val colorsElem = rootObj.get("snippetColors")
+                snippetColorsFile.writeText(gson.toJson(colorsElem))
+            }
+
+            if (rootObj.has("snippetStyles")) {
+                val stylesElem = rootObj.get("snippetStyles")
+                snippetStylesFile.writeText(gson.toJson(stylesElem))
+            }
+
+            if (rootObj.has("snippetFirstSeenTimes")) {
+                val firstSeenElem = rootObj.get("snippetFirstSeenTimes")
+                snippetFirstSeenFile.writeText(gson.toJson(firstSeenElem))
+            }
+
+            if (rootObj.has("settings") && rootObj.get("settings").isJsonObject) {
+                val settingsObj = rootObj.getAsJsonObject("settings")
+                val editor = prefs.edit()
+                settingsObj.entrySet().forEach { (key, elem) ->
+                    if (elem.isJsonPrimitive) {
+                        val prim = elem.asJsonPrimitive
+                        if (prim.isBoolean) {
+                            editor.putBoolean(key, prim.asBoolean)
+                        } else if (prim.isNumber) {
+                            val numStr = prim.asString
+                            if (numStr.contains(".")) {
+                                editor.putFloat(key, prim.asFloat)
+                            } else {
+                                try {
+                                    editor.putInt(key, prim.asInt)
+                                } catch (e: Exception) {
+                                    editor.putLong(key, prim.asLong)
+                                }
+                            }
+                        } else if (prim.isString) {
+                            editor.putString(key, prim.asString)
+                        }
+                    } else if (elem.isJsonArray) {
+                        val set = elem.asJsonArray.mapNotNull { if (it.isJsonPrimitive && it.asJsonPrimitive.isString) it.asString else null }.toSet()
+                        editor.putStringSet(key, set)
+                    }
+                }
+                editor.apply()
+            }
+        } else if (rootElement.isJsonArray) {
+            photosFile.writeText(jsonString)
+        }
+    }
+
     fun exportBackupToFile(context: Context, uri: Uri) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    java.util.zip.ZipOutputStream(outputStream).use { zipOut ->
-                        // 1. Pack JSON files
-                        val filesToBackup = listOf(
-                            "photos_v2.json",
-                            "collections_v2.json",
-                            "collection_icons_v2.json",
-                            "snippet_colors_v2.json",
-                            "snippet_styles_v2.json",
-                            "snippet_first_seen_v1.json"
-                        )
-                        for (fileName in filesToBackup) {
-                            val file = File(context.filesDir, fileName)
-                            if (file.exists()) {
-                                zipOut.putNextEntry(java.util.zip.ZipEntry(fileName))
-                                file.inputStream().use { input ->
-                                    input.copyTo(zipOut)
-                                }
-                                zipOut.closeEntry()
-                            }
-                        }
-
-                        // 2. Pack shared preferences
-                        val sharedPrefsFile = File(context.dataDir, "shared_prefs/snippets_prefs.xml")
-                        if (sharedPrefsFile.exists()) {
-                            zipOut.putNextEntry(java.util.zip.ZipEntry("shared_prefs/snippets_prefs.xml"))
-                            sharedPrefsFile.inputStream().use { input ->
-                                input.copyTo(zipOut)
-                            }
-                            zipOut.closeEntry()
-                        }
-
-                        // 3. Pack photo files
-                        val activePhotoNames = photos.map { it.uriString.substringAfterLast('/') }.toSet()
-                        val photosDir = File(context.filesDir, "photos")
-                        if (photosDir.exists() && photosDir.isDirectory) {
-                            photosDir.listFiles()?.forEach { photoFile ->
-                                if (photoFile.isFile) {
-                                    if (activePhotoNames.contains(photoFile.name)) {
-                                        zipOut.putNextEntry(java.util.zip.ZipEntry("photos/${photoFile.name}"))
-                                        photoFile.inputStream().use { input ->
-                                            input.copyTo(zipOut)
-                                        }
-                                        zipOut.closeEntry()
-                                    } else {
-                                        android.util.Log.d("SnippetsViewModel", "Export backup: Skipping orphaned/deleted photo file: ${photoFile.name}")
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    val jsonString = generateBackupJson()
+                    outputStream.write(jsonString.toByteArray(Charsets.UTF_8))
                 }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(context, "Backup file exported successfully!", Toast.LENGTH_LONG).show()
@@ -2964,41 +3029,50 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun importBackupFromFile(context: Context, uri: Uri) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    java.util.zip.ZipInputStream(inputStream).use { zipIn ->
-                        var entry = zipIn.nextEntry
-                        while (entry != null) {
-                            val name = entry.name
-                            if (name.startsWith("photos/")) {
-                                val photosDir = File(context.filesDir, "photos")
-                                if (!photosDir.exists()) photosDir.mkdirs()
-                                val photoName = name.substringAfter("photos/")
-                                if (photoName.isNotEmpty()) {
-                                    val photoFile = File(photosDir, photoName)
-                                    FileOutputStream(photoFile).use { output ->
-                                        zipIn.copyTo(output)
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw java.io.IOException("Unable to open input stream")
+
+                var isZip = false
+                try {
+                    java.util.zip.ZipInputStream(bytes.inputStream()).use { zipIn ->
+                        val entry = zipIn.nextEntry
+                        if (entry != null) {
+                            isZip = true
+                            var currEntry: java.util.zip.ZipEntry? = entry
+                            while (currEntry != null) {
+                                val name = currEntry.name
+                                if (name.startsWith("photos/")) {
+                                    val photosDir = File(context.filesDir, "photos")
+                                    if (!photosDir.exists()) photosDir.mkdirs()
+                                    val photoName = name.substringAfter("photos/")
+                                    if (photoName.isNotEmpty()) {
+                                        val photoFile = File(photosDir, photoName)
+                                        FileOutputStream(photoFile).use { output -> zipIn.copyTo(output) }
                                     }
-                                }
-                            } else if (name.startsWith("shared_prefs/")) {
-                                val sharedPrefsDir = File(context.dataDir, "shared_prefs")
-                                if (!sharedPrefsDir.exists()) sharedPrefsDir.mkdirs()
-                                val prefsName = name.substringAfter("shared_prefs/")
-                                if (prefsName.isNotEmpty()) {
-                                    val prefsFile = File(sharedPrefsDir, prefsName)
-                                    FileOutputStream(prefsFile).use { output ->
-                                        zipIn.copyTo(output)
+                                } else if (name.startsWith("shared_prefs/")) {
+                                    val sharedPrefsDir = File(context.dataDir, "shared_prefs")
+                                    if (!sharedPrefsDir.exists()) sharedPrefsDir.mkdirs()
+                                    val prefsName = name.substringAfter("shared_prefs/")
+                                    if (prefsName.isNotEmpty()) {
+                                        val prefsFile = File(sharedPrefsDir, prefsName)
+                                        FileOutputStream(prefsFile).use { output -> zipIn.copyTo(output) }
                                     }
+                                } else {
+                                    val file = File(context.filesDir, name)
+                                    FileOutputStream(file).use { output -> zipIn.copyTo(output) }
                                 }
-                            } else {
-                                val file = File(context.filesDir, name)
-                                FileOutputStream(file).use { output ->
-                                    zipIn.copyTo(output)
-                                }
+                                zipIn.closeEntry()
+                                currEntry = zipIn.nextEntry
                             }
-                            zipIn.closeEntry()
-                            entry = zipIn.nextEntry
                         }
                     }
+                } catch (e: Exception) {
+                    isZip = false
+                }
+
+                if (!isZip) {
+                    val jsonString = String(bytes, Charsets.UTF_8)
+                    restoreFromJsonString(jsonString)
                 }
 
                 // Force reload all settings and data
@@ -3058,7 +3132,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         if (!backupDir.exists() || !backupDir.isDirectory) return null
         
         val files = backupDir.listFiles { _, name ->
-            name.startsWith("snippets_backup_auto_") && name.endsWith(".zip")
+            name.startsWith("snippets_backup_auto_") && (name.endsWith(".json") || name.endsWith(".zip"))
         } ?: return null
         
         return files.maxByOrNull { it.lastModified() }
