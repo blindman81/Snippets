@@ -379,11 +379,11 @@ fun CloudSnippetItem(
             if (totalCount <= 1) {
                 RoundedCornerShape(16.dp)
             } else if (index == 0) {
-                RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 0.dp, bottomEnd = 0.dp)
+                RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 2.dp, bottomEnd = 2.dp)
             } else if (index == totalCount - 1) {
-                RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 16.dp, bottomEnd = 16.dp)
+                RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, topEnd = 16.dp, bottomEnd = 16.dp)
             } else {
-                RectangleShape
+                RoundedCornerShape(2.dp)
             }
         } else {
             CircleShape
