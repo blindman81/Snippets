@@ -814,7 +814,7 @@ fun PhotoListItem(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth().padding(end = 4.dp)
+                modifier = Modifier.padding(end = 4.dp)
             ) {
                 val iconColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
 
@@ -1263,18 +1263,17 @@ fun PhotoCardListItem(
                             )
                         }
                     } else {
-                        val hasMoreSnippets = photo.snippets.size > 3
-                        val topSnippets = if (hasMoreSnippets) photo.snippets.take(3) else photo.snippets
-                        val totalSlots = if (hasMoreSnippets) 4 else topSnippets.size
+                        val topSnippets = photo.snippets.take(3)
+                        val total = topSnippets.size
                         Column(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             topSnippets.forEachIndexed { index, snippet ->
                                 val snippetPosition = when {
-                                    totalSlots == 1 -> CardPosition.Single
+                                    total == 1 -> CardPosition.Single
                                     index == 0 -> CardPosition.First
-                                    !hasMoreSnippets && index == totalSlots - 1 -> CardPosition.Last
+                                    index == total - 1 -> CardPosition.Last
                                     else -> CardPosition.Middle
                                 }
                                 val snippetShape = when (snippetPosition) {
@@ -1315,41 +1314,11 @@ fun PhotoCardListItem(
                                             text = snippet,
                                             style = getSnippetTextStyle(
                                                 snippetStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                                MaterialTheme.typography.bodyMedium,
+                                                MaterialTheme.typography.titleMedium,
                                                 isCloud = true
                                             ).copy(brush = snippetGradient),
                                             maxLines = 1,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (hasMoreSnippets) {
-                                val snippetShape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
-                                val baseColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
-                                val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                                val snippetColor = remember(baseColor, isDark) {
-                                    val lum = 0.299f * baseColor.red + 0.587f * baseColor.green + 0.114f * baseColor.blue
-                                    if (isDark && lum < 0.3f) baseColor.copy(red = (baseColor.red + 0.4f).coerceAtMost(1f), green = (baseColor.green + 0.4f).coerceAtMost(1f), blue = (baseColor.blue + 0.4f).coerceAtMost(1f))
-                                    else if (!isDark && lum > 0.7f) baseColor.copy(red = (baseColor.red - 0.4f).coerceAtLeast(0f), green = (baseColor.green - 0.4f).coerceAtLeast(0f), blue = (baseColor.blue - 0.4f).coerceAtLeast(0f))
-                                    else baseColor
-                                }
-
-                                Surface(
-                                    shape = snippetShape,
-                                    color = snippetColor.copy(alpha = 0.18f),
-                                    border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Box(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "... +${photo.snippets.size - 3}",
-                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                            color = snippetColor
                                         )
                                     }
                                 }

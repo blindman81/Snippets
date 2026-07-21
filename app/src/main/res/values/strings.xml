@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">Snippets</string>
     <string name="tile_add_photo">Add Photo</string>
-    <string name="widget_history_name">History</string>
 </resources>
