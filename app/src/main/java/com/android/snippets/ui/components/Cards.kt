@@ -742,7 +742,7 @@ fun PhotoListItem(
                 if (tab == "Eatlist" && !isSelected) {
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                        shape = CircleShape,
+                        shape = LocalAppShape.current,
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .padding(4.dp)
@@ -1117,7 +1117,7 @@ fun PhotoCardListItem(
                     if (tab == "Eatlist" && !isSelected) {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                            shape = CircleShape,
+                            shape = LocalAppShape.current,
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
                                 .padding(4.dp)
