@@ -240,10 +240,13 @@ fun LibraryScreen(
         label = "toolbar_offset"
     )
 
-    val isScrolled by remember {
+    val currentGridState = remember(currentTab) {
+        listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
+    }
+
+    val isScrolled by remember(currentGridState) {
         derivedStateOf {
-            val state = listStates[currentTab]
-            (state?.firstVisibleItemIndex ?: 0) > 0 || (state?.firstVisibleItemScrollOffset ?: 0) > 0
+            currentGridState.firstVisibleItemIndex > 0 || currentGridState.firstVisibleItemScrollOffset > 0
         }
     }
 
