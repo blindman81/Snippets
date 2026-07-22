@@ -804,7 +804,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             photo.snippetsAddedTime != 0L &&
             (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
             photo.surfacedTime == 0L
-        }.sortedByDescending { it.snippetsAddedTime }
+        }.sortedBy { it.snippetsAddedTime }
 
         if (queuedCandidates.isNotEmpty()) {
             val tempAssignedTimes = assignedTimes.toMutableList()
@@ -871,6 +871,16 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val activeAssignedTimes = assignedTimes.toMutableList()
             var attempts = 0
             while (attempts < 1000) {
+                val conflict = activeAssignedTimes.find { assigned ->
+                    val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
+                    diff < SURFACED_MEMORY_SPACING_MS
+                }
+                if (conflict != null) {
+                    candidateTime = maxOf(candidateTime, conflict) + SURFACED_MEMORY_SPACING_MS
+                    attempts++
+                    continue
+                }
+
                 val dayStart = getStartOfDay(candidateTime)
                 val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
                 if (countOnDay >= 5) {
@@ -899,7 +909,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     diff < SURFACED_MEMORY_SPACING_MS
                 }
                 if (conflict != null) {
-                    candidateTime = conflict + SURFACED_MEMORY_SPACING_MS
+                    candidateTime = maxOf(candidateTime, conflict) + SURFACED_MEMORY_SPACING_MS
                     candidateTime = adjustForQuietHours(candidateTime)
                     attempts++
                     continue
@@ -915,6 +925,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     calendar.set(Calendar.SECOND, 0)
                     calendar.set(Calendar.MILLISECOND, 0)
                     candidateTime = calendar.timeInMillis
+                    candidateTime = adjustForQuietHours(candidateTime)
                     attempts++
                     continue
                 }
@@ -1453,7 +1464,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         if (notificationReminderEnabled) return
         val now = System.currentTimeMillis()
         var nextAvailableTime = now
-        val unpostedPhotos = photos
+        var changed = false
+        val updatedPhotos = photos.toMutableList()
+        val unpostedPhotos = updatedPhotos
             .filter { !it.isViewed || it.snippetsAddedTime > it.lastViewedTime }
             .filterNot { MemoryWorker.wasNotificationPosted(getApplication(), it.id) }
             .filter { it.surfacedTime != 0L }
@@ -1461,6 +1474,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         unpostedPhotos.forEach { photo ->
             val scheduledTime = maxOf(photo.surfacedTime, nextAvailableTime)
+            if (photo.surfacedTime != scheduledTime) {
+                val index = updatedPhotos.indexOfFirst { it.id == photo.id }
+                if (index != -1) {
+                    updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = scheduledTime)
+                    changed = true
+                }
+            }
             val delayMs = maxOf(0L, scheduledTime - now)
             nextAvailableTime = scheduledTime + SURFACED_MEMORY_SPACING_MS
 
@@ -1476,9 +1496,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 delay = delayMs,
                 delayUnit = TimeUnit.MILLISECONDS,
                 notificationType = notificationType,
-                policy = androidx.work.ExistingWorkPolicy.KEEP,
+                policy = androidx.work.ExistingWorkPolicy.REPLACE,
                 resetPostedState = false
             )
+        }
+        if (changed) {
+            photos = updatedPhotos
+            savePhotos()
         }
     }
 
