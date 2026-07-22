@@ -83,7 +83,7 @@ fun PhotosCarouselScreen(viewModel: SnippetsViewModel) {
                         isSpinning = true
                     )
                     
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
                     
                     Text(
                         text = "Photos carousel",

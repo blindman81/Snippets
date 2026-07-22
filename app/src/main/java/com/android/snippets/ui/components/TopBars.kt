@@ -461,7 +461,7 @@ fun MainTopBar(
     isScrolled: Boolean = false,
     showNavigationIcon: Boolean = true,
     showSearchIcon: Boolean = true,
-    leftAlignTitle: Boolean = false,
+    leftAlignTitle: Boolean = true,
     titleIcon: ImageVector? = null,
     forceTransparentBackground: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {}
