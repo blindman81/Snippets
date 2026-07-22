@@ -416,7 +416,8 @@ fun CloudSnippetItem(
                             forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, 
                             MaterialTheme.typography.titleMedium, 
                             isCloud = true
-                        ).copy(brush = snippetGradient)
+                        ).copy(brush = snippetGradient),
+                        color = Color.Unspecified
                     )
                 }
             } else {
@@ -426,21 +427,24 @@ fun CloudSnippetItem(
                         Text(
                             text = text, 
                             modifier = Modifier.padding(horizontal = (24 * scalingFactor).dp, vertical = (12 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp, brush = snippetGradient)
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp, brush = snippetGradient),
+                            color = Color.Unspecified
                         )
                     }
                     2, 3 -> { // Medium Chip
                         Text(
                             text = text, 
                             modifier = Modifier.padding(horizontal = (18 * scalingFactor).dp, vertical = (9 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient)
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient),
+                            color = Color.Unspecified
                         )
                     }
                     else -> { // Small Chip
                         Text(
                             text = text, 
                             modifier = Modifier.padding(horizontal = (12 * scalingFactor).dp, vertical = (6 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient)
+                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient),
+                            color = Color.Unspecified
                         )
                     }
                 }

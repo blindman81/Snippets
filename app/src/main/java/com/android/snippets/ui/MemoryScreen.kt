@@ -714,6 +714,7 @@ fun FloatingSnippet(
             Text(
                 text = text,
                 style = textStyle.copy(brush = snippetGradient),
+                color = Color.Unspecified,
                 modifier = Modifier.padding(
                     horizontal = (when (personality) {
                         0, 1 -> 24
