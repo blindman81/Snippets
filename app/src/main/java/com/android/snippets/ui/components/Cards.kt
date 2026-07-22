@@ -1214,7 +1214,7 @@ fun PhotoCardListItem(
 
             if (tab != "Eatlist") {
                 // Vertical gap running all the way down
-                Spacer(modifier = Modifier.width(2.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 // Right side column takes 40% of space
                 Column(
