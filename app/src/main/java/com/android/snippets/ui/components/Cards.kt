@@ -1277,7 +1277,7 @@ fun PhotoCardListItem(
 
                                     val snippetGradient = remember(snippetColor) {
                                         androidx.compose.ui.graphics.Brush.linearGradient(
-                                            colors = listOf(snippetColor, snippetColor.copy(alpha = 0.65f))
+                                            colors = listOf(snippetColor, snippetColor.copy(alpha = 0.40f))
                                         )
                                     }
 
@@ -1297,7 +1297,7 @@ fun PhotoCardListItem(
                                                     snippetStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
                                                     MaterialTheme.typography.titleMedium,
                                                     isCloud = true
-                                                ).copy(brush = snippetGradient),
+                                                ).copy(color = Color.Unspecified, brush = snippetGradient),
                                                 color = Color.Unspecified,
                                                 maxLines = 1,
                                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
