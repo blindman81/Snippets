@@ -1297,7 +1297,7 @@ fun PhotoCardListItem(
                                                     snippetStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
                                                     MaterialTheme.typography.titleMedium,
                                                     isCloud = true
-                                                ).copy(color = Color.Unspecified, brush = snippetGradient),
+                                                ).copy(color = Color.Unspecified).copy(brush = snippetGradient),
                                                 color = Color.Unspecified,
                                                 maxLines = 1,
                                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
