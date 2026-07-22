@@ -665,6 +665,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 saveSnippetFirstSeenTimes()
                 reconcileSurfacedMemories()
                 reconcileMemoryNotifications()
+                if (notificationReminderEnabled) {
+                    cancelAllPerPhotoMemoryWorkers()
+                }
                 checkAndTriggerRecapOnLaunch()
             }
         }
@@ -1425,6 +1428,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         resetPostedState: Boolean = true
     ) {
         if (photoId.isBlank()) return
+        if (notificationReminderEnabled) return
 
         if (resetPostedState) {
             MemoryWorker.clearPostedNotificationState(getApplication(), photoId)
