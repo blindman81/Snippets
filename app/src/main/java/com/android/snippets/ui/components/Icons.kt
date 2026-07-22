@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.graphics.vector.group
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -1645,54 +1646,10 @@ fun ViewAgendaCustomIcon(
             viewportHeight = 960f
         ).apply {
             group(translationY = 960f) {
-                path(fill = SolidColor(tint)) {
-                    moveTo(160f, -200f)
-                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
-                    reflectiveQuadTo(80f, -280f)
-                    verticalLineToRelative(-400f)
-                    quadToRelative(0f, -33f, 23.5f, -56.5f)
-                    reflectiveQuadTo(160f, -760f)
-                    horizontalLineToRelative(640f)
-                    quadToRelative(33f, 0f, 56.5f, 23.5f)
-                    reflectiveQuadTo(880f, -680f)
-                    verticalLineToRelative(400f)
-                    quadToRelative(0f, 33f, -23.5f, 56.5f)
-                    reflectiveQuadTo(800f, -200f)
-                    horizontalLineTo(160f)
-                    close()
-
-                    moveTo(560f, -520f)
-                    horizontalLineToRelative(240f)
-                    verticalLineToRelative(-160f)
-                    horizontalLineTo(560f)
-                    verticalLineToRelative(160f)
-                    close()
-
-                    moveTo(160f, -280f)
-                    horizontalLineToRelative(320f)
-                    verticalLineToRelative(-400f)
-                    horizontalLineTo(160f)
-                    verticalLineToRelative(400f)
-                    close()
-
-                    moveTo(320f, -420f)
-                    quadToRelative(-25f, 0f, -42.5f, -17.5f)
-                    reflectiveQuadTo(260f, -480f)
-                    quadToRelative(0f, -25f, 17.5f, -42.5f)
-                    reflectiveQuadTo(320f, -540f)
-                    quadToRelative(25f, 0f, 42.5f, 17.5f)
-                    reflectiveQuadTo(380f, -480f)
-                    quadToRelative(0f, 25f, -17.5f, 42.5f)
-                    reflectiveQuadTo(320f, -420f)
-                    close()
-
-                    moveTo(560f, -280f)
-                    horizontalLineToRelative(240f)
-                    verticalLineToRelative(-160f)
-                    horizontalLineTo(560f)
-                    verticalLineToRelative(160f)
-                    close()
-                }
+                addPath(
+                    pathData = PathParser().parsePathString("M120-200q-33 0-56.5-23.5T40-280v-400q0-33 23.5-56.5T120-760h400q33 0 56.5 23.5T600-680v400q0 33-23.5 56.5T520-200H120Zm0-80h400v-400H120v400Zm40-80h320L376-500l-76 100-56-74-84 114Zm520 160v-560h80v560h-80Zm160 0v-560h80v560h-80Zm-720-80v-400 400Z").toNodes(),
+                    fill = SolidColor(tint)
+                )
             }
         }.build()
     }
