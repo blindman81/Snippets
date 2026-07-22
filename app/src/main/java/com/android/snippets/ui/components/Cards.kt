@@ -12,6 +12,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.luminance
@@ -739,6 +742,80 @@ fun PhotoListItem(
                     modifier = Modifier.fillMaxSize()
                 )
 
+                if (photo.rating > 0) {
+                    val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+                    val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
+                    Surface(
+                        color = iconContainerColor.copy(alpha = 0.9f),
+                        shape = LocalAppShape.current,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(2.dp)
+                            .size(20.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_star_rating),
+                                contentDescription = null,
+                                tint = iconColor,
+                                modifier = Modifier.fillMaxSize().padding(2.dp)
+                            )
+                            Text(
+                                text = photo.rating.toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.ExtraBold),
+                                color = iconContainerColor,
+                                modifier = Modifier.padding(top = 0.5.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (photo.isFavorite && showFavoriteIcon) {
+                    val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+                    val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
+                    Surface(
+                        color = iconContainerColor.copy(alpha = 0.9f),
+                        shape = LocalAppShape.current,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(20.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Favorite",
+                                tint = iconColor,
+                                modifier = Modifier.size(10.dp)
+                            )
+                        }
+                    }
+                }
+
+                if ((isMostSnippets || isLeastSnippets) && !isSelected) {
+                    val badgeContainerColor = if (isMostSnippets) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                    val badgeContentColor = if (isMostSnippets) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
+                    Surface(
+                        color = badgeContainerColor.copy(alpha = 0.9f),
+                        shape = LocalAppShape.current,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(2.dp)
+                            .size(20.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = photo.snippets.size.toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.ExtraBold),
+                                color = badgeContentColor
+                            )
+                        }
+                    }
+                }
+
                 if (tab == "Eatlist" && !isSelected) {
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
@@ -777,11 +854,14 @@ fun PhotoListItem(
                         )
                     }
                 } else {
-                    val topSnippets = photo.snippets.take(2)
+                    val topSnippets = photo.snippets.take(6)
                     val total = photo.snippets.size
-                    FlowRow(
+                    Row(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
                     ) {
                         topSnippets.forEachIndexed { index, snippet ->
                             CloudSnippetItem(
@@ -792,86 +872,6 @@ fun PhotoListItem(
                                 forcedColor = viewModel.getSnippetColor(snippet),
                                 forcedStyle = viewModel.getSnippetStyle(snippet),
                                 isSegmented = true
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (tab != "Eatlist") {
-                Spacer(modifier = Modifier.width(6.dp))
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            } else {
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.padding(end = 4.dp)
-            ) {
-                val iconColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
-
-                if (photo.rating > 0) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = LocalAppShape.current,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_star_rating),
-                                contentDescription = null,
-                                tint = iconColor,
-                                modifier = Modifier.fillMaxSize().padding(4.dp)
-                            )
-                            Text(
-                                text = photo.rating.toString(),
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.padding(top = 1.dp)
-                            )
-                        }
-                    }
-                }
-
-                if (photo.isFavorite && showFavoriteIcon) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = LocalAppShape.current,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Favorite,
-                                contentDescription = "Favorite",
-                                tint = iconColor,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-
-                if ((isMostSnippets || isLeastSnippets) && !isSelected) {
-                    val badgeContainerColor = if (isMostSnippets) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
-                    val badgeContentColor = if (isMostSnippets) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
-                    Surface(
-                        color = badgeContainerColor,
-                        shape = LocalAppShape.current,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = photo.snippets.size.toString(),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = badgeContentColor
                             )
                         }
                     }
@@ -1114,6 +1114,80 @@ fun PhotoCardListItem(
                                     }
                             )
 
+                    val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+                    val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
+
+                    if (photo.rating > 0) {
+                        Surface(
+                            color = iconContainerColor.copy(alpha = 0.9f),
+                            shape = LocalAppShape.current,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(6.dp)
+                                .size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_star_rating),
+                                    contentDescription = null,
+                                    tint = iconColor,
+                                    modifier = Modifier.fillMaxSize().padding(4.dp)
+                                )
+                                Text(
+                                    text = photo.rating.toString(),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
+                                    color = iconContainerColor,
+                                    modifier = Modifier.padding(top = 1.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (photo.isFavorite && showFavoriteIcon) {
+                        Surface(
+                            color = iconContainerColor.copy(alpha = 0.9f),
+                            shape = LocalAppShape.current,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(6.dp)
+                                .size(28.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = "Favorite",
+                                    tint = iconColor,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if ((isMostSnippets || isLeastSnippets) && !isSelected) {
+                        val badgeContainerColor = if (isMostSnippets) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                        val badgeContentColor = if (isMostSnippets) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
+                        Surface(
+                            color = badgeContainerColor.copy(alpha = 0.9f),
+                            shape = LocalAppShape.current,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                                .size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = photo.snippets.size.toString(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = badgeContentColor
+                                )
+                            }
+                        }
+                    }
+
                     if (tab == "Eatlist" && !isSelected) {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
@@ -1148,186 +1222,94 @@ fun PhotoCardListItem(
                         .weight(0.40f)
                         .fillMaxHeight()
                 ) {
-                    // Top section (icons)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(0.22f)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    color = blockColor,
-                                    shape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
-                                )
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                    val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
-                    val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
-
-                    if (photo.rating > 0) {
-                        Surface(
-                            color = iconContainerColor,
-                            shape = LocalAppShape.current,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_star_rating),
-                                    contentDescription = null,
-                                    tint = iconColor,
-                                    modifier = Modifier.fillMaxSize().padding(4.dp)
-                                )
-                                Text(
-                                    text = photo.rating.toString(),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
-                                    color = iconContainerColor,
-                                    modifier = Modifier.padding(top = 1.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    if (photo.isFavorite && showFavoriteIcon) {
-                        Surface(
-                            color = iconContainerColor,
-                            shape = LocalAppShape.current,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Favorite,
-                                    contentDescription = "Favorite",
-                                    tint = iconColor,
-                                    modifier = Modifier
-                                        .size(15.dp)
-                                        .align(Alignment.Center)
-                                )
-                            }
-                        }
-                    }
-
-                    if ((isMostSnippets || isLeastSnippets) && !isSelected) {
-                        val badgeContainerColor = if (isMostSnippets) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
-                        val badgeContentColor = if (isMostSnippets) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
-                        Surface(
-                            color = badgeContainerColor,
-                            shape = LocalAppShape.current,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = photo.snippets.size.toString(),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = badgeContentColor
-                                )
-                            }
-                        }
-                    } // closes if block
-                            } // Close Row inside Box
-                        } // Close Icons Box
-                    } // close top section row
-
-                    // Horizontal Gap
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    // Bottom section: Snippets text
+                    // Snippets section taking full height
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(0.78f)
+                            .fillMaxHeight()
                             .background(
                                 color = blockColor,
-                                shape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, topEnd = 2.dp)
+                                shape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp)
                             )
                             .padding(horizontal = 6.dp, vertical = 6.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                    if (photo.snippets.isEmpty()) {
-                        if (tab != "Eatlist") {
+                        if (photo.snippets.isEmpty()) {
                             Text(
                                 text = "No snippets",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = (if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.5f)
                             )
-                        }
-                    } else {
-                        val topSnippets = photo.snippets.take(3)
-                        val total = topSnippets.size
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            topSnippets.forEachIndexed { index, snippet ->
-                                val snippetPosition = when {
-                                    total == 1 -> CardPosition.Single
-                                    index == 0 -> CardPosition.First
-                                    index == total - 1 -> CardPosition.Last
-                                    else -> CardPosition.Middle
-                                }
-                                val snippetShape = when (snippetPosition) {
-                                    CardPosition.Single -> RoundedCornerShape(12.dp)
-                                    CardPosition.First -> RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
-                                    CardPosition.Middle -> RoundedCornerShape(2.dp)
-                                    CardPosition.Last -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
-                                }
+                        } else {
+                            val topSnippets = photo.snippets.take(6)
+                            val total = topSnippets.size
+                            val verticalPadding = if (total >= 4) 6.dp else 8.dp
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                topSnippets.forEachIndexed { index, snippet ->
+                                    val snippetPosition = when {
+                                        total == 1 -> CardPosition.Single
+                                        index == 0 -> CardPosition.First
+                                        index == total - 1 -> CardPosition.Last
+                                        else -> CardPosition.Middle
+                                    }
+                                    val snippetShape = when (snippetPosition) {
+                                        CardPosition.Single -> RoundedCornerShape(12.dp)
+                                        CardPosition.First -> RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
+                                        CardPosition.Middle -> RoundedCornerShape(2.dp)
+                                        CardPosition.Last -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
+                                    }
 
-                                val snippetStyle = viewModel.getSnippetStyle(snippet)
-                                val forcedColor = viewModel.getSnippetColor(snippet)
-                                val baseColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                                val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-                                val snippetColor = remember(baseColor, isDark) {
-                                    val lum = 0.299f * baseColor.red + 0.587f * baseColor.green + 0.114f * baseColor.blue
-                                    if (isDark && lum < 0.3f) baseColor.copy(red = (baseColor.red + 0.4f).coerceAtMost(1f), green = (baseColor.green + 0.4f).coerceAtMost(1f), blue = (baseColor.blue + 0.4f).coerceAtMost(1f))
-                                    else if (!isDark && lum > 0.7f) baseColor.copy(red = (baseColor.red - 0.4f).coerceAtLeast(0f), green = (baseColor.green - 0.4f).coerceAtLeast(0f), blue = (baseColor.blue - 0.4f).coerceAtLeast(0f))
-                                    else baseColor
-                                }
+                                    val snippetStyle = viewModel.getSnippetStyle(snippet)
+                                    val forcedColor = viewModel.getSnippetColor(snippet)
+                                    val baseColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
+                                    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                                    val snippetColor = remember(baseColor, isDark) {
+                                        val lum = 0.299f * baseColor.red + 0.587f * baseColor.green + 0.114f * baseColor.blue
+                                        if (isDark && lum < 0.3f) baseColor.copy(red = (baseColor.red + 0.4f).coerceAtMost(1f), green = (baseColor.green + 0.4f).coerceAtMost(1f), blue = (baseColor.blue + 0.4f).coerceAtMost(1f))
+                                        else if (!isDark && lum > 0.7f) baseColor.copy(red = (baseColor.red - 0.4f).coerceAtLeast(0f), green = (baseColor.green - 0.4f).coerceAtLeast(0f), blue = (baseColor.blue - 0.4f).coerceAtLeast(0f))
+                                        else baseColor
+                                    }
 
-                                val snippetGradient = remember(snippetColor) {
-                                    androidx.compose.ui.graphics.Brush.linearGradient(
-                                        colors = listOf(snippetColor, snippetColor.copy(alpha = 0.65f))
-                                    )
-                                }
-
-                                Surface(
-                                    shape = snippetShape,
-                                    color = snippetColor.copy(alpha = 0.18f),
-                                    border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Box(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-                                        contentAlignment = Alignment.CenterStart
-                                    ) {
-                                        Text(
-                                            text = snippet,
-                                            style = getSnippetTextStyle(
-                                                snippetStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                                MaterialTheme.typography.titleMedium,
-                                                isCloud = true
-                                            ).copy(brush = snippetGradient),
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    val snippetGradient = remember(snippetColor) {
+                                        androidx.compose.ui.graphics.Brush.linearGradient(
+                                            colors = listOf(snippetColor, snippetColor.copy(alpha = 0.65f))
                                         )
+                                    }
+
+                                    Surface(
+                                        shape = snippetShape,
+                                        color = snippetColor.copy(alpha = 0.18f),
+                                        border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = verticalPadding),
+                                            contentAlignment = Alignment.CenterStart
+                                        ) {
+                                            Text(
+                                                text = snippet,
+                                                style = getSnippetTextStyle(
+                                                    snippetStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                                    MaterialTheme.typography.titleMedium,
+                                                    isCloud = true
+                                                ).copy(brush = snippetGradient),
+                                                color = Color.Unspecified,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                    } // closes Box (Bottom Section)
-                } // closes Column (Right side)
-            } // closes if (tab != "Eatlist")
+                }
+            }
         } // closes Row
     } // closes DynamicCardContainer
 } // closes PhotoCardListItem
