@@ -350,7 +350,8 @@ fun DetailScreen(
                                         }
                                     }
                                 },
-                                onRemoveEatlist = { showDeleteModal = true }
+                                onRemoveEatlist = { showDeleteModal = true },
+                                onEditLink = { showLinkModal = true }
                             )
                         } else {
                             val sharedKey = if (viewModel.detailReturnScreen == Screen.Memory) {
@@ -389,7 +390,8 @@ fun DetailScreen(
                                         }
                                     }
                                 },
-                                onRemoveEatlist = { showDeleteModal = true }
+                                onRemoveEatlist = { showDeleteModal = true },
+                                onEditLink = { showLinkModal = true }
                             )
                         }
                     }
