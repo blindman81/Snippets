@@ -350,8 +350,7 @@ fun DetailScreen(
                                         }
                                     }
                                 },
-                                onEditLink = { showLinkModal = true },
-                                onRemoveEatlist = { viewModel.addEatlistPhotoToLibrary(pagePhoto.id) }
+                                onRemoveEatlist = { showDeleteModal = true }
                             )
                         } else {
                             val sharedKey = if (viewModel.detailReturnScreen == Screen.Memory) {
@@ -390,8 +389,7 @@ fun DetailScreen(
                                         }
                                     }
                                 },
-                                onEditLink = { showLinkModal = true },
-                                onRemoveEatlist = { viewModel.addEatlistPhotoToLibrary(pagePhoto.id) }
+                                onRemoveEatlist = { showDeleteModal = true }
                             )
                         }
                     }
@@ -654,7 +652,8 @@ fun EmptyDetailContent(
                             photo = photo,
                             onOpenLink = onOpenLink,
                             onEditLink = onEditLink,
-                            onRemoveEatlist = onRemoveEatlist
+                            onRemoveEatlist = onRemoveEatlist,
+                            onAddEatlistToLibrary = { viewModel?.addEatlistPhotoToLibrary(photo.id) }
                         )
                     }
                 }
@@ -757,7 +756,8 @@ fun SnippetsDetailContent(
                             photo = photo,
                             onOpenLink = onOpenLink,
                             onEditLink = onEditLink,
-                            onRemoveEatlist = onRemoveEatlist
+                            onRemoveEatlist = onRemoveEatlist,
+                            onAddEatlistToLibrary = { viewModel.addEatlistPhotoToLibrary(photo.id) }
                         )
                     }
                 }

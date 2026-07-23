@@ -993,12 +993,7 @@ fun LibraryScreen(
 
 
 
-                                // Filter
-                                if (currentTab == "Eatlist") {
-                                    MealDropdownChip(
-                                        modifier = Modifier.padding(end = 4.dp)
-                                    )
-                                }
+
 
                                 val isFilterActive = viewModel.selectedFilterSnippets.isNotEmpty() || viewModel.showFilterSheet
                                 AnimatedCookieButton(

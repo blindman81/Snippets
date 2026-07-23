@@ -90,8 +90,9 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false },
+                            shape = RoundedCornerShape(12.dp),
                             offset = DpOffset(x = (-16).dp, y = 8.dp),
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
                             DropdownMenuItem(
                                 text = { Text("Open source licenses", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) },

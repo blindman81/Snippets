@@ -28,93 +28,35 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ln.android.snippets.R
 import com.android.snippets.model.Photo
+import com.android.snippets.ui.shapes.LocalAppShape
 
 /**
  * Official Material 3 Specs Floating Action Button (FAB) for the Food Randomizer feature.
  *
  * M3 Specs Followed:
- * - Container shape: 16dp rounded corners (FloatingActionButtonDefaults.shape / ShapeDefaults.Large)
+ * - Container shape: LocalAppShape.current
  * - Container size: 56dp (Standard FAB)
  * - Icon size: 24dp
  * - Container color: primaryContainer with onPrimaryContainer content color
  * - Elevation: FloatingActionButtonDefaults.elevation (6.dp default, 12.dp pressed)
  * - Interactive Haptics & M3 Tooltip integration
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodRandomizerFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isExtended: Boolean = false
 ) {
-    val view = LocalView.current
-    val tooltipState = rememberTooltipState()
-
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
-        tooltip = {
-            PlainTooltip(
-                containerColor = MaterialTheme.colorScheme.inverseSurface,
-                contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("What to Eat? (Randomizer)")
-            }
-        },
-        state = tooltipState
-    ) {
-        if (isExtended) {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    onClick()
-                },
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_food_randomizer),
-                        contentDescription = "Food Randomizer",
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                text = {
-                    Text(
-                        text = "What to Eat?",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = FloatingActionButtonDefaults.shape,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 6.dp,
-                    pressedElevation = 12.dp
-                ),
-                modifier = modifier
-            )
-        } else {
-            FloatingActionButton(
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    onClick()
-                },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = FloatingActionButtonDefaults.shape,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 6.dp,
-                    pressedElevation = 12.dp
-                ),
-                modifier = modifier.size(56.dp)
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_food_randomizer),
-                    contentDescription = "What to Eat? (Randomizer)",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-    }
+    AnimatedCookieButton(
+        onClick = onClick,
+        icon = R.drawable.ic_food_randomizer,
+        contentDescription = "What to Eat? (Randomizer)",
+        tooltip = "What to Eat? (Randomizer)",
+        size = 56.dp,
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        modifier = modifier
+    )
 }
 
 /**
@@ -369,18 +311,18 @@ fun FoodRandomizerBottomSheet(
                 ) {
                     OutlinedButton(
                         onClick = { pickNextRandom() },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = ButtonDefaults.outlinedShape,
                         modifier = Modifier
                             .weight(1f)
-                            .height(52.dp)
+                            .height(ButtonDefaults.MinHeight)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Shuffle", fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("Shuffle", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -391,18 +333,18 @@ fun FoodRandomizerBottomSheet(
                                 onSelectPhoto(it)
                             }
                         },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = ButtonDefaults.shape,
                         modifier = Modifier
                             .weight(1f)
-                            .height(52.dp)
+                            .height(ButtonDefaults.MinHeight)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Restaurant,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Let's Eat!", fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("Let's Eat!", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
                 }
             }

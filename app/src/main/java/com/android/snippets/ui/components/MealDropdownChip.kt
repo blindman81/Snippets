@@ -27,6 +27,7 @@ import androidx.work.*
 import com.android.snippets.MainActivity
 import com.android.snippets.logic.DailyReminderWorker
 import com.android.snippets.logic.MemoryWorker
+import com.android.snippets.ui.shapes.LocalAppShape
 import com.ln.android.snippets.R
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
@@ -121,18 +122,14 @@ fun MealDropdownChip(
             expanded = isExpanded,
             onDismissRequest = { isExpanded = false },
             shape = RoundedCornerShape(12.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shadowElevation = 3.dp,
+            tonalElevation = 3.dp
         ) {
             options.forEach { option ->
                 val isOptionSelected = currentSelectedMeal == option
                 DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = option,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isOptionSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    },
+                    text = { Text(option) },
                     leadingIcon = if (isOptionSelected) {
                         {
                             Icon(
@@ -142,11 +139,7 @@ fun MealDropdownChip(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
-                    } else {
-                        {
-                            Spacer(modifier = Modifier.size(20.dp))
-                        }
-                    },
+                    } else null,
                     onClick = {
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                         currentSelectedMeal = option
@@ -283,25 +276,6 @@ fun sendMealReminderNotification(
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
-    val notificationTitle = if (mealType.isNotBlank()) "$mealType Reminder" else "Meal Reminder"
-    val notificationText = "You have food to eat today"
-
-    val notification = NotificationCompat.Builder(context, MemoryWorker.CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_notification)
-        .setContentTitle(notificationTitle)
-        .setContentText(notificationText)
-        .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
-        .setPriority(NotificationCompat.PRIORITY_HIGH)
-        .setCategory(NotificationCompat.CATEGORY_REMINDER)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .setAutoCancel(true)
-        .setContentIntent(pendingIntent)
-        .build()
-
-    // Immediately post notification for prompt feedback & test verification
-    notificationManager.notify(DailyReminderWorker.NOTIFICATION_ID + mealType.hashCode(), notification)
-
-    // Also schedule via WorkManager if time is in the future
     val scheduledCal = Calendar.getInstance().apply {
         timeInMillis = dateMillis
         set(Calendar.HOUR_OF_DAY, hour)
@@ -312,6 +286,7 @@ fun sendMealReminderNotification(
 
     val now = System.currentTimeMillis()
     val delayMs = scheduledCal.timeInMillis - now
+
     if (delayMs > 0) {
         val workData = workDataOf(
             "meal_type" to mealType
@@ -328,5 +303,23 @@ fun sendMealReminderNotification(
             ExistingWorkPolicy.REPLACE,
             workRequest
         )
+    } else {
+        // Time is current/past, post immediately
+        val notificationTitle = if (mealType.isNotBlank()) "$mealType Reminder" else "Meal Reminder"
+        val notificationText = "You have food to eat today"
+
+        val notification = NotificationCompat.Builder(context, MemoryWorker.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(notificationTitle)
+            .setContentText(notificationText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(DailyReminderWorker.NOTIFICATION_ID + mealType.hashCode(), notification)
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import android.view.HapticFeedbackConstants
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -70,6 +71,7 @@ fun SplitButton(
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
+                        shape = RoundedCornerShape(12.dp),
                         offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         shadowElevation = 6.dp

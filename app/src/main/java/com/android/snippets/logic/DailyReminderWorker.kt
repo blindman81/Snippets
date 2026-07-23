@@ -25,6 +25,12 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
     }
 
     override fun doWork(): Result {
+        val mealType = inputData.getString("meal_type")
+        if (!mealType.isNullOrBlank()) {
+            postMealNotification(mealType)
+            return Result.success()
+        }
+
         val prefs = applicationContext.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
         val enabled = prefs.getBoolean("notification_reminder_enabled", false)
 
@@ -44,6 +50,40 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
         rescheduleNext(prefs)
 
         return Result.success()
+    }
+
+    private fun postMealNotification(mealType: String) {
+        val notificationManager =
+            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val pendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            1001,
+            Intent(applicationContext, com.android.snippets.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("open_eatlist", true)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val title = if (mealType.isNotBlank()) "$mealType Reminder" else "Meal Reminder"
+        val text = "You have food to eat today"
+
+        val notification = NotificationCompat.Builder(applicationContext, MemoryWorker.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(NOTIFICATION_ID + mealType.hashCode(), notification)
     }
 
     private fun pendingMemoriesCount(): Int {

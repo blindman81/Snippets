@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -1496,15 +1497,101 @@ fun EatlistSingleListCardContainer(
     onOpenLink: (String) -> Unit,
     onEditLink: () -> Unit,
     onRemoveEatlist: () -> Unit,
+    onAddEatlistToLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val photoShape = LocalAppShape.current
+    var showActionDialog by remember { mutableStateOf(false) }
+
     val placeName = remember(photo) {
         LocationUtils.getLocationFromExif(context, photo)
             ?: LocationUtils.extractPlaceNameFromLink(photo.locationLink ?: "")
             ?: "Eatlist photo"
+    }
+
+    if (showActionDialog) {
+        AlertDialog(
+            onDismissRequest = { showActionDialog = false },
+            title = {
+                Text(
+                    text = "Eatlist options",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextButton(
+                        onClick = {
+                            showActionDialog = false
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onAddEatlistToLibrary()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LibraryAdd,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Add to library",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = {
+                            showActionDialog = false
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onRemoveEatlist()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Mark as eaten and delete",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { showActionDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(28.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
     }
 
     Surface(
@@ -1568,10 +1655,6 @@ fun EatlistSingleListCardContainer(
                     .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.Center
             ) {
-                MealDropdownChip(
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-
                 Text(
                     text = placeName,
                     style = MaterialTheme.typography.titleMedium.copy(
@@ -1645,58 +1728,34 @@ fun EatlistSingleListCardContainer(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // Link Icon Action Button
-                Surface(
-                    shape = CircleShape,
-                    color = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .combinedClickable(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                if (!photo.locationLink.isNullOrBlank()) {
-                                    onOpenLink(photo.locationLink)
-                                } else {
-                                    onEditLink()
-                                }
-                            },
-                            onLongClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                onEditLink()
-                            }
-                        )
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_add_link),
-                            contentDescription = "Link Action",
-                            tint = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                AnimatedCookieButton(
+                    onClick = {
+                        if (!photo.locationLink.isNullOrBlank()) {
+                            onOpenLink(photo.locationLink)
+                        } else {
+                            onEditLink()
+                        }
+                    },
+                    icon = R.drawable.ic_add_link,
+                    contentDescription = "Link Action",
+                    tooltip = "Link Action",
+                    size = 36.dp,
+                    containerColor = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
                 // Checkmark / Eatlist Action Button
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .clickable {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onRemoveEatlist()
-                        }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Eatlist check",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                AnimatedCookieButton(
+                    onClick = {
+                        showActionDialog = true
+                    },
+                    icon = Icons.Default.Check,
+                    contentDescription = "Eatlist check",
+                    tooltip = "Eatlist options",
+                    size = 36.dp,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
     }
