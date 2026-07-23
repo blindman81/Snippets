@@ -105,20 +105,15 @@ fun FoodRandomizerBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_food_randomizer),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
+                AnimatedCookieButton(
+                    onClick = { pickNextRandom() },
+                    icon = R.drawable.ic_food_randomizer,
+                    contentDescription = "Shuffle",
+                    tooltip = "Shuffle next food recommendation",
+                    size = 44.dp,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
