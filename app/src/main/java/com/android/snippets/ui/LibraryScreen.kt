@@ -58,6 +58,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Alignment
@@ -564,126 +565,155 @@ fun LibraryScreen(
                                          horizontalArrangement = Arrangement.Center,
                                          verticalAlignment = Alignment.CenterVertically
                                      ) {
-                                         androidx.compose.material3.ButtonGroup(
-                                             horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
-                                             overflowIndicator = {}
-                                         ) {
-                                             allTabs.forEach { tabName ->
-                                                 val isSelected = tabName == currentTab
-                                                 val iconOrEmoji = when (tabName) {
-                                                     "Library" -> Icons.Default.PhotoLibrary
-                                                     "Favorites" -> Icons.Default.Favorite
-                                                     "Eatlist" -> com.ln.android.snippets.R.drawable.ic_eatlist
-                                                     else -> viewModel.getCollectionIcon(tabName)
-                                                 }
-                                                 val isSystem = tabName == "Library" || tabName == "Favorites" || tabName == "Eatlist"
-                                                 val customIndex = viewModel.userCollections.indexOf(tabName)
+                                          androidx.compose.material3.ButtonGroup(
+                                              horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
+                                              overflowIndicator = {}
+                                          ) {
+                                              allTabs.forEachIndexed { tabIndex, tabName ->
+                                                  val isSelected = tabName == currentTab
+                                                  val iconOrEmoji = when (tabName) {
+                                                      "Library" -> Icons.Default.PhotoLibrary
+                                                      "Favorites" -> Icons.Default.Favorite
+                                                      "Eatlist" -> com.ln.android.snippets.R.drawable.ic_eatlist
+                                                      else -> viewModel.getCollectionIcon(tabName)
+                                                  }
+                                                  val isSystem = tabName == "Library" || tabName == "Favorites" || tabName == "Eatlist"
+                                                  val customIndex = viewModel.userCollections.indexOf(tabName)
 
-                                                 customItem(
-                                                     buttonGroupContent = {
-                                                         key(tabName) {
-                                                             val isDragged = draggedCollection == tabName
-                                                             val density = androidx.compose.ui.platform.LocalDensity.current
-                                                             val positionModifier = Modifier.onGloballyPositioned { coords ->
-                                                                 tabPositions[tabName] = coords.boundsInParent().left
-                                                                 tabWidths[tabName] = coords.size.width.toFloat()
-                                                             }
-                                                             val itemWidthPx = remember { with(density) { 120.dp.toPx() } }
+                                                  customItem(
+                                                      buttonGroupContent = {
+                                                          key(tabName) {
+                                                              val isDragged = draggedCollection == tabName
+                                                              val density = androidx.compose.ui.platform.LocalDensity.current
+                                                              val positionModifier = Modifier.onGloballyPositioned { coords ->
+                                                                  tabPositions[tabName] = coords.boundsInParent().left
+                                                                  tabWidths[tabName] = coords.size.width.toFloat()
+                                                              }
+                                                              val itemWidthPx = remember { with(density) { 120.dp.toPx() } }
 
-                                                             val dragModifier = if (!isSystem) {
-                                                                 Modifier
-                                                                     .pointerInput(tabName) {
-                                                                         detectDragGesturesAfterLongPress(
-                                                                             onDragStart = {
-                                                                                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                                 draggedCollection = tabName
-                                                                                 scope.launch { dragOffsetAnim.snapTo(0f) }
-                                                                             },
-                                                                             onDrag = { change, dragAmount ->
-                                                                                 change.consume()
-                                                                                 scope.launch { dragOffsetAnim.snapTo(dragOffsetAnim.value + dragAmount.x) }
-                                                                                 
-                                                                                 val index = viewModel.userCollections.indexOf(tabName)
-                                                                                 if (index != -1) {
-                                                                                     if (dragOffsetAnim.value > itemWidthPx && index < viewModel.userCollections.size - 1) {
-                                                                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                                         viewModel.moveCollectionRight(tabName)
-                                                                                         scope.launch {
-                                                                                             dragOffsetAnim.animateTo(
-                                                                                                 dragOffsetAnim.value - itemWidthPx,
-                                                                                                 androidx.compose.animation.core.spring(
-                                                                                                     dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                                                                                     stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-                                                                                                 )
-                                                                                             )
-                                                                                         }
-                                                                                     } else if (dragOffsetAnim.value < -itemWidthPx && index > 0) {
-                                                                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                                         viewModel.moveCollectionLeft(tabName)
-                                                                                         scope.launch {
-                                                                                             dragOffsetAnim.animateTo(
-                                                                                                 dragOffsetAnim.value + itemWidthPx,
-                                                                                                 androidx.compose.animation.core.spring(
-                                                                                                     dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                                                                                     stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-                                                                                                 )
-                                                                                             )
-                                                                                         }
-                                                                                     }
-                                                                                 }
-                                                                             },
-                                                                             onDragEnd = {
-                                                                                 scope.launch {
-                                                                                     dragOffsetAnim.animateTo(
-                                                                                         0f,
-                                                                                         androidx.compose.animation.core.spring(
-                                                                                             dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                                                                             stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                                                                         )
-                                                                                     )
-                                                                                     draggedCollection = null
-                                                                                 }
-                                                                             },
-                                                                             onDragCancel = {
-                                                                                 scope.launch {
-                                                                                     dragOffsetAnim.snapTo(0f)
-                                                                                     draggedCollection = null
-                                                                                 }
-                                                                             }
-                                                                         )
-                                                                     }
-                                                                     .graphicsLayer {
-                                                                         val currentlyDragged = draggedCollection == tabName
-                                                                         translationX = if (currentlyDragged) dragOffsetAnim.value else 0f
-                                                                         scaleX = if (currentlyDragged) 1.08f else 1f
-                                                                         scaleY = if (currentlyDragged) 1.08f else 1f
-                                                                         alpha = if (currentlyDragged) 0.85f else 1f
-                                                                         shadowElevation = 0f
-                                                                     }
-                                                             } else {
-                                                                 Modifier
-                                                             }
+                                                              val dragModifier = if (!isSystem) {
+                                                                  Modifier
+                                                                      .pointerInput(tabName) {
+                                                                          detectDragGesturesAfterLongPress(
+                                                                              onDragStart = {
+                                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                                  draggedCollection = tabName
+                                                                                  scope.launch { dragOffsetAnim.snapTo(0f) }
+                                                                              },
+                                                                              onDrag = { change, dragAmount ->
+                                                                                  change.consume()
+                                                                                  scope.launch { dragOffsetAnim.snapTo(dragOffsetAnim.value + dragAmount.x) }
+                                                                                  
+                                                                                  val index = viewModel.userCollections.indexOf(tabName)
+                                                                                  if (index != -1) {
+                                                                                      if (dragOffsetAnim.value > itemWidthPx && index < viewModel.userCollections.size - 1) {
+                                                                                          view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                                          viewModel.moveCollectionRight(tabName)
+                                                                                          scope.launch {
+                                                                                              dragOffsetAnim.animateTo(
+                                                                                                  dragOffsetAnim.value - itemWidthPx,
+                                                                                                  androidx.compose.animation.core.spring(
+                                                                                                      dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                                                                                      stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                                                                                                  )
+                                                                                              )
+                                                                                          }
+                                                                                      } else if (dragOffsetAnim.value < -itemWidthPx && index > 0) {
+                                                                                          view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                                          viewModel.moveCollectionLeft(tabName)
+                                                                                          scope.launch {
+                                                                                              dragOffsetAnim.animateTo(
+                                                                                                  dragOffsetAnim.value + itemWidthPx,
+                                                                                                  androidx.compose.animation.core.spring(
+                                                                                                      dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                                                                                      stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                                                                                                  )
+                                                                                              )
+                                                                                          }
+                                                                                      }
+                                                                                  }
+                                                                              },
+                                                                              onDragEnd = {
+                                                                                  scope.launch {
+                                                                                      dragOffsetAnim.animateTo(
+                                                                                          0f,
+                                                                                          androidx.compose.animation.core.spring(
+                                                                                              dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                                                                              stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                                                                          )
+                                                                                      )
+                                                                                      draggedCollection = null
+                                                                                  }
+                                                                              },
+                                                                              onDragCancel = {
+                                                                                  scope.launch {
+                                                                                      dragOffsetAnim.snapTo(0f)
+                                                                                      draggedCollection = null
+                                                                                  }
+                                                                              }
+                                                                          )
+                                                                      }
+                                                                      .graphicsLayer {
+                                                                          val currentlyDragged = draggedCollection == tabName
+                                                                          translationX = if (currentlyDragged) dragOffsetAnim.value else 0f
+                                                                          scaleX = if (currentlyDragged) 1.08f else 1f
+                                                                          scaleY = if (currentlyDragged) 1.08f else 1f
+                                                                          alpha = if (currentlyDragged) 0.85f else 1f
+                                                                          shadowElevation = 0f
+                                                                      }
+                                                              } else {
+                                                                  Modifier
+                                                              }
 
-                                                             ToggleButton(
-                                                                 checked = isSelected,
-                                                                 onCheckedChange = { checked ->
-                                                                     val pageIndex = pageTabs.indexOf(tabName)
-                                                                     if (pageIndex != -1) {
-                                                                         if (isSelected) {
-                                                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                         } else {
-                                                                             scope.launch { pagerState.animateScrollToPage(pageIndex) }
-                                                                         }
-                                                                     }
-                                                                 },
-                                                                 colors = ToggleButtonDefaults.toggleButtonColors(
-                                                                     checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                                                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                                 ),
-                                                                 modifier = dragModifier.then(positionModifier).height(48.dp).widthIn(min = if (isSelected) 104.dp else 84.dp, max = 200.dp)
-                                                             ) {
+                                                              val interactionSource = remember { MutableInteractionSource() }
+                                                              val isPressed by interactionSource.collectIsPressedAsState()
+
+                                                              // Calculate target width for spring animation & press compression
+                                                              val targetWidth = when {
+                                                                  isSelected && isPressed -> 94.dp
+                                                                  isSelected -> 116.dp
+                                                                  isPressed -> 64.dp
+                                                                  else -> 78.dp
+                                                              }
+
+                                                              val animatedWidth by animateDpAsState(
+                                                                  targetValue = targetWidth,
+                                                                  animationSpec = androidx.compose.animation.core.spring(
+                                                                      dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+                                                                      stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                                                  ),
+                                                                  label = "tabWidth_$tabName"
+                                                              )
+
+                                                              val shapes = when {
+                                                                  allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes
+                                                                  tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes
+                                                                  tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes
+                                                                  else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes
+                                                              }
+
+                                                              ToggleButton(
+                                                                  checked = isSelected,
+                                                                  onCheckedChange = { checked ->
+                                                                      val pageIndex = pageTabs.indexOf(tabName)
+                                                                      if (pageIndex != -1) {
+                                                                          if (isSelected) {
+                                                                              view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                          } else {
+                                                                              scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                                          }
+                                                                      }
+                                                                  },
+                                                                  interactionSource = interactionSource,
+                                                                  shapes = shapes,
+                                                                  colors = ToggleButtonDefaults.toggleButtonColors(
+                                                                      checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                                      checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                                      containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                      contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                  ),
+                                                                  modifier = dragModifier.then(positionModifier).height(48.dp).width(animatedWidth)
+                                                              ) {
                                                                  Row(
                                                                      verticalAlignment = Alignment.CenterVertically,
                                                                      horizontalArrangement = Arrangement.spacedBy(8.dp)
