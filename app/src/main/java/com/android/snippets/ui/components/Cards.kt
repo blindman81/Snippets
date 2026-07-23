@@ -38,11 +38,10 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
-import com.android.snippets.ui.shapes.LocalAppShape
-import com.android.snippets.ui.shapes.LocalAppShapeType
-import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.*
+import com.android.snippets.ui.theme.*
+import com.android.snippets.ui.util.*
 import com.android.snippets.ui.components.*
-import com.android.snippets.ui.theme.GoogleSansFlexWide
 import androidx.compose.material3.carousel.rememberCarouselState
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
@@ -1036,14 +1035,14 @@ fun PhotoCardListItem(
                 .height(190.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left side: Photo Box takes 60% of card space, centered
+            // Photo Box: takes full card space for Eatlist, or 60% for cards with snippets column
             Box(
                 modifier = Modifier
-                    .weight(0.60f)
+                    .weight(if (tab == "Eatlist") 1f else 0.60f)
                     .fillMaxHeight()
                     .background(
                         color = blockColor,
-                        shape = RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp)
+                        shape = if (tab == "Eatlist") RoundedCornerShape(0.dp) else RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
