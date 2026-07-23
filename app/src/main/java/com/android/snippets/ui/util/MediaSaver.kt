@@ -570,7 +570,10 @@ object MediaSaver {
                     pillPaint.alpha = (255 * 0.40f).toInt()
                     canvas.drawPath(pillPath, pillPaint)
                 }
-                canvas.drawText(pill.text, x, y + ((pill.textBounds.height() * fitScale) / 3f), textPaint)
+                val currentBounds = Rect()
+                textPaint.getTextBounds(pill.text, 0, pill.text.length, currentBounds)
+                val textY = y - currentBounds.exactCenterY()
+                canvas.drawText(pill.text, x, textY, textPaint)
                 canvas.restore()
                 
                 currentX += scaledBoundingW + scaledSpacingX

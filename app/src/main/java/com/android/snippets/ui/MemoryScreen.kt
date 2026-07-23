@@ -708,26 +708,35 @@ fun FloatingSnippet(
                 .widthIn(max = maxSnippetWidth)
                 .sizeIn(minWidth = 1.dp, minHeight = 1.dp)
         ) {
-            val snippetGradient = remember(snippetColor) {
-                Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
-            }
-            Text(
-                text = text,
-                style = textStyle.copy(brush = snippetGradient),
-                color = Color.Unspecified,
-                modifier = Modifier.padding(
-                    horizontal = (when (personality) {
-                        0, 1 -> 24
-                        2, 3 -> 18
-                        else -> 12
-                    } * finalScaling.coerceAtMost(1.5f)).dp,
-                    vertical = (when (personality) {
-                        0, 1 -> 12
-                        2, 3 -> 9
-                        else -> 6
-                    } * finalScaling.coerceAtMost(1.5f)).dp
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val snippetGradient = remember(snippetColor) {
+                    Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
+                }
+                Text(
+                    text = text,
+                    style = textStyle.copy(
+                        brush = snippetGradient,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    ),
+                    color = Color.Unspecified,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(
+                        horizontal = (when (personality) {
+                            0, 1 -> 24
+                            2, 3 -> 18
+                            else -> 12
+                        } * finalScaling.coerceAtMost(1.5f)).dp,
+                        vertical = (when (personality) {
+                            0, 1 -> 12
+                            2, 3 -> 9
+                            else -> 6
+                        } * finalScaling.coerceAtMost(1.5f)).dp
+                    )
                 )
-            )
+            }
         }
     }
 }
