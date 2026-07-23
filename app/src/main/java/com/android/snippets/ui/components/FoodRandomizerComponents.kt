@@ -3,6 +3,12 @@ package com.android.snippets.ui.components
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -297,7 +303,33 @@ fun FoodRandomizerBottomSheet(
                     }
                 }
 
-                // Action Buttons
+                // Action Buttons with M3 Press Shape Morphing Animation
+                val shuffleInteraction = remember { MutableInteractionSource() }
+                val isShufflePressed by shuffleInteraction.collectIsPressedAsState()
+                val shuffleCornerRadius by animateDpAsState(
+                    targetValue = if (isShufflePressed) 24.dp else 12.dp,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                    label = "shuffle_corner_morph"
+                )
+                val shuffleScale by animateFloatAsState(
+                    targetValue = if (isShufflePressed) 0.95f else 1.0f,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                    label = "shuffle_scale"
+                )
+
+                val eatInteraction = remember { MutableInteractionSource() }
+                val isEatPressed by eatInteraction.collectIsPressedAsState()
+                val eatCornerRadius by animateDpAsState(
+                    targetValue = if (isEatPressed) 24.dp else 12.dp,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                    label = "eat_corner_morph"
+                )
+                val eatScale by animateFloatAsState(
+                    targetValue = if (isEatPressed) 0.95f else 1.0f,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                    label = "eat_scale"
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -305,11 +337,16 @@ fun FoodRandomizerBottomSheet(
                 ) {
                     OutlinedButton(
                         onClick = { pickNextRandom() },
-                        shape = ButtonDefaults.outlinedShape,
+                        shape = RoundedCornerShape(shuffleCornerRadius),
+                        interactionSource = shuffleInteraction,
                         contentPadding = ButtonDefaults.ContentPadding,
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
+                            .graphicsLayer {
+                                scaleX = shuffleScale
+                                scaleY = shuffleScale
+                            }
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
@@ -332,11 +369,16 @@ fun FoodRandomizerBottomSheet(
                                 onSelectPhoto(it)
                             }
                         },
-                        shape = ButtonDefaults.shape,
+                        shape = RoundedCornerShape(eatCornerRadius),
+                        interactionSource = eatInteraction,
                         contentPadding = ButtonDefaults.ContentPadding,
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
+                            .graphicsLayer {
+                                scaleX = eatScale
+                                scaleY = eatScale
+                            }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Restaurant,
