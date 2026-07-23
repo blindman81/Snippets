@@ -528,7 +528,7 @@ fun LibraryScreen(
                                   Box(
                                       modifier = Modifier
                                           .fillMaxWidth()
-                                          .height(statusBarTop + 80.dp)
+                                          .height(statusBarTop + 50.dp)
                                           .align(Alignment.TopCenter)
                                           .graphicsLayer { alpha = statusBarBrushAlpha }
                                           .background(
