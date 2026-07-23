@@ -145,7 +145,8 @@ fun LibraryScreen(
         }
     }
     
-    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet
+    var showFoodRandomizerBottomSheet by remember { mutableStateOf(false) }
+    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet || showFoodRandomizerBottomSheet
     val allowMemorySpin = !isAnyPopupActive
     val curated = viewModel.curatedMemories
     
@@ -686,10 +687,10 @@ fun LibraryScreen(
                                                               )
 
                                                               val shapes = when {
-                                                                  allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes
-                                                                  tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes
-                                                                  tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes
-                                                                  else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes
+                                                                  allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                                                  tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                                                  tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                                                  else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
                                                               }
 
                                                               ToggleButton(
@@ -1056,6 +1057,23 @@ fun LibraryScreen(
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         size = 48.dp,
                         isSpinning = false
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = currentTab == "Eatlist" && !viewModel.isSelectionMode && !isSearchOpen,
+                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                    exit = fadeOut() + scaleOut(targetScale = 0.8f),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .safeDrawingPadding()
+                        .padding(end = 20.dp, bottom = 92.dp)
+                        .offset(y = toolbarOffset)
+                ) {
+                    FoodRandomizerFab(
+                        onClick = {
+                            showFoodRandomizerBottomSheet = true
+                        }
                     )
                 }
 
@@ -1528,6 +1546,19 @@ fun LibraryScreen(
                         }
                     )
                 }
+
+                FoodRandomizerBottomSheet(
+                    show = showFoodRandomizerBottomSheet,
+                    onDismissRequest = { showFoodRandomizerBottomSheet = false },
+                    eatlistPhotos = remember(flatPhotosRaw) { flatPhotosRaw.filter { it.collections.contains("Eatlist") } },
+                    onSelectPhoto = { photo ->
+                        if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                            viewModel.activePhotoId = photo.id
+                        } else {
+                            viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
+                        }
+                    }
+                )
             }
         }
     }
