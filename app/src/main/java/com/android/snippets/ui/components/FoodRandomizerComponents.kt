@@ -136,13 +136,13 @@ fun FoodRandomizerBottomSheet(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "What to Eat?",
+                        text = "Not sure what to eat?",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Random dish recommendation from your Eatlist",
+                        text = "Here's a random food recommendation from your eatlist.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -226,15 +226,13 @@ fun FoodRandomizerBottomSheet(
                                         )
                                 )
 
-                                // Top badges (Rating & Eatlist badge)
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (photo.rating > 0) {
+                                // Top badge (Rating)
+                                if (photo.rating > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp)
+                                    ) {
                                         Surface(
                                             shape = RoundedCornerShape(100),
                                             color = Color.Black.copy(alpha = 0.65f),
@@ -258,42 +256,17 @@ fun FoodRandomizerBottomSheet(
                                                 )
                                             }
                                         }
-                                    } else {
-                                        Spacer(modifier = Modifier.width(1.dp))
-                                    }
-
-                                    Surface(
-                                        shape = RoundedCornerShape(100),
-                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.ic_eatlist),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Text(
-                                                text = "Eatlist",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
                                     }
                                 }
 
-                                // Bottom dish title / snippet text
-                                Column(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomStart)
-                                        .padding(20.dp)
-                                ) {
-                                    val primarySnippet = photo.snippets.firstOrNull()
-                                    if (!primarySnippet.isNullOrEmpty()) {
+                                // Bottom dish snippet text
+                                val primarySnippet = photo.snippets.firstOrNull()
+                                if (!primarySnippet.isNullOrEmpty()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .padding(20.dp)
+                                    ) {
                                         Text(
                                             text = primarySnippet,
                                             style = MaterialTheme.typography.headlineSmall,
@@ -302,13 +275,6 @@ fun FoodRandomizerBottomSheet(
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
-                                    } else {
-                                        Text(
-                                            text = "Tasty Discovery",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
                                     }
                                 }
                             }
@@ -316,11 +282,11 @@ fun FoodRandomizerBottomSheet(
                     }
                 }
 
-                // Action Buttons with M3 Press Shape Morphing Animation
+                // Action Buttons with M3 Press Shape Morphing Animation (Circular to Rounded Rectangle)
                 val shuffleInteraction = remember { MutableInteractionSource() }
                 val isShufflePressed by shuffleInteraction.collectIsPressedAsState()
                 val shuffleCornerRadius by animateDpAsState(
-                    targetValue = if (isShufflePressed) 24.dp else 12.dp,
+                    targetValue = if (isShufflePressed) 12.dp else 50.dp,
                     animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
                     label = "shuffle_corner_morph"
                 )
@@ -333,7 +299,7 @@ fun FoodRandomizerBottomSheet(
                 val eatInteraction = remember { MutableInteractionSource() }
                 val isEatPressed by eatInteraction.collectIsPressedAsState()
                 val eatCornerRadius by animateDpAsState(
-                    targetValue = if (isEatPressed) 24.dp else 12.dp,
+                    targetValue = if (isEatPressed) 12.dp else 50.dp,
                     animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
                     label = "eat_corner_morph"
                 )

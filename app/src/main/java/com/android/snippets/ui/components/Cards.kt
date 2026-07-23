@@ -11,6 +11,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
@@ -1663,12 +1664,11 @@ fun EatlistSingleListCardContainer(
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
 
-                Spacer(modifier = Modifier.height(2.dp))
-
                 if (!photo.locationLink.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -1681,7 +1681,7 @@ fun EatlistSingleListCardContainer(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_add_link),
                             contentDescription = "Link",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -1690,33 +1690,10 @@ fun EatlistSingleListCardContainer(
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontWeight = FontWeight.Medium
                             ),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.secondary,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
-                        )
-                    }
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .clickable {
-                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                onEditLink()
-                            }
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_add_link),
-                            contentDescription = "Add Link",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Add link",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -1740,8 +1717,8 @@ fun EatlistSingleListCardContainer(
                     contentDescription = "Link Action",
                     tooltip = "Link Action",
                     size = 36.dp,
-                    containerColor = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    containerColor = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 // Checkmark / Eatlist Action Button
