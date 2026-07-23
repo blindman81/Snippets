@@ -787,9 +787,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         var changed = false
         val scheduledNotifications = mutableListOf<Pair<String, Long>>()
         val updatedPhotos = photos.map { photo ->
-            val isErroneouslyViewed = photo.isViewed && photo.snippetsAddedTime != 0L && photo.lastViewedTime < photo.snippetsAddedTime + NEW_MEMORY_WAIT_MS
             val isEatlistPhotoWithMemory = photo.collections.contains("Eatlist") && (photo.surfacedTime != 0L || photo.isViewed || photo.lastViewedTime != 0L)
-            if (shouldResurfaceMemory(photo, now) || isErroneouslyViewed || isEatlistPhotoWithMemory) {
+            if (shouldResurfaceMemory(photo, now) || isEatlistPhotoWithMemory) {
                 changed = true
                 if (isEatlistPhotoWithMemory) {
                     cancelMemoryNotification(photo.id)
@@ -798,7 +797,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             } else photo
         }.toMutableList()
 
-        val assignedTimes = updatedPhotos.map { it.surfacedTime }.filter { it != 0L }
+        val assignedTimes = updatedPhotos.map { it.surfacedTime }.filter { it != 0L && it > now - VIEWED_MEMORY_VISIBLE_MS }
 
         val queuedCandidates = updatedPhotos.filter { photo ->
             photo.isLibraryUpload &&
@@ -874,16 +873,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val activeAssignedTimes = assignedTimes.toMutableList()
             var attempts = 0
             while (attempts < 1000) {
-                val conflict = activeAssignedTimes.find { assigned ->
-                    val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
-                    diff < SURFACED_MEMORY_SPACING_MS
-                }
-                if (conflict != null) {
-                    candidateTime = maxOf(candidateTime, conflict) + SURFACED_MEMORY_SPACING_MS
-                    attempts++
-                    continue
-                }
-
                 val dayStart = getStartOfDay(candidateTime)
                 val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
                 if (countOnDay >= 5) {
