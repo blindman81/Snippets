@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -111,15 +112,27 @@ fun FoodRandomizerBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                AnimatedCookieButton(
-                    onClick = { pickNextRandom() },
-                    icon = R.drawable.ic_food_randomizer,
-                    contentDescription = "Shuffle",
-                    tooltip = "Shuffle next food recommendation",
-                    size = 44.dp,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                val appShape = LocalAppShape.current
+                Surface(
+                    shape = appShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(appShape)
+                        .clickable {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            pickNextRandom()
+                        }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_food_randomizer),
+                            contentDescription = "Shuffle",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
