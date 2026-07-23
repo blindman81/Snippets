@@ -994,6 +994,12 @@ fun LibraryScreen(
 
 
                                 // Filter
+                                if (currentTab == "Eatlist") {
+                                    MealDropdownChip(
+                                        modifier = Modifier.padding(end = 4.dp)
+                                    )
+                                }
+
                                 val isFilterActive = viewModel.selectedFilterSnippets.isNotEmpty() || viewModel.showFilterSheet
                                 AnimatedCookieButton(
                                     onClick = {
@@ -1527,8 +1533,8 @@ fun LibraryScreen(
                 photoToDeleteFromEatlist?.let { photo ->
                     AlertDialog(
                         onDismissRequest = { photoToDeleteFromEatlist = null },
-                        title = { Text("Delete photo") },
-                        text = { Text("Are you sure you want to delete this photo? This cannot be undone.") },
+                        title = { Text("Mark as eaten and delete") },
+                        text = { Text("Are you sure you want to mark this item as eaten and delete it from Eatlist?") },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -1536,7 +1542,7 @@ fun LibraryScreen(
                                     photoToDeleteFromEatlist = null
                                 }
                             ) {
-                                Text("Delete", color = MaterialTheme.colorScheme.error)
+                                Text("Mark as eaten", color = MaterialTheme.colorScheme.primary)
                             }
                         },
                         dismissButton = {

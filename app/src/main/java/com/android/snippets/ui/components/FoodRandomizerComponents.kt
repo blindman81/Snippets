@@ -193,6 +193,14 @@ fun FoodRandomizerBottomSheet(
                 }
             }
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MealDropdownChip()
+            }
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
             if (eatlistPhotos.isEmpty() || currentPhoto == null) {
