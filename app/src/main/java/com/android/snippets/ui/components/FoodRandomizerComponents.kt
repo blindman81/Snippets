@@ -143,8 +143,6 @@ fun FoodRandomizerBottomSheet(
                 MealDropdownChip()
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
             if (eatlistPhotos.isEmpty() || currentPhoto == null) {
                 // Empty state
                 Column(
@@ -307,11 +305,13 @@ fun FoodRandomizerBottomSheet(
                 // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedButton(
                         onClick = { pickNextRandom() },
                         shape = ButtonDefaults.outlinedShape,
+                        contentPadding = ButtonDefaults.ContentPadding,
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
@@ -322,7 +322,11 @@ fun FoodRandomizerBottomSheet(
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
                         Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Shuffle", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "Shuffle",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
 
                     Button(
@@ -334,6 +338,7 @@ fun FoodRandomizerBottomSheet(
                             }
                         },
                         shape = ButtonDefaults.shape,
+                        contentPadding = ButtonDefaults.ContentPadding,
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
@@ -344,7 +349,11 @@ fun FoodRandomizerBottomSheet(
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
                         Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Let's Eat!", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "Let's Eat!",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
