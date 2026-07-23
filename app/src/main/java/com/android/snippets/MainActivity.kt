@@ -48,8 +48,15 @@ class MainActivity : ComponentActivity() {
     private var pendingNotificationPhotoId by mutableStateOf<String?>(null)
     private var pendingNotificationToken by mutableStateOf(0L)
     private var pendingSharedImageUri by mutableStateOf<android.net.Uri?>(null)
+    private var pendingSharedText by mutableStateOf<String?>(null)
     private var pendingShareToken by mutableStateOf(0L)
     private var pendingHistoryIntentToken by mutableStateOf(0L)
+
+    private fun extractUrlOnly(text: String?): String? {
+        if (text.isNullOrBlank()) return null
+        val urlRegex = """(https?://[^\s]+)""".toRegex()
+        return urlRegex.find(text)?.value
+    }
 
     private fun handleNotificationIntent(intent: android.content.Intent?) {
         if (intent?.getBooleanExtra("open_memory", false) == true) {
@@ -74,8 +81,13 @@ class MainActivity : ComponentActivity() {
                 @Suppress("DEPRECATION")
                 intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM) as? android.net.Uri
             }
+            val rawText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                ?: intent.getStringExtra(android.content.Intent.EXTRA_SUBJECT)
+                ?: intent.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)?.toString()
+            val extractedUrl = extractUrlOnly(rawText)
             if (uri != null) {
                 pendingSharedImageUri = uri
+                pendingSharedText = extractedUrl
                 pendingShareToken = System.currentTimeMillis()
             }
             intent.action = null
@@ -171,15 +183,17 @@ class MainActivity : ComponentActivity() {
 
                             val shareToken = pendingShareToken
                             val sharedUri = pendingSharedImageUri
+                            val sharedLink = pendingSharedText
                             androidx.compose.runtime.LaunchedEffect(shareToken, viewModel.isInitialLoading) {
                                 if (!viewModel.isInitialLoading && shareToken != 0L && sharedUri != null) {
                                     viewModel.updateShowEatlist(true)
-                                    viewModel.addPhotoToCollection(sharedUri, "Eatlist")
+                                    viewModel.addPhotoToCollection(sharedUri, "Eatlist", locationLink = sharedLink)
                                     viewModel.currentScreen = com.android.snippets.viewmodel.Screen.Library
                                     viewModel.libraryCurrentTab = "Eatlist"
                                     
                                     pendingShareToken = 0L
                                     pendingSharedImageUri = null
+                                    pendingSharedText = null
                                 }
                             }
 

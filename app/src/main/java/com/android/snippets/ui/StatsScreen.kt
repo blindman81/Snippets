@@ -2,6 +2,7 @@ package com.android.snippets.ui
 import com.ln.android.snippets.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.draw.clip
 
 /**
@@ -309,6 +310,16 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     title = "Photos this month",
                     value = "$photosThisMonthCount ${if (photosThisMonthCount == 1) "photo" else "photos"}",
                     subtitle = "Added in the current calendar month",
+                    position = CardPosition.Middle
+                )
+
+                // 4b. Food eaten card
+                val foodEatenCount = viewModel.foodEatenCount
+                InsightCard(
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_eatlist),
+                    title = "Food eaten",
+                    value = "$foodEatenCount ${if (foodEatenCount == 1) "item" else "items"}",
+                    subtitle = "Items marked as eaten and deleted",
                     position = CardPosition.Middle
                 )
 

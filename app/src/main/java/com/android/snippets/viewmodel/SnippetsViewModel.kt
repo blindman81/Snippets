@@ -221,6 +221,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var showEatlist by mutableStateOf(true)
         private set
+    var foodEatenCount by mutableStateOf(0)
+        private set
     var autoBackupSchedule by mutableStateOf("Disabled")
         private set
     var showFilterSheet by mutableStateOf(false)
@@ -734,6 +736,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         makePhotosFollowShape = prefs.getBoolean("make_photos_follow_shape", false)
         makeListPhotosFollowShape = prefs.getBoolean("make_list_photos_follow_shape", false)
         showEatlist = prefs.getBoolean("show_eatlist", true)
+        foodEatenCount = prefs.getInt("food_eaten_count", 0)
         autoBackupSchedule = prefs.getString("auto_backup_schedule", "Disabled") ?: "Disabled"
         scheduleAutoBackup()
 
@@ -1152,7 +1155,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun addPhotoToCollection(uri: Uri, collectionName: String) {
+    fun addPhotoToCollection(uri: Uri, collectionName: String, locationLink: String? = null) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val captureDate = extractCaptureDate(uri)
             
@@ -1166,6 +1169,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     var updatedPhoto = duplicate
                     if (!duplicate.collections.contains(collectionName)) {
                         updatedPhoto = updatedPhoto.copy(collections = duplicate.collections + collectionName)
+                    }
+                    if (!locationLink.isNullOrBlank() && updatedPhoto.locationLink.isNullOrBlank()) {
+                        updatedPhoto = updatedPhoto.copy(locationLink = locationLink)
                     }
                     if (healedUri != null) {
                         // Extract dimensions from the healed internal file
@@ -1195,7 +1201,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 collections = listOf(collectionName),
                 isLibraryUpload = true,
                 widthPx = widthPx,
-                heightPx = heightPx
+                heightPx = heightPx,
+                locationLink = locationLink.takeIf { !it.isNullOrBlank() }
             )
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -1819,8 +1826,17 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         savePhotos()
     }
 
+    fun incrementFoodEatenCount(amount: Int = 1) {
+        if (amount <= 0) return
+        foodEatenCount += amount
+        prefs.edit().putInt("food_eaten_count", foodEatenCount).apply()
+    }
+
     fun deletePhoto(photoId: String, unpublish: Boolean = true) {
         val deletedPhoto = photos.find { it.id == photoId }
+        if (deletedPhoto?.collections?.contains("Eatlist") == true) {
+            incrementFoodEatenCount(1)
+        }
         deletedPhoto?.let { deletePhotoFile(it.uriString) }
         photos = photos.filter { it.id != photoId }
         savePhotos()
@@ -1837,6 +1853,19 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 }
             }
         }
+    }
+
+    fun addEatlistPhotoToLibrary(photoId: String) {
+        val targetPhoto = photos.find { it.id == photoId } ?: return
+        if (!targetPhoto.collections.contains("Eatlist")) return
+        photos = photos.map { photo ->
+            if (photo.id == photoId) {
+                photo.copy(collections = photo.collections - "Eatlist")
+            } else photo
+        }
+        savePhotos()
+        showSnackbar(message = "Added to library")
+        closeDetail()
     }
 
     // --- Bulk Actions ---
@@ -1861,6 +1890,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteSelectedPhotos(unpublish: Boolean = true) {
         isBusy = true
+        val eatlistCount = photos.filter { selectedPhotoIds.contains(it.id) && it.collections.contains("Eatlist") }.size
+        if (eatlistCount > 0) {
+            incrementFoodEatenCount(eatlistCount)
+        }
         photos.filter { selectedPhotoIds.contains(it.id) }.forEach { photo ->
             deletePhotoFile(photo.uriString)
         }

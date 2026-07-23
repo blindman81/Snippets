@@ -605,27 +605,6 @@ fun PhotoMasonryItem(
                     }
                 }
             }
-            
-            if (tab == "Eatlist" && !isSelected) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = LocalAppShape.current,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(16.dp)
-                        .size(32.dp)
-                        .clickable { onEatlistCheckClick?.invoke() }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = "Remove from Eatlist",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -810,27 +789,6 @@ fun PhotoListItem(
                                 text = photo.snippets.size.toString(),
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.ExtraBold),
                                 color = badgeContentColor
-                            )
-                        }
-                    }
-                }
-
-                if (tab == "Eatlist" && !isSelected) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                        shape = LocalAppShape.current,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(4.dp)
-                            .size(24.dp)
-                            .clickable { onEatlistCheckClick?.invoke() }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Remove from Eatlist",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(14.dp)
                             )
                         }
                     }
@@ -1186,29 +1144,7 @@ fun PhotoCardListItem(
                                 )
                             }
                         }
-                    }
-
-                    if (tab == "Eatlist" && !isSelected) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                            shape = LocalAppShape.current,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(4.dp)
-                                .size(24.dp)
-                                .clickable { onEatlistCheckClick?.invoke() }
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.Check,
-                                    contentDescription = "Remove from Eatlist",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-                    }
-                }
+                    }                }
                     }
                 }
 
@@ -1549,6 +1485,219 @@ fun SameDayPhotoCarousel(
                 },
                 modifier = Modifier.fillMaxSize()
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun EatlistSingleListCardContainer(
+    photo: Photo,
+    onOpenLink: (String) -> Unit,
+    onEditLink: () -> Unit,
+    onRemoveEatlist: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val photoShape = LocalAppShape.current
+    val placeName = remember(photo) {
+        LocationUtils.getLocationFromExif(context, photo)
+            ?: LocationUtils.extractPlaceNameFromLink(photo.locationLink ?: "")
+            ?: "Eatlist photo"
+    }
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Leading Thumbnail Photo
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(photoShape),
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(photo.uriString)
+                        .crossfade(true)
+                        .memoryCacheKey(photo.uriString)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                if (photo.isFavorite) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                        shape = photoShape,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .size(16.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Favorite",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(9.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Middle Location/Link Info Column
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                MealDropdownChip(
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+
+                Text(
+                    text = placeName,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.2).sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                if (!photo.locationLink.isNullOrBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                onOpenLink(photo.locationLink)
+                            }
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_add_link),
+                            contentDescription = "Link",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = photo.locationLink,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                        )
+                    }
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable {
+                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                onEditLink()
+                            }
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_add_link),
+                            contentDescription = "Add Link",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Add link",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+
+            // Trailing Action Buttons
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Link Icon Action Button
+                Surface(
+                    shape = CircleShape,
+                    color = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .combinedClickable(
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                if (!photo.locationLink.isNullOrBlank()) {
+                                    onOpenLink(photo.locationLink)
+                                } else {
+                                    onEditLink()
+                                }
+                            },
+                            onLongClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                onEditLink()
+                            }
+                        )
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_add_link),
+                            contentDescription = "Link Action",
+                            tint = if (!photo.locationLink.isNullOrBlank()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // Checkmark / Eatlist Action Button
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onRemoveEatlist()
+                        }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Eatlist check",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

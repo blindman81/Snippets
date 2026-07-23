@@ -332,9 +332,26 @@ fun DetailScreen(
                                 onDismissRequest = { viewModel.closeDetail() },
                                 onScrollChanged = { scrolled -> scrollStates[page] = scrolled },
                                 onRegisterScrollToTop = { action -> scrollToTopActions[page] = action },
+                                viewModel = viewModel,
                                 onUiAlphaChange = { if (pagerState.currentPage == page) sharedUiAlpha.floatValue = it },
                                 onBgAlphaChange = { if (pagerState.currentPage == page) sharedBgAlpha.floatValue = it },
-                                pageOffset = pageOffset
+                                pageOffset = pageOffset,
+                                onOpenLink = { url ->
+                                    try {
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        try {
+                                            val formatted = if (!url.startsWith("http://") && !url.startsWith("https://")) "https://$url" else url
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(formatted))
+                                            context.startActivity(intent)
+                                        } catch (e2: Exception) {
+                                            e2.printStackTrace()
+                                        }
+                                    }
+                                },
+                                onEditLink = { showLinkModal = true },
+                                onRemoveEatlist = { viewModel.addEatlistPhotoToLibrary(pagePhoto.id) }
                             )
                         } else {
                             val sharedKey = if (viewModel.detailReturnScreen == Screen.Memory) {
@@ -358,7 +375,23 @@ fun DetailScreen(
                                 viewModel = viewModel,
                                 onUiAlphaChange = { if (pagerState.currentPage == page) sharedUiAlpha.floatValue = it },
                                 onBgAlphaChange = { if (pagerState.currentPage == page) sharedBgAlpha.floatValue = it },
-                                pageOffset = pageOffset
+                                pageOffset = pageOffset,
+                                onOpenLink = { url ->
+                                    try {
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        try {
+                                            val formatted = if (!url.startsWith("http://") && !url.startsWith("https://")) "https://$url" else url
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(formatted))
+                                            context.startActivity(intent)
+                                        } catch (e2: Exception) {
+                                            e2.printStackTrace()
+                                        }
+                                    }
+                                },
+                                onEditLink = { showLinkModal = true },
+                                onRemoveEatlist = { viewModel.addEatlistPhotoToLibrary(pagePhoto.id) }
                             )
                         }
                     }
@@ -581,15 +614,52 @@ fun EmptyDetailContent(
     onDismissRequest: () -> Unit = {},
     onScrollChanged: (Boolean) -> Unit = {},
     onRegisterScrollToTop: (() -> Unit) -> Unit = {},
+    viewModel: SnippetsViewModel? = null,
     onUiAlphaChange: (Float) -> Unit = {},
     onBgAlphaChange: (Float) -> Unit = {},
-    pageOffset: Float = 0f
+    pageOffset: Float = 0f,
+    onOpenLink: (String) -> Unit = {},
+    onEditLink: () -> Unit = {},
+    onRemoveEatlist: () -> Unit = {}
 ) {
+    val isEatlist = photo.collections.contains("Eatlist") || (viewModel != null && viewModel.libraryCurrentTab == "Eatlist")
     SwipeToDismissContainer(
         onDismiss = onDismissRequest,
         onUiAlphaChange = onUiAlphaChange,
         onBgAlphaChange = onBgAlphaChange,
-        overlayContent = { _, _ -> }
+        overlayContent = { _, uiAlphaProvider ->
+            if (isEatlist) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .then(
+                                if (animatedVisibilityScope != null) {
+                                    with(animatedVisibilityScope) {
+                                        val motionScheme = MaterialTheme.motionScheme
+                                        Modifier.animateEnterExit(
+                                            enter = fadeIn(animationSpec = motionScheme.fastEffectsSpec()) + slideInVertically(animationSpec = motionScheme.fastSpatialSpec()) { it / 2 },
+                                            exit = fadeOut(animationSpec = motionScheme.fastEffectsSpec()) + slideOutVertically(animationSpec = motionScheme.fastSpatialSpec()) { it / 2 }
+                                        )
+                                    }
+                                } else Modifier
+                            )
+                            .graphicsLayer { alpha = uiAlphaProvider() }
+                            .padding(bottom = 36.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        EatlistSingleListCardContainer(
+                            photo = photo,
+                            onOpenLink = onOpenLink,
+                            onEditLink = onEditLink,
+                            onRemoveEatlist = onRemoveEatlist
+                        )
+                    }
+                }
+            }
+        }
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DetailPhotoFrame(
@@ -622,15 +692,19 @@ fun SnippetsDetailContent(
     viewModel: SnippetsViewModel,
     onUiAlphaChange: (Float) -> Unit = {},
     onBgAlphaChange: (Float) -> Unit = {},
-    pageOffset: Float = 0f
+    pageOffset: Float = 0f,
+    onOpenLink: (String) -> Unit = {},
+    onEditLink: () -> Unit = {},
+    onRemoveEatlist: () -> Unit = {}
 ) {
+    val isEatlist = photo.collections.contains("Eatlist") || viewModel.libraryCurrentTab == "Eatlist"
     SwipeToDismissContainer(
         onDismiss = onDismissRequest,
         onUiAlphaChange = onUiAlphaChange,
         onBgAlphaChange = onBgAlphaChange,
         overlayContent = { _, uiAlphaProvider ->
             Box(modifier = Modifier.fillMaxSize()) {
-                Box(
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
@@ -648,7 +722,8 @@ fun SnippetsDetailContent(
                         )
                         .graphicsLayer { alpha = uiAlphaProvider() }
                         .padding(bottom = 36.dp),
-                    contentAlignment = Alignment.Center
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     val pureSnippets = photo.snippets
                     val total = pureSnippets.size
@@ -675,6 +750,15 @@ fun SnippetsDetailContent(
                                 isSegmented = true
                             )
                         }
+                    }
+
+                    if (isEatlist) {
+                        EatlistSingleListCardContainer(
+                            photo = photo,
+                            onOpenLink = onOpenLink,
+                            onEditLink = onEditLink,
+                            onRemoveEatlist = onRemoveEatlist
+                        )
                     }
                 }
             }
