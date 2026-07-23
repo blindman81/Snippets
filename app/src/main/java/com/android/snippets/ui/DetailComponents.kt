@@ -253,7 +253,7 @@ fun getSnippetTextStyle(
     base: androidx.compose.ui.text.TextStyle,
     isCloud: Boolean = false
 ): androidx.compose.ui.text.TextStyle {
-    return when (style) {
+    val styled = when (style) {
         com.android.snippets.viewmodel.SnippetStyle.Thin -> base.copy(
             fontWeight = FontWeight.Thin,
             fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif
@@ -290,6 +290,9 @@ fun getSnippetTextStyle(
         )
         else -> base
     }
+    return styled.copy(
+        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+    )
 }
 
 @Composable
@@ -421,31 +424,36 @@ fun CloudSnippetItem(
                     )
                 }
             } else {
-                // Streamlined into 3 visual levels (Large, Medium, Small)
-                when (personality) {
-                    0, 1 -> { // Large Chip
-                        Text(
-                            text = text, 
-                            modifier = Modifier.padding(horizontal = (24 * scalingFactor).dp, vertical = (12 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp, brush = snippetGradient),
-                            color = Color.Unspecified
-                        )
-                    }
-                    2, 3 -> { // Medium Chip
-                        Text(
-                            text = text, 
-                            modifier = Modifier.padding(horizontal = (18 * scalingFactor).dp, vertical = (9 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient),
-                            color = Color.Unspecified
-                        )
-                    }
-                    else -> { // Small Chip
-                        Text(
-                            text = text, 
-                            modifier = Modifier.padding(horizontal = (12 * scalingFactor).dp, vertical = (6 * scalingFactor).dp), 
-                            style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient),
-                            color = Color.Unspecified
-                        )
+                Box(contentAlignment = Alignment.Center) {
+                    // Streamlined into 3 visual levels (Large, Medium, Small)
+                    when (personality) {
+                        0, 1 -> { // Large Chip
+                            Text(
+                                text = text, 
+                                modifier = Modifier.padding(horizontal = (24 * scalingFactor).dp, vertical = (12 * scalingFactor).dp), 
+                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp, brush = snippetGradient),
+                                color = Color.Unspecified,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                        2, 3 -> { // Medium Chip
+                            Text(
+                                text = text, 
+                                modifier = Modifier.padding(horizontal = (18 * scalingFactor).dp, vertical = (9 * scalingFactor).dp), 
+                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient),
+                                color = Color.Unspecified,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                        else -> { // Small Chip
+                            Text(
+                                text = text, 
+                                modifier = Modifier.padding(horizontal = (12 * scalingFactor).dp, vertical = (6 * scalingFactor).dp), 
+                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient),
+                                color = Color.Unspecified,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -923,29 +931,30 @@ fun AddSnippetsModal(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                enabled = text.isNotBlank(),
+            Button(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     val finalColor = if (selectedColor == null || selectedColor == -1) snippetColorsPalette.random() else selectedColor!!
                     onAdd(text.trim(), finalColor, selectedStyle)
                     onClose()
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp)
+                enabled = text.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+                shapes = ButtonDefaults.shapes(
+                    shape = CircleShape,
+                    pressedShape = RoundedCornerShape(12.dp)
+                ),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                contentPadding = PaddingValues(16.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Add Snippet ($localSnippetsCount/6)",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
+                Text(
+                    text = "Add Snippet ($localSnippetsCount/6)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
