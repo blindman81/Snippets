@@ -1655,6 +1655,39 @@ fun ViewAgendaCustomIcon(
     }
 }
 
+@Composable
+fun TextSnippetOffIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+): ImageVector {
+    return remember(tint) {
+        ImageVector.Builder(
+            name = "TextSnippetOffIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(
+                translationY = 960f,
+                clipPathData = PathParser().parsePathString("M0-960h960v960H0ZM-34-766l228-228 800 800-228 228Z").toNodes()
+            ) {
+                addPath(
+                    pathData = PathParser().parsePathString("M200-200h560v-367L567-760H200v560Zm0 80q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h400l240 240v400q0 33-23.5 56.5T760-120H200Zm80-160h400v-80H280v80Zm0-160h400v-80H280v80Zm0-160h280v-80H280v80Zm-80 400v-560 560Z").toNodes(),
+                    fill = SolidColor(tint)
+                )
+            }
+            group(translationY = 960f) {
+                addPath(
+                    pathData = PathParser().parsePathString("M23-823l114-114 800 800-114 114Z").toNodes(),
+                    fill = SolidColor(tint)
+                )
+            }
+        }.build()
+    }
+}
+
+
 
 
 

@@ -847,10 +847,11 @@ fun PhotoListItem(
             ) {
                 if (photo.snippets.isEmpty()) {
                     if (tab != "Eatlist") {
-                        Text(
-                            text = "No snippets",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_text_snippet_off),
+                            contentDescription = "No snippets",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 } else {
@@ -1232,13 +1233,14 @@ fun PhotoCardListItem(
                                 shape = RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp)
                             )
                             .padding(horizontal = 6.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.CenterStart
+                        contentAlignment = if (photo.snippets.isEmpty()) Alignment.Center else Alignment.CenterStart
                     ) {
                         if (photo.snippets.isEmpty()) {
-                            Text(
-                                text = "No snippets",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = (if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.5f)
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_text_snippet_off),
+                                contentDescription = "No snippets",
+                                tint = (if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.5f),
+                                modifier = Modifier.size(28.dp)
                             )
                         } else {
                             val topSnippets = photo.snippets.take(6)
