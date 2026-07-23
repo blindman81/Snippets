@@ -806,12 +806,20 @@ fun PhotoListItem(
             ) {
                 if (photo.snippets.isEmpty()) {
                     if (tab != "Eatlist") {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_text_snippet_off),
-                            contentDescription = "No snippets",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Surface(
+                            shape = LocalAppShape.current,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_text_snippet_off),
+                                    contentDescription = "No snippets",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 } else {
                     val topSnippets = photo.snippets.take(6)
@@ -1173,12 +1181,20 @@ fun PhotoCardListItem(
                         contentAlignment = if (photo.snippets.isEmpty()) Alignment.Center else Alignment.CenterStart
                     ) {
                         if (photo.snippets.isEmpty()) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_text_snippet_off),
-                                contentDescription = "No snippets",
-                                tint = (if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.5f),
-                                modifier = Modifier.size(28.dp)
-                            )
+                            Surface(
+                                shape = LocalAppShape.current,
+                                color = (if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest).copy(alpha = 0.5f),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_text_snippet_off),
+                                        contentDescription = "No snippets",
+                                        tint = (if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
                         } else {
                             val topSnippets = photo.snippets.take(6)
                             val total = topSnippets.size
