@@ -732,7 +732,7 @@ fun AddSnippetsModal(
                                 0 -> { // Text
                                     OutlinedTextField(
                                         value = text,
-                                        onValueChange = { if (it.length <= 10) text = it },
+                                        onValueChange = { if (it.length <= 15) text = it },
                                         modifier = Modifier.fillMaxWidth(),
                                         textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                         label = { Text("New Snippet", style = MaterialTheme.typography.labelMedium) },
@@ -746,11 +746,11 @@ fun AddSnippetsModal(
                                         ),
                                         supportingText = {
                                             Text(
-                                                text = "${text.length}/10",
+                                                text = "${text.length}/15",
                                                 modifier = Modifier.fillMaxWidth(),
                                                 textAlign = TextAlign.End,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = if (text.length >= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = if (text.length >= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         },
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

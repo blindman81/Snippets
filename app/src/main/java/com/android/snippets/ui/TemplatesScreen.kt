@@ -472,18 +472,18 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = customText,
-                        onValueChange = { if (it.length <= 10) customText = it },
+                        onValueChange = { if (it.length <= 15) customText = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         label = { Text("Snippet Text") },
                         shape = RoundedCornerShape(16.dp),
                         supportingText = {
                             Text(
-                                text = "${customText.length}/10",
+                                text = "${customText.length}/15",
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.End,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (customText.length >= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (customText.length >= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     )
