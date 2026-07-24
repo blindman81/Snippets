@@ -29,6 +29,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import com.android.snippets.ui.theme.GoogleSansFlexWide
 import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.ui.shapes.LocalAppShapeType
 import com.android.snippets.ui.shapes.AppShape
@@ -57,8 +60,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Alignment
@@ -1579,13 +1580,31 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
     icon: @Composable () -> Unit,
     label: String
 ) {
-    val itemModifier = Modifier.weight(weight)
     customItem(
         buttonGroupContent = {
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+
+            val targetWeight = when {
+                checked && isPressed -> 0.85f
+                checked -> 1.15f
+                isPressed -> 0.75f
+                else -> 1.0f
+            }
+            val animatedWeight by animateFloatAsState(
+                targetValue = targetWeight,
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+                    stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                ),
+                label = "sort_weight_$label"
+            )
+
             ToggleButton(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                modifier = itemModifier,
+                interactionSource = interactionSource,
+                modifier = Modifier.weight(animatedWeight),
                 colors = ToggleButtonDefaults.toggleButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 )

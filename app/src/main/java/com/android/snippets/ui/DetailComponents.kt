@@ -4,6 +4,8 @@ import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.*
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -19,7 +21,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyRow
@@ -709,6 +710,25 @@ fun AddSnippetsModal(
 
                         customItem(
                             buttonGroupContent = {
+                                val interactionSource = remember { MutableInteractionSource() }
+                                val isPressed by interactionSource.collectIsPressedAsState()
+
+                                val isSelected = index == selectedIndex
+                                val targetWeight = when {
+                                    isSelected && isPressed -> 0.85f
+                                    isSelected -> 1.15f
+                                    isPressed -> 0.75f
+                                    else -> 1.0f
+                                }
+                                val animatedWeight by animateFloatAsState(
+                                    targetValue = targetWeight,
+                                    animationSpec = androidx.compose.animation.core.spring(
+                                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+                                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                    ),
+                                    label = "detail_weight_$index"
+                                )
+
                                 val shapes = when {
                                     isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                                     isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
@@ -717,12 +737,13 @@ fun AddSnippetsModal(
                                 }
 
                                 ToggleButton(
-                                    checked = index == selectedIndex,
+                                    checked = isSelected,
                                     onCheckedChange = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         selectedIndex = index
                                     },
-                                    modifier = Modifier.weight(1f),
+                                    interactionSource = interactionSource,
+                                    modifier = Modifier.weight(animatedWeight),
                                     shapes = shapes
                                 ) {
                                     Text(

@@ -128,8 +128,10 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                     }
                                     Text(
                                         text = label,
-                                        style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized else MaterialTheme.typography.titleMedium.copy(
-                                            fontFamily = com.android.snippets.ui.theme.GoogleSans
+                                        style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized.copy(
+                                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                        ) else MaterialTheme.typography.titleMedium.copy(
+                                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
                                         ),
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
@@ -320,7 +322,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                         }
                                         
                                         val photosCount = viewModel.photos.count { 
-                                            it.locationLink == location || it.locationName == location 
+                                            !it.collections.contains("Eatlist") && (it.locationLink == location || it.locationName == location)
                                         }
                                         
                                         SettingsCardItem(

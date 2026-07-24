@@ -2642,9 +2642,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     val allUniqueLocations: List<String> by derivedStateOf {
-        photos.mapNotNull { photo ->
-            photo.locationLink?.takeIf { it.isNotBlank() } ?: photo.locationName?.takeIf { it.isNotBlank() }
-        }.distinct().sorted()
+        photos.filter { !it.collections.contains("Eatlist") }
+            .mapNotNull { photo ->
+                photo.locationLink?.takeIf { it.isNotBlank() } ?: photo.locationName?.takeIf { it.isNotBlank() }
+            }.distinct().sorted()
     }
 
     val searchSuggestions: List<Pair<String, Boolean>> by derivedStateOf {

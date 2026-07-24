@@ -35,6 +35,10 @@ import androidx.compose.material3.*
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import com.android.snippets.ui.theme.GoogleSansFlexWide
 import com.android.snippets.ui.components.LoadingIndicator
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.ui.graphics.RectangleShape
@@ -536,9 +540,26 @@ private fun ButtonGroupScope.themeToggleableItem(
     isFirst: Boolean,
     isLast: Boolean
 ) {
-    val itemModifier = Modifier.weight(weight)
     customItem(
         buttonGroupContent = {
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+
+            val targetWeight = when {
+                checked && isPressed -> 0.85f
+                checked -> 1.15f
+                isPressed -> 0.75f
+                else -> 1.0f
+            }
+            val animatedWeight by animateFloatAsState(
+                targetValue = targetWeight,
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+                    stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                ),
+                label = "settings_weight_$label"
+            )
+
             val shapes = when {
                 isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                 isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
@@ -549,7 +570,8 @@ private fun ButtonGroupScope.themeToggleableItem(
             ToggleButton(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                modifier = itemModifier,
+                interactionSource = interactionSource,
+                modifier = Modifier.weight(animatedWeight),
                 shapes = shapes
             ) {
                 icon()
