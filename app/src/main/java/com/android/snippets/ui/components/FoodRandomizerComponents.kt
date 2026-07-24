@@ -290,11 +290,6 @@ fun FoodRandomizerBottomSheet(
                     animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
                     label = "shuffle_corner_morph"
                 )
-                val shuffleScale by animateFloatAsState(
-                    targetValue = if (isShufflePressed) 0.95f else 1.0f,
-                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                    label = "shuffle_scale"
-                )
 
                 val eatInteraction = remember { MutableInteractionSource() }
                 val isEatPressed by eatInteraction.collectIsPressedAsState()
@@ -302,11 +297,6 @@ fun FoodRandomizerBottomSheet(
                     targetValue = if (isEatPressed) 12.dp else 50.dp,
                     animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
                     label = "eat_corner_morph"
-                )
-                val eatScale by animateFloatAsState(
-                    targetValue = if (isEatPressed) 0.95f else 1.0f,
-                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                    label = "eat_scale"
                 )
 
                 Row(
@@ -322,10 +312,6 @@ fun FoodRandomizerBottomSheet(
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
-                            .graphicsLayer {
-                                scaleX = shuffleScale
-                                scaleY = shuffleScale
-                            }
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
@@ -354,10 +340,6 @@ fun FoodRandomizerBottomSheet(
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
-                            .graphicsLayer {
-                                scaleX = eatScale
-                                scaleY = eatScale
-                            }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Restaurant,

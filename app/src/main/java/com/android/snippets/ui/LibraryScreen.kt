@@ -736,7 +736,8 @@ fun LibraryScreen(
                                                                          Text(
                                                                              text = tabName,
                                                                              style = com.android.snippets.ui.theme.titleMediumEmphasized.copy(
-                                                                                 fontSize = 12.sp
+                                                                                 fontSize = 12.sp,
+                                                                                 fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
                                                                              ),
                                                                              fontWeight = FontWeight.Bold,
                                                                              maxLines = 1
@@ -1593,13 +1594,9 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                 Text(
                     text = label,
-                    style = if (checked) {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                        )
-                    } else {
-                        MaterialTheme.typography.labelLarge
-                    }
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                    )
                 )
             }
         },
@@ -1609,13 +1606,9 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 text = {
                     Text(
                         text = label,
-                        style = if (checked) {
-                            MaterialTheme.typography.labelLarge.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                            )
-                        } else {
-                            MaterialTheme.typography.labelLarge
-                        }
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                        )
                     )
                 },
                 onClick = {

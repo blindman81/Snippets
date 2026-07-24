@@ -727,13 +727,9 @@ fun AddSnippetsModal(
                                 ) {
                                     Text(
                                         text = label,
-                                        style = if (index == selectedIndex) {
-                                            MaterialTheme.typography.labelLarge.copy(
-                                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                                            )
-                                        } else {
-                                            MaterialTheme.typography.labelLarge
-                                        }
+                                        style = MaterialTheme.typography.labelLarge.copy(
+                                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                        )
                                     )
                                 }
                             },

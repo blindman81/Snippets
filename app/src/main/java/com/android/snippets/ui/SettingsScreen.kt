@@ -556,14 +556,10 @@ private fun ButtonGroupScope.themeToggleableItem(
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                 Text(
                     text = label,
-                    style = if (checked) {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
-                            fontSize = 11.sp
-                        )
-                    } else {
-                        MaterialTheme.typography.labelLarge
-                    },
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
+                        fontSize = 11.sp
+                    ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -575,14 +571,10 @@ private fun ButtonGroupScope.themeToggleableItem(
                 text = {
                     Text(
                         text = label,
-                        style = if (checked) {
-                            MaterialTheme.typography.labelLarge.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
-                                fontSize = 11.sp
-                            )
-                        } else {
-                            MaterialTheme.typography.labelLarge
-                        },
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
+                            fontSize = 11.sp
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
