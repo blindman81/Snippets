@@ -1618,9 +1618,13 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                    )
+                    style = if (checked) {
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                        )
+                    } else {
+                        MaterialTheme.typography.labelLarge
+                    }
                 )
             }
         },
@@ -1630,9 +1634,13 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 text = {
                     Text(
                         text = label,
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                        )
+                        style = if (checked) {
+                            MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            )
+                        } else {
+                            MaterialTheme.typography.labelLarge
+                        }
                     )
                 },
                 onClick = {
