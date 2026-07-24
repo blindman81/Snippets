@@ -66,14 +66,49 @@ object MediaSaver {
         }
     }
 
-    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, locationText: String? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveSnippetToGallery(
+        context: Context,
+        photo: Photo,
+        snippets: List<String>,
+        isDark: Boolean = false,
+        bgColor: Int = Color.WHITE,
+        snippetColors: Map<String, Int> = emptyMap(),
+        snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(),
+        appShape: AppShape = AppShape.COOKIE_12_SIDED,
+        showTime: Boolean = false,
+        locationText: String? = null
+    ): Boolean = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime, locationText) ?: return@withContext false
-            
-            val fileName = "Snippet_Card_${System.currentTimeMillis()}.jpg"
+            val photoBitmap = runBlockingCoil(context, photo.uri)
+            val tempFile = File(context.cacheDir, "temp_snippet_${System.currentTimeMillis()}.gif")
+            val fos = FileOutputStream(tempFile)
+
+            val numFrames = 15
+            val frameDelayMs = 100 // 10 fps -> 1.5s loop
+            val encoder = AnimatedGifEncoder()
+            encoder.start(fos)
+            encoder.setDelay(frameDelayMs)
+            encoder.setRepeat(0) // 0 = loop forever
+            encoder.setQuality(10)
+
+            for (i in 0 until numFrames) {
+                val progress = i.toFloat() / numFrames
+                val bitmap = createSnippetBitmap(
+                    context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles,
+                    appShape, showTime, locationText,
+                    width = 720, height = 1280, frameProgress = progress, preloadedPhotoBitmap = photoBitmap
+                ) ?: break
+                encoder.addFrame(bitmap)
+                bitmap.recycle()
+            }
+            encoder.finish()
+            fos.close()
+            photoBitmap?.recycle()
+
+            val fileName = "Snippet_Card_${System.currentTimeMillis()}.gif"
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/gif")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Snippets")
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
@@ -93,13 +128,14 @@ object MediaSaver {
 
             val resolver = context.contentResolver
             val imageUri: Uri? = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-            
+
             imageUri?.let { uri ->
-                val outputStream: OutputStream? = resolver.openOutputStream(uri)
-                outputStream?.use {
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it)
+                resolver.openOutputStream(uri)?.use { outStream ->
+                    tempFile.inputStream().use { inStream ->
+                        inStream.copyTo(outStream)
+                    }
                 }
-                
+
                 try {
                     val coords = LocationUtils.extractCoordinates(context, photo)
                     if (coords != null) {
@@ -112,17 +148,17 @@ object MediaSaver {
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-                
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     contentValues.clear()
                     contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
                     resolver.update(uri, contentValues, null, null)
                 }
-                bitmap.recycle()
+                tempFile.delete()
                 return@withContext true
             }
-            
-            bitmap.recycle()
+
+            tempFile.delete()
             false
         } catch (e: Exception) {
             e.printStackTrace()
@@ -130,16 +166,46 @@ object MediaSaver {
         }
     }
 
-    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, locationText: String? = null): Uri? = withContext(Dispatchers.IO) {
+    suspend fun getShareableUri(
+        context: Context,
+        photo: Photo,
+        snippets: List<String>,
+        isDark: Boolean = false,
+        bgColor: Int = Color.WHITE,
+        snippetColors: Map<String, Int> = emptyMap(),
+        snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(),
+        appShape: AppShape = AppShape.COOKIE_12_SIDED,
+        showTime: Boolean = false,
+        locationText: String? = null
+    ): Uri? = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime, locationText) ?: return@withContext null
-            
+            val photoBitmap = runBlockingCoil(context, photo.uri)
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
-            val file = File(cachePath, "share_snippet.jpg")
-            val stream = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
-            stream.close()
+            val file = File(cachePath, "share_snippet.gif")
+            val fos = FileOutputStream(file)
+
+            val numFrames = 15
+            val frameDelayMs = 100
+            val encoder = AnimatedGifEncoder()
+            encoder.start(fos)
+            encoder.setDelay(frameDelayMs)
+            encoder.setRepeat(0)
+            encoder.setQuality(10)
+
+            for (i in 0 until numFrames) {
+                val progress = i.toFloat() / numFrames
+                val bitmap = createSnippetBitmap(
+                    context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles,
+                    appShape, showTime, locationText,
+                    width = 720, height = 1280, frameProgress = progress, preloadedPhotoBitmap = photoBitmap
+                ) ?: break
+                encoder.addFrame(bitmap)
+                bitmap.recycle()
+            }
+            encoder.finish()
+            fos.close()
+            photoBitmap?.recycle()
 
             try {
                 val coords = LocationUtils.extractCoordinates(context, photo)
@@ -152,7 +218,6 @@ object MediaSaver {
                 e.printStackTrace()
             }
 
-            bitmap.recycle()
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -160,13 +225,26 @@ object MediaSaver {
         }
     }
 
-    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, overrideLocationText: String? = null): Bitmap? {
-        val width = 1440
-        val height = 2560
+    private fun createSnippetBitmap(
+        context: Context,
+        photo: Photo,
+        snippets: List<String>,
+        isDark: Boolean,
+        bgColor: Int,
+        snippetColors: Map<String, Int>,
+        snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>,
+        appShape: AppShape = AppShape.COOKIE_12_SIDED,
+        showTime: Boolean = false,
+        overrideLocationText: String? = null,
+        width: Int = 1440,
+        height: Int = 2560,
+        frameProgress: Float = 0f,
+        preloadedPhotoBitmap: Bitmap? = null
+    ): Bitmap? {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
-        val photoBitmap = runBlockingCoil(context, photo.uri)
+        val photoBitmap = preloadedPhotoBitmap ?: runBlockingCoil(context, photo.uri)
 
         // 1. Draw Background (Fallback solid color first, then blurred photo if loaded)
         canvas.drawColor(bgColor)
@@ -523,6 +601,9 @@ object MediaSaver {
         val scaledTotalHeight = (rowHeights.sum() * fitScale) + (rows.size - 1) * scaledSpacingY
         var currentY = snippetAreaTop + ((snippetAreaHeight - scaledTotalHeight) / 2f).coerceAtLeast(0f)
         
+        var pillIndex = 0
+        val totalSnippetsCount = maxOf(snippets.size, 1)
+
         rows.forEachIndexed { rowIndex, row ->
             val rowHeight = rowHeights[rowIndex] * fitScale
             val rowWidth = row.sumOf { (it.boundingW * fitScale).toDouble() }.toFloat() + (row.size - 1) * scaledSpacingX
@@ -534,11 +615,18 @@ object MediaSaver {
                 val scaledBoundingW = pill.boundingW * fitScale
                 val scaledW = pill.w * fitScale
                 val scaledH = pill.h * fitScale
+
+                val phase = (pillIndex.toFloat() / totalSnippetsCount) * 2f * Math.PI.toFloat()
+                val animAngle = frameProgress * 2f * Math.PI.toFloat() + phase
+                val offsetY = (Math.sin(animAngle.toDouble()).toFloat() * 12f * fitScale * (width / 1440f))
+                val animRot = pill.rot + (Math.sin(animAngle.toDouble()).toFloat() * 2.5f)
+                pillIndex++
+
                 val x = currentX + (scaledBoundingW / 2f)
-                val y = centerY
+                val y = centerY + offsetY
                 
                 canvas.save()
-                canvas.rotate(pill.rot, x, y)
+                canvas.rotate(animRot, x, y)
                 textPaint.color = pill.color
                 textPaint.textSize = pill.textSize * fitScale
                 textPaint.typeface = pill.typeface

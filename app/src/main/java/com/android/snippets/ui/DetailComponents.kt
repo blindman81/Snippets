@@ -709,14 +709,11 @@ fun AddSnippetsModal(
 
                         customItem(
                             buttonGroupContent = {
-                                val leading = ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                val trailing = ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                val middle = ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 val shapes = when {
-                                    isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
-                                    isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
-                                    isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes(pressedShape = trailing.shape)
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes(pressedShape = middle.shape)
+                                    isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
 
                                 ToggleButton(

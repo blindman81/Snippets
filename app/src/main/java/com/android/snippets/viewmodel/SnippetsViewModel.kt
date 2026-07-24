@@ -2136,7 +2136,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
             val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories, locationText = locationText)
             if (success) {
-                android.widget.Toast.makeText(context, "Downloaded to Gallery", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "Downloaded GIF to Gallery", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -2148,12 +2148,12 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories, locationText = locationText)
             if (uri != null) {
                 val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                    type = "image/jpeg"
+                    type = "image/gif"
                     putExtra(android.content.Intent.EXTRA_STREAM, uri)
                     clipData = android.content.ClipData.newRawUri("", uri)
                     addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(android.content.Intent.createChooser(intent, "Share Snippets"))
+                context.startActivity(android.content.Intent.createChooser(intent, "Share Animated GIF"))
             }
         }
     }
