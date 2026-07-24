@@ -44,7 +44,7 @@ import com.android.snippets.ui.shapes.LocalAppShape
  * - Container shape: LocalAppShape.current
  * - Container size: 56dp (Standard FAB)
  * - Icon size: 24dp
- * - Container color: primaryContainer with onPrimaryContainer content color
+ * - Container color: secondaryContainer with onSecondaryContainer content color
  * - Elevation: FloatingActionButtonDefaults.elevation (6.dp default, 12.dp pressed)
  * - Interactive Haptics & M3 Tooltip integration
  */
@@ -60,8 +60,8 @@ fun FoodRandomizerFab(
         contentDescription = "What to Eat? (Randomizer)",
         tooltip = "What to Eat? (Randomizer)",
         size = 56.dp,
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         modifier = modifier
     )
 }
