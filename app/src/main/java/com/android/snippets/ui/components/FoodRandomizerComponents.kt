@@ -128,7 +128,7 @@ fun FoodRandomizerBottomSheet(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
                             contentDescription = "Shuffle",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -316,6 +316,7 @@ fun FoodRandomizerBottomSheet(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
                             contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
                         Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))

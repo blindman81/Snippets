@@ -670,22 +670,26 @@ fun LibraryScreen(
                                                               val interactionSource = remember { MutableInteractionSource() }
                                                               val isPressed by interactionSource.collectIsPressedAsState()
 
-                                                              // Calculate target width for spring animation & press compression
-                                                              val targetWidth = when {
-                                                                  isSelected && isPressed -> 94.dp
-                                                                  isSelected -> 116.dp
-                                                                  isPressed -> 64.dp
-                                                                  else -> 78.dp
-                                                              }
+                                                               // Calculate target width for spring animation & press compression accommodating wide font
+                                                               val textExtra = (tabName.length * 7.5f).dp
+                                                               val baseSelectedWidth = (76.dp + textExtra).coerceAtLeast(124.dp)
+                                                               val baseUnselectedWidth = 64.dp
 
-                                                              val animatedWidth by animateDpAsState(
-                                                                  targetValue = targetWidth,
-                                                                  animationSpec = androidx.compose.animation.core.spring(
-                                                                      dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
-                                                                      stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                                                  ),
-                                                                  label = "tabWidth_$tabName"
-                                                              )
+                                                               val targetWidth = when {
+                                                                   isSelected && isPressed -> baseSelectedWidth - 18.dp
+                                                                   isSelected -> baseSelectedWidth
+                                                                   isPressed -> 52.dp
+                                                                   else -> baseUnselectedWidth
+                                                               }
+
+                                                               val animatedWidth by animateDpAsState(
+                                                                   targetValue = targetWidth,
+                                                                   animationSpec = androidx.compose.animation.core.spring(
+                                                                       dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+                                                                       stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                                                   ),
+                                                                   label = "tabWidth_$tabName"
+                                                               )
 
                                                                val shapes = when {
                                                                    allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
@@ -694,28 +698,29 @@ fun LibraryScreen(
                                                                    else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
                                                                }
 
-                                                              ToggleButton(
-                                                                  checked = isSelected,
-                                                                  onCheckedChange = { checked ->
-                                                                      val pageIndex = pageTabs.indexOf(tabName)
-                                                                      if (pageIndex != -1) {
-                                                                          if (isSelected) {
-                                                                              view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                          } else {
-                                                                              scope.launch { pagerState.animateScrollToPage(pageIndex) }
-                                                                          }
-                                                                      }
-                                                                  },
-                                                                  interactionSource = interactionSource,
-                                                                  shapes = shapes,
-                                                                  colors = ToggleButtonDefaults.toggleButtonColors(
-                                                                      checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                                                      checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                                      containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                                      contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                                  ),
-                                                                  modifier = dragModifier.then(positionModifier).height(48.dp).width(animatedWidth)
-                                                              ) {
+                                                               ToggleButton(
+                                                                   checked = isSelected,
+                                                                   onCheckedChange = { checked ->
+                                                                       val pageIndex = pageTabs.indexOf(tabName)
+                                                                       if (pageIndex != -1) {
+                                                                           if (isSelected) {
+                                                                               view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                           } else {
+                                                                               scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                                           }
+                                                                       }
+                                                                   },
+                                                                   interactionSource = interactionSource,
+                                                                   shapes = shapes,
+                                                                   contentPadding = PaddingValues(horizontal = 12.dp),
+                                                                   colors = ToggleButtonDefaults.toggleButtonColors(
+                                                                       checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                                       checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                                       containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                       contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                   ),
+                                                                   modifier = dragModifier.then(positionModifier).height(48.dp).width(animatedWidth)
+                                                               ) {
                                                                  Row(
                                                                      verticalAlignment = Alignment.CenterVertically,
                                                                      horizontalArrangement = Arrangement.spacedBy(8.dp)
