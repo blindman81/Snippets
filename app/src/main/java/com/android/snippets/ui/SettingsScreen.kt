@@ -175,6 +175,8 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
             ) {
                 themeOptions.forEachIndexed { index, option ->
                     val isSelected = viewModel.themePreference == option
+                    val isFirst = index == 0
+                    val isLast = index == themeOptions.size - 1
                     themeToggleableItem(
                         weight = 1f,
                         checked = isSelected,
@@ -185,7 +187,9 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                             }
                         },
                         icon = { Icon(themeIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
-                        label = themeLabels[index]
+                        label = themeLabels[index],
+                        isFirst = isFirst,
+                        isLast = isLast
                     )
                 }
             }
@@ -301,59 +305,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ShapedSectionHeader(icon = NotificationSectionIcon())
-                Text(
-                    text = "Recaps & Memories",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            SettingsCardItem(
-                icon = Icons.Default.Collections,
-                title = "Preview Monthly Recap",
-                subtitle = "View large card stack of top-rated photos & snippets",
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    viewModel.triggerMonthlyRecap()
-                },
-                position = CardPosition.First,
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            )
-
-            SettingsCardItem(
-                icon = Icons.Default.Star,
-                title = "Preview Yearly Recap",
-                subtitle = "View top memories from the past year",
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    viewModel.triggerYearlyRecap()
-                },
-                position = CardPosition.Last,
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -580,15 +532,28 @@ private fun ButtonGroupScope.themeToggleableItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     icon: @Composable () -> Unit,
-    label: String
+    label: String,
+    isFirst: Boolean,
+    isLast: Boolean
 ) {
     val itemModifier = Modifier.weight(weight)
     customItem(
         buttonGroupContent = {
+            val leading = ButtonGroupDefaults.connectedLeadingButtonShapes()
+            val trailing = ButtonGroupDefaults.connectedTrailingButtonShapes()
+            val middle = ButtonGroupDefaults.connectedMiddleButtonShapes()
+            val shapes = when {
+                isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
+                isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
+                isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes(pressedShape = trailing.shape)
+                else -> ButtonGroupDefaults.connectedMiddleButtonShapes(pressedShape = middle.shape)
+            }
+
             ToggleButton(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
-                modifier = itemModifier
+                modifier = itemModifier,
+                shapes = shapes
             ) {
                 icon()
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))

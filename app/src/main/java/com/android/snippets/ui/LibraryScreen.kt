@@ -686,12 +686,15 @@ fun LibraryScreen(
                                                                   label = "tabWidth_$tabName"
                                                               )
 
-                                                              val shapes = when {
-                                                                  allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                                                  tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                                                  tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                                                  else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                                              }
+                                                               val leading = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                                               val trailing = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                                               val middle = androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                                               val shapes = when {
+                                                                   allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
+                                                                   tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
+                                                                   tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes(pressedShape = trailing.shape)
+                                                                   else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes(pressedShape = middle.shape)
+                                                               }
 
                                                               ToggleButton(
                                                                   checked = isSelected,

@@ -163,13 +163,13 @@ fun DetailTopBar(
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         // Group 1: Download, Share, Favorite
                         DropdownMenuItem(
-                            text = { Text("Download") },
+                            text = { Text("Download GIF") },
                             leadingIcon = { Icon(Icons.Default.FileDownload, null) },
                             enabled = hasSnippets,
                             onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onDownload(); closeMenu() }
                         )
                         DropdownMenuItem(
-                            text = { Text("Share") },
+                            text = { Text("Share GIF") },
                             leadingIcon = { Icon(Icons.Default.Share, null) },
                             enabled = hasSnippets,
                             onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onShare(); closeMenu() }
@@ -704,14 +704,51 @@ fun AddSnippetsModal(
                     overflowIndicator = {}
                 ) {
                     options.forEachIndexed { index, label ->
-                        toggleableItem(
-                            weight = 1f,
-                            checked = index == selectedIndex,
-                            onCheckedChange = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                selectedIndex = index
+                        val isFirst = index == 0
+                        val isLast = index == options.size - 1
+
+                        customItem(
+                            buttonGroupContent = {
+                                val leading = ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                val trailing = ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                val middle = ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                val shapes = when {
+                                    isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
+                                    isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
+                                    isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes(pressedShape = trailing.shape)
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes(pressedShape = middle.shape)
+                                }
+
+                                ToggleButton(
+                                    checked = index == selectedIndex,
+                                    onCheckedChange = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        selectedIndex = index
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shapes = shapes
+                                ) {
+                                    Text(
+                                        text = label,
+                                        style = if (index == selectedIndex) {
+                                            MaterialTheme.typography.labelLarge.copy(
+                                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                            )
+                                        } else {
+                                            MaterialTheme.typography.labelLarge
+                                        }
+                                    )
+                                }
                             },
-                            label = label
+                            menuContent = {
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        selectedIndex = index
+                                    }
+                                )
+                            }
                         )
                     }
                 }
@@ -1039,7 +1076,7 @@ fun CanvasBackgroundDialog(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Action Button
-                val buttonText = if (action == CanvasAction.DOWNLOAD) "Download" else "Share"
+                val buttonText = if (action == CanvasAction.DOWNLOAD) "Download GIF" else "Share GIF"
                 val buttonIcon = if (action == CanvasAction.DOWNLOAD) Icons.Default.FileDownload else Icons.Default.Share
 
                 Button(
