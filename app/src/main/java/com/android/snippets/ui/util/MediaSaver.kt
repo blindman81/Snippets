@@ -269,9 +269,9 @@ object MediaSaver {
         // 2. Draw Photo in the selected Shape
         val cx = width / 2f
         val centerX = cx
-        val cy = 924f
-        val radius = 624f
-        val targetSize = 2 * radius // 1248f
+        val cy = height * 0.40f
+        val targetSize = minOf(width * 0.72f, height * 0.40f)
+        val radius = targetSize / 2f
         
         val normalizedPolygon = appShape.getNormalizedPolygon()
         val path = normalizedPolygon.toPath()
@@ -440,9 +440,9 @@ object MediaSaver {
         val scaleFactor = width / 360f // Baseline for DP to PX scaling
         
         data class PlacedPill(val text: String, val w: Float, val h: Float, val boundingW: Float, val boundingH: Float, val textSize: Float, val color: Int, val rot: Float, val textBounds: Rect, val typeface: Typeface, val spacing: Float, val isFilled: Boolean)
-        val maxRowWidth = 1100f
-        val spacingX = 48f
-        val spacingY = 48f
+        val maxRowWidth = width * 0.82f
+        val spacingX = 12f * scaleFactor
+        val spacingY = 12f * scaleFactor
         
         val rows = mutableListOf<MutableList<PlacedPill>>()
         val rowHeights = mutableListOf<Float>()
@@ -543,9 +543,9 @@ object MediaSaver {
             }
 
             val baseFontSize = when (personality) {
-                0, 1 -> 24f // Large
-                2, 3 -> 18f // Medium
-                else -> 14f // Small
+                0, 1 -> 16f // Large
+                2, 3 -> 13f // Medium
+                else -> 11f // Small
             }
             var size = (baseFontSize * scalingFactor) * scaleFactor
             
@@ -557,15 +557,15 @@ object MediaSaver {
             textPaint.textSize = size
             val bounds = Rect()
             textPaint.getTextBounds(text, 0, text.length, bounds)
-            var pillW = bounds.width() + (textPaint.textSize * 1.5f)
-            val pillH = bounds.height() + (textPaint.textSize * 1.2f)
+            var pillW = bounds.width() + (textPaint.textSize * 1.4f)
+            val pillH = bounds.height() + (textPaint.textSize * 1.0f)
             
             if (pillW > maxRowWidth) {
                 val downscaleRatio = maxRowWidth / pillW
                 size *= downscaleRatio
                 textPaint.textSize = size
                 textPaint.getTextBounds(text, 0, text.length, bounds)
-                pillW = bounds.width() + (textPaint.textSize * 1.5f)
+                pillW = bounds.width() + (textPaint.textSize * 1.4f)
             }
             
             val rad = Math.toRadians(rotation.toDouble())
@@ -591,8 +591,8 @@ object MediaSaver {
             rowHeights.add(currentRowHeight)
         }
         
-        val snippetAreaTop = height - 1000f
-        val snippetAreaBottom = height - 200f
+        val snippetAreaTop = cy + radius + (24f * scaleFactor)
+        val snippetAreaBottom = height - (36f * scaleFactor)
         val snippetAreaHeight = (snippetAreaBottom - snippetAreaTop).coerceAtLeast(1f)
         val totalHeight = rowHeights.sum() + (rows.size - 1) * spacingY
         val fitScale = (snippetAreaHeight / totalHeight.coerceAtLeast(1f)).coerceAtMost(1f)

@@ -383,8 +383,8 @@ fun MemoryScreen(
                         @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
                         androidx.compose.foundation.layout.FlowRow(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
                         ) {
                             photo.snippets.forEachIndexed { index, snippet ->
                                 FloatingSnippet(
@@ -709,8 +709,7 @@ fun FloatingSnippet(
                 .sizeIn(minWidth = 1.dp, minHeight = 1.dp)
         ) {
             Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxWidth()
+                contentAlignment = Alignment.Center
             ) {
                 val snippetGradient = remember(snippetColor) {
                     Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
