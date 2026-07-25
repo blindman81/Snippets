@@ -1021,7 +1021,7 @@ fun PhotoCardListItem(
     val cardPhotoShape = if (makePhotosFollowShape) photoShape else RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
     val blockColor = MaterialTheme.colorScheme.surfaceContainerHighest
     DynamicCardContainer(
-        position = position,
+        position = CardPosition.Single,
         isSelected = isSelected,
         onClick = onClick,
         onLongClick = onLongClick,
@@ -1330,7 +1330,12 @@ fun DynamicCardContainer(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 2.dp)
+            .padding(
+                start = 12.dp,
+                end = 12.dp,
+                top = if (position == CardPosition.Middle || position == CardPosition.Last) 1.dp else 4.dp,
+                bottom = if (position == CardPosition.First || position == CardPosition.Middle) 1.dp else 4.dp
+            )
             .graphicsLayer {
                 scaleX = animatedScale
                 scaleY = animatedScale
