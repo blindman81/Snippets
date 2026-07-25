@@ -2150,10 +2150,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "image/gif"
                     putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                    clipData = android.content.ClipData.newRawUri("", uri)
+                    clipData = android.content.ClipData.newRawUri("Snippet GIF", uri)
                     addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(android.content.Intent.createChooser(intent, "Share Animated GIF"))
+                val chooser = android.content.Intent.createChooser(intent, "Share Animated GIF").apply {
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(chooser)
             }
         }
     }

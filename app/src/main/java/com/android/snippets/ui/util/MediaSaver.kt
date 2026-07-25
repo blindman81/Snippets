@@ -113,17 +113,6 @@ object MediaSaver {
                     put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Snippets")
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
-                try {
-                    val coords = LocationUtils.extractCoordinates(context, photo)
-                    if (coords != null) {
-                        @Suppress("DEPRECATION")
-                        put(MediaStore.Images.ImageColumns.LATITUDE, coords.first)
-                        @Suppress("DEPRECATION")
-                        put(MediaStore.Images.ImageColumns.LONGITUDE, coords.second)
-                    }
-                } catch (e: Exception) {
-                    // Ignore
-                }
             }
 
             val resolver = context.contentResolver
@@ -134,19 +123,6 @@ object MediaSaver {
                     tempFile.inputStream().use { inStream ->
                         inStream.copyTo(outStream)
                     }
-                }
-
-                try {
-                    val coords = LocationUtils.extractCoordinates(context, photo)
-                    if (coords != null) {
-                        resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
-                            val exif = ExifInterface(pfd.fileDescriptor)
-                            exif.setLatLong(coords.first, coords.second)
-                            exif.saveAttributes()
-                        }
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -183,6 +159,7 @@ object MediaSaver {
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
             val file = File(cachePath, "share_snippet.gif")
+            if (file.exists()) file.delete()
             val fos = FileOutputStream(file)
 
             val numFrames = 15
@@ -204,19 +181,9 @@ object MediaSaver {
                 bitmap.recycle()
             }
             encoder.finish()
+            fos.flush()
             fos.close()
             photoBitmap?.recycle()
-
-            try {
-                val coords = LocationUtils.extractCoordinates(context, photo)
-                if (coords != null) {
-                    val exif = ExifInterface(file.absolutePath)
-                    exif.setLatLong(coords.first, coords.second)
-                    exif.saveAttributes()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
 
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         } catch (e: Exception) {
@@ -283,6 +250,11 @@ object MediaSaver {
         val scaleY = if (bounds.height() > 0f) targetSize / bounds.height() else 1f
         matrix.postScale(scaleX, scaleY)
         matrix.postTranslate(cx - radius, cy - radius)
+
+        // Animate Shape Rotation
+        val shapeRotation = frameProgress * 360f
+        matrix.postRotate(shapeRotation, cx, cy)
+
         path.transform(matrix)
         
         val photoPath = path
