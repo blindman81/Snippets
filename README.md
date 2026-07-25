@@ -21,5 +21,5 @@ Created with Antigravity, Codex, and Stitch (only in the early development stage
   <img src="https://github.com/user-attachments/assets/70b633aa-2cfe-479b-b78b-8d1bffddcee6" width="18%">
   <img src="https://github.com/user-attachments/assets/15966ee7-be26-4433-acf0-94b558d756f6" width="18%">
   <img src="https://github.com/user-attachments/assets/a3778ce4-4c74-4035-b011-a755d2284556" width="18%">
-  <img src="https://github.com/user-attachments/assets/e195ba67-e11c-4de0-9f9c-14e924ed4ed3" width="18%">
+  <img src="https://github.com/user-attachments/assets/75aca90a-f5a2-408e-a2b1-246eb92017a7" width="18%">
 </p>
