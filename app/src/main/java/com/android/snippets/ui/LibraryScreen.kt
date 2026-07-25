@@ -447,8 +447,16 @@ fun LibraryScreen(
                                                           )
                                                       }
                                                       0 -> {
+                                                          val totalCount = pageFilteredPhotos.size
+                                                          val cardPos = when {
+                                                              totalCount == 1 -> CardPosition.Single
+                                                              index == 0 -> CardPosition.First
+                                                              index == totalCount - 1 -> CardPosition.Last
+                                                              else -> CardPosition.Middle
+                                                          }
                                                           PhotoListItem(
                                                               photo = photo,
+                                                              position = cardPos,
                                                               isSelected = viewModel.selectedPhotoIds.contains(photo.id),
                                                               selectionMode = viewModel.isSelectionMode,
                                                               showFavoriteIcon = tabForPage != "Favorites",
@@ -1749,8 +1757,8 @@ private fun ViewOptionItem(
                 }
             }
     ) {
-        val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-        val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        val containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+        val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
         
         Box(
             modifier = Modifier.size(48.dp),

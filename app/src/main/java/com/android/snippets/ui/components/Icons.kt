@@ -1180,19 +1180,23 @@ fun SettingsSectionIcon(): ImageVector {
 @Composable
 fun ShapedSectionHeader(
     icon: ImageVector,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    usePrimary: Boolean = false
 ) {
+    val containerColor = if (usePrimary) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    val iconColor = if (usePrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer
+
     Box(
         modifier = modifier
             .size(36.dp)
             .clip(LocalAppShape.current)
-            .background(MaterialTheme.colorScheme.secondaryContainer),
+            .background(containerColor),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            tint = iconColor,
             modifier = Modifier.size(20.dp)
         )
     }
