@@ -325,6 +325,7 @@ private fun styleHeaderLabel(style: SnippetStyle): String = when (style) {
     SnippetStyle.FlexWide -> "FLEX WIDE"
     SnippetStyle.FlexSlant -> "FLEX SLANTED"
     SnippetStyle.FlexGrade -> "FLEX GRADE"
+    SnippetStyle.Flex -> "FLEX"
 }
 
 @Composable

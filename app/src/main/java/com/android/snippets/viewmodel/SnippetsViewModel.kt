@@ -43,7 +43,7 @@ enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, 
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
 
 enum class DisplayMode { Day, Week, Month }
-enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, FlexHeavy, FlexWide, FlexSlant, FlexGrade }
+enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, FlexHeavy, FlexWide, FlexSlant, FlexGrade, Flex }
 
 
 class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
@@ -2172,7 +2172,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
             val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories, locationText = locationText)
             if (success) {
-                android.widget.Toast.makeText(context, "Downloaded GIF to Gallery", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "Downloaded to Gallery", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -2184,15 +2184,12 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, appShape = selectedShape, showTime = showTimeInMemories, locationText = locationText)
             if (uri != null) {
                 val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                    type = "image/gif"
+                    type = "image/jpeg"
                     putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                    clipData = android.content.ClipData.newRawUri("Snippet GIF", uri)
+                    clipData = android.content.ClipData.newRawUri("", uri)
                     addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                val chooser = android.content.Intent.createChooser(intent, "Share Animated GIF").apply {
-                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(chooser)
+                context.startActivity(android.content.Intent.createChooser(intent, "Share Snippets"))
             }
         }
     }
@@ -2679,10 +2676,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     val allUniqueLocations: List<String> by derivedStateOf {
-        photos.filter { !it.collections.contains("Eatlist") }
-            .mapNotNull { photo ->
-                photo.locationLink?.takeIf { it.isNotBlank() } ?: photo.locationName?.takeIf { it.isNotBlank() }
-            }.distinct().sorted()
+        photos.mapNotNull { photo ->
+            photo.locationLink?.takeIf { it.isNotBlank() } ?: photo.locationName?.takeIf { it.isNotBlank() }
+        }.distinct().sorted()
     }
 
     val searchSuggestions: List<Pair<String, Boolean>> by derivedStateOf {

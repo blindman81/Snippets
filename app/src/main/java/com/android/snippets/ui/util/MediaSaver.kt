@@ -66,75 +66,63 @@ object MediaSaver {
         }
     }
 
-    suspend fun saveSnippetToGallery(
-        context: Context,
-        photo: Photo,
-        snippets: List<String>,
-        isDark: Boolean = false,
-        bgColor: Int = Color.WHITE,
-        snippetColors: Map<String, Int> = emptyMap(),
-        snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(),
-        appShape: AppShape = AppShape.COOKIE_12_SIDED,
-        showTime: Boolean = false,
-        locationText: String? = null
-    ): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, locationText: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
-            val photoBitmap = runBlockingCoil(context, photo.uri)
-            val tempFile = File(context.cacheDir, "temp_snippet_${System.currentTimeMillis()}.gif")
-            val fos = FileOutputStream(tempFile)
-
-            val numFrames = 15
-            val frameDelayMs = 100 // 10 fps -> 1.5s loop
-            val encoder = AnimatedGifEncoder()
-            encoder.start(fos)
-            encoder.setDelay(frameDelayMs)
-            encoder.setRepeat(0) // 0 = loop forever
-            encoder.setQuality(10)
-
-            for (i in 0 until numFrames) {
-                val progress = i.toFloat() / numFrames
-                val bitmap = createSnippetBitmap(
-                    context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles,
-                    appShape, showTime, locationText,
-                    width = 720, height = 1280, frameProgress = progress, preloadedPhotoBitmap = photoBitmap
-                ) ?: break
-                encoder.addFrame(bitmap)
-                bitmap.recycle()
-            }
-            encoder.finish()
-            fos.close()
-            photoBitmap?.recycle()
-
-            val fileName = "Snippet_Card_${System.currentTimeMillis()}.gif"
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime, locationText) ?: return@withContext false
+            
+            val fileName = "Snippet_Card_${System.currentTimeMillis()}.jpg"
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/gif")
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Snippets")
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                try {
+                    val coords = LocationUtils.extractCoordinates(context, photo)
+                    if (coords != null) {
+                        @Suppress("DEPRECATION")
+                        put(MediaStore.Images.ImageColumns.LATITUDE, coords.first)
+                        @Suppress("DEPRECATION")
+                        put(MediaStore.Images.ImageColumns.LONGITUDE, coords.second)
+                    }
+                } catch (e: Exception) {
+                    // Ignore
                 }
             }
 
             val resolver = context.contentResolver
             val imageUri: Uri? = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-
+            
             imageUri?.let { uri ->
-                resolver.openOutputStream(uri)?.use { outStream ->
-                    tempFile.inputStream().use { inStream ->
-                        inStream.copyTo(outStream)
-                    }
+                val outputStream: OutputStream? = resolver.openOutputStream(uri)
+                outputStream?.use {
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it)
                 }
-
+                
+                try {
+                    val coords = LocationUtils.extractCoordinates(context, photo)
+                    if (coords != null) {
+                        resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                            val exif = ExifInterface(pfd.fileDescriptor)
+                            exif.setLatLong(coords.first, coords.second)
+                            exif.saveAttributes()
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     contentValues.clear()
                     contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
                     resolver.update(uri, contentValues, null, null)
                 }
-                tempFile.delete()
+                bitmap.recycle()
                 return@withContext true
             }
-
-            tempFile.delete()
+            
+            bitmap.recycle()
             false
         } catch (e: Exception) {
             e.printStackTrace()
@@ -142,49 +130,29 @@ object MediaSaver {
         }
     }
 
-    suspend fun getShareableUri(
-        context: Context,
-        photo: Photo,
-        snippets: List<String>,
-        isDark: Boolean = false,
-        bgColor: Int = Color.WHITE,
-        snippetColors: Map<String, Int> = emptyMap(),
-        snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(),
-        appShape: AppShape = AppShape.COOKIE_12_SIDED,
-        showTime: Boolean = false,
-        locationText: String? = null
-    ): Uri? = withContext(Dispatchers.IO) {
+    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, locationText: String? = null): Uri? = withContext(Dispatchers.IO) {
         try {
-            val photoBitmap = runBlockingCoil(context, photo.uri)
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime, locationText) ?: return@withContext null
+            
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
-            val file = File(cachePath, "share_snippet.gif")
-            if (file.exists()) file.delete()
-            val fos = FileOutputStream(file)
+            val file = File(cachePath, "share_snippet.jpg")
+            val stream = FileOutputStream(file)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
+            stream.close()
 
-            val numFrames = 15
-            val frameDelayMs = 100
-            val encoder = AnimatedGifEncoder()
-            encoder.start(fos)
-            encoder.setDelay(frameDelayMs)
-            encoder.setRepeat(0)
-            encoder.setQuality(10)
-
-            for (i in 0 until numFrames) {
-                val progress = i.toFloat() / numFrames
-                val bitmap = createSnippetBitmap(
-                    context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles,
-                    appShape, showTime, locationText,
-                    width = 720, height = 1280, frameProgress = progress, preloadedPhotoBitmap = photoBitmap
-                ) ?: break
-                encoder.addFrame(bitmap)
-                bitmap.recycle()
+            try {
+                val coords = LocationUtils.extractCoordinates(context, photo)
+                if (coords != null) {
+                    val exif = ExifInterface(file.absolutePath)
+                    exif.setLatLong(coords.first, coords.second)
+                    exif.saveAttributes()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            encoder.finish()
-            fos.flush()
-            fos.close()
-            photoBitmap?.recycle()
 
+            bitmap.recycle()
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -192,26 +160,13 @@ object MediaSaver {
         }
     }
 
-    private fun createSnippetBitmap(
-        context: Context,
-        photo: Photo,
-        snippets: List<String>,
-        isDark: Boolean,
-        bgColor: Int,
-        snippetColors: Map<String, Int>,
-        snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>,
-        appShape: AppShape = AppShape.COOKIE_12_SIDED,
-        showTime: Boolean = false,
-        overrideLocationText: String? = null,
-        width: Int = 1440,
-        height: Int = 2560,
-        frameProgress: Float = 0f,
-        preloadedPhotoBitmap: Bitmap? = null
-    ): Bitmap? {
+    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, overrideLocationText: String? = null): Bitmap? {
+        val width = 1440
+        val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
-        val photoBitmap = preloadedPhotoBitmap ?: runBlockingCoil(context, photo.uri)
+        val photoBitmap = runBlockingCoil(context, photo.uri)
 
         // 1. Draw Background (Fallback solid color first, then blurred photo if loaded)
         canvas.drawColor(bgColor)
@@ -236,35 +191,9 @@ object MediaSaver {
         // 2. Draw Photo in the selected Shape
         val cx = width / 2f
         val centerX = cx
-        val cy = height * 0.38f
-        val targetSize = minOf(width * 0.72f, height * 0.38f)
-        val radius = targetSize / 2f
-
-        // Shape animation matching MemoryScreen logic (gentle & slow)
-        val fraction = (frameProgress * 2f * Math.PI).toFloat()
-        var shapeRotation = 0f
-        var pulseScale = 1f
-        var transX = 0f
-        var transY = 0f
-
-        when (appShape) {
-            AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
-                // Slow rotation: 9 degrees across 1.5s loop (matches 360 deg / 60s rate in MemoryScreen)
-                shapeRotation = frameProgress * 9f
-            }
-            AppShape.GEM, AppShape.SQUARE -> {
-                shapeRotation = 3f * Math.sin(fraction.toDouble()).toFloat()
-            }
-            AppShape.PENTAGON, AppShape.COOKIE_4_SIDED -> {
-                pulseScale = 1f + 0.05f * Math.sin(fraction.toDouble()).toFloat()
-            }
-            AppShape.CLOVER_4_LEAF -> {
-                transY = 12f * (width / 720f) * Math.sin(fraction.toDouble()).toFloat()
-            }
-            AppShape.CLOVER_8_LEAF -> {
-                transX = 12f * (width / 720f) * Math.sin(fraction.toDouble()).toFloat()
-            }
-        }
+        val cy = 924f
+        val radius = 624f
+        val targetSize = 2 * radius // 1248f
         
         val normalizedPolygon = appShape.getNormalizedPolygon()
         val path = normalizedPolygon.toPath()
@@ -272,15 +201,10 @@ object MediaSaver {
         path.computeBounds(bounds, true)
         val matrix = android.graphics.Matrix()
         matrix.postTranslate(-bounds.left, -bounds.top)
-        val scaleX = (if (bounds.width() > 0f) targetSize / bounds.width() else 1f) * pulseScale
-        val scaleY = (if (bounds.height() > 0f) targetSize / bounds.height() else 1f) * pulseScale
+        val scaleX = if (bounds.width() > 0f) targetSize / bounds.width() else 1f
+        val scaleY = if (bounds.height() > 0f) targetSize / bounds.height() else 1f
         matrix.postScale(scaleX, scaleY)
-        matrix.postTranslate(cx - radius + transX, cy - radius + transY)
-
-        if (shapeRotation != 0f) {
-            matrix.postRotate(shapeRotation, cx + transX, cy + transY)
-        }
-
+        matrix.postTranslate(cx - radius, cy - radius)
         path.transform(matrix)
         
         val photoPath = path
@@ -292,61 +216,62 @@ object MediaSaver {
             val srcWidth = photoBitmap.width.toFloat()
             val srcHeight = photoBitmap.height.toFloat()
             
-            val scale = (targetSize / minOf(srcWidth, srcHeight)) * pulseScale
+            val scale = targetSize / minOf(srcWidth, srcHeight)
             
             val scaledWidth = srcWidth * scale
             val scaledHeight = srcHeight * scale
             
-            val focusOffsetX = (cx + transX) - scaledWidth * 0.5f
-            val focusOffsetY = (cy + transY) - scaledHeight * 0.5f
+            val focusOffsetX = cx - scaledWidth * 0.5f
+            val focusOffsetY = cy - scaledHeight * 0.5f
             
-            val imgMatrix = android.graphics.Matrix()
-            imgMatrix.postScale(scale, scale)
-            imgMatrix.postTranslate(focusOffsetX, focusOffsetY)
+            val matrix = android.graphics.Matrix()
+            matrix.postScale(scale, scale)
+            matrix.postTranslate(focusOffsetX, focusOffsetY)
             
-            canvas.drawBitmap(photoBitmap, imgMatrix, null)
+            canvas.drawBitmap(photoBitmap, matrix, null)
             canvas.restore()
         } else {
+            // Draw a fallback placeholder rounded rect if photo load fails
             val placeholderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = if (isDark) Color.parseColor("#303030") else Color.parseColor("#E0E0E0")
             }
             canvas.drawPath(photoPath, placeholderPaint)
         }
 
-        // Draw a thick border around the Photo Shape
+        // Draw a thick border around the Photo Rectangle
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 4f * (width / 360f) // 4.dp equivalent
+            strokeWidth = 16f // 4.dp equivalent
             color = Color.WHITE
         }
         canvas.drawPath(photoPath, borderPaint)
 
-        // 3. Draw Date & Location Header (Exact scale to match MemoryScreen: 12.sp & 10.sp)
+        // 3. Draw Date & Location Header
         val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
         val timeFormat = if (is24Hour) "HH:mm" else "h:mm a"
         val datePattern = if (showTime) "EEE, d MMM • $timeFormat" else "EEE, d MMM"
         val dateString = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(photo.date)).uppercase()
         val locationText = overrideLocationText ?: LocationUtils.getLocationFromExif(context, photo)
-        
-        val scaleFactor = width / 360f
-
         val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 12f * scaleFactor // Matching 12.sp in MemoryScreen
+            alpha = 230
+            textSize = 34f
             typeface = getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                letterSpacing = 0.08f
+                letterSpacing = 0.15f
             }
         }
 
+        // Adjust Y positions if there is a rating to make space above the day, date and time
         val hasRating = photo.rating > 0
-        val dateY = if (hasRating) 140f * scaleFactor else 120f * scaleFactor
-        val pillTop = if (hasRating) 114f * scaleFactor else 94f * scaleFactor
+        val dateY = if (hasRating) 220f else 200f
+        val pillTop = if (hasRating) 182f else 162f
 
         if (hasRating) {
-            val starSize = 24f * scaleFactor
+            val scaleFactor = width / 360f
+            val starSize = 28f * scaleFactor
             val starLeft = (width - starSize) / 2f
-            val starTop = 20f * scaleFactor
+            val starTop = 30f
 
             val starDrawable = androidx.core.content.res.ResourcesCompat.getDrawable(
                 context.resources,
@@ -359,9 +284,10 @@ object MediaSaver {
                 androidx.core.graphics.drawable.DrawableCompat.setTint(tintedDrawable, Color.WHITE)
                 tintedDrawable.draw(canvas)
 
+                // Draw the rating number inside the star
                 val ratingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = Color.parseColor("#1F1F1F")
-                    textSize = 9f * scaleFactor
+                    textSize = 10f * scaleFactor
                     textAlign = Paint.Align.CENTER
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 }
@@ -380,15 +306,15 @@ object MediaSaver {
 
             val locTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
-                textSize = 10f * scaleFactor // Matching 10.sp in MemoryScreen
+                alpha = 240
+                textSize = 26f
                 typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             }
             val locTextWidth = locTextPaint.measureText(locationText)
 
-            val pillH = 22f * scaleFactor
-            val pillPaddingH = 8f * scaleFactor
-            val pillW = locTextWidth + (pillPaddingH * 2) + (14f * scaleFactor)
-            val spacing = 8f * scaleFactor
+            val pillW = locTextWidth + 64f
+            val pillH = 48f
+            val spacing = 24f
             val totalHeaderWidth = dateWidth + spacing + pillW
             val startX = (width - totalHeaderWidth) / 2f
 
@@ -407,51 +333,38 @@ object MediaSaver {
             }
             val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
-                alpha = (255 * 0.40f).toInt()
+                alpha = (255 * 0.4f).toInt()
                 style = Paint.Style.STROKE
-                strokeWidth = 1f * scaleFactor
+                strokeWidth = 3f
             }
             canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBgPaint)
             canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBorderPaint)
 
-            val dotX = pillLeft + pillPaddingH + (4f * scaleFactor)
+            val dotX = pillLeft + 24f
             val dotY = pillRect.centerY()
             val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
                 style = Paint.Style.FILL
             }
-            canvas.drawCircle(dotX, dotY, 3f * scaleFactor, dotPaint)
+            canvas.drawCircle(dotX, dotY, 5f, dotPaint)
 
-            val textCenterX = dotX + (6f * scaleFactor) + (locTextWidth / 2f)
+            val textCenterX = pillLeft + 44f + (locTextWidth / 2f)
             locTextPaint.textAlign = Paint.Align.CENTER
-            val fontMetrics = locTextPaint.fontMetrics
-            val locTextY = pillRect.centerY() - (fontMetrics.descent + fontMetrics.ascent) / 2f
-            canvas.drawText(locationText, textCenterX, locTextY, locTextPaint)
+            canvas.drawText(locationText, textCenterX, pillRect.centerY() + 9f, locTextPaint)
         }
 
-        // 4. Draw Snippets (Static layout matching MemoryScreen FloatingSnippet)
+        // 4. Draw Snippets (Synchronized with ExpressiveShareSheet logic)
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textAlign = Paint.Align.CENTER
         }
         val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         
-        data class PlacedPill(
-            val text: String, 
-            val w: Float, 
-            val h: Float, 
-            val boundingW: Float, 
-            val boundingH: Float, 
-            val textSize: Float, 
-            val color: Int, 
-            val rot: Float, 
-            val textBounds: Rect, 
-            val typeface: Typeface, 
-            val spacing: Float, 
-            val isFilled: Boolean
-        )
-        val maxRowWidth = width * 0.86f
-        val spacingX = 8f * scaleFactor
-        val spacingY = 8f * scaleFactor
+        val scaleFactor = width / 360f // Baseline for DP to PX scaling
+        
+        data class PlacedPill(val text: String, val w: Float, val h: Float, val boundingW: Float, val boundingH: Float, val textSize: Float, val color: Int, val rot: Float, val textBounds: Rect, val typeface: Typeface, val spacing: Float, val isFilled: Boolean)
+        val maxRowWidth = 1100f
+        val spacingX = 48f
+        val spacingY = 48f
         
         val rows = mutableListOf<MutableList<PlacedPill>>()
         val rowHeights = mutableListOf<Float>()
@@ -460,16 +373,17 @@ object MediaSaver {
         var currentRowHeight = 0f
         
         snippets.forEachIndexed { index, text ->
-            val trimmedText = text.trim()
-            val stableRandom = Random(trimmedText.hashCode().toLong())
-            val forcedColor = snippetColors[trimmedText]
+            val forcedColor = snippetColors[text.trim()]
             val baseColor = if (forcedColor != null) {
                 forcedColor
             } else {
+                val stableRandom = Random(text.hashCode().toLong())
                 val colorStrategy = (index + stableRandom.nextInt(10)) % 3
                 when (colorStrategy) {
-                    0 -> Color.parseColor(if (isDark) "#D0BCFF" else "#6750A4")
-                    1 -> {
+                    0 -> { // Fallback Theme
+                        Color.parseColor(if (isDark) "#D0BCFF" else "#6750A4")
+                    }
+                    1 -> { // System Theme Mix
                         val themes = if (isDark) intArrayOf(
                             Color.parseColor("#D0BCFF"),
                             Color.parseColor("#CCC2DC"),
@@ -481,25 +395,38 @@ object MediaSaver {
                         )
                         themes[stableRandom.nextInt(themes.size)]
                     }
-                    else -> {
+                    else -> { // Vivid Pop
                         val vivids = if (isDark) intArrayOf(
                             Color.parseColor("#FF8A65"), Color.parseColor("#F06292"), 
-                            Color.parseColor("#BA68C8"), Color.parseColor("#4DD0E1"),
-                            Color.parseColor("#81C784"), Color.parseColor("#FFD54F")
+                            Color.parseColor("#BA68C8"), Color.parseColor("#4DD0E1")
                         ) else intArrayOf(
                             Color.parseColor("#D84315"), Color.parseColor("#C2185B"), 
-                            Color.parseColor("#7B1FA2"), Color.parseColor("#0097A7"),
-                            Color.parseColor("#388E3C"), Color.parseColor("#FFA000")
+                            Color.parseColor("#7B1FA2"), Color.parseColor("#0097A7")
                         )
                         vivids[stableRandom.nextInt(vivids.size)]
                     }
                 }
             }
 
+            // Contrast check for Bitmap drawing
+            val colorInt = baseColor.let { c ->
+                val r = Color.red(c) / 255f
+                val g = Color.green(c) / 255f
+                val b = Color.blue(c) / 255f
+                val lum = 0.299f * r + 0.587f * g + 0.114f * b
+                if (isDark && lum < 0.3f) {
+                    Color.rgb((r + 0.4f).coerceAtMost(1f), (g + 0.4f).coerceAtMost(1f), (b + 0.4f).coerceAtMost(1f))
+                } else if (!isDark && lum > 0.7f) {
+                    Color.rgb((r - 0.4f).coerceAtLeast(0f), (g - 0.4f).coerceAtLeast(0f), (b - 0.4f).coerceAtLeast(0f))
+                } else c
+            }
+
+            val trimmedText = text.trim()
+            val stableRandom = Random(trimmedText.hashCode())
             val personality = stableRandom.nextInt(0, 5)
             val isFilled = true
             
-            val rotation = (stableRandom.nextFloat() * 16f - 8f) // Tilt between -8 and +8 deg
+            val rotation = stableRandom.nextInt(-15, 15).toFloat()
             
             val total = snippets.size
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getCloudScalingFactor(total)
@@ -538,9 +465,9 @@ object MediaSaver {
             }
 
             val baseFontSize = when (personality) {
-                0, 1 -> 16f
-                2, 3 -> 13f
-                else -> 11f
+                0, 1 -> 24f // Large
+                2, 3 -> 18f // Medium
+                else -> 14f // Small
             }
             var size = (baseFontSize * scalingFactor) * scaleFactor
             
@@ -551,16 +478,16 @@ object MediaSaver {
             
             textPaint.textSize = size
             val bounds = Rect()
-            textPaint.getTextBounds(trimmedText, 0, trimmedText.length, bounds)
-            var pillW = bounds.width() + (textPaint.textSize * 1.4f)
-            val pillH = bounds.height() + (textPaint.textSize * 1.0f)
+            textPaint.getTextBounds(text, 0, text.length, bounds)
+            var pillW = bounds.width() + (textPaint.textSize * 1.5f)
+            val pillH = bounds.height() + (textPaint.textSize * 1.2f)
             
             if (pillW > maxRowWidth) {
                 val downscaleRatio = maxRowWidth / pillW
                 size *= downscaleRatio
                 textPaint.textSize = size
-                textPaint.getTextBounds(trimmedText, 0, trimmedText.length, bounds)
-                pillW = bounds.width() + (textPaint.textSize * 1.4f)
+                textPaint.getTextBounds(text, 0, text.length, bounds)
+                pillW = bounds.width() + (textPaint.textSize * 1.5f)
             }
             
             val rad = Math.toRadians(rotation.toDouble())
@@ -577,7 +504,7 @@ object MediaSaver {
                 currentRowHeight = 0f
             }
             
-            currentRow.add(PlacedPill(trimmedText, pillW, pillH, boundingW, boundingH, size, baseColor, rotation, bounds, typeface, letterSpacingVal, isFilled))
+            currentRow.add(PlacedPill(text, pillW, pillH, boundingW, boundingH, size, colorInt, rotation, bounds, typeface, letterSpacingVal, isFilled))
             currentRowWidth += boundingW + (if (currentRow.size > 1) spacingX else 0f)
             currentRowHeight = maxOf(currentRowHeight, boundingH)
         }
@@ -586,8 +513,8 @@ object MediaSaver {
             rowHeights.add(currentRowHeight)
         }
         
-        val snippetAreaTop = cy + radius + (24f * scaleFactor)
-        val snippetAreaBottom = height - (36f * scaleFactor)
+        val snippetAreaTop = height - 1000f
+        val snippetAreaBottom = height - 200f
         val snippetAreaHeight = (snippetAreaBottom - snippetAreaTop).coerceAtLeast(1f)
         val totalHeight = rowHeights.sum() + (rows.size - 1) * spacingY
         val fitScale = (snippetAreaHeight / totalHeight.coerceAtLeast(1f)).coerceAtMost(1f)
@@ -595,55 +522,58 @@ object MediaSaver {
         val scaledSpacingY = spacingY * fitScale
         val scaledTotalHeight = (rowHeights.sum() * fitScale) + (rows.size - 1) * scaledSpacingY
         var currentY = snippetAreaTop + ((snippetAreaHeight - scaledTotalHeight) / 2f).coerceAtLeast(0f)
-
+        
         rows.forEachIndexed { rowIndex, row ->
             val rowHeight = rowHeights[rowIndex] * fitScale
             val rowWidth = row.sumOf { (it.boundingW * fitScale).toDouble() }.toFloat() + (row.size - 1) * scaledSpacingX
             var currentX = centerX - (rowWidth / 2f)
+            
             val centerY = currentY + (rowHeight / 2f)
             
             row.forEach { pill ->
                 val scaledBoundingW = pill.boundingW * fitScale
                 val scaledW = pill.w * fitScale
                 val scaledH = pill.h * fitScale
-
                 val x = currentX + (scaledBoundingW / 2f)
                 val y = centerY
                 
                 canvas.save()
                 canvas.rotate(pill.rot, x, y)
-                
-                // Draw Pill Background
-                val pillPath = android.graphics.Path().apply {
-                    val r = scaledH / 2f
-                    addRoundRect(
-                        android.graphics.RectF(0f, 0f, scaledW, scaledH),
-                        r, r,
-                        android.graphics.Path.Direction.CW
-                    )
-                    offset(x - (scaledW / 2f), y - (scaledH / 2f))
-                }
-                
-                pillPaint.style = Paint.Style.FILL
-                pillPaint.color = pill.color
-                pillPaint.alpha = (255 * 0.25f).toInt()
-                canvas.drawPath(pillPath, pillPaint)
-
-                // Draw Text with clean color and no persistent shader corruption
-                textPaint.shader = null // Clear any shader
                 textPaint.color = pill.color
                 textPaint.textSize = pill.textSize * fitScale
                 textPaint.typeface = pill.typeface
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                     textPaint.letterSpacing = pill.spacing
                 }
+                val alphaColor = Color.argb(140, Color.red(pill.color), Color.green(pill.color), Color.blue(pill.color))
+                textPaint.shader = android.graphics.LinearGradient(x - (scaledW / 2f), y, x + (scaledW / 2f), y, intArrayOf(pill.color, alphaColor), null, android.graphics.Shader.TileMode.CLAMP)
                 
+                val pillPath = android.graphics.Path().apply {
+                    val radius = scaledH / 2f
+                    addRoundRect(
+                        android.graphics.RectF(0f, 0f, scaledW, scaledH),
+                        radius, radius,
+                        android.graphics.Path.Direction.CW
+                    )
+                    offset(x - (scaledW / 2f), y - (scaledH / 2f))
+                }
+                
+                if (pill.isFilled) {
+                    pillPaint.style = Paint.Style.FILL
+                    pillPaint.color = pill.color
+                    pillPaint.alpha = (255 * 0.25f).toInt()
+                    canvas.drawPath(pillPath, pillPaint)
+                } else {
+                    pillPaint.style = Paint.Style.STROKE
+                    pillPaint.strokeWidth = 1.5f * fitScale * scaleFactor
+                    pillPaint.color = pill.color
+                    pillPaint.alpha = (255 * 0.40f).toInt()
+                    canvas.drawPath(pillPath, pillPaint)
+                }
                 val currentBounds = Rect()
                 textPaint.getTextBounds(pill.text, 0, pill.text.length, currentBounds)
-                val fontMetrics = textPaint.fontMetrics
-                val textY = y - (fontMetrics.descent + fontMetrics.ascent) / 2f
+                val textY = y - currentBounds.exactCenterY()
                 canvas.drawText(pill.text, x, textY, textPaint)
-                
                 canvas.restore()
                 
                 currentX += scaledBoundingW + scaledSpacingX

@@ -4,8 +4,6 @@ import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.*
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
@@ -21,6 +19,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyRow
@@ -164,13 +163,13 @@ fun DetailTopBar(
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         // Group 1: Download, Share, Favorite
                         DropdownMenuItem(
-                            text = { Text("Download GIF") },
+                            text = { Text("Download") },
                             leadingIcon = { Icon(Icons.Default.FileDownload, null) },
                             enabled = hasSnippets,
                             onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onDownload(); closeMenu() }
                         )
                         DropdownMenuItem(
-                            text = { Text("Share GIF") },
+                            text = { Text("Share") },
                             leadingIcon = { Icon(Icons.Default.Share, null) },
                             enabled = hasSnippets,
                             onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onShare(); closeMenu() }
@@ -293,6 +292,10 @@ fun getSnippetTextStyle(
         com.android.snippets.viewmodel.SnippetStyle.FlexGrade -> base.copy(
             fontFamily = com.android.snippets.ui.theme.GoogleSansFlexGrade
         )
+        com.android.snippets.viewmodel.SnippetStyle.Flex -> base.copy(
+            fontFamily = com.android.snippets.ui.theme.GoogleSansFlex,
+            fontWeight = FontWeight.Bold
+        )
         else -> base
     }
     return styled.copy(
@@ -308,10 +311,8 @@ fun CloudSnippetItem(
     photoColors: List<Int> = emptyList(),
     forcedColor: Int? = null,
     forcedStyle: com.android.snippets.viewmodel.SnippetStyle? = null,
-    isSegmented: Boolean = false,
-    onClick: (() -> Unit)? = null
+    isSegmented: Boolean = false
 ) {
-    val view = LocalView.current
     val stableRandom = remember(text) { Random(text.hashCode()) }
     val personality = stableRandom.nextInt(0, 5)
     val colorStrategy = (index + stableRandom.nextInt(0, 10)) % 3
@@ -357,11 +358,11 @@ fun CloudSnippetItem(
         }
     }
 
-    // Ensure contrast on light/white background
+    // Ensure it's not too close to black/white clashing with the theme
     val snippetColor = remember(baseSnippetColor, isDark) {
         val lum = baseSnippetColor.let { 0.299f * it.red + 0.587f * it.green + 0.114f * it.blue }
-        if (lum > 0.65f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.35f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.35f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.35f).coerceAtLeast(0f))
-        else if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
+        if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
+        else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
         else baseSnippetColor
     }
 
@@ -387,13 +388,13 @@ fun CloudSnippetItem(
     val itemShape = remember(index, totalCount, isSegmented) {
         if (isSegmented) {
             if (totalCount <= 1) {
-                RoundedCornerShape(20.dp)
+                RoundedCornerShape(16.dp)
             } else if (index == 0) {
-                RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 4.dp, bottomEnd = 4.dp)
+                RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 2.dp, bottomEnd = 2.dp)
             } else if (index == totalCount - 1) {
-                RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp, topEnd = 20.dp, bottomEnd = 20.dp)
+                RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, topEnd = 16.dp, bottomEnd = 16.dp)
             } else {
-                RoundedCornerShape(4.dp)
+                RoundedCornerShape(2.dp)
             }
         } else {
             CircleShape
@@ -402,19 +403,11 @@ fun CloudSnippetItem(
 
     val itemContent = @Composable {
         Surface(
-            modifier = (if (isSegmented) Modifier.height(44.dp) else Modifier)
-                .then(
-                    if (onClick != null) {
-                        Modifier.clickable {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onClick()
-                        }
-                    } else Modifier
-                ),
+            modifier = if (isSegmented) Modifier.height(44.dp) else Modifier,
             color = containerColor,
             shape = itemShape,
             border = if (borderColor != null) BorderStroke(1.dp, borderColor) else null,
-            shadowElevation = if (isSegmented) 0.dp else 0.dp
+            shadowElevation = 0.dp
         ) {
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getGridScalingFactor(totalCount)
     
@@ -720,45 +713,28 @@ fun AddSnippetsModal(
 
                         customItem(
                             buttonGroupContent = {
-                                val interactionSource = remember { MutableInteractionSource() }
-                                val isPressed by interactionSource.collectIsPressedAsState()
-
-                                val isSelected = index == selectedIndex
-                                val targetWeight = when {
-                                    isSelected && isPressed -> 0.85f
-                                    isSelected -> 1.15f
-                                    isPressed -> 0.75f
-                                    else -> 1.0f
-                                }
-                                val animatedWeight by animateFloatAsState(
-                                    targetValue = targetWeight,
-                                    animationSpec = androidx.compose.animation.core.spring(
-                                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
-                                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                    ),
-                                    label = "detail_weight_$index"
-                                )
-
+                                val leading = ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                val trailing = ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                val middle = ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 val shapes = when {
-                                    isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
+                                    isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
+                                    isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes(pressedShape = trailing.shape)
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes(pressedShape = middle.shape)
                                 }
 
                                 ToggleButton(
-                                    checked = isSelected,
+                                    checked = index == selectedIndex,
                                     onCheckedChange = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         selectedIndex = index
                                     },
-                                    interactionSource = interactionSource,
-                                    modifier = Modifier.weight(animatedWeight),
+                                    modifier = Modifier.weight(1f),
                                     shapes = shapes
                                 ) {
                                     Text(
                                         text = label,
-                                        style = if (isSelected) {
+                                        style = if (index == selectedIndex) {
                                             MaterialTheme.typography.labelLarge.copy(
                                                 fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
                                             )
@@ -862,13 +838,10 @@ fun AddSnippetsModal(
                                                                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                                                 text = suggestion 
                                                             },
-                                                            label = { Text(suggestion, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
-                                                            shape = CircleShape,
-                                                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                                            ),
-                                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                                            label = { Text(suggestion, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                                                            shape = SuggestionChipDefaults.shape,
+                                                            colors = SuggestionChipDefaults.suggestionChipColors(),
+                                                            border = SuggestionChipDefaults.suggestionChipBorder(enabled = true)
                                                         )
                                                     }
                                                 }
@@ -1104,7 +1077,7 @@ fun CanvasBackgroundDialog(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Action Button
-                val buttonText = if (action == CanvasAction.DOWNLOAD) "Download GIF" else "Share GIF"
+                val buttonText = if (action == CanvasAction.DOWNLOAD) "Download" else "Share"
                 val buttonIcon = if (action == CanvasAction.DOWNLOAD) Icons.Default.FileDownload else Icons.Default.Share
 
                 Button(

@@ -736,99 +736,58 @@ fun SnippetsDetailContent(
                     val pureSnippets = photo.snippets
                     val total = pureSnippets.size
 
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    Row(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
                             .widthIn(max = 600.dp)
+                            .then(if (total > 3) Modifier.horizontalScroll(rememberScrollState()) else Modifier.wrapContentWidth()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ButtonGroup(
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .then(if (total > 3) Modifier.horizontalScroll(rememberScrollState()) else Modifier.fillMaxWidth()),
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            overflowIndicator = {}
-                        ) {
-                            pureSnippets.forEachIndexed { index, snippet ->
-                                val isFirst = index == 0
-                                val isLast = index == total - 1
-                                val forcedColor = viewModel.getSnippetColor(snippet)
-                                val forcedStyle = viewModel.getSnippetStyle(snippet)
+                        pureSnippets.forEachIndexed { index, snippet ->
+                            val forcedColor = viewModel.getSnippetColor(snippet)
+                            val forcedStyle = viewModel.getSnippetStyle(snippet)
 
-                                customItem(
-                                    buttonGroupContent = {
-                                        val view = LocalView.current
-                                        val interactionSource = remember { MutableInteractionSource() }
-                                        val isPressed by interactionSource.collectIsPressedAsState()
+                            val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
+                            val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
+                            val snippetColor = remember(baseSnippetColor, isDark) {
+                                val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
+                                if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
+                                else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
+                                else baseSnippetColor
+                            }
 
-                                        val targetWeight = if (isPressed) 0.85f else 1.0f
-                                        val animatedWeight by animateFloatAsState(
-                                            targetValue = targetWeight,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            ),
-                                            label = "snippet_weight_$index"
-                                        )
+                            val snippetGradient = remember(snippetColor) {
+                                Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
+                            }
 
-                                        val shapes = when {
-                                            isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                            isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                            isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                        }
+                            val view = LocalView.current
 
-                                        val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
-                                        val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                                        val snippetColor = remember(baseSnippetColor, isDark) {
-                                            val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
-                                            if (lum > 0.65f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.35f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.35f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.35f).coerceAtLeast(0f))
-                                            else if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-                                            else baseSnippetColor
-                                        }
-
-                                        val snippetGradient = remember(snippetColor) {
-                                            Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
-                                        }
-
-                                        ToggleButton(
-                                            checked = false,
-                                            onCheckedChange = {
-                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                onEditSnippets()
-                                            },
-                                            interactionSource = interactionSource,
-                                            modifier = Modifier.then(if (total <= 3) Modifier.weight(animatedWeight) else Modifier),
-                                            shapes = shapes,
-                                            colors = ToggleButtonDefaults.toggleButtonColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                contentColor = snippetColor
-                                            )
-                                        ) {
-                                            Text(
-                                                text = snippet,
-                                                style = getSnippetTextStyle(
-                                                    forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                                    MaterialTheme.typography.titleMedium,
-                                                    isCloud = true
-                                                ).copy(brush = snippetGradient),
-                                                color = Color.Unspecified,
-                                                maxLines = 1
-                                            )
-                                        }
-                                    },
-                                    menuContent = { state ->
-                                        DropdownMenuItem(
-                                            text = { Text(snippet) },
-                                            onClick = {
-                                                state.dismiss()
-                                                onEditSnippets()
-                                            }
-                                        )
-                                    }
-                                )
+                            Surface(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    onEditSnippets()
+                                },
+                                shape = CircleShape,
+                                color = snippetColor.copy(alpha = 0.18f),
+                                border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
+                                modifier = Modifier.height(40.dp)
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                ) {
+                                    Text(
+                                        text = snippet,
+                                        style = getSnippetTextStyle(
+                                            forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                            MaterialTheme.typography.titleMedium,
+                                            isCloud = true
+                                        ).copy(brush = snippetGradient),
+                                        color = Color.Unspecified,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     }

@@ -586,6 +586,7 @@ private fun formatStyleName(style: SnippetStyle): String = when (style) {
     SnippetStyle.FlexWide -> "Flex Wide"
     SnippetStyle.FlexSlant -> "Flex Slanted"
     SnippetStyle.FlexGrade -> "Flex Grade"
+    SnippetStyle.Flex -> "Flex"
 }
 
 private fun formatColorName(colorInt: Int?): String {

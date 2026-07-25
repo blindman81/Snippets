@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.*
-import com.android.snippets.ui.AppPredictiveBackHandler
 import com.android.snippets.viewmodel.SnippetsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +41,12 @@ fun MonthlyRecapScreen(
     val isScrolled by remember {
         derivedStateOf {
             listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
+    }
+
+    LaunchedEffect(photos.isEmpty()) {
+        if (photos.isEmpty()) {
+            onBack()
         }
     }
 
@@ -65,67 +70,12 @@ fun MonthlyRecapScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.TopCenter
         ) {
-            if (photos.isEmpty()) {
-                EmptyRecapCard(
-                    title = title,
-                    onBack = onBack
-                )
-            } else {
+            if (photos.isNotEmpty()) {
                 RecapCardList(
                     photos = photos,
                     viewModel = viewModel,
                     listState = listState
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyRecapCard(
-    title: String,
-    onBack: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth(0.90f)
-            .height(300.dp)
-            .shadow(8.dp, RoundedCornerShape(24.dp))
-            .clip(RoundedCornerShape(24.dp)),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 6.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                painter = androidx.compose.ui.res.painterResource(id = com.ln.android.snippets.R.drawable.ic_star_rating),
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "End of $title",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "You've reviewed all standout memories in this recap!",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            Button(
-                onClick = onBack,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("Back to Library")
             }
         }
     }

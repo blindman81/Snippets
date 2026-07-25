@@ -822,25 +822,71 @@ fun PhotoListItem(
                         }
                     }
                 } else {
-                    val topSnippets = photo.snippets.take(6)
-                    val total = photo.snippets.size
+                    val topSnippets = photo.snippets.take(2)
+                    val total = topSnippets.size
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
+                        modifier = Modifier.wrapContentWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         topSnippets.forEachIndexed { index, snippet ->
-                            CloudSnippetItem(
-                                text = snippet,
-                                index = index,
-                                totalCount = total,
-                                photoColors = emptyList(),
-                                forcedColor = viewModel.getSnippetColor(snippet),
-                                forcedStyle = viewModel.getSnippetStyle(snippet),
-                                isSegmented = true
-                            )
+                            val forcedColor = viewModel.getSnippetColor(snippet)
+                            val forcedStyle = viewModel.getSnippetStyle(snippet)
+
+                            val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
+                            val baseSnippetColor = if (forcedColor != null) {
+                                Color(forcedColor)
+                            } else {
+                                val stableRandom = remember(snippet) { kotlin.random.Random(snippet.hashCode()) }
+                                val colorStrategy = (index + stableRandom.nextInt(0, 10)) % 3
+                                when (colorStrategy) {
+                                    1 -> listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary,
+                                        MaterialTheme.colorScheme.tertiary,
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    )[stableRandom.nextInt(4)]
+                                    else -> if (isDark) listOf(
+                                        Color(0xFFFF8A65), Color(0xFFF06292), Color(0xFFBA68C8), Color(0xFF4DD0E1), Color(0xFF81C784), Color(0xFFFFD54F)
+                                    )[stableRandom.nextInt(6)] else listOf(
+                                        Color(0xFFD84315), Color(0xFFC2185B), Color(0xFF7B1FA2), Color(0xFF0097A7), Color(0xFF388E3C), Color(0xFFFFA000)
+                                    )[stableRandom.nextInt(6)]
+                                }
+                            }
+                            val snippetColor = remember(baseSnippetColor, isDark) {
+                                val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
+                                if (lum > 0.65f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.35f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.35f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.35f).coerceAtLeast(0f))
+                                else if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
+                                else baseSnippetColor
+                            }
+
+                            val snippetGradient = remember(snippetColor) {
+                                androidx.compose.ui.graphics.Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
+                            }
+
+                            Surface(
+                                onClick = { onClick() },
+                                shape = CircleShape,
+                                color = snippetColor.copy(alpha = 0.18f),
+                                border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f))
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.CenterStart,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = snippet,
+                                        style = getSnippetTextStyle(
+                                            forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                            MaterialTheme.typography.labelLarge,
+                                            isCloud = true
+                                        ).copy(brush = snippetGradient),
+                                        color = Color.Unspecified,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1000,7 +1046,7 @@ fun PhotoCardListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(190.dp),
+                .height(225.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Photo Box: takes full card space for Eatlist, or 60% for cards with snippets column
@@ -1183,46 +1229,36 @@ fun PhotoCardListItem(
                         if (photo.snippets.isEmpty()) {
                             Surface(
                                 shape = LocalAppShape.current,
-                                color = (if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest).copy(alpha = 0.5f),
-                                modifier = Modifier.size(32.dp)
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f),
+                                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                                shadowElevation = 0.dp,
+                                modifier = Modifier.size(56.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         painter = painterResource(id = R.drawable.ic_text_snippet_off),
                                         contentDescription = "No snippets",
-                                        tint = (if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.5f),
-                                        modifier = Modifier.size(18.dp)
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
                             }
                         } else {
                             val topSnippets = photo.snippets.take(6)
-                            val total = topSnippets.size
-                            val verticalPadding = if (total >= 4) 6.dp else 8.dp
+
                             Column(
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .verticalScroll(rememberScrollState())
+                                    .fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 topSnippets.forEachIndexed { index, snippet ->
-                                    val snippetPosition = when {
-                                        total == 1 -> CardPosition.Single
-                                        index == 0 -> CardPosition.First
-                                        index == total - 1 -> CardPosition.Last
-                                        else -> CardPosition.Middle
-                                    }
-                                    val snippetShape = when (snippetPosition) {
-                                        CardPosition.Single -> RoundedCornerShape(12.dp)
-                                        CardPosition.First -> RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
-                                        CardPosition.Middle -> RoundedCornerShape(2.dp)
-                                        CardPosition.Last -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
-                                    }
-
-                                    val snippetStyle = viewModel.getSnippetStyle(snippet)
                                     val forcedColor = viewModel.getSnippetColor(snippet)
-                                    val baseColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
+                                    val forcedStyle = viewModel.getSnippetStyle(snippet)
+
                                     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                                    val baseColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
                                     val snippetColor = remember(baseColor, isDark) {
                                         val lum = 0.299f * baseColor.red + 0.587f * baseColor.green + 0.114f * baseColor.blue
                                         if (isDark && lum < 0.3f) baseColor.copy(red = (baseColor.red + 0.4f).coerceAtMost(1f), green = (baseColor.green + 0.4f).coerceAtMost(1f), blue = (baseColor.blue + 0.4f).coerceAtMost(1f))
@@ -1237,20 +1273,19 @@ fun PhotoCardListItem(
                                     }
 
                                     Surface(
-                                        shape = snippetShape,
+                                        shape = CircleShape,
                                         color = snippetColor.copy(alpha = 0.18f),
-                                        border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
-                                        modifier = Modifier.fillMaxWidth()
+                                        border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f))
                                     ) {
                                         Box(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = verticalPadding),
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                             contentAlignment = Alignment.CenterStart
                                         ) {
                                             Text(
                                                 text = snippet,
                                                 style = getSnippetTextStyle(
-                                                    snippetStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                                    MaterialTheme.typography.titleMedium,
+                                                    forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                                    MaterialTheme.typography.labelLarge,
                                                     isCloud = true
                                                 ).copy(color = Color.Unspecified).copy(brush = snippetGradient),
                                                 color = Color.Unspecified,
