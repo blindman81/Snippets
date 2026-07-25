@@ -559,14 +559,15 @@ fun LibraryScreen(
                                          .height(64.dp)
                                          .graphicsLayer { translationY = topBarOffset.toPx() }
                                  ) {
-                                     Row(
-                                         modifier = Modifier
-                                             .fillMaxSize()
-                                             .horizontalScroll(tabRowScrollState)
-                                             .padding(horizontal = 8.dp, vertical = 6.dp),
-                                         horizontalArrangement = Arrangement.Center,
-                                         verticalAlignment = Alignment.CenterVertically
-                                     ) {
+                                      Row(
+                                          modifier = Modifier
+                                              .fillMaxHeight()
+                                              .wrapContentWidth()
+                                              .horizontalScroll(tabRowScrollState)
+                                              .padding(horizontal = 8.dp, vertical = 6.dp),
+                                          horizontalArrangement = Arrangement.Start,
+                                          verticalAlignment = Alignment.CenterVertically
+                                      ) {
                                           androidx.compose.material3.ButtonGroup(
                                               horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
                                               overflowIndicator = {}
@@ -671,8 +672,8 @@ fun LibraryScreen(
                                                               val isPressed by interactionSource.collectIsPressedAsState()
 
                                                                // Calculate target width for spring animation & press compression accommodating wide font
-                                                               val textExtra = (tabName.length * 7.5f).dp
-                                                               val baseSelectedWidth = (76.dp + textExtra).coerceAtLeast(124.dp)
+                                                               val textExtra = (tabName.length * 10f).dp
+                                                               val baseSelectedWidth = (88.dp + textExtra).coerceAtLeast(136.dp)
                                                                val baseUnselectedWidth = 64.dp
 
                                                                val targetWidth = when {
@@ -746,7 +747,8 @@ fun LibraryScreen(
                                                                                  fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
                                                                              ),
                                                                              fontWeight = FontWeight.Bold,
-                                                                             maxLines = 1
+                                                                             maxLines = 1,
+                                                                             softWrap = false
                                                                          )
                                                                      }
                                                                  }
