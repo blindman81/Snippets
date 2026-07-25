@@ -255,14 +255,17 @@ class LZWEncoder(
     private var clearCode = 0
     private var eofCode = 0
 
+    // Bit accumulator (separate from byte sub-block counter)
     private var curAccum = 0
-    private var curCount = 0
+    private var curBits = 0
 
+    // Byte sub-block accumulator
     private var accum = ByteArray(256)
+    private var aCount = 0
 
     private fun charOut(c: Byte, outs: OutputStream) {
-        accum[curCount++] = c
-        if (curCount >= 254) flushChar(outs)
+        accum[aCount++] = c
+        if (aCount >= 254) flushChar(outs)
     }
 
     private fun clBlock(outs: OutputStream) {
@@ -282,17 +285,18 @@ class LZWEncoder(
         val remaining = imgW * imgH
         var curPixel = 0
 
-        gInitBits = initCodeSize
+        gInitBits = initCodeSize + 1
         clearFlg = false
         nBits = gInitBits
         maxcode = maxCode(nBits)
 
-        clearCode = 1 shl (initCodeSize - 1)
+        clearCode = 1 shl initCodeSize
         eofCode = clearCode + 1
         freeEnt = clearCode + 2
 
         curAccum = 0
-        curCount = 0
+        curBits = 0
+        aCount = 0
 
         var ent = pixAry[curPixel++].toInt() and 0xff
         var hshift = 0
@@ -339,26 +343,28 @@ class LZWEncoder(
         }
         output(ent, os)
         output(eofCode, os)
+        // Write block terminator after all LZW data sub-blocks
+        os.write(0)
     }
 
     private fun flushChar(outs: OutputStream) {
-        if (curCount > 0) {
-            outs.write(curCount)
-            outs.write(accum, 0, curCount)
-            curCount = 0
+        if (aCount > 0) {
+            outs.write(aCount)
+            outs.write(accum, 0, aCount)
+            aCount = 0
         }
     }
 
     private fun maxCode(nBits: Int): Int = (1 shl nBits) - 1
 
     private fun output(code: Int, outs: OutputStream) {
-        curAccum = curAccum or (code shl curCount)
-        curCount += nBits
+        curAccum = curAccum or (code shl curBits)
+        curBits += nBits
 
-        while (curCount >= 8) {
+        while (curBits >= 8) {
             charOut((curAccum and 0xff).toByte(), outs)
             curAccum = curAccum shr 8
-            curCount -= 8
+            curBits -= 8
         }
 
         if (freeEnt > maxcode || clearFlg) {
@@ -373,10 +379,10 @@ class LZWEncoder(
         }
 
         if (code == eofCode) {
-            while (curCount > 0) {
+            while (curBits > 0) {
                 charOut((curAccum and 0xff).toByte(), outs)
                 curAccum = curAccum shr 8
-                curCount -= 8
+                curBits -= 8
             }
             flushChar(outs)
         }
