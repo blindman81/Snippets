@@ -43,6 +43,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import com.android.snippets.ui.components.LoadingIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -391,7 +396,8 @@ fun DetailScreen(
                                     }
                                 },
                                 onRemoveEatlist = { showDeleteModal = true },
-                                onEditLink = { showLinkModal = true }
+                                onEditLink = { showLinkModal = true },
+                                onEditSnippets = { showCurrentSnippetsModal = true }
                             )
                         }
                     }
@@ -675,7 +681,7 @@ fun EmptyDetailContent(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SnippetsDetailContent(
     photo: com.android.snippets.model.Photo,
@@ -696,7 +702,8 @@ fun SnippetsDetailContent(
     pageOffset: Float = 0f,
     onOpenLink: (String) -> Unit = {},
     onEditLink: () -> Unit = {},
-    onRemoveEatlist: () -> Unit = {}
+    onRemoveEatlist: () -> Unit = {},
+    onEditSnippets: () -> Unit = {}
 ) {
     val isEatlist = photo.collections.contains("Eatlist") || viewModel.libraryCurrentTab == "Eatlist"
     SwipeToDismissContainer(
@@ -728,28 +735,101 @@ fun SnippetsDetailContent(
                 ) {
                     val pureSnippets = photo.snippets
                     val total = pureSnippets.size
-                    val lazyListState = rememberLazyListState()
 
-                    LazyRow(
-                        state = lazyListState,
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
                         modifier = Modifier
-                            .fillMaxWidth()
                             .padding(horizontal = 16.dp)
-                            .widthIn(max = 600.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically,
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            .widthIn(max = 600.dp)
                     ) {
-                        itemsIndexed(pureSnippets) { index, snippet ->
-                            CloudSnippetItem(
-                                text = snippet,
-                                index = index,
-                                totalCount = total,
-                                photoColors = emptyList(),
-                                forcedColor = viewModel.getSnippetColor(snippet),
-                                forcedStyle = viewModel.getSnippetStyle(snippet),
-                                isSegmented = true
-                            )
+                        ButtonGroup(
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .then(if (total > 3) Modifier.horizontalScroll(rememberScrollState()) else Modifier.fillMaxWidth()),
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            overflowIndicator = {}
+                        ) {
+                            pureSnippets.forEachIndexed { index, snippet ->
+                                val isFirst = index == 0
+                                val isLast = index == total - 1
+                                val forcedColor = viewModel.getSnippetColor(snippet)
+                                val forcedStyle = viewModel.getSnippetStyle(snippet)
+
+                                customItem(
+                                    buttonGroupContent = {
+                                        val view = LocalView.current
+                                        val interactionSource = remember { MutableInteractionSource() }
+                                        val isPressed by interactionSource.collectIsPressedAsState()
+
+                                        val targetWeight = if (isPressed) 0.85f else 1.0f
+                                        val animatedWeight by animateFloatAsState(
+                                            targetValue = targetWeight,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            ),
+                                            label = "snippet_weight_$index"
+                                        )
+
+                                        val shapes = when {
+                                            isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                        }
+
+                                        val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
+                                        val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
+                                        val snippetColor = remember(baseSnippetColor, isDark) {
+                                            val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
+                                            if (lum > 0.65f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.35f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.35f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.35f).coerceAtLeast(0f))
+                                            else if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
+                                            else baseSnippetColor
+                                        }
+
+                                        val snippetGradient = remember(snippetColor) {
+                                            Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
+                                        }
+
+                                        ToggleButton(
+                                            checked = false,
+                                            onCheckedChange = {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                onEditSnippets()
+                                            },
+                                            interactionSource = interactionSource,
+                                            modifier = Modifier.then(if (total <= 3) Modifier.weight(animatedWeight) else Modifier),
+                                            shapes = shapes,
+                                            colors = ToggleButtonDefaults.toggleButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = snippetColor
+                                            )
+                                        ) {
+                                            Text(
+                                                text = snippet,
+                                                style = getSnippetTextStyle(
+                                                    forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                                    MaterialTheme.typography.titleMedium,
+                                                    isCloud = true
+                                                ).copy(brush = snippetGradient),
+                                                color = Color.Unspecified,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    },
+                                    menuContent = { state ->
+                                        DropdownMenuItem(
+                                            text = { Text(snippet) },
+                                            onClick = {
+                                                state.dismiss()
+                                                onEditSnippets()
+                                            }
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
 

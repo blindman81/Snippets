@@ -308,8 +308,10 @@ fun CloudSnippetItem(
     photoColors: List<Int> = emptyList(),
     forcedColor: Int? = null,
     forcedStyle: com.android.snippets.viewmodel.SnippetStyle? = null,
-    isSegmented: Boolean = false
+    isSegmented: Boolean = false,
+    onClick: (() -> Unit)? = null
 ) {
+    val view = LocalView.current
     val stableRandom = remember(text) { Random(text.hashCode()) }
     val personality = stableRandom.nextInt(0, 5)
     val colorStrategy = (index + stableRandom.nextInt(0, 10)) % 3
@@ -355,11 +357,11 @@ fun CloudSnippetItem(
         }
     }
 
-    // Ensure it's not too close to black/white clashing with the theme
+    // Ensure contrast on light/white background
     val snippetColor = remember(baseSnippetColor, isDark) {
         val lum = baseSnippetColor.let { 0.299f * it.red + 0.587f * it.green + 0.114f * it.blue }
-        if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-        else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
+        if (lum > 0.65f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.35f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.35f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.35f).coerceAtLeast(0f))
+        else if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
         else baseSnippetColor
     }
 
@@ -385,13 +387,13 @@ fun CloudSnippetItem(
     val itemShape = remember(index, totalCount, isSegmented) {
         if (isSegmented) {
             if (totalCount <= 1) {
-                RoundedCornerShape(16.dp)
+                RoundedCornerShape(20.dp)
             } else if (index == 0) {
-                RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 2.dp, bottomEnd = 2.dp)
+                RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 4.dp, bottomEnd = 4.dp)
             } else if (index == totalCount - 1) {
-                RoundedCornerShape(topStart = 2.dp, bottomStart = 2.dp, topEnd = 16.dp, bottomEnd = 16.dp)
+                RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp, topEnd = 20.dp, bottomEnd = 20.dp)
             } else {
-                RoundedCornerShape(2.dp)
+                RoundedCornerShape(4.dp)
             }
         } else {
             CircleShape
@@ -400,11 +402,19 @@ fun CloudSnippetItem(
 
     val itemContent = @Composable {
         Surface(
-            modifier = if (isSegmented) Modifier.height(44.dp) else Modifier,
+            modifier = (if (isSegmented) Modifier.height(44.dp) else Modifier)
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onClick()
+                        }
+                    } else Modifier
+                ),
             color = containerColor,
             shape = itemShape,
             border = if (borderColor != null) BorderStroke(1.dp, borderColor) else null,
-            shadowElevation = if (isSegmented) 4.dp else 0.dp
+            shadowElevation = if (isSegmented) 0.dp else 0.dp
         ) {
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getGridScalingFactor(totalCount)
     
