@@ -800,6 +800,35 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             } else photo
         }.toMutableList()
 
+        // Count memories active for today
+        val activeCountToday = updatedPhotos.count { photo ->
+            photo.surfacedTime != 0L && photo.surfacedTime <= now && (now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS)
+        }
+
+        // If today has fewer than 5 active memories, recycle expired memories so the queue refreshes for today
+        if (activeCountToday < 5) {
+            val needed = 5 - activeCountToday
+            val expiredCandidates = updatedPhotos.filter { photo ->
+                photo.isLibraryUpload &&
+                !photo.collections.contains("Eatlist") &&
+                photo.snippets.isNotEmpty() &&
+                photo.snippetsAddedTime != 0L &&
+                photo.surfacedTime != 0L &&
+                photo.surfacedTime <= now &&
+                (now - photo.surfacedTime >= VIEWED_MEMORY_VISIBLE_MS) &&
+                (!photo.isViewed || (now - photo.lastViewedTime >= VIEWED_MEMORY_VISIBLE_MS))
+            }.sortedBy { if (it.isViewed) it.lastViewedTime else it.surfacedTime }
+            .take(needed)
+
+            for (expired in expiredCandidates) {
+                val index = updatedPhotos.indexOfFirst { it.id == expired.id }
+                if (index != -1) {
+                    updatedPhotos[index] = updatedPhotos[index].copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
+                    changed = true
+                }
+            }
+        }
+
         val assignedTimes = updatedPhotos.map { it.surfacedTime }.filter { it != 0L && it > now - VIEWED_MEMORY_VISIBLE_MS }
 
         val queuedCandidates = updatedPhotos.filter { photo ->
@@ -858,20 +887,19 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     private fun findNextAvailableSurfacedTime(photo: Photo, now: Long, assignedTimes: List<Long>): Long {
         val earliestTime = photo.snippetsAddedTime + NEW_MEMORY_WAIT_MS
-        var candidateTime = maxOf(now, earliestTime)
 
         if (notificationReminderEnabled) {
-            val calendar = Calendar.getInstance().apply { timeInMillis = candidateTime }
-            calendar.set(Calendar.HOUR_OF_DAY, notificationReminderHour)
-            calendar.set(Calendar.MINUTE, notificationReminderMinute)
+            val todayStart = getStartOfDay(now)
+            val calendar = Calendar.getInstance().apply { timeInMillis = maxOf(todayStart, getStartOfDay(earliestTime)) }
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
             calendar.set(Calendar.SECOND, 0)
             calendar.set(Calendar.MILLISECOND, 0)
             
-            // If the set time is in the past (before earliestTime or now), push it to the next day (or future days)
-            while (calendar.timeInMillis < earliestTime || calendar.timeInMillis < now) {
+            while (calendar.timeInMillis < todayStart || calendar.timeInMillis + TimeUnit.DAYS.toMillis(1) <= earliestTime) {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
             }
-            candidateTime = calendar.timeInMillis
+            var candidateTime = calendar.timeInMillis
             
             val activeAssignedTimes = assignedTimes.toMutableList()
             var attempts = 0
@@ -881,8 +909,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 if (countOnDay >= 5) {
                     calendar.timeInMillis = candidateTime
                     calendar.add(Calendar.DAY_OF_YEAR, 1)
-                    calendar.set(Calendar.HOUR_OF_DAY, notificationReminderHour)
-                    calendar.set(Calendar.MINUTE, notificationReminderMinute)
+                    calendar.set(Calendar.HOUR_OF_DAY, 0)
+                    calendar.set(Calendar.MINUTE, 0)
                     calendar.set(Calendar.SECOND, 0)
                     calendar.set(Calendar.MILLISECOND, 0)
                     candidateTime = calendar.timeInMillis
@@ -893,6 +921,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             }
             return candidateTime
         } else {
+            val todayStart = getStartOfDay(now)
+            var candidateTime = maxOf(todayStart, getStartOfDay(earliestTime))
+            if (earliestTime > now) {
+                candidateTime = maxOf(now, earliestTime)
+            }
             candidateTime = adjustForQuietHours(candidateTime)
 
             val activeAssignedTimes = assignedTimes.toMutableList()
@@ -966,6 +999,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     private fun shouldResurfaceMemory(photo: Photo, now: Long): Boolean {
         if (!photo.isLibraryUpload || photo.snippets.isEmpty() || photo.snippetsAddedTime == 0L || photo.collections.contains("Eatlist")) {
+            return false
+        }
+        if (photo.surfacedTime != 0L && photo.surfacedTime > now) {
             return false
         }
         if (photo.isViewed) {
@@ -2414,12 +2450,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             photo.snippets.isNotEmpty() &&
             photo.snippetsAddedTime != 0L &&
             (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
-            (
-                // Notified: visible for 24h from surfaced time
-                (photo.surfacedTime != 0L && photo.surfacedTime <= now && now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
-                // Viewed: visible for 24h from last viewed time
-                (photo.isViewed && now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS)
-            )
+            photo.surfacedTime != 0L &&
+            photo.surfacedTime <= now &&
+            (now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS) &&
+            (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime || (now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS))
         }.sortedWith(
             compareByDescending<Photo> {
                 !it.isViewed

@@ -105,12 +105,10 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
                 photo.snippets.isNotEmpty() &&
                 photo.snippetsAddedTime != 0L &&
                 (now - photo.snippetsAddedTime >= newMemoryWaitMs) &&
-                (
-                    // Notified: visible for 24h from surfaced time
-                    (photo.surfacedTime != 0L && photo.surfacedTime <= now && now - photo.surfacedTime < viewedMemoryVisibleMs && (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime)) ||
-                    // Viewed: visible for 24h from last viewed time
-                    (photo.isViewed && now - photo.lastViewedTime < viewedMemoryVisibleMs)
-                )
+                photo.surfacedTime != 0L &&
+                photo.surfacedTime <= now &&
+                (now - photo.surfacedTime < viewedMemoryVisibleMs) &&
+                (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime || (now - photo.lastViewedTime < viewedMemoryVisibleMs))
             }.sortedWith(
                 compareByDescending<Photo> {
                     !it.isViewed
