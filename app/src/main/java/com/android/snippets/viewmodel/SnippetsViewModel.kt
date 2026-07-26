@@ -528,17 +528,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     init {
         loadFilterState()
         loadSettingsState()
-        loadPhotos()
-        loadSnippetColors()
-        loadSnippetStyles()
-        loadSnippetFirstSeenTimes()
+        loadAllData()
         pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
         loadRecentSearches()
         startHintRotation()
 
     }
 
-    private fun loadPhotos() {
+    private fun loadAllData() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             // Migration check: If new files don't exist, try loading from SharedPreferences
             if (!photosFile.exists() && prefs.contains("photos_json")) {
@@ -577,7 +574,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 emptyList()
             }
 
-
             val loadedIcons = try {
                 if (collectionIconsFile.exists()) {
                     val iconJson = collectionIconsFile.readText()
@@ -614,39 +610,74 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     locationName = p.locationName,
                     rating = p.rating
                 )
+            }.sortedByDescending { it.date }
+
+            val loadedColors = try {
+                if (snippetColorsFile.exists()) {
+                    val json = snippetColorsFile.readText()
+                    val type = object : TypeToken<Map<String, Int>>() {}.type
+                    gson.fromJson<Map<String, Int>>(json, type) ?: emptyMap()
+                } else emptyMap()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                emptyMap()
             }
 
-            // Run expensive operations on IO thread to avoid ANR on Main thread
-            val currentPhotos = photos
-            val currentSnippetTimes = snippetFirstSeenTimes
-            val merged = (currentPhotos + processedPhotos).distinctBy { it.id }.sortedByDescending { it.date }
-            val rebuiltSnippetTimes = rebuildSnippetFirstSeenTimes(merged)
-            val updatedSnippetTimes = if (currentSnippetTimes.isEmpty()) {
-                rebuiltSnippetTimes
-            } else {
-                rebuiltSnippetTimes.mapValues { (snippet, rebuiltTime) ->
-                    currentSnippetTimes[snippet] ?: rebuiltTime
-                }
+            val loadedStyles = try {
+                if (snippetStylesFile.exists()) {
+                    val json = snippetStylesFile.readText()
+                    val type = object : TypeToken<Map<String, SnippetStyle>>() {}.type
+                    gson.fromJson<Map<String, SnippetStyle>>(json, type) ?: emptyMap()
+                } else emptyMap()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                emptyMap()
             }
 
+            val loadedFirstSeen = try {
+                if (snippetFirstSeenFile.exists()) {
+                    val json = snippetFirstSeenFile.readText()
+                    val type = object : TypeToken<Map<String, Long>>() {}.type
+                    gson.fromJson<Map<String, Long>>(json, type) ?: emptyMap()
+                } else emptyMap()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                emptyMap()
+            }
+
+            val rebuiltFirstSeen = rebuildSnippetFirstSeenTimes(processedPhotos)
+            val mergedFirstSeen = rebuiltFirstSeen.mapValues { (snippet, rebuiltTime) ->
+                loadedFirstSeen[snippet] ?: rebuiltTime
+            }
 
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                // MERGE: Update the states with the precomputed values
-                photos = merged
-                snippetFirstSeenTimes = updatedSnippetTimes
+                photos = processedPhotos
                 userCollections = loadedCollections
                 collectionIcons = loadedIcons
-                
-                // Auto-heal any photos that were previously stored with a temporary content:// URI
+                snippetColors = loadedColors
+                snippetStyles = loadedStyles
+                snippetFirstSeenTimes = mergedFirstSeen
+
+                // Auto-heal any photos that were previously stored with a temporary content:// URI in a single batch
                 viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     val brokenPhotos = photos.filter { it.uriString.startsWith("content://") }
-                    brokenPhotos.forEach { p ->
-                        val healedUri = saveToInternalStorage(android.net.Uri.parse(p.uriString))
-                        if (healedUri != null) {
-                            val (newW, newH) = extractImageDimensions(android.net.Uri.parse(healedUri))
-                            val updated = p.copy(uriString = healedUri, widthPx = newW, heightPx = newH)
+                    if (brokenPhotos.isNotEmpty()) {
+                        var changed = false
+                        val updatedList = photos.toMutableList()
+                        brokenPhotos.forEach { p ->
+                            val healedUri = saveToInternalStorage(android.net.Uri.parse(p.uriString))
+                            if (healedUri != null) {
+                                val (newW, newH) = extractImageDimensions(android.net.Uri.parse(healedUri))
+                                val index = updatedList.indexOfFirst { it.id == p.id }
+                                if (index != -1) {
+                                    updatedList[index] = updatedList[index].copy(uriString = healedUri, widthPx = newW, heightPx = newH)
+                                    changed = true
+                                }
+                            }
+                        }
+                        if (changed) {
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                photos = photos.map { if (it.id == p.id) updated else it }
+                                photos = updatedList
                             }
                             savePhotos()
                         }
@@ -655,7 +686,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 isInitialLoading = false
 
                 // Clean up any filter snippets that no longer exist in any photo (prevents stuck empty state)
-                val allExistingSnippets = merged.flatMap { it.snippets }.toSet()
+                val allExistingSnippets = processedPhotos.flatMap { it.snippets }.toSet()
                 val validFilters = selectedFilterSnippets.filter { filter ->
                     allExistingSnippets.any { it.equals(filter, ignoreCase = true) }
                 }
@@ -664,7 +695,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     saveFilterState()
                 }
 
-                saveSnippetFirstSeenTimes()
+                if (mergedFirstSeen != loadedFirstSeen) {
+                    saveSnippetFirstSeenTimes()
+                }
+
                 reconcileSurfacedMemories()
                 reconcileMemoryNotifications()
                 if (notificationReminderEnabled) {
@@ -1481,10 +1515,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             )
             .addTag(reminderName)
 
-        // For resurfaced memories (zero delay), use expedited work to deliver immediately
-        if (delay == 0L) {
-            workRequestBuilder.setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-        }
         val workRequest = workRequestBuilder.build()
 
         WorkManager.getInstance(getApplication()).enqueueUniqueWork(
@@ -2865,22 +2895,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun loadSnippetStyles() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            if (snippetStylesFile.exists()) {
-                try {
-                    val json = snippetStylesFile.readText()
-                    val type = object : TypeToken<Map<String, SnippetStyle>>() {}.type
-                    val loaded: Map<String, SnippetStyle> = gson.fromJson(json, type) ?: emptyMap()
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        snippetStyles = loaded
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
+
 
     private fun saveSnippetColors() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -2893,22 +2908,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun loadSnippetColors() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            if (snippetColorsFile.exists()) {
-                try {
-                    val json = snippetColorsFile.readText()
-                    val type = object : TypeToken<Map<String, Int>>() {}.type
-                    val loaded: Map<String, Int> = gson.fromJson(json, type) ?: emptyMap()
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        snippetColors = loaded
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
+
 
     private fun saveSnippetFirstSeenTimes() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -2921,33 +2921,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun loadSnippetFirstSeenTimes() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val loaded = try {
-                if (snippetFirstSeenFile.exists()) {
-                    val json = snippetFirstSeenFile.readText()
-                    val type = object : TypeToken<Map<String, Long>>() {}.type
-                    gson.fromJson<Map<String, Long>>(json, type) ?: emptyMap()
-                } else emptyMap()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                emptyMap()
-            }
 
-            val rebuilt = rebuildSnippetFirstSeenTimes(photos)
-            val merged = rebuilt.mapValues { (snippet, rebuiltTime) ->
-                loaded[snippet] ?: rebuiltTime
-            }
-
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                snippetFirstSeenTimes = merged
-            }
-
-            if (merged != loaded) {
-                saveSnippetFirstSeenTimes()
-            }
-        }
-    }
 
     fun updateSnippets(photoId: String, name: String, color: Int? = null, style: SnippetStyle? = null) {
         val trimmed = name.trim()
@@ -3163,10 +3137,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     loadFilterState()
                     loadSettingsState()
-                    loadPhotos()
-                    loadSnippetColors()
-                    loadSnippetStyles()
-                    loadSnippetFirstSeenTimes()
+                    loadAllData()
                     pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
                     loadRecentSearches()
                     
@@ -3197,6 +3168,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 24, java.util.concurrent.TimeUnit.HOURS
             ).setConstraints(
                 androidx.work.Constraints.Builder()
+                    .setRequiresCharging(true)
                     .setRequiresBatteryNotLow(true)
                     .setRequiresStorageNotLow(true)
                     .build()

@@ -58,7 +58,6 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         Log.d(TAG, "Creating auto backup file: ${backupFile.absolutePath}")
 
         val gson = Gson()
-        val prettyGson = GsonBuilder().setPrettyPrinting().create()
 
         val backupJsonObj = JsonObject().apply {
             addProperty("version", 2)
@@ -102,7 +101,7 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
 
         FileOutputStream(backupFile).use { outputStream ->
-            outputStream.write(prettyGson.toJson(backupJsonObj).toByteArray(Charsets.UTF_8))
+            outputStream.write(gson.toJson(backupJsonObj).toByteArray(Charsets.UTF_8))
         }
         Log.d(TAG, "Auto backup completed successfully.")
     }

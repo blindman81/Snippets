@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.*
 import android.net.Uri
+import coil.imageLoader
 import android.os.Build
 import androidx.compose.ui.graphics.toArgb
 import android.os.Environment
@@ -160,13 +161,13 @@ object MediaSaver {
         }
     }
 
-    private fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, overrideLocationText: String? = null): Bitmap? {
+    private suspend fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, appShape: AppShape = AppShape.COOKIE_12_SIDED, showTime: Boolean = false, overrideLocationText: String? = null): Bitmap? {
         val width = 1440
         val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
-        val photoBitmap = runBlockingCoil(context, photo.uri)
+        val photoBitmap = runCoil(context, photo.uri)
 
         // 1. Draw Background (Fallback solid color first, then blurred photo if loaded)
         canvas.drawColor(bgColor)
@@ -584,14 +585,14 @@ object MediaSaver {
         return bitmap
     }
 
-    private fun runBlockingCoil(context: Context, uri: Uri): Bitmap? {
+    private suspend fun runCoil(context: Context, uri: Uri): Bitmap? {
         return try {
-            val loader = coil.ImageLoader(context)
+            val loader = context.imageLoader
             val request = coil.request.ImageRequest.Builder(context)
                 .data(uri)
                 .allowHardware(false) // Required for Canvas drawing
                 .build()
-            val result = kotlinx.coroutines.runBlocking { loader.execute(request) }
+            val result = loader.execute(request)
             (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
         } catch (e: Exception) {
             e.printStackTrace()
