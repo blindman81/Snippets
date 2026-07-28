@@ -1435,23 +1435,20 @@ fun LibraryScreen(
                                 }
 
                                 Column(
-                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    modifier = Modifier.padding(horizontal = 4.dp),
                                     verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
                                     options.forEachIndexed { index, option ->
-                                        val shape = when {
-                                            options.size == 1 -> RoundedCornerShape(24.dp)
-                                            index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
-                                            index == options.size - 1 -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-                                            else -> RoundedCornerShape(2.dp)
+                                        val cardPos = when {
+                                            options.size == 1 -> CardPosition.Single
+                                            index == 0 -> CardPosition.First
+                                            index == options.size - 1 -> CardPosition.Last
+                                            else -> CardPosition.Middle
                                         }
-                                        Surface(
-                                            shape = shape,
-                                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(shape)
-                                                .clickable { option.action() }
+                                        DynamicCardContainer(
+                                            position = cardPos,
+                                            onClick = { option.action() },
+                                            modifier = Modifier.fillMaxWidth()
                                         ) {
                                             ListItem(
                                                 headlineContent = { Text(option.name, fontWeight = FontWeight.Bold) },
@@ -1462,16 +1459,16 @@ fun LibraryScreen(
                                                      } else if (icon is Int) {
                                                          Icon(painterResource(id = icon), contentDescription = null)
                                                      }
-                                                 },
-                                                colors = ListItemDefaults.colors(
-                                                    containerColor = Color.Transparent,
-                                                    headlineColor = Color.Unspecified,
-                                                    leadingIconColor = Color.Unspecified
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
+                                                  },
+                                                 colors = ListItemDefaults.colors(
+                                                     containerColor = Color.Transparent,
+                                                     headlineColor = Color.Unspecified,
+                                                     leadingIconColor = Color.Unspecified
+                                                 )
+                                             )
+                                         }
+                                     }
+                                 }
                             }
                         }
                     }
