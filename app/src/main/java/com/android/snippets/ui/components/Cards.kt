@@ -521,7 +521,7 @@ fun PhotoMasonryItem(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = finalShape,
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                 shadowElevation = if (isSelected) 6.dp else 2.dp,
                 border = null
             ) {
@@ -739,7 +739,7 @@ fun PhotoMasonryItem(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = photoShape,
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                 shadowElevation = if (isSelected) 6.dp else 2.dp,
                 border = null
             ) {
@@ -812,7 +812,7 @@ fun PhotoMasonryItem(
                     .wrapContentWidth()
                     .align(Alignment.CenterHorizontally),
                 shape = bottomCardShape,
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                 shadowElevation = if (isSelected) 4.dp else 1.dp,
                 border = null
             ) {

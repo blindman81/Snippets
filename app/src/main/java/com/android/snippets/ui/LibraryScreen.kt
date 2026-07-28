@@ -506,6 +506,7 @@ fun LibraryScreen(
                                                                animatedVisibilityScope = animatedVisibilityScope,
                                                                shape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(16.dp),
                                                                tab = tabForPage,
+                                                               viewModel = viewModel,
                                                                onClick = {
                                                                    if (viewModel.isSelectionMode) {
                                                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
