@@ -810,7 +810,7 @@ fun PhotoMasonryItem(
             Surface(
                 modifier = Modifier
                     .wrapContentWidth()
-                    .align(Alignment.CenterHorizontally),
+                    .align(Alignment.Start),
                 shape = bottomCardShape,
                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
                 shadowElevation = if (isSelected) 4.dp else 1.dp,
@@ -820,7 +820,7 @@ fun PhotoMasonryItem(
                     modifier = Modifier
                         .wrapContentWidth()
                         .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     if (photo.snippets.isEmpty()) {
                         Box(
@@ -836,7 +836,7 @@ fun PhotoMasonryItem(
                         }
                     } else {
                         FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.wrapContentWidth()
                         ) {
