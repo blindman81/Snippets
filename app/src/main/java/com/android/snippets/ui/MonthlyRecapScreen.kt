@@ -105,7 +105,7 @@ private fun RecapCardList(
 
             PhotoCardListItem(
                 photo = photo,
-                position = cardPos,
+                position = CardPosition.Single,
                 viewModel = viewModel,
                 onClick = {
                     viewModel.openDetail(photo.id)

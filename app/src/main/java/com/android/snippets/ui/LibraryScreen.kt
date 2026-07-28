@@ -330,11 +330,12 @@ fun LibraryScreen(
                             }
                         } else {
                             val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
-                            val currentGridColumns = viewModel.customGridColumns?.coerceIn(-1, 3) ?: when (windowSizeClass?.widthSizeClass) {
+                            val rawColumns = viewModel.customGridColumns?.coerceIn(-1, 3)
+                            val currentGridColumns = if (rawColumns == 1) -1 else (rawColumns ?: when (windowSizeClass?.widthSizeClass) {
                                 WindowWidthSizeClass.Expanded -> 3
                                 WindowWidthSizeClass.Medium -> 3
                                 else -> -1
-                            }
+                            })
                             val displayColumns = if (currentGridColumns <= 0) 1 else currentGridColumns
                             val minColumns = -1
                             val maxColumns = 3
@@ -367,21 +368,23 @@ fun LibraryScreen(
                                                     if (zoomChange != 1f) {
                                                         zoomAccumulator *= zoomChange
                                                         event.changes.forEach { it.consume() }
-                                                        if (zoomAccumulator > 1.25f) {
-                                                            // Pinch out (expanding fingers) -> fewer columns -> larger items
-                                                            if (currentGridColumns > minColumns) {
-                                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                viewModel.updateCustomGridColumns(currentGridColumns - 1)
-                                                            }
-                                                            zoomAccumulator = 1f
-                                                        } else if (zoomAccumulator < 0.8f) {
-                                                            // Pinch in (contracting fingers) -> more columns -> smaller items
-                                                            if (currentGridColumns < maxColumns) {
-                                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                viewModel.updateCustomGridColumns(currentGridColumns + 1)
-                                                            }
-                                                            zoomAccumulator = 1f
-                                                        }
+                                                         if (zoomAccumulator > 1.25f) {
+                                                             // Pinch out (expanding fingers) -> fewer columns -> larger items
+                                                             if (currentGridColumns > minColumns) {
+                                                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                 val nextCol = if (currentGridColumns == 2) 0 else currentGridColumns - 1
+                                                                 viewModel.updateCustomGridColumns(nextCol)
+                                                             }
+                                                             zoomAccumulator = 1f
+                                                         } else if (zoomAccumulator < 0.8f) {
+                                                             // Pinch in (contracting fingers) -> more columns -> smaller items
+                                                             if (currentGridColumns < maxColumns) {
+                                                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                 val nextCol = if (currentGridColumns == 0) 2 else currentGridColumns + 1
+                                                                 viewModel.updateCustomGridColumns(nextCol)
+                                                             }
+                                                             zoomAccumulator = 1f
+                                                         }
                                                     }
                                                 }
                                             } while (event.changes.any { it.pressed })
@@ -394,140 +397,141 @@ fun LibraryScreen(
                                     bottom = 100.dp
                                 ),
                                               horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                              verticalItemSpacing = 4.dp
+                                              verticalItemSpacing = if (currentGridColumns == 0) 2.dp else 4.dp
                                           ) {
                                               itemsIndexed(pageFilteredPhotos, key = { _, photo -> photo.id }) { index, photo ->
                                                    val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
                                                    val isLeast = tabSortType == com.android.snippets.viewmodel.PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
                                                   
-                                                  when (currentGridColumns) {
-                                                      -1 -> {
-                                                          // Calculate card position: First, Middle, Last, or Single
-                                                          val totalCount = pageFilteredPhotos.size
-                                                          val cardPos = when {
-                                                              totalCount == 1 -> CardPosition.Single
-                                                              index == 0 -> CardPosition.First
-                                                              index == totalCount - 1 -> CardPosition.Last
-                                                              else -> CardPosition.Middle
-                                                          }
+                                                   when (currentGridColumns) {
+                                                       -1, 1 -> {
+                                                           // Calculate card position: First, Middle, Last, or Single
+                                                           val totalCount = pageFilteredPhotos.size
+                                                           val cardPos = when {
+                                                               totalCount == 1 -> CardPosition.Single
+                                                               index == 0 -> CardPosition.First
+                                                               index == totalCount - 1 -> CardPosition.Last
+                                                               else -> CardPosition.Middle
+                                                           }
 
-                                                          PhotoCardListItem(
-                                                              photo = photo,
-                                                              position = cardPos,
-                                                              isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                              selectionMode = viewModel.isSelectionMode,
-                                                              showFavoriteIcon = tabForPage != "Favorites",
-                                                              tab = tabForPage,
-                                                              isMostSnippets = isMost,
-                                                              isLeastSnippets = isLeast,
-                                                              viewModel = viewModel,
-                                                              onClick = {
-                                                                  if (viewModel.isSelectionMode) {
-                                                                      view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                      viewModel.toggleSelection(photo.id)
-                                                                  } else {
-                                                                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                      if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                          viewModel.activePhotoId = photo.id
-                                                                      } else {
-                                                                          viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
-                                                                      }
-                                                                  }
-                                                              },
-                                                              onLongClick = {
-                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                  if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                              },
-                                                              onEatlistCheckClick = {
-                                                                  photoToDeleteFromEatlist = photo
-                                                              },
-                                                              sharedTransitionScope = sharedTransitionScope,
-                                                              animatedVisibilityScope = animatedVisibilityScope,
-                                                              modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
-                                                          )
-                                                      }
-                                                      0 -> {
-                                                          val totalCount = pageFilteredPhotos.size
-                                                          val cardPos = when {
-                                                              totalCount == 1 -> CardPosition.Single
-                                                              index == 0 -> CardPosition.First
-                                                              index == totalCount - 1 -> CardPosition.Last
-                                                              else -> CardPosition.Middle
-                                                          }
-                                                          PhotoListItem(
-                                                              photo = photo,
-                                                              position = cardPos,
-                                                              isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                              selectionMode = viewModel.isSelectionMode,
-                                                              showFavoriteIcon = tabForPage != "Favorites",
-                                                              tab = tabForPage,
-                                                              isMostSnippets = isMost,
-                                                              isLeastSnippets = isLeast,
-                                                              viewModel = viewModel,
-                                                              onClick = {
-                                                                  if (viewModel.isSelectionMode) {
-                                                                      view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                      viewModel.toggleSelection(photo.id)
-                                                                  } else {
-                                                                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                      if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                          viewModel.activePhotoId = photo.id
-                                                                      } else {
-                                                                          viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
-                                                                      }
-                                                                  }
-                                                              },
-                                                              onLongClick = {
-                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                  if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                              },
-                                                              onEatlistCheckClick = {
-                                                                  photoToDeleteFromEatlist = photo
-                                                              },
-                                                              shape = RoundedCornerShape(12.dp),
-                                                              sharedTransitionScope = sharedTransitionScope,
-                                                              animatedVisibilityScope = animatedVisibilityScope,
-                                                              modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
-                                                          )
-                                                      }
-                                                      else -> {
-                                                          PhotoMasonryItem(
-                                                              photo = photo,
-                                                              isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                              selectionMode = viewModel.isSelectionMode,
-                                                              showFavoriteIcon = tabForPage != "Favorites",
-                                                              matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
-                                                              isMostSnippets = isMost,
-                                                              isLeastSnippets = isLeast,
-                                                              sharedTransitionScope = sharedTransitionScope,
-                                                              animatedVisibilityScope = animatedVisibilityScope,
-                                                              shape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(0.dp),
-                                                              tab = tabForPage,
-                                                              onClick = {
-                                                                  if (viewModel.isSelectionMode) {
-                                                                      view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                      viewModel.toggleSelection(photo.id)
-                                                                  } else {
-                                                                      view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                      if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                          viewModel.activePhotoId = photo.id
-                                                                      } else {
-                                                                          viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
-                                                                      }
-                                                                  }
-                                                              },
-                                                              onLongClick = {
-                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                  if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                              },
-                                                              onEatlistCheckClick = {
-                                                                  photoToDeleteFromEatlist = photo
-                                                              },
-                                                              fillCard = false,
-                                                              modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
-                                                          )
-                                                      }
-                                                  }
+                                                           PhotoCardListItem(
+                                                               photo = photo,
+                                                               position = CardPosition.Single,
+                                                               isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                                               selectionMode = viewModel.isSelectionMode,
+                                                               showFavoriteIcon = tabForPage != "Favorites",
+                                                               tab = tabForPage,
+                                                               isMostSnippets = isMost,
+                                                               isLeastSnippets = isLeast,
+                                                               viewModel = viewModel,
+                                                               onClick = {
+                                                                   if (viewModel.isSelectionMode) {
+                                                                       view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                       viewModel.toggleSelection(photo.id)
+                                                                   } else {
+                                                                       view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                                       if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                                                                           viewModel.activePhotoId = photo.id
+                                                                       } else {
+                                                                           viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
+                                                                       }
+                                                                   }
+                                                               },
+                                                               onLongClick = {
+                                                                   view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                   if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                                               },
+                                                               onEatlistCheckClick = {
+                                                                   photoToDeleteFromEatlist = photo
+                                                               },
+                                                               sharedTransitionScope = sharedTransitionScope,
+                                                               animatedVisibilityScope = animatedVisibilityScope,
+                                                               modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                           )
+                                                       }
+                                                       0 -> {
+                                                           val totalCount = pageFilteredPhotos.size
+                                                           val cardPos = when {
+                                                               totalCount == 1 -> CardPosition.Single
+                                                               index == 0 -> CardPosition.First
+                                                               index == totalCount - 1 -> CardPosition.Last
+                                                               else -> CardPosition.Middle
+                                                           }
+                                                           PhotoListItem(
+                                                               photo = photo,
+                                                               position = cardPos,
+                                                               isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                                               selectionMode = viewModel.isSelectionMode,
+                                                               showFavoriteIcon = tabForPage != "Favorites",
+                                                               tab = tabForPage,
+                                                               isMostSnippets = isMost,
+                                                               isLeastSnippets = isLeast,
+                                                               viewModel = viewModel,
+                                                               onClick = {
+                                                                   if (viewModel.isSelectionMode) {
+                                                                       view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                       viewModel.toggleSelection(photo.id)
+                                                                   } else {
+                                                                       view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                                       if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                                                                           viewModel.activePhotoId = photo.id
+                                                                       } else {
+                                                                           viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
+                                                                       }
+                                                                   }
+                                                               },
+                                                               onLongClick = {
+                                                                   view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                   if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                                               },
+                                                               onEatlistCheckClick = {
+                                                                   photoToDeleteFromEatlist = photo
+                                                               },
+                                                               shape = RoundedCornerShape(12.dp),
+                                                               sharedTransitionScope = sharedTransitionScope,
+                                                               animatedVisibilityScope = animatedVisibilityScope,
+                                                               modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                           )
+                                                       }
+                                                       else -> {
+                                                           PhotoMasonryItem(
+                                                               photo = photo,
+                                                               isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                                               selectionMode = viewModel.isSelectionMode,
+                                                               showFavoriteIcon = tabForPage != "Favorites",
+                                                               matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
+                                                               isMostSnippets = isMost,
+                                                               isLeastSnippets = isLeast,
+                                                               sharedTransitionScope = sharedTransitionScope,
+                                                               animatedVisibilityScope = animatedVisibilityScope,
+                                                               shape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(16.dp),
+                                                               tab = tabForPage,
+                                                               onClick = {
+                                                                   if (viewModel.isSelectionMode) {
+                                                                       view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                       viewModel.toggleSelection(photo.id)
+                                                                   } else {
+                                                                       view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                                       if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
+                                                                           viewModel.activePhotoId = photo.id
+                                                                       } else {
+                                                                           viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
+                                                                       }
+                                                                   }
+                                                               },
+                                                               onLongClick = {
+                                                                   view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                                   if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                                               },
+                                                               onEatlistCheckClick = {
+                                                                   photoToDeleteFromEatlist = photo
+                                                               },
+                                                               fillCard = false,
+                                                               viewModel = viewModel,
+                                                               modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                           )
+                                                       }
+                                                   }
                                               }
                                           }
                                      }
@@ -1202,17 +1206,7 @@ fun LibraryScreen(
                                 icon = FormatListBulletedIcon()
                             )
 
-                            ViewOptionItem(
-                                columnCount = 1,
-                                isSelected = currentCols == 1,
-                                onClick = {
-                                    viewModel.updateCustomGridColumns(1)
-                                    listStates.values.forEach { state ->
-                                        scope.launch { state.scrollToItem(0) }
-                                    }
-                                },
-                                icon = ViewListIcon()
-                            )
+
 
                             ViewOptionItem(
                                 columnCount = 2,
