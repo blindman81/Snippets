@@ -167,19 +167,23 @@ fun SelectedPhotoIndicator(
     ) {
         if (isSelected) {
             Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .graphicsLayer {
-                        rotationZ = rotation.value
-                        scaleX = animScaleX.value
-                        scaleY = animScaleY.value
-                        translationX = animTranslationX.value
-                        translationY = animTranslationY.value
-                    }
-                    .clip(currentAppShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                modifier = Modifier.size(28.dp),
                 contentAlignment = Alignment.Center
             ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            rotationZ = rotation.value
+                            scaleX = animScaleX.value
+                            scaleY = animScaleY.value
+                            translationX = animTranslationX.value
+                            translationY = animTranslationY.value
+                        }
+                        .clip(currentAppShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+
                 Text(
                     text = count.toString(),
                     color = MaterialTheme.colorScheme.onPrimary,
