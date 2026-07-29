@@ -38,7 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.material3.LoadingIndicator
+import com.android.snippets.ui.components.LoadingIndicator
 import kotlinx.coroutines.delay
 
 
