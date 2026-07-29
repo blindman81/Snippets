@@ -136,14 +136,30 @@ fun SelectedPhotoIndicator(
                     rotation.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
                 }
                 AppShape.CLOVER_4_LEAF -> {
-                    animTranslationY.animateTo(-8f, animationSpec = tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    animTranslationY.animateTo(8f, animationSpec = tween(160, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    animTranslationY.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    launch {
+                        animScaleX.animateTo(1.25f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(0.8f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(0.75f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.2f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
                 }
                 AppShape.CLOVER_8_LEAF -> {
-                    animTranslationX.animateTo(-8f, animationSpec = tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    animTranslationX.animateTo(8f, animationSpec = tween(160, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    animTranslationX.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    launch {
+                        animScaleX.animateTo(1.15f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.03f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.20f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(1.15f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.03f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.20f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
                 }
             }
         } else {
@@ -157,7 +173,7 @@ fun SelectedPhotoIndicator(
 
     Box(
         modifier = modifier
-            .size(56.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .background(
                 if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
@@ -167,7 +183,7 @@ fun SelectedPhotoIndicator(
     ) {
         if (isSelected) {
             Box(
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -632,9 +648,7 @@ fun PhotoMasonryItem(
         val showBottomSection = !fillCard && !isEatlist && hasPhoto
 
         if (!showBottomSection) {
-            val finalShape = if (isPressed) RoundedCornerShape(24.dp) else {
-                if (viewModel?.makePhotosFollowShape == true) shape else RoundedCornerShape(16.dp)
-            }
+            val finalShape = if (isPressed) RoundedCornerShape(24.dp) else RoundedCornerShape(16.dp)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = finalShape,
@@ -962,7 +976,7 @@ fun PhotoMasonryItem(
                     .align(Alignment.Start),
                 shape = bottomCardShape,
                 color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
-                shadowElevation = if (isSelected) 4.dp else 1.dp,
+                shadowElevation = 0.dp,
                 border = null
             ) {
                 Box(
@@ -1094,11 +1108,7 @@ fun PhotoListItem(
         bottomEnd = bottomCornerAnimated
     )
     val finalShape = cardShape
-    val photoShape = if (viewModel.makePhotosFollowShape) {
-        LocalAppShape.current
-    } else {
-        RoundedCornerShape(12.dp)
-    }
+    val photoShape = RoundedCornerShape(12.dp)
 
     val saturation by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
@@ -1485,12 +1495,9 @@ fun PhotoCardListItem(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                val size = androidx.compose.ui.unit.min(maxWidth, maxHeight)
-                                val makePhotosFollowShape = viewModel.makePhotosFollowShape
-                                val appShape = LocalAppShape.current
-                                val photoClipShape = if (makePhotosFollowShape) appShape else finalShape
+                                val photoClipShape = finalShape
                                 Box(
-                                    modifier = (if (makePhotosFollowShape) Modifier.size(size) else Modifier.fillMaxSize()).then(
+                                    modifier = Modifier.fillMaxSize().then(
                                         if (sharedTransitionScope != null && animatedVisibilityScope != null) {
                                             with(sharedTransitionScope) {
                                                 Modifier.sharedBounds(
@@ -1682,12 +1689,9 @@ fun PhotoCardListItem(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            val size = androidx.compose.ui.unit.min(maxWidth, maxHeight)
-                            val makePhotosFollowShape = viewModel.makePhotosFollowShape
-                            val appShape = LocalAppShape.current
-                            val photoClipShape = if (makePhotosFollowShape) appShape else photoShape
+                            val photoClipShape = photoShape
                             Box(
-                                modifier = (if (makePhotosFollowShape) Modifier.size(size) else Modifier.fillMaxSize()).then(
+                                modifier = Modifier.fillMaxSize().then(
                                     if (sharedTransitionScope != null && animatedVisibilityScope != null) {
                                         with(sharedTransitionScope) {
                                             Modifier.sharedBounds(
@@ -1803,7 +1807,7 @@ fun PhotoCardListItem(
                         .then(bottomCardModifier),
                     shape = bottomCardShape,
                     color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else blockColor,
-                    shadowElevation = if (isSelected) 4.dp else 1.dp
+                    shadowElevation = 0.dp
                 ) {
                     Box(
                         modifier = Modifier
