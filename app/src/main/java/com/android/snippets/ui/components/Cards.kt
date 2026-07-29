@@ -16,6 +16,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -79,6 +80,118 @@ import coil.imageLoader
 import com.android.snippets.model.Photo
 
 
+
+@Composable
+fun SelectedPhotoIndicator(
+    isSelected: Boolean,
+    selectionMode: Boolean,
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    if (!selectionMode && !isSelected) return
+
+    val shapeType = LocalAppShapeType.current
+    val currentAppShape = LocalAppShape.current
+
+    val rotation = remember { androidx.compose.animation.core.Animatable(0f) }
+    val animScaleX = remember { androidx.compose.animation.core.Animatable(1f) }
+    val animScaleY = remember { androidx.compose.animation.core.Animatable(1f) }
+    val animTranslationX = remember { androidx.compose.animation.core.Animatable(0f) }
+    val animTranslationY = remember { androidx.compose.animation.core.Animatable(0f) }
+
+    LaunchedEffect(isSelected) {
+        if (isSelected) {
+            when (shapeType) {
+                AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
+                    rotation.animateTo(
+                        targetValue = rotation.value + 360f,
+                        animationSpec = tween(400, easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+                    )
+                }
+                AppShape.COOKIE_4_SIDED -> {
+                    launch {
+                        animScaleX.animateTo(0.75f, animationSpec = tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+                        animScaleX.animateTo(1.15f, animationSpec = tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(0.75f, animationSpec = tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+                        animScaleY.animateTo(1.15f, animationSpec = tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+                AppShape.GEM, AppShape.SQUARE -> {
+                    launch {
+                        animScaleX.animateTo(1.18f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                    launch {
+                        animScaleY.animateTo(1.18f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                        animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+                AppShape.PENTAGON -> {
+                    rotation.animateTo(-15f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    rotation.animateTo(15f, animationSpec = tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    rotation.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                }
+                AppShape.CLOVER_4_LEAF -> {
+                    animTranslationY.animateTo(-8f, animationSpec = tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    animTranslationY.animateTo(8f, animationSpec = tween(160, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    animTranslationY.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                }
+                AppShape.CLOVER_8_LEAF -> {
+                    animTranslationX.animateTo(-8f, animationSpec = tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    animTranslationX.animateTo(8f, animationSpec = tween(160, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    animTranslationX.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                }
+            }
+        } else {
+            rotation.snapTo(0f)
+            animScaleX.snapTo(1f)
+            animScaleY.snapTo(1f)
+            animTranslationX.snapTo(0f)
+            animTranslationY.snapTo(0f)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(56.dp)
+            .clip(CircleShape)
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                else Color.Black.copy(alpha = 0.2f)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .graphicsLayer {
+                        rotationZ = rotation.value
+                        scaleX = animScaleX.value
+                        scaleY = animScaleY.value
+                        translationX = animTranslationX.value
+                        translationY = animTranslationY.value
+                    }
+                    .clip(currentAppShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = count.toString(),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 14.sp
+                    )
+                )
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -553,39 +666,55 @@ fun PhotoMasonryItem(
                                 }
                             )
                     ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(photo.uriString)
-                                .crossfade(true)
-                                .memoryCacheKey(photo.uriString)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = if (fillCard || isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
-                            colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
-                            alignment = Alignment { size, space, _ ->
-                                val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
-                                    (space.width - size.width).coerceAtMost(0),
-                                    (space.width - size.width).coerceAtLeast(0)
-                                )
-                                val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
-                                    (space.height - size.height).coerceAtMost(0),
-                                    (space.height - size.height).coerceAtLeast(0)
-                                )
-                                androidx.compose.ui.unit.IntOffset(x, y)
-                            },
-                            modifier = (if (fillCard) {
-                                Modifier.fillMaxSize()
-                            } else if (isCustomPolygon) {
+                        val aspectModifier = if (fillCard) {
+                            Modifier.fillMaxSize()
+                        } else if (isCustomPolygon) {
+                            Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                        } else {
+                            photo.aspectRatio?.let { ratio ->
                                 Modifier
                                     .fillMaxWidth()
-                                    .aspectRatio(1f)
-                            } else {
-                                photo.aspectRatio?.let { ratio ->
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(ratio)
-                                } ?: Modifier.fillMaxWidth().wrapContentHeight()
-                            })
+                                    .aspectRatio(ratio)
+                            } ?: Modifier.fillMaxWidth().wrapContentHeight()
+                        }
+
+                        if (isSelected) {
+                            Box(
+                                modifier = aspectModifier
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                            )
+                        } else {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(photo.uriString)
+                                    .crossfade(true)
+                                    .memoryCacheKey(photo.uriString)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = if (fillCard || isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
+                                colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
+                                alignment = Alignment { size, space, _ ->
+                                    val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
+                                        (space.width - size.width).coerceAtMost(0),
+                                        (space.width - size.width).coerceAtLeast(0)
+                                    )
+                                    val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
+                                        (space.height - size.height).coerceAtMost(0),
+                                        (space.height - size.height).coerceAtLeast(0)
+                                    )
+                                    androidx.compose.ui.unit.IntOffset(x, y)
+                                },
+                                modifier = aspectModifier
+                            )
+                        }
+
+                        SelectedPhotoIndicator(
+                            isSelected = isSelected,
+                            selectionMode = selectionMode,
+                            count = if (viewModel != null) viewModel.selectedPhotoIds.indexOf(photo.id) + 1 else 0,
+                            modifier = Modifier.align(Alignment.Center)
                         )
 
                         if (photo.isFavorite && !isSelected && showFavoriteIcon) {
@@ -770,37 +899,53 @@ fun PhotoMasonryItem(
                             }
                         )
                 ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(photo.uriString)
-                            .crossfade(true)
-                            .memoryCacheKey(photo.uriString)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = if (isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
-                        alignment = Alignment { size, space, _ ->
-                            val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
-                                (space.width - size.width).coerceAtMost(0),
-                                (space.width - size.width).coerceAtLeast(0)
-                            )
-                            val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
-                                (space.height - size.height).coerceAtMost(0),
-                                (space.height - size.height).coerceAtLeast(0)
-                            )
-                            androidx.compose.ui.unit.IntOffset(x, y)
-                        },
-                        modifier = (if (isCustomPolygon) {
+                    val aspectModifier = if (isCustomPolygon) {
+                        Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                    } else {
+                        photo.aspectRatio?.let { ratio ->
                             Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(1f)
-                        } else {
-                            photo.aspectRatio?.let { ratio ->
-                                Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(ratio)
-                            } ?: Modifier.fillMaxWidth().wrapContentHeight()
-                        })
+                                .aspectRatio(ratio)
+                        } ?: Modifier.fillMaxWidth().wrapContentHeight()
+                    }
+
+                    if (isSelected) {
+                        Box(
+                            modifier = aspectModifier
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                        )
+                    } else {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(photo.uriString)
+                                .crossfade(true)
+                                .memoryCacheKey(photo.uriString)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = if (isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
+                            colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
+                            alignment = Alignment { size, space, _ ->
+                                val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
+                                    (space.width - size.width).coerceAtMost(0),
+                                    (space.width - size.width).coerceAtLeast(0)
+                                )
+                                val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
+                                    (space.height - size.height).coerceAtMost(0),
+                                    (space.height - size.height).coerceAtLeast(0)
+                                )
+                                androidx.compose.ui.unit.IntOffset(x, y)
+                            },
+                            modifier = aspectModifier
+                        )
+                    }
+
+                    SelectedPhotoIndicator(
+                        isSelected = isSelected,
+                        selectionMode = selectionMode,
+                        count = if (viewModel != null) viewModel.selectedPhotoIds.indexOf(photo.id) + 1 else 0,
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
             }
@@ -1022,18 +1167,33 @@ fun PhotoListItem(
                     )
                     .clip(photoShape)
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(photo.uriString)
-                        .crossfade(true)
-                        .memoryCacheKey(photo.uriString)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                        androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                    ),
-                    modifier = Modifier.fillMaxSize()
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                    )
+                } else {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(photo.uriString)
+                            .crossfade(true)
+                            .memoryCacheKey(photo.uriString)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                        ),
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                SelectedPhotoIndicator(
+                    isSelected = isSelected,
+                    selectionMode = selectionMode,
+                    count = viewModel.selectedPhotoIds.indexOf(photo.id) + 1,
+                    modifier = Modifier.align(Alignment.Center)
                 )
 
                 if ((isMostSnippets || isLeastSnippets) && !isSelected) {
@@ -1350,18 +1510,33 @@ fun PhotoCardListItem(
                                         }
                                     ).clip(photoClipShape)
                                 ) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(photo.uriString)
-                                            .crossfade(true)
-                                            .memoryCacheKey(photo.uriString)
-                                            .build(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                                        ),
-                                        modifier = Modifier.fillMaxSize()
+                                    if (isSelected) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                        )
+                                    } else {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(photo.uriString)
+                                                .crossfade(true)
+                                                .memoryCacheKey(photo.uriString)
+                                                .build(),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                                                androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                                            ),
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    SelectedPhotoIndicator(
+                                        isSelected = isSelected,
+                                        selectionMode = selectionMode,
+                                        count = viewModel.selectedPhotoIds.indexOf(photo.id) + 1,
+                                        modifier = Modifier.align(Alignment.Center)
                                     )
                                 }
                             }
@@ -1532,18 +1707,33 @@ fun PhotoCardListItem(
                                     }
                                 ).clip(photoClipShape)
                             ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(photo.uriString)
-                                        .crossfade(true)
-                                        .memoryCacheKey(photo.uriString)
-                                        .build(),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                                        androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                                    ),
-                                    modifier = Modifier.fillMaxSize()
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.primaryContainer)
+                                    )
+                                } else {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(photo.uriString)
+                                            .crossfade(true)
+                                            .memoryCacheKey(photo.uriString)
+                                            .build(),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                                        ),
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+
+                                SelectedPhotoIndicator(
+                                    isSelected = isSelected,
+                                    selectionMode = selectionMode,
+                                    count = viewModel.selectedPhotoIds.indexOf(photo.id) + 1,
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
                         }

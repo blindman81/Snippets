@@ -124,22 +124,22 @@ fun SelectionToolbar(
                 )
 
                 val textToShow = when {
-                    viewModel.pendingCollectionAssignment != null -> "Add to ${viewModel.pendingCollectionAssignment} (${viewModel.selectedPhotoIds.size})"
-                    viewModel.pendingCollectionRemoval != null -> "Remove from ${viewModel.pendingCollectionRemoval} (${viewModel.selectedPhotoIds.size})"
-                    viewModel.pendingSnippetToApply != null -> "Add '${viewModel.pendingSnippetToApply}' (${viewModel.selectedPhotoIds.size})"
+                    viewModel.pendingCollectionAssignment != null -> "Add to ${viewModel.pendingCollectionAssignment}"
+                    viewModel.pendingCollectionRemoval != null -> "Remove from ${viewModel.pendingCollectionRemoval}"
+                    viewModel.pendingSnippetToApply != null -> "Add '${viewModel.pendingSnippetToApply}'"
                     viewModel.pendingLocationToApply != null -> {
                         val loc = viewModel.pendingLocationToApply!!
                         val clean = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(
                             context,
                             com.android.snippets.model.Photo(uriString = "", locationLink = loc)
                         ) ?: loc
-                        "Set location '$clean' (${viewModel.selectedPhotoIds.size})"
+                        "Set location '$clean'"
                     }
                     viewModel.pendingRatingToApply != 0 -> {
                         val rating = viewModel.pendingRatingToApply
-                        "Set rating to $rating ★ (${viewModel.selectedPhotoIds.size})"
+                        "Set rating to $rating ★"
                     }
-                    else -> viewModel.selectedPhotoIds.size.toString()
+                    else -> ""
                 }
                 Text(
                     text = textToShow,
