@@ -338,30 +338,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     viewModel.navigateChooseShape()
                 },
-                position = CardPosition.First
-            )
-
-            val isCardView = viewModel.customGridColumns == -1
-            SettingsCardItem(
-                icon = Icons.Default.Image,
-                title = "Make photos follow the shape",
-                onClick = if (isCardView) null else { 
-                    {
-                        view.performHapticFeedback(if (!viewModel.makePhotosFollowShape) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                        viewModel.updateMakePhotosFollowShape(!viewModel.makePhotosFollowShape) 
-                    }
-                },
-                position = CardPosition.Last,
-                modifier = Modifier.alpha(if (isCardView) 0.5f else 1f),
-                trailingContent = {
-                    PremiumSwitch(
-                        checked = if (isCardView) true else viewModel.makePhotosFollowShape,
-                        enabled = !isCardView,
-                        onCheckedChange = { 
-                            if (!isCardView) viewModel.updateMakePhotosFollowShape(it) 
-                        }
-                    )
-                }
+                position = CardPosition.Single
             )
 
             Spacer(modifier = Modifier.height(16.dp))

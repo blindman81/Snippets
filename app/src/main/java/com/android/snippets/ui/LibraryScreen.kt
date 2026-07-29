@@ -504,7 +504,7 @@ fun LibraryScreen(
                                                                isLeastSnippets = isLeast,
                                                                sharedTransitionScope = sharedTransitionScope,
                                                                animatedVisibilityScope = animatedVisibilityScope,
-                                                               shape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(16.dp),
+                                                               shape = RoundedCornerShape(16.dp),
                                                                tab = tabForPage,
                                                                onClick = {
                                                                    if (viewModel.isSelectionMode) {

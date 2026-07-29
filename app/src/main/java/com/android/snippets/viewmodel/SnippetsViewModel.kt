@@ -213,10 +213,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var selectedShape by mutableStateOf(AppShape.COOKIE_12_SIDED)
         private set
-    var makePhotosFollowShape by mutableStateOf(false)
-        private set
-    var makeListPhotosFollowShape by mutableStateOf(false)
-        private set
+
     var customGridColumns by mutableStateOf<Int?>(null)
         private set
     var showEatlist by mutableStateOf(true)
@@ -767,8 +764,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
         val savedShape = prefs.getString("selected_shape", AppShape.COOKIE_12_SIDED.name)
         selectedShape = try { AppShape.valueOf(savedShape!!) } catch (e: Exception) { AppShape.COOKIE_12_SIDED }
-        makePhotosFollowShape = prefs.getBoolean("make_photos_follow_shape", false)
-        makeListPhotosFollowShape = prefs.getBoolean("make_list_photos_follow_shape", false)
+
         showEatlist = prefs.getBoolean("show_eatlist", true)
         foodEatenCount = prefs.getInt("food_eaten_count", 0)
         autoBackupSchedule = prefs.getString("auto_backup_schedule", "Disabled") ?: "Disabled"
@@ -1074,15 +1070,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit().putString("selected_shape", shape.name).apply()
     }
 
-    fun updateMakePhotosFollowShape(follow: Boolean) {
-        makePhotosFollowShape = follow
-        prefs.edit().putBoolean("make_photos_follow_shape", follow).apply()
-    }
 
-    fun updateMakeListPhotosFollowShape(follow: Boolean) {
-        makeListPhotosFollowShape = follow
-        prefs.edit().putBoolean("make_list_photos_follow_shape", follow).apply()
-    }
 
     fun updateCustomGridColumns(columns: Int) {
         customGridColumns = columns

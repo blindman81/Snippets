@@ -39,7 +39,7 @@ fun PhotoPageGrid(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        val pageItemShape = if (viewModel.makePhotosFollowShape) LocalAppShape.current else RoundedCornerShape(0.dp)
+        val pageItemShape = RoundedCornerShape(0.dp)
         when (photos.size) {
             1 -> {
                 val photo = photos[0]
