@@ -369,26 +369,30 @@ fun CollectionIcon(
                         ).value
                     }
                     AppShape.CLOVER_4_LEAF -> {
-                        translateY = infiniteTransition.animateFloat(
-                            initialValue = -8f,
-                            targetValue = 8f,
+                        val pulse = infiniteTransition.animateFloat(
+                            initialValue = 0.85f,
+                            targetValue = 1.15f,
                             animationSpec = infiniteRepeatable(
-                                animation = tween(2000, easing = FastOutSlowInEasing),
+                                animation = tween(1000, easing = FastOutSlowInEasing),
                                 repeatMode = RepeatMode.Reverse
                             ),
-                            label = "icon_translateY"
+                            label = "icon_clover4_pulse"
                         ).value
+                        scaleX = pulse
+                        scaleY = 2f - pulse
                     }
                     AppShape.CLOVER_8_LEAF -> {
-                        translateX = infiniteTransition.animateFloat(
-                            initialValue = -8f,
-                            targetValue = 8f,
+                        val pulse = infiniteTransition.animateFloat(
+                            initialValue = 0.90f,
+                            targetValue = 1.10f,
                             animationSpec = infiniteRepeatable(
-                                animation = tween(2000, easing = FastOutSlowInEasing),
+                                animation = tween(1000, easing = FastOutSlowInEasing),
                                 repeatMode = RepeatMode.Reverse
                             ),
-                            label = "icon_translateX"
+                            label = "icon_clover8_pulse"
                         ).value
+                        scaleX = pulse
+                        scaleY = 2f - pulse
                     }
                     else -> {
                         val scale = infiniteTransition.animateFloat(
