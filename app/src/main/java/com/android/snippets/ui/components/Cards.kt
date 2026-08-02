@@ -173,7 +173,7 @@ fun SelectedPhotoIndicator(
 
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(72.dp)
             .clip(CircleShape)
             .background(
                 if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
@@ -183,7 +183,7 @@ fun SelectedPhotoIndicator(
     ) {
         if (isSelected) {
             Box(
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(36.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -205,7 +205,7 @@ fun SelectedPhotoIndicator(
                     color = MaterialTheme.colorScheme.onPrimary,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 14.sp
+                        fontSize = 20.sp
                     )
                 )
             }

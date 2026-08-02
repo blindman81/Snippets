@@ -22,7 +22,7 @@ fun LoadingIndicator(
     color: Color = MaterialTheme.colorScheme.primary
 ) {
     Surface(
-        modifier = modifier.then(Modifier.size(48.dp)),
+        modifier = modifier.then(Modifier.size(72.dp)),
         shape = androidx.compose.foundation.shape.CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = 0.dp
@@ -33,7 +33,7 @@ fun LoadingIndicator(
         ) {
             androidx.compose.material3.LoadingIndicator(
                 color = color,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(36.dp)
             )
         }
     }
