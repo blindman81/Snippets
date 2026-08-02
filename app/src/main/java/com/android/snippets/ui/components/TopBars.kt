@@ -141,13 +141,28 @@ fun SelectionToolbar(
                     }
                     else -> ""
                 }
-                Text(
-                    text = textToShow,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (textToShow.isNotEmpty()) {
+                    Text(
+                        text = textToShow,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    AnimatedCookieButton(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            viewModel.shareSelectedPhotos(context)
+                        },
+                        icon = Icons.Default.Share,
+                        contentDescription = "Share Selection",
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        size = 44.dp,
+                        isSpinning = isSpinning
+                    )
+                }
 
                 if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null || viewModel.pendingSnippetToApply != null || viewModel.pendingLocationToApply != null || viewModel.pendingRatingToApply != 0) {
                     AnimatedCookieButton(

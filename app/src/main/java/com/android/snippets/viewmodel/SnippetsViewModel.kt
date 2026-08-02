@@ -2212,6 +2212,64 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun shareSelectedPhotos(context: Context) {
+        if (selectedPhotoIds.isEmpty()) return
+        
+        viewModelScope.launch {
+            android.widget.Toast.makeText(context, "Preparing shared snippets...", android.widget.Toast.LENGTH_SHORT).show()
+            val uris = mutableListOf<android.net.Uri>()
+            
+            selectedPhotoIds.forEach { photoId ->
+                val photo = photos.find { it.id == photoId }
+                if (photo != null) {
+                    val pureSnippets = getPureSnippets(photo)
+                    val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
+                    val uri = MediaSaver.getShareableUri(
+                        context = context,
+                        photo = photo,
+                        snippets = pureSnippets,
+                        isDark = true,
+                        bgColor = android.graphics.Color.BLACK,
+                        snippetColors = snippetColors,
+                        snippetStyles = snippetStyles,
+                        appShape = selectedShape,
+                        showTime = showTimeInMemories,
+                        locationText = locationText
+                    )
+                    if (uri != null) {
+                        uris.add(uri)
+                    }
+                }
+            }
+            
+            if (uris.isNotEmpty()) {
+                val intent = if (uris.size == 1) {
+                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "image/jpeg"
+                        putExtra(android.content.Intent.EXTRA_STREAM, uris.first())
+                        clipData = android.content.ClipData.newRawUri("", uris.first())
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                } else {
+                    android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+                        type = "image/jpeg"
+                        putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, java.util.ArrayList(uris))
+                        val clipDataItems = android.content.ClipData.newRawUri("", uris.first())
+                        for (i in 1 until uris.size) {
+                            clipDataItems.addItem(android.content.ClipData.Item(uris[i]))
+                        }
+                        clipData = clipDataItems
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                }
+                context.startActivity(android.content.Intent.createChooser(intent, "Share Snippets"))
+                clearSelection()
+            } else {
+                android.widget.Toast.makeText(context, "Failed to prepare share images", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     fun openDetail(id: String, tab: String? = null, overrideReturnScreen: Screen? = null) {
         if (currentScreen != Screen.Detail) {
             detailReturnScreen = overrideReturnScreen ?: currentScreen

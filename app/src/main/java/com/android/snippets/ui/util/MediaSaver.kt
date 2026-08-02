@@ -137,7 +137,8 @@ object MediaSaver {
             
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
-            val file = File(cachePath, "share_snippet.jpg")
+            val safeId = photo.id.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+            val file = File(cachePath, "share_snippet_$safeId.jpg")
             val stream = FileOutputStream(file)
             bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
             stream.close()
