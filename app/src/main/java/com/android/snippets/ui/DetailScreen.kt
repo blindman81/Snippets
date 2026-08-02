@@ -736,13 +736,13 @@ fun SnippetsDetailContent(
                     val pureSnippets = photo.snippets
                     val total = pureSnippets.size
 
-                    Row(
+                    FlowRow(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
                             .widthIn(max = 600.dp)
-                            .then(if (total > 3) Modifier.horizontalScroll(rememberScrollState()) else Modifier.wrapContentWidth()),
+                            .wrapContentWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         pureSnippets.forEachIndexed { index, snippet ->
                             val forcedColor = viewModel.getSnippetColor(snippet)
