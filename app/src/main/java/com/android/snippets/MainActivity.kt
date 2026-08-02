@@ -18,10 +18,7 @@ import com.android.snippets.ui.SnippetsApp
 import com.android.snippets.ui.theme.SnippetsTheme
 import com.android.snippets.viewmodel.SnippetsViewModel
 import androidx.compose.runtime.getValue
-import com.android.snippets.ui.shapes.LocalAppShape
-import com.android.snippets.ui.shapes.LocalAppShapeType
-import com.android.snippets.ui.shapes.toComposeShape
-import com.android.snippets.ui.shapes.AppShape
+
 import com.ln.android.snippets.R
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -156,14 +153,10 @@ class MainActivity : ComponentActivity() {
                 darkTheme = isDarkTheme,
                 dynamicColor = viewModel.useDynamicColors
             ) {
-                androidx.compose.runtime.CompositionLocalProvider(
-                    LocalAppShape provides viewModel.selectedShape.toComposeShape(),
-                    LocalAppShapeType provides viewModel.selectedShape
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             val photos = viewModel.photos
                             val targetPhotoId = pendingNotificationPhotoId
@@ -241,7 +234,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
     
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)

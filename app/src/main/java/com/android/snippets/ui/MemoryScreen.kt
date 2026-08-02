@@ -18,9 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import com.android.snippets.ui.shapes.LocalAppShape
-import com.android.snippets.ui.shapes.LocalAppShapeType
-import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.CookieShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -131,52 +129,19 @@ fun MemoryScreen(
     // State for long-press hold detection to freeze spin & pause timer
     var isPressed by remember { mutableStateOf(false) }
 
-    val shapeType = LocalAppShapeType.current
-    val isSpinningShape = when (shapeType) {
-        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-        else -> false
-    }
-
     var rotationAngle by remember { mutableFloatStateOf(0f) }
-    var swayAngle by remember { mutableFloatStateOf(0f) }
-    var pulseScale by remember { mutableFloatStateOf(1f) }
-    var translationXOffset by remember { mutableFloatStateOf(0f) }
-    var translationYOffset by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(isPressed) {
         if (!isPressed) {
             var lastTime = withFrameNanos { it }
-            var accumulatedTime = 0f
             while (true) {
                 withFrameNanos { frameTime ->
                     val deltaNano = frameTime - lastTime
                     lastTime = frameTime
                     val deltaMs = deltaNano / 1_000_000f
                     
-                    if (isSpinningShape) {
-                        val deltaDegrees = deltaMs * (360f / 60000f)
-                        rotationAngle = (rotationAngle + deltaDegrees) % 360f
-                    } else {
-                        accumulatedTime += deltaMs
-                        val fraction = accumulatedTime * (2f * kotlin.math.PI.toFloat() / 4000f)
-                        
-                        when (shapeType) {
-                            AppShape.GEM, AppShape.SQUARE -> {
-                                val swayDegrees = 3f * kotlin.math.sin(fraction)
-                                swayAngle = swayDegrees
-                            }
-                            AppShape.PENTAGON, AppShape.COOKIE_4_SIDED -> {
-                                pulseScale = 1f + 0.08f * kotlin.math.sin(fraction)
-                            }
-                            AppShape.CLOVER_4_LEAF -> {
-                                translationYOffset = 25f * kotlin.math.sin(fraction)
-                            }
-                            AppShape.CLOVER_8_LEAF -> {
-                                translationXOffset = 25f * kotlin.math.sin(fraction)
-                            }
-                            else -> {}
-                        }
-                    }
+                    val deltaDegrees = deltaMs * (360f / 60000f)
+                    rotationAngle = (rotationAngle + deltaDegrees) % 360f
                 }
             }
         }
@@ -301,7 +266,7 @@ fun MemoryScreen(
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                             viewModel.openDetail(photo.id)
                         },
-                        shape = LocalAppShape.current,
+                        shape = CookieShape,
                         border = BorderStroke(4.dp, Color.White),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         modifier = Modifier
@@ -309,15 +274,7 @@ fun MemoryScreen(
                             .padding(horizontal = 24.dp)
                             .aspectRatio(1f)
                             .graphicsLayer {
-                                rotationZ = when (shapeType) {
-                                    AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> rotationAngle
-                                    AppShape.GEM, AppShape.SQUARE -> swayAngle
-                                    else -> 0f
-                                }
-                                scaleX = if (shapeType == AppShape.PENTAGON || shapeType == AppShape.COOKIE_4_SIDED) pulseScale else 1f
-                                scaleY = if (shapeType == AppShape.PENTAGON || shapeType == AppShape.COOKIE_4_SIDED) pulseScale else 1f
-                                translationX = if (shapeType == AppShape.CLOVER_8_LEAF) translationXOffset else 0f
-                                translationY = if (shapeType == AppShape.CLOVER_4_LEAF) translationYOffset else 0f
+                                rotationZ = rotationAngle
                             }
                             .then(
                                 if (photo.id == transitionTargetId && viewModel.currentScreen != Screen.Detail && sharedTransitionScope != null && animatedVisibilityScope != null) {
@@ -356,15 +313,9 @@ fun MemoryScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    rotationZ = when (shapeType) {
-                                        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> -rotationAngle
-                                        AppShape.GEM, AppShape.SQUARE -> -swayAngle
-                                        else -> 0f
-                                    }
-                                    scaleX = 1.25f / (if (shapeType == AppShape.PENTAGON || shapeType == AppShape.COOKIE_4_SIDED) pulseScale else 1f)
-                                    scaleY = 1.25f / (if (shapeType == AppShape.PENTAGON || shapeType == AppShape.COOKIE_4_SIDED) pulseScale else 1f)
-                                    translationX = if (shapeType == AppShape.CLOVER_8_LEAF) -translationXOffset else 0f
-                                    translationY = if (shapeType == AppShape.CLOVER_4_LEAF) -translationYOffset else 0f
+                                    rotationZ = -rotationAngle
+                                    scaleX = 1.25f
+                                    scaleY = 1.25f
                                 }
                         )
                     }

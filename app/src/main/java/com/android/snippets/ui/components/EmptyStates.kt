@@ -27,7 +27,7 @@ import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.ui.res.vectorResource
-import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.shapes.CookieShape
 @Composable
 fun PremiumEmptyState(
     modifier: Modifier = Modifier,
@@ -46,7 +46,7 @@ fun PremiumEmptyState(
         ) {
             Surface(
                 modifier = Modifier.size(170.dp),
-                shape = LocalAppShape.current,
+                shape = CookieShape,
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
             ) {}

@@ -86,7 +86,7 @@ fun MenuBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Surface(
-                            shape = com.android.snippets.ui.shapes.LocalAppShape.current,
+                            shape = com.android.snippets.ui.shapes.CookieShape,
                             color = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(44.dp)
@@ -307,7 +307,7 @@ fun HistoryBottomSheet(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Surface(
-                        shape = com.android.snippets.ui.shapes.LocalAppShape.current,
+                        shape = com.android.snippets.ui.shapes.CookieShape,
                         color = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(44.dp)
@@ -339,7 +339,7 @@ fun HistoryBottomSheet(
                         ) {
                             Surface(
                                 modifier = Modifier.fillMaxSize(),
-                                shape = com.android.snippets.ui.shapes.LocalAppShape.current,
+                                shape = com.android.snippets.ui.shapes.CookieShape,
                                 color = MaterialTheme.colorScheme.secondaryContainer,
                                 border = androidx.compose.foundation.BorderStroke(
                                     2.dp,

@@ -9,7 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.android.snippets.model.Photo
 import com.android.snippets.viewmodel.SnippetsViewModel
-import com.android.snippets.ui.shapes.LocalAppShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 
 import androidx.compose.ui.layout.ContentScale

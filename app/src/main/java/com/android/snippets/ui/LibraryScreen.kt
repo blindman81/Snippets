@@ -32,9 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import com.android.snippets.ui.theme.GoogleSansFlexWide
-import com.android.snippets.ui.shapes.LocalAppShape
-import com.android.snippets.ui.shapes.LocalAppShapeType
-import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.CookieShape
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.model.Photo
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1125,7 +1123,7 @@ fun LibraryScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Surface(
-                                shape = LocalAppShape.current,
+                                shape = CookieShape,
                                 color = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(44.dp)
@@ -1661,8 +1659,7 @@ private fun ViewOptionItem(
     icon: ImageVector
 ) {
     val view = LocalView.current
-    val shapeType = LocalAppShapeType.current
-    val shape = LocalAppShape.current
+    val shape = CookieShape
 
     val rotation = remember { Animatable(0f) }
     val scaleX = remember { Animatable(1f) }
@@ -1670,67 +1667,10 @@ private fun ViewOptionItem(
 
     LaunchedEffect(isSelected) {
         if (isSelected) {
-            when (shapeType) {
-                AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
-                    rotation.animateTo(
-                        targetValue = rotation.value + 360f,
-                        animationSpec = tween(500, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-                    )
-                }
-                AppShape.COOKIE_4_SIDED -> {
-                    launch {
-                        scaleX.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
-                        scaleX.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
-                        scaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                    launch {
-                        scaleY.animateTo(0.75f, animationSpec = tween(70, easing = FastOutLinearInEasing))
-                        scaleY.animateTo(1.15f, animationSpec = tween(90, easing = FastOutSlowInEasing))
-                        scaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                }
-                AppShape.GEM, AppShape.SQUARE -> {
-                    launch {
-                        scaleX.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
-                        scaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                    launch {
-                        scaleY.animateTo(1.18f, animationSpec = tween(100, easing = FastOutSlowInEasing))
-                        scaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                }
-                AppShape.PENTAGON -> {
-                    rotation.animateTo(-15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                    rotation.animateTo(15f, animationSpec = tween(120, easing = FastOutSlowInEasing))
-                    rotation.animateTo(0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                }
-                AppShape.CLOVER_4_LEAF -> {
-                    launch {
-                        scaleX.animateTo(1.25f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                        scaleX.animateTo(0.8f, animationSpec = tween(100, easing = FastOutSlowInEasing))
-                        scaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                    launch {
-                        scaleY.animateTo(0.75f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                        scaleY.animateTo(1.2f, animationSpec = tween(100, easing = FastOutSlowInEasing))
-                        scaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                }
-                AppShape.CLOVER_8_LEAF -> {
-                    launch {
-                        scaleX.animateTo(1.15f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                        scaleX.animateTo(1.03f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                        scaleX.animateTo(1.20f, animationSpec = tween(100, easing = FastOutSlowInEasing))
-                        scaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                    launch {
-                        scaleY.animateTo(0.85f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                        scaleY.animateTo(1.08f, animationSpec = tween(80, easing = FastOutSlowInEasing))
-                        scaleY.animateTo(0.90f, animationSpec = tween(100, easing = FastOutSlowInEasing))
-                        scaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                }
-            }
+            rotation.animateTo(
+                targetValue = rotation.value + 360f,
+                animationSpec = tween(500, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+            )
         }
     }
 

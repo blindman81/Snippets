@@ -37,6 +37,8 @@ val CookiePolygon = RoundedPolygon.star(
     centerY = 0.5f
 )
 
+val CookieShape = RoundedPolygonShape(CookiePolygon)
+
 class RoundedPolygonShape(
     val polygon: RoundedPolygon
 ) : Shape {

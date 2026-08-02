@@ -22,9 +22,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.animation.core.*
-import com.android.snippets.ui.shapes.LocalAppShape
-import com.android.snippets.ui.shapes.LocalAppShapeType
-import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.shapes.CookieShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -65,44 +63,13 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
     val animScaleY = remember { Animatable(1f) }
     val animTranslationX = remember { Animatable(0f) }
     val animTranslationY = remember { Animatable(0f) }
-
-    val shapeType = LocalAppShapeType.current
-    val isSpinningShape = when (shapeType) {
-        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-        else -> false
-    }
-
     LaunchedEffect(isHolding) {
-        if (isSpinningShape) {
-            val duration = if (isHolding) 600 else 30000
-            while (true) {
-                rotation.animateTo(
-                    targetValue = rotation.value + 360f,
-                    animationSpec = tween(duration, easing = LinearEasing)
-                )
-            }
-        } else {
-            val duration = if (isHolding) 400 else 4000
-            when (shapeType) {
-                AppShape.CLOVER_4_LEAF -> {
-                    while (true) {
-                        animTranslationY.animateTo(8f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
-                        animTranslationY.animateTo(-8f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
-                    }
-                }
-                AppShape.CLOVER_8_LEAF -> {
-                    while (true) {
-                        animTranslationX.animateTo(8f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
-                        animTranslationX.animateTo(-8f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
-                    }
-                }
-                else -> {
-                    while (true) {
-                        animScaleX.animateTo(1.05f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
-                        animScaleX.animateTo(0.95f, animationSpec = tween(duration / 2, easing = FastOutSlowInEasing))
-                    }
-                }
-            }
+        val duration = if (isHolding) 600 else 30000
+        while (true) {
+            rotation.animateTo(
+                targetValue = rotation.value + 360f,
+                animationSpec = tween(duration, easing = LinearEasing)
+            )
         }
     }
 
@@ -269,13 +236,9 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer { 
-                                rotationZ = if (isSpinningShape) rotation.value else 0f
-                                scaleX = if (isSpinningShape) 1f else animScaleX.value
-                                scaleY = if (isSpinningShape) 1f else animScaleX.value
-                                translationX = if (shapeType == AppShape.CLOVER_8_LEAF) animTranslationX.value else 0f
-                                translationY = if (shapeType == AppShape.CLOVER_4_LEAF) animTranslationY.value else 0f
+                                rotationZ = rotation.value
                             }
-                            .clip(LocalAppShape.current)
+                            .clip(CookieShape)
                             .background(MaterialTheme.colorScheme.secondaryContainer)
                     )
 
@@ -1113,7 +1076,7 @@ fun IconSelectionItem(
             onClick = onClick,
             icon = icon,
             modifier = Modifier.fillMaxSize(),
-            shape = LocalAppShape.current,
+            shape = CookieShape,
             size = 120.dp
         )
     }

@@ -19,8 +19,8 @@ import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.star
 import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.Dispatchers
+import com.android.snippets.ui.shapes.CookiePolygon
 import com.android.snippets.ui.shapes.AppShape
-import com.android.snippets.ui.shapes.getNormalizedPolygon
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -197,7 +197,7 @@ object MediaSaver {
         val radius = 624f
         val targetSize = 2 * radius // 1248f
         
-        val normalizedPolygon = appShape.getNormalizedPolygon()
+        val normalizedPolygon = CookiePolygon
         val path = normalizedPolygon.toPath()
         val bounds = RectF()
         path.computeBounds(bounds, true)

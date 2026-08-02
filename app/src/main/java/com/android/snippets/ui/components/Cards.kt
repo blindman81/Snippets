@@ -88,86 +88,18 @@ fun SelectedPhotoIndicator(
     count: Int,
     modifier: Modifier = Modifier
 ) {
-    if (!selectionMode && !isSelected) return
-
-    val shapeType = LocalAppShapeType.current
-    val currentAppShape = LocalAppShape.current
+    if (!isSelected) return
 
     val rotation = remember { androidx.compose.animation.core.Animatable(0f) }
-    val animScaleX = remember { androidx.compose.animation.core.Animatable(1f) }
-    val animScaleY = remember { androidx.compose.animation.core.Animatable(1f) }
-    val animTranslationX = remember { androidx.compose.animation.core.Animatable(0f) }
-    val animTranslationY = remember { androidx.compose.animation.core.Animatable(0f) }
 
     LaunchedEffect(isSelected) {
         if (isSelected) {
-            when (shapeType) {
-                AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> {
-                    rotation.animateTo(
-                        targetValue = rotation.value + 360f,
-                        animationSpec = tween(400, easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-                    )
-                }
-                AppShape.COOKIE_4_SIDED -> {
-                    launch {
-                        animScaleX.animateTo(0.75f, animationSpec = tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
-                        animScaleX.animateTo(1.15f, animationSpec = tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                    launch {
-                        animScaleY.animateTo(0.75f, animationSpec = tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
-                        animScaleY.animateTo(1.15f, animationSpec = tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                }
-                AppShape.GEM, AppShape.SQUARE -> {
-                    launch {
-                        animScaleX.animateTo(1.18f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                    launch {
-                        animScaleY.animateTo(1.18f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                }
-                AppShape.PENTAGON -> {
-                    rotation.animateTo(-15f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    rotation.animateTo(15f, animationSpec = tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    rotation.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                }
-                AppShape.CLOVER_4_LEAF -> {
-                    launch {
-                        animScaleX.animateTo(1.25f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(0.8f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                    launch {
-                        animScaleY.animateTo(0.75f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.2f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                }
-                AppShape.CLOVER_8_LEAF -> {
-                    launch {
-                        animScaleX.animateTo(1.15f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1.03f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1.20f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                    launch {
-                        animScaleY.animateTo(1.15f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.03f, animationSpec = tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.20f, animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.0f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
-                    }
-                }
-            }
+            rotation.animateTo(
+                targetValue = rotation.value + 360f,
+                animationSpec = tween(400, easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+            )
         } else {
             rotation.snapTo(0f)
-            animScaleX.snapTo(1f)
-            animScaleY.snapTo(1f)
-            animTranslationX.snapTo(0f)
-            animTranslationY.snapTo(0f)
         }
     }
 
@@ -191,12 +123,8 @@ fun SelectedPhotoIndicator(
                         .fillMaxSize()
                         .graphicsLayer {
                             rotationZ = rotation.value
-                            scaleX = animScaleX.value
-                            scaleY = animScaleY.value
-                            translationX = animTranslationX.value
-                            translationY = animTranslationY.value
                         }
-                        .clip(currentAppShape)
+                        .clip(CookieShape)
                         .background(MaterialTheme.colorScheme.primary)
                 )
 
@@ -251,8 +179,7 @@ fun MemoryAvatar(
         remember { mutableStateOf(0f) }
     }
 
-    val currentAppShape = LocalAppShape.current
-    val MorphShapesList = remember(currentAppShape) { listOf(currentAppShape, androidx.compose.foundation.shape.CircleShape) }
+    val MorphShapesList = remember { listOf(CookieShape, androidx.compose.foundation.shape.CircleShape) }
     val shapeIndex = remember(photo.id) { kotlin.math.abs(photo.id.hashCode()) % MorphShapesList.size }
     val avatarShape = MorphShapesList[shapeIndex]
 
@@ -320,12 +247,11 @@ fun MemoryMoreButton(
         label = "arrow_rotation"
     )
 
-    val currentAppShape = LocalAppShape.current
     val buttonShape = when {
         isForwardArrow -> androidx.compose.foundation.shape.CircleShape
         isBackArrow -> androidx.compose.foundation.shape.CircleShape
         isDownArrow || isUpArrow -> androidx.compose.foundation.shape.CircleShape
-        else -> currentAppShape
+        else -> CookieShape
     }
     var isHolding by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
@@ -333,37 +259,13 @@ fun MemoryMoreButton(
     val animScaleX = remember { androidx.compose.animation.core.Animatable(1f) }
     val animScaleY = remember { androidx.compose.animation.core.Animatable(1f) }
 
-    val shapeType = LocalAppShapeType.current
-    val isSpinningShape = when (shapeType) {
-        AppShape.COOKIE_12_SIDED, AppShape.PILL, AppShape.VERY_SUNNY -> true
-        else -> false
-    }
-
     LaunchedEffect(isHolding) {
         if (isHolding) {
-            when (shapeType) {
-                AppShape.CLOVER_4_LEAF -> {
-                    animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
-                    animScaleY.animateTo(0.85f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
-                }
-                AppShape.PENTAGON -> {
-                    rotation.animateTo(12f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
-                }
-                else -> {
-                    animScaleX.animateTo(0.92f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
-                    animScaleY.animateTo(0.92f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
-                }
-            }
+            animScaleX.animateTo(0.92f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+            animScaleY.animateTo(0.92f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
         } else {
-            when (shapeType) {
-                AppShape.PENTAGON -> {
-                    rotation.animateTo(0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
-                }
-                else -> {
-                    animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
-                    animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
-                }
-            }
+            animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
+            animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 1200f))
         }
     }
 
@@ -385,72 +287,20 @@ fun MemoryMoreButton(
 
     LaunchedEffect(isHolding, isTapped, isSpinning) {
         if (!isSpinning || (!isHolding && !isTapped)) return@LaunchedEffect
-        if (isSpinningShape) {
-            val duration = when {
-                isTapped -> 150
-                else -> 600
-            }
-            while (true) {
-                rotation.animateTo(
-                    targetValue = rotation.value + 360f,
-                    animationSpec = androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.LinearEasing)
-                )
-            }
+        val duration = when {
+            isTapped -> 150
+            else -> 600
+        }
+        while (true) {
+            rotation.animateTo(
+                targetValue = rotation.value + 360f,
+                animationSpec = androidx.compose.animation.core.tween(duration, easing = androidx.compose.animation.core.LinearEasing)
+            )
         }
     }
 
     LaunchedEffect(isTapped) {
         if (isTapped) {
-            when (shapeType) {
-                AppShape.COOKIE_4_SIDED -> {
-                    launch {
-                        animScaleX.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
-                        animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
-                    }
-                    launch {
-                        animScaleY.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(70, easing = androidx.compose.animation.core.FastOutLinearInEasing))
-                        animScaleY.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(90, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
-                    }
-                }
-                AppShape.GEM, AppShape.SQUARE -> {
-                    animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
-                }
-                AppShape.PENTAGON -> {
-                    rotation.animateTo(-15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    rotation.animateTo(15f, animationSpec = androidx.compose.animation.core.tween(120, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                    rotation.animateTo(0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
-                }
-                AppShape.CLOVER_4_LEAF -> {
-                    launch {
-                        animScaleX.animateTo(1.25f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(0.8f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
-                    }
-                    launch {
-                        animScaleY.animateTo(0.75f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.2f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
-                    }
-                }
-                AppShape.CLOVER_8_LEAF -> {
-                    launch {
-                        animScaleX.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1.03f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1.20f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleX.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
-                    }
-                    launch {
-                        animScaleY.animateTo(1.15f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.03f, animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1.20f, animationSpec = androidx.compose.animation.core.tween(100, easing = androidx.compose.animation.core.FastOutSlowInEasing))
-                        animScaleY.animateTo(1f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium))
-                    }
-                }
-                else -> {}
-            }
             kotlinx.coroutines.delay(1200)
             isTapped = false
         }
@@ -461,9 +311,7 @@ fun MemoryMoreButton(
     Box(
         modifier = modifier
             .graphicsLayer {
-                rotationZ = if (isSpinning && !isDirectionalArrow && isSpinningShape) {
-                    rotation.value
-                } else if (isSpinning && !isDirectionalArrow && shapeType == AppShape.PENTAGON) {
+                rotationZ = if (isSpinning && !isDirectionalArrow) {
                     rotation.value
                 } else if (isDownArrow || isUpArrow) {
                     animatedDirectionalRotation
@@ -506,9 +354,7 @@ fun MemoryMoreButton(
                 modifier = Modifier
                     .size(34.dp)
                     .graphicsLayer {
-                        rotationZ = if (isSpinning && isSpinningShape) {
-                            -rotation.value
-                        } else if (isSpinning && shapeType == AppShape.PENTAGON) {
+                        rotationZ = if (isSpinning) {
                             -rotation.value
                         } else {
                             0f
@@ -1215,7 +1061,7 @@ fun PhotoListItem(
                     val badgeContentColor = if (isMostSnippets) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
                     Surface(
                         color = badgeContainerColor.copy(alpha = 0.9f),
-                        shape = LocalAppShape.current,
+                        shape = CookieShape,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(2.dp)
@@ -1242,7 +1088,7 @@ fun PhotoListItem(
                 if (photo.snippets.isEmpty()) {
                     if (tab != "Eatlist") {
                         Surface(
-                            shape = LocalAppShape.current,
+                            shape = CookieShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
                             modifier = Modifier.size(28.dp)
                         ) {
@@ -1321,7 +1167,7 @@ fun PhotoListItem(
                     if (photo.rating > 0) {
                         Surface(
                             color = iconContainerColor.copy(alpha = 0.9f),
-                            shape = LocalAppShape.current,
+                            shape = CookieShape,
                             modifier = Modifier.size(26.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -1344,7 +1190,7 @@ fun PhotoListItem(
                     if (photo.isFavorite && showFavoriteIcon) {
                         Surface(
                             color = iconContainerColor.copy(alpha = 0.9f),
-                            shape = LocalAppShape.current,
+                            shape = CookieShape,
                             modifier = Modifier.size(26.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -1385,17 +1231,14 @@ fun PhotoCardListItem(
 ) {
     val saturation by animateFloatAsState(
         targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
-        animationSpec = tween(durationMillis = 600),
         label = "saturation"
     )
     val animatedAlpha by animateFloatAsState(
         targetValue = if (grayOutIfViewed && photo.isViewed) 0.8f else 1f,
-        animationSpec = tween(durationMillis = 600),
         label = "alpha"
     )
     val animatedScale by animateFloatAsState(
         targetValue = if (isSelected) 0.95f else 1f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
         label = "scale"
     )
 
@@ -1413,14 +1256,12 @@ fun PhotoCardListItem(
 
     val topCornerSize by animateDpAsState(
         targetValue = if (isPressed) 24.dp else 4.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "bottomCardTopCorner"
     )
     val bottomCornerSize by animateDpAsState(
         targetValue = if (isPressed) 24.dp else {
             if (position == CardPosition.Last || position == CardPosition.Single) 16.dp else 4.dp
         },
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "bottomCardBottomCorner"
     )
     val bottomCardShape = RoundedCornerShape(
@@ -1504,10 +1345,7 @@ fun PhotoCardListItem(
                                                     rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                                                     animatedVisibilityScope = animatedVisibilityScope,
                                                     boundsTransform = { _, _ ->
-                                                        spring(
-                                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                                            stiffness = Spring.StiffnessMediumLow
-                                                        )
+                                                        spring()
                                                     },
                                                     resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                                         contentScale = ContentScale.Crop,
@@ -1558,7 +1396,7 @@ fun PhotoCardListItem(
                             if (photo.rating > 0) {
                                 Surface(
                                     color = iconContainerColor.copy(alpha = 0.9f),
-                                    shape = LocalAppShape.current,
+                                    shape = CookieShape,
                                     modifier = Modifier
                                         .align(Alignment.TopStart)
                                         .padding(8.dp)
@@ -1584,7 +1422,7 @@ fun PhotoCardListItem(
                             if (photo.isFavorite && showFavoriteIcon) {
                                 Surface(
                                     color = iconContainerColor.copy(alpha = 0.9f),
-                                    shape = LocalAppShape.current,
+                                    shape = CookieShape,
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(8.dp)
@@ -1698,10 +1536,7 @@ fun PhotoCardListItem(
                                                 rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                                                 animatedVisibilityScope = animatedVisibilityScope,
                                                 boundsTransform = { _, _ ->
-                                                    spring(
-                                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                                        stiffness = Spring.StiffnessMediumLow
-                                                    )
+                                                    spring()
                                                 },
                                                 resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                                     contentScale = ContentScale.Crop,
@@ -1752,7 +1587,7 @@ fun PhotoCardListItem(
                         if (photo.rating > 0) {
                             Surface(
                                 color = iconContainerColor.copy(alpha = 0.9f),
-                                shape = LocalAppShape.current,
+                                shape = CookieShape,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .padding(8.dp)
@@ -1778,7 +1613,7 @@ fun PhotoCardListItem(
                         if (photo.isFavorite && showFavoriteIcon) {
                             Surface(
                                 color = iconContainerColor.copy(alpha = 0.9f),
-                                shape = LocalAppShape.current,
+                                shape = CookieShape,
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .padding(8.dp)
@@ -1917,12 +1752,10 @@ fun DynamicCardContainer(
 
     val topCornerAnimated by animateDpAsState(
         targetValue = topCornerTarget,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "dynamicCardTopCorner"
     )
     val bottomCornerAnimated by animateDpAsState(
         targetValue = bottomCornerTarget,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "dynamicCardBottomCorner"
     )
 
@@ -1937,7 +1770,6 @@ fun DynamicCardContainer(
     val view = LocalView.current
     val animatedScale by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (isSelected) 0.95f else 1f,
-        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 400f),
         label = "scale"
     )
 
@@ -2173,7 +2005,7 @@ fun EatlistSingleListCardContainer(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
-    val photoShape = LocalAppShape.current
+    val photoShape = CookieShape
     var showActionDialog by remember { mutableStateOf(false) }
 
     val placeName = remember(photo) {

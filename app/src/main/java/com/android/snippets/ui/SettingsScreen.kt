@@ -64,8 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import com.android.snippets.ui.shapes.AppShape
-import com.android.snippets.ui.shapes.toComposeShape
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextAlign
@@ -311,35 +310,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
 
 
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ShapedSectionHeader(icon = ShapesSectionIcon())
-                Text(
-                    text = "Shape",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
-                )
-            }
 
-
-            SettingsCardItem(
-                icon = Icons.Default.Palette,
-                title = "App Shape",
-                subtitle = viewModel.selectedShape.displayName,
-                onClick = { 
-                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    viewModel.navigateChooseShape()
-                },
-                position = CardPosition.Single
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
             

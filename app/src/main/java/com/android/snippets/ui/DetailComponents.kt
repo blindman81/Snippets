@@ -62,26 +62,9 @@ import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.star
 import androidx.graphics.shapes.toPath
-import androidx.compose.ui.graphics.asComposePath
-import androidx.compose.foundation.shape.GenericShape
-import com.android.snippets.ui.shapes.LocalAppShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-
-val CookieShape = GenericShape { size, _ ->
-    val width = size.width
-    val height = size.height
-    val radius = kotlin.math.min(width, height) / 2f
-    val polygon = RoundedPolygon.star(
-        numVerticesPerRadius = 12,
-        radius = radius,
-        innerRadius = radius * 0.88f,
-        rounding = CornerRounding(radius * 0.12f),
-        centerX = width / 2f,
-        centerY = height / 2f
-    )
-    addPath(polygon.toPath().asComposePath())
-}
+import com.android.snippets.ui.shapes.CookieShape
 
 // --- SHARED ARTISTIC COMPONENTS ---
 
@@ -143,7 +126,7 @@ fun DetailTopBar(
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     isSpinning = isSpinning,
                     hapticOnHold = true,
-                    shape = LocalAppShape.current,
+                    shape = CookieShape,
                     size = 56.dp
                 )
             }
