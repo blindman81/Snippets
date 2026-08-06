@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.em
 import com.android.snippets.ui.util.rotateWithBounds
+import com.android.snippets.ui.util.LocationUtils
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
@@ -467,6 +468,7 @@ fun DetailScreen(
     if (showLinkModal) {
         LocationLinkModal(
             initialLink = photo.locationLink,
+            suggestions = viewModel.allUniqueLocations,
             onDismiss = { showLinkModal = false },
             onSave = { link ->
                 showLinkModal = false
@@ -967,12 +969,30 @@ fun RateFoodDialog(
 @Composable
 fun LocationLinkModal(
     initialLink: String?,
+    suggestions: List<String>,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
     val view = LocalView.current
     var linkValue by remember { mutableStateOf(initialLink ?: "") }
     
+    val filteredSuggestions = remember(linkValue, suggestions) {
+        val baseList = if (initialLink != null) {
+            suggestions.filter { it != initialLink }
+        } else {
+            suggestions
+        }
+        
+        if (linkValue.isBlank()) {
+            baseList.take(8)
+        } else {
+            baseList.filter {
+                val displayName = LocationUtils.extractPlaceNameFromLink(it) ?: LocationUtils.cleanLocationName(it)
+                displayName.contains(linkValue, ignoreCase = true) || it.contains(linkValue, ignoreCase = true)
+            }.take(8)
+        }
+    }
+
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             shape = RoundedCornerShape(28.dp),
@@ -996,9 +1016,65 @@ fun LocationLinkModal(
                     onValueChange = { linkValue = it },
                     placeholder = { Text("https://maps.app.goo.gl/...") },
                     singleLine = true,
+                    trailingIcon = if (linkValue.isNotEmpty()) {
+                        {
+                            IconButton(onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                linkValue = ""
+                            }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    } else null,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
+
+                if (filteredSuggestions.isNotEmpty()) {
+                    Text(
+                        text = "Suggested locations",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(filteredSuggestions) { suggestion ->
+                            val displayName = remember(suggestion) {
+                                LocationUtils.extractPlaceNameFromLink(suggestion) ?: LocationUtils.cleanLocationName(suggestion)
+                            }
+                            SuggestionChip(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    linkValue = suggestion
+                                },
+                                label = {
+                                    Text(
+                                        text = displayName,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Place,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = SuggestionChipDefaults.suggestionChipColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                border = null
+                            )
+                        }
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
