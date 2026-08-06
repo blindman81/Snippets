@@ -829,9 +829,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             photo.surfacedTime != 0L && photo.surfacedTime <= now && (now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS)
         }
 
-        // If today has fewer than 5 active memories, recycle expired memories so the queue refreshes for today
-        if (activeCountToday < 5) {
-            val needed = 5 - activeCountToday
+        val limit = if (notificationReminderEnabled) 5 else 15
+        // If today has fewer than limit active memories, recycle expired memories so the queue refreshes for today
+        if (activeCountToday < limit) {
+            val needed = limit - activeCountToday
             val expiredCandidates = updatedPhotos.filter { photo ->
                 photo.isLibraryUpload &&
                 !photo.collections.contains("Eatlist") &&
@@ -956,12 +957,16 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
             var attempts = 0
             while (attempts < 1000) {
-                val conflict = activeAssignedTimes.find { assigned ->
+                val countInWindow = activeAssignedTimes.count { assigned ->
                     val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
                     diff < SURFACED_MEMORY_SPACING_MS
                 }
-                if (conflict != null) {
-                    candidateTime = maxOf(candidateTime, conflict) + SURFACED_MEMORY_SPACING_MS
+                if (countInWindow >= 3) {
+                    val maxInWindow = activeAssignedTimes.filter { assigned ->
+                        val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
+                        diff < SURFACED_MEMORY_SPACING_MS
+                    }.maxOrNull() ?: candidateTime
+                    candidateTime = maxInWindow + SURFACED_MEMORY_SPACING_MS
                     candidateTime = adjustForQuietHours(candidateTime)
                     attempts++
                     continue
@@ -969,7 +974,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
                 val dayStart = getStartOfDay(candidateTime)
                 val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
-                if (countOnDay >= 5) {
+                if (countOnDay >= 15) {
                     val calendar = Calendar.getInstance().apply { timeInMillis = candidateTime }
                     calendar.add(Calendar.DAY_OF_YEAR, 1)
                     calendar.set(Calendar.HOUR_OF_DAY, 9)
@@ -1508,7 +1513,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         // the DailyReminderWorker delivers a single summarised notification.
         if (notificationReminderEnabled) return
         val now = System.currentTimeMillis()
-        var nextAvailableTime = now
         var changed = false
         val updatedPhotos = photos.toMutableList()
         val unpostedPhotos = updatedPhotos
@@ -1517,17 +1521,38 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             .filter { it.surfacedTime != 0L }
             .sortedBy { it.surfacedTime }
 
+        val scheduledTimes = mutableListOf<Long>()
         unpostedPhotos.forEach { photo ->
-            val scheduledTime = maxOf(photo.surfacedTime, nextAvailableTime)
-            if (photo.surfacedTime != scheduledTime) {
+            var candidateTime = maxOf(photo.surfacedTime, now)
+            candidateTime = adjustForQuietHours(candidateTime)
+            var attempts = 0
+            while (attempts < 1000) {
+                val countInWindow = scheduledTimes.count { scheduled ->
+                    val diff = if (scheduled > candidateTime) scheduled - candidateTime else candidateTime - scheduled
+                    diff < SURFACED_MEMORY_SPACING_MS
+                }
+                if (countInWindow >= 3) {
+                    val maxInWindow = scheduledTimes.filter { scheduled ->
+                        val diff = if (scheduled > candidateTime) scheduled - candidateTime else candidateTime - scheduled
+                        diff < SURFACED_MEMORY_SPACING_MS
+                    }.maxOrNull() ?: candidateTime
+                    candidateTime = maxInWindow + SURFACED_MEMORY_SPACING_MS
+                    candidateTime = adjustForQuietHours(candidateTime)
+                    attempts++
+                } else {
+                    break
+                }
+            }
+            scheduledTimes.add(candidateTime)
+
+            if (photo.surfacedTime != candidateTime) {
                 val index = updatedPhotos.indexOfFirst { it.id == photo.id }
                 if (index != -1) {
-                    updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = scheduledTime)
+                    updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = candidateTime)
                     changed = true
                 }
             }
-            val delayMs = maxOf(0L, scheduledTime - now)
-            nextAvailableTime = scheduledTime + SURFACED_MEMORY_SPACING_MS
+            val delayMs = maxOf(0L, candidateTime - now)
 
             val notificationType = if (photo.isViewed) {
                 MemoryWorker.TYPE_UPDATED
@@ -2524,7 +2549,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             }.thenByDescending {
                 if (it.isViewed) it.lastViewedTime else it.surfacedTime
             }
-        ).take(5)
+        ).take(if (notificationReminderEnabled) 5 else 15)
     }
 
 
