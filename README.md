@@ -15,10 +15,10 @@ Rate food you eat upto 5 stars.
 Created with Antigravity, Codex, and Stitch (only in the early development stage).
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/90d29b17-fb38-4213-90ef-37edfc49e0e6" width="18%">
-  <img src="https://github.com/user-attachments/assets/93465d3c-5363-4d34-8afa-d193edfd4455" width="18%">
+  <img src="https://github.com/blindman81/Snippets/blob/main/assets/library-view.png" width="18%">
+  <img src="https://github.com/blindman81/Snippets/blob/main/assets/photo-detail.png" width="18%">
   <img src="https://github.com/user-attachments/assets/9c206778-56f3-4d17-84e9-4b6f9ad2f59c" width="18%">
   <img src="https://github.com/user-attachments/assets/062ea9a0-e26d-4687-99e6-77e3f2aed950" width="18%">
-  <img src="https://github.com/user-attachments/assets/a3778ce4-4c74-4035-b011-a755d2284556" width="18%">
-  <img src="https://github.com/user-attachments/assets/75aca90a-f5a2-408e-a2b1-246eb92017a7" width="18%">
+  <img src="https://github.com/blindman81/Snippets/blob/main/assets/eatlist-preview.png" width="18%">
+  <img src="https://github.com/blindman81/Snippets/blob/main/assets/rate-experience.png" width="18%">
 </p>
