@@ -84,8 +84,9 @@ object LocationUtils {
     fun extractPlaceNameFromLink(link: String): String? {
         try {
             val uri = Uri.parse(link)
-            // Handle standard Google Maps place URLs
-            val path = uri.path ?: return null
+            val path = uri.path ?: ""
+            
+            // 1. Handle standard Google Maps place URLs
             val placePrefix = "/maps/place/"
             val placeIdx = path.indexOf(placePrefix)
             if (placeIdx >= 0) {
@@ -94,6 +95,25 @@ object LocationUtils {
                 // Decode URL-encoded name: "XYZ+Best+Gym" -> "XYZ Best Gym"
                 val decoded = java.net.URLDecoder.decode(nameEncoded, "UTF-8")
                 return decoded.ifBlank { null }
+            }
+
+            // 2. Handle Google Maps search URLs: /maps/search/Place+Name
+            val searchPrefix = "/maps/search/"
+            val searchIdx = path.indexOf(searchPrefix)
+            if (searchIdx >= 0) {
+                val afterSearch = path.substring(searchIdx + searchPrefix.length)
+                val nameEncoded = afterSearch.split("/").firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
+                val decoded = java.net.URLDecoder.decode(nameEncoded, "UTF-8")
+                return decoded.ifBlank { null }
+            }
+
+            // 3. Handle query parameters like ?q=Place+Name (checking that it is not coordinates)
+            val queryParam = uri.getQueryParameter("q")
+            if (!queryParam.isNullOrBlank()) {
+                val isCoordinates = queryParam.matches(Regex("""^-?\d+\.\d+\s*,\s*-?\d+\.\d+$"""))
+                if (!isCoordinates) {
+                    return queryParam.trim()
+                }
             }
         } catch (e: Exception) {
             // ignore parsing errors

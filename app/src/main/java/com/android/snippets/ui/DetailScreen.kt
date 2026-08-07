@@ -470,9 +470,9 @@ fun DetailScreen(
             initialLink = photo.locationLink,
             suggestions = viewModel.allUniqueLocations,
             onDismiss = { showLinkModal = false },
-            onSave = { link ->
+            onSave = { link, name ->
                 showLinkModal = false
-                viewModel.updateLocationLink(photo.id, link.takeIf { it.isNotBlank() })
+                viewModel.updateLocationLink(photo.id, link.takeIf { it.isNotBlank() }, name)
             }
         )
     }
@@ -971,12 +971,104 @@ fun LocationLinkModal(
     initialLink: String?,
     suggestions: List<String>,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String, String?) -> Unit
 ) {
     val view = LocalView.current
     var linkValue by remember { mutableStateOf(initialLink ?: "") }
+    val resolvedNames = remember { mutableStateMapOf<String, String>() }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(suggestions) {
+        suggestions.forEach { suggestion ->
+            if (suggestion.startsWith("http")) {
+                val localName = LocationUtils.extractPlaceNameFromLink(suggestion)
+                if (localName != null) {
+                    resolvedNames[suggestion] = LocationUtils.cleanLocationName(localName)
+                } else {
+                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        var connection: java.net.HttpURLConnection? = null
+                        try {
+                            var currentUrl = suggestion
+                            var redirects = 0
+                            while (redirects < 5) {
+                                val url = java.net.URL(currentUrl)
+                                connection = url.openConnection() as java.net.HttpURLConnection
+                                connection.instanceFollowRedirects = false
+                                connection.connectTimeout = 3000
+                                connection.readTimeout = 3000
+                                connection.requestMethod = "HEAD"
+                                val responseCode = connection.responseCode
+                                if (responseCode in 300..399) {
+                                    val loc = connection.getHeaderField("Location")
+                                    if (!loc.isNullOrBlank()) {
+                                        currentUrl = if (loc.startsWith("http")) loc else {
+                                            val baseUri = android.net.Uri.parse(currentUrl)
+                                            baseUri.buildUpon().path(loc).build().toString()
+                                        }
+                                        redirects++
+                                    } else {
+                                        break
+                                    }
+                                } else {
+                                    break
+                                }
+                            }
+                            connection?.disconnect()
+                            connection = null
+                            
+                            val name = LocationUtils.extractPlaceNameFromLink(currentUrl)
+                            if (name != null) {
+                                resolvedNames[suggestion] = LocationUtils.cleanLocationName(name)
+                            }
+                        } catch (e: Exception) {
+                            try {
+                                var currentUrl = suggestion
+                                var redirects = 0
+                                while (redirects < 5) {
+                                    val url = java.net.URL(currentUrl)
+                                    connection = url.openConnection() as java.net.HttpURLConnection
+                                    connection.instanceFollowRedirects = false
+                                    connection.connectTimeout = 3000
+                                    connection.readTimeout = 3000
+                                    connection.requestMethod = "GET"
+                                    val responseCode = connection.responseCode
+                                    if (responseCode in 300..399) {
+                                        val loc = connection.getHeaderField("Location")
+                                        if (!loc.isNullOrBlank()) {
+                                            currentUrl = if (loc.startsWith("http")) loc else {
+                                                val baseUri = android.net.Uri.parse(currentUrl)
+                                                baseUri.buildUpon().path(loc).build().toString()
+                                            }
+                                            redirects++
+                                        } else {
+                                            break
+                                        }
+                                    } else {
+                                        break
+                                    }
+                                }
+                                connection?.disconnect()
+                                connection = null
+                                
+                                val name = LocationUtils.extractPlaceNameFromLink(currentUrl)
+                                if (name != null) {
+                                    resolvedNames[suggestion] = LocationUtils.cleanLocationName(name)
+                                }
+                            } catch (ex: Exception) {
+                                // ignore
+                            }
+                        } finally {
+                            connection?.disconnect()
+                        }
+                    }
+                }
+            } else {
+                resolvedNames[suggestion] = LocationUtils.cleanLocationName(suggestion)
+            }
+        }
+    }
     
-    val filteredSuggestions = remember(linkValue, suggestions) {
+    val filteredSuggestions = remember(linkValue, suggestions, resolvedNames.toMap()) {
         val baseList = if (initialLink != null) {
             suggestions.filter { it != initialLink }
         } else {
@@ -986,9 +1078,9 @@ fun LocationLinkModal(
         if (linkValue.isBlank()) {
             baseList.take(8)
         } else {
-            baseList.filter {
-                val displayName = LocationUtils.extractPlaceNameFromLink(it) ?: LocationUtils.cleanLocationName(it)
-                displayName.contains(linkValue, ignoreCase = true) || it.contains(linkValue, ignoreCase = true)
+            baseList.filter { suggestion ->
+                val displayName = resolvedNames[suggestion] ?: LocationUtils.extractPlaceNameFromLink(suggestion) ?: LocationUtils.cleanLocationName(suggestion)
+                displayName.contains(linkValue, ignoreCase = true) || suggestion.contains(linkValue, ignoreCase = true)
             }.take(8)
         }
     }
@@ -1042,8 +1134,8 @@ fun LocationLinkModal(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(filteredSuggestions) { suggestion ->
-                            val displayName = remember(suggestion) {
-                                LocationUtils.extractPlaceNameFromLink(suggestion) ?: LocationUtils.cleanLocationName(suggestion)
+                            val displayName = remember(suggestion, resolvedNames[suggestion]) {
+                                resolvedNames[suggestion] ?: LocationUtils.extractPlaceNameFromLink(suggestion) ?: LocationUtils.cleanLocationName(suggestion)
                             }
                             SuggestionChip(
                                 onClick = {
@@ -1094,7 +1186,9 @@ fun LocationLinkModal(
                     Button(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onSave(linkValue)
+                            val name = resolvedNames[linkValue] ?: LocationUtils.extractPlaceNameFromLink(linkValue) ?: LocationUtils.cleanLocationName(linkValue)
+                            val finalName = if (name.startsWith("http")) null else LocationUtils.cleanLocationName(name)
+                            onSave(linkValue, finalName)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                     ) {

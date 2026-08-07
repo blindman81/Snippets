@@ -1889,9 +1889,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         savePhotos()
     }
 
-    fun updateLocationLink(photoId: String, link: String?) {
+    fun updateLocationLink(photoId: String, link: String?, name: String? = null) {
         photos = photos.map {
-            if (it.id == photoId) it.copy(locationLink = link) else it
+            if (it.id == photoId) it.copy(locationLink = link, locationName = name) else it
         }
         savePhotos()
     }
