@@ -392,7 +392,7 @@ fun LibraryScreen(
                                     start = 0.dp,
                                     end = 0.dp,
                                     top = topGridPadding,
-                                    bottom = 100.dp
+                                    bottom = 120.dp
                                 ),
                                               horizontalArrangement = Arrangement.spacedBy(4.dp),
                                               verticalItemSpacing = if (currentGridColumns == 0) 2.dp else 4.dp
@@ -923,7 +923,7 @@ fun LibraryScreen(
                             tonalElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
+                                .height(80.dp)
                                 .clip(CircleShape)
                         ) {
                             Row(
@@ -932,104 +932,155 @@ fun LibraryScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // Menu
-                                AnimatedCookieButton(
-                                    onClick = {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                        showMenuPopup = !showMenuPopup
-                                        showCollectionsPopup = false
-                                    },
-                                    icon = Icons.Default.Menu,
-                                    contentDescription = "Menu",
-                                    tooltip = "Menu",
-                                    isSpinning = !isAnyPopupActive,
-                                    size = 48.dp,
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-
-                                // Search
-                                val isSearchActive = viewModel.searchQuery.isNotEmpty()
-                                val searchIcon = if (isSearchActive && flatPhotos.isNotEmpty()) SearchSuccessIcon() else Icons.Default.Search
-                                AnimatedCookieButton(
-                                    onClick = {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                        isSearchOpen = true
-                                    },
-                                    icon = searchIcon,
-                                    contentDescription = "Search",
-                                    tooltip = "Search",
-                                    isSpinning = !isAnyPopupActive,
-                                    size = 48.dp,
-                                    containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-
-                                 // More Options (Middle)
-                                 AnimatedCookieButton(
-                                     onClick = {
-                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                         val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
-                                         longPressedCollection = activeTab
-                                     },
-                                     icon = Icons.Default.MoreHoriz,
-                                     contentDescription = "Options",
-                                     tooltip = "Options",
-                                     isSpinning = !isAnyPopupActive,
-                                     size = 48.dp,
-                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                 )
-
-                                // History
-                                Box {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
                                     AnimatedCookieButton(
                                         onClick = {
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            showHistoryBottomSheet = true
+                                            showMenuPopup = !showMenuPopup
+                                            showCollectionsPopup = false
                                         },
-                                        icon = Icons.Default.History,
-                                        contentDescription = "History",
-                                        tooltip = "History",
+                                        icon = Icons.Default.Menu,
+                                        contentDescription = "Menu",
+                                        tooltip = "Menu",
                                         isSpinning = !isAnyPopupActive,
                                         size = 48.dp,
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
-                                    // Unviewed-memories indicator dot
-                                    if (viewModel.hasUnviewedMemories) {
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .offset(x = (-4).dp, y = 4.dp)
-                                                .size(8.dp)
-                                                .background(
-                                                    color = MaterialTheme.colorScheme.tertiary,
-                                                    shape = CircleShape
-                                                )
-                                        )
-                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Menu",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
 
+                                // Search
+                                val isSearchActive = viewModel.searchQuery.isNotEmpty()
+                                val searchIcon = if (isSearchActive && flatPhotos.isNotEmpty()) SearchSuccessIcon() else Icons.Default.Search
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    AnimatedCookieButton(
+                                        onClick = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                            isSearchOpen = true
+                                        },
+                                        icon = searchIcon,
+                                        contentDescription = "Search",
+                                        tooltip = "Search",
+                                        isSpinning = !isAnyPopupActive,
+                                        size = 48.dp,
+                                        containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Search",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
 
+                                 // More Options (Middle)
+                                 Column(
+                                     horizontalAlignment = Alignment.CenterHorizontally,
+                                     verticalArrangement = Arrangement.Center
+                                 ) {
+                                     AnimatedCookieButton(
+                                         onClick = {
+                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                             val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
+                                             longPressedCollection = activeTab
+                                         },
+                                         icon = Icons.Default.MoreHoriz,
+                                         contentDescription = "Options",
+                                         tooltip = "Options",
+                                         isSpinning = !isAnyPopupActive,
+                                         size = 48.dp,
+                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                     )
+                                     Spacer(modifier = Modifier.height(2.dp))
+                                     Text(
+                                         text = "More",
+                                         style = MaterialTheme.typography.labelSmall,
+                                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                                     )
+                                 }
 
-
+                                // History
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Box {
+                                        AnimatedCookieButton(
+                                            onClick = {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                showHistoryBottomSheet = true
+                                            },
+                                            icon = Icons.Default.History,
+                                            contentDescription = "History",
+                                            tooltip = "History",
+                                            isSpinning = !isAnyPopupActive,
+                                            size = 48.dp,
+                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                        // Unviewed-memories indicator dot
+                                        if (viewModel.hasUnviewedMemories) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .offset(x = (-4).dp, y = 4.dp)
+                                                    .size(8.dp)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.tertiary,
+                                                        shape = CircleShape
+                                                    )
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "History",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
 
                                 val isFilterActive = viewModel.selectedFilterSnippets.isNotEmpty() || viewModel.showFilterSheet
-                                AnimatedCookieButton(
-                                    onClick = {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                        val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
-                                        viewModel.filteringCategory = activeTab
-                                        viewModel.navigateFilter()
-                                    },
-                                    icon = Icons.Default.FilterList,
-                                    contentDescription = "Filters",
-                                    tooltip = "Filters",
-                                    isSpinning = !isAnyPopupActive,
-                                    size = 48.dp,
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    AnimatedCookieButton(
+                                        onClick = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                            val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
+                                            viewModel.filteringCategory = activeTab
+                                            viewModel.navigateFilter()
+                                        },
+                                        icon = Icons.Default.FilterList,
+                                        contentDescription = "Filters",
+                                        tooltip = "Filters",
+                                        isSpinning = !isAnyPopupActive,
+                                        size = 48.dp,
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Filter",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
 
@@ -1058,7 +1109,7 @@ fun LibraryScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .safeDrawingPadding()
-                        .padding(bottom = 96.dp)
+                        .padding(bottom = 112.dp)
                         .offset(y = toolbarOffset)
                 ) {
                     AnimatedCookieButton(
@@ -1087,7 +1138,7 @@ fun LibraryScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .safeDrawingPadding()
-                        .padding(end = 20.dp, bottom = 92.dp)
+                        .padding(end = 20.dp, bottom = 108.dp)
                         .offset(y = toolbarOffset)
                 ) {
                     FoodRandomizerFab(

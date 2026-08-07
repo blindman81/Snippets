@@ -91,7 +91,7 @@ private fun RecapCardList(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 0.dp, end = 0.dp, top = 16.dp, bottom = 100.dp),
+        contentPadding = PaddingValues(start = 0.dp, end = 0.dp, top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
