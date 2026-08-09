@@ -738,57 +738,95 @@ fun SnippetsDetailContent(
                     val pureSnippets = photo.snippets
                     val total = pureSnippets.size
 
-                    FlowRow(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .widthIn(max = 600.dp)
-                            .wrapContentWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        pureSnippets.forEachIndexed { index, snippet ->
-                            val forcedColor = viewModel.getSnippetColor(snippet)
-                            val forcedStyle = viewModel.getSnippetStyle(snippet)
+                    val containerInteractionSource = remember { MutableInteractionSource() }
+                    val isContainerPressed by containerInteractionSource.collectIsPressedAsState()
+                    val containerCornerRadius by animateDpAsState(
+                        targetValue = if (isContainerPressed) 100.dp else 24.dp,
+                        label = "snippetContainerRadius"
+                    )
 
-                            val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
-                            val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                            val snippetColor = remember(baseSnippetColor, isDark) {
-                                val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
-                                if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-                                else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
-                                else baseSnippetColor
-                            }
+                    val snippetRenderer: @Composable (String) -> Unit = { snippet ->
+                        val forcedColor = viewModel.getSnippetColor(snippet)
+                        val forcedStyle = viewModel.getSnippetStyle(snippet)
 
-                            val snippetGradient = remember(snippetColor) {
-                                Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
-                            }
+                        val bg = MaterialTheme.colorScheme.surfaceContainerHighest
+                        val isBgDark = (0.299f * bg.red + 0.587f * bg.green + 0.114f * bg.blue) < 0.5f
+                        val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
+                        val snippetColor = remember(baseSnippetColor, isBgDark) {
+                            val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
+                            if (isBgDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
+                            else if (!isBgDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
+                            else baseSnippetColor
+                        }
 
-                            val view = LocalView.current
+                        val snippetGradient = remember(snippetColor) {
+                            Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
+                        }
 
-                            Surface(
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    onEditSnippets()
-                                },
-                                shape = CircleShape,
-                                color = snippetColor.copy(alpha = 0.18f),
-                                border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
-                                modifier = Modifier.height(40.dp)
+                        val view = LocalView.current
+
+                        Surface(
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                onEditSnippets()
+                            },
+                            shape = CircleShape,
+                            color = snippetColor.copy(alpha = 0.18f),
+                            border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
+                            modifier = Modifier.height(40.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.padding(horizontal = 12.dp)
                             ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.padding(horizontal = 12.dp)
-                                ) {
-                                    Text(
-                                        text = snippet,
-                                        style = getSnippetTextStyle(
-                                            forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                            MaterialTheme.typography.titleMedium,
-                                            isCloud = true
-                                        ).copy(brush = snippetGradient),
-                                        color = Color.Unspecified,
-                                        maxLines = 1
-                                    )
+                                Text(
+                                    text = snippet,
+                                    style = getSnippetTextStyle(
+                                        forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                        MaterialTheme.typography.titleMedium,
+                                        isCloud = true
+                                    ).copy(brush = snippetGradient),
+                                    color = Color.Unspecified,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    if (pureSnippets.size == 1) {
+                        FlowRow(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .widthIn(max = 600.dp)
+                                .wrapContentWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            snippetRenderer(pureSnippets[0])
+                        }
+                    } else if (pureSnippets.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp)
+                                .widthIn(max = 600.dp)
+                                .clip(RoundedCornerShape(containerCornerRadius))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .combinedClickable(
+                                    interactionSource = containerInteractionSource,
+                                    indication = null,
+                                    onClick = {},
+                                    onLongClick = {}
+                                )
+                        ) {
+                            FlowRow(
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp, vertical = 12.dp)
+                                    .wrapContentWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                pureSnippets.forEach { snippet ->
+                                    snippetRenderer(snippet)
                                 }
                             }
                         }
