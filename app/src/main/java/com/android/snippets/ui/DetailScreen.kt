@@ -444,8 +444,10 @@ fun DetailScreen(
 
 
     if (showDeleteModal) {
+        val isEatlist = photo.collections.contains("Eatlist") || viewModel.libraryCurrentTab == "Eatlist"
         DeleteConfirmationModal(
             hasPublicPhotos = photo.isPublic,
+            isEatlist = isEatlist,
             onDismiss = { showDeleteModal = false },
             onConfirm = { unpublish -> 
                 showDeleteModal = false
@@ -483,6 +485,7 @@ fun DetailScreen(
 fun DeleteConfirmationModal(
     count: Int = 1,
     hasPublicPhotos: Boolean = false,
+    isEatlist: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (Boolean) -> Unit
 ) {
@@ -506,7 +509,11 @@ fun DeleteConfirmationModal(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (count > 1) "Deleting these photos also removes the snippets you created for them." else "Deleting this photo also removes the snippets you created for this photo.",
+                            text = if (isEatlist) {
+                                if (count > 1) "Are you sure you want to delete these photos?" else "Are you sure you want to delete this photo?"
+                            } else {
+                                if (count > 1) "Deleting these photos also removes the snippets you created for them." else "Deleting this photo also removes the snippets you created for this photo."
+                            },
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

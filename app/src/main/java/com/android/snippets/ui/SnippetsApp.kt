@@ -311,6 +311,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         if (viewModel.showBulkDeleteModal) {
             DeleteConfirmationModal(
                 count = viewModel.selectedPhotoIds.size,
+                isEatlist = viewModel.libraryCurrentTab == "Eatlist",
                 onDismiss = { viewModel.showBulkDeleteModal = false },
                 onConfirm = {
                     viewModel.showBulkDeleteModal = false
