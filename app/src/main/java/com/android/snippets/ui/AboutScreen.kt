@@ -166,11 +166,12 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                         withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)) {
                             append("Stitch")
                         }
+                        append(" (only in early development stage)")
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.widthIn(max = 240.dp)
+                    modifier = Modifier.widthIn(max = 280.dp)
                 )
 
                 val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
