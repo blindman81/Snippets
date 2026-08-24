@@ -29,6 +29,9 @@ import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.ui.shapes.toComposeShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
+import com.android.snippets.ui.components.rememberAnimatedGradientBrush
+import com.android.snippets.ui.components.AnimatedGradientDefaults
+import androidx.compose.foundation.background
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
 
@@ -1185,16 +1188,26 @@ fun SettingsSectionIcon(): ImageVector {
 fun ShapedSectionHeader(
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    usePrimary: Boolean = false
+    usePrimary: Boolean = false,
+    useAnimatedGradient: Boolean = true
 ) {
+    val gradient = if (useAnimatedGradient) {
+        rememberAnimatedGradientBrush(colors = AnimatedGradientDefaults.themeGradient())
+    } else null
     val containerColor = if (usePrimary) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
-    val iconColor = if (usePrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer
+    val iconColor = if (useAnimatedGradient) MaterialTheme.colorScheme.onPrimary else if (usePrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer
 
     Box(
         modifier = modifier
             .size(36.dp)
             .clip(LocalAppShape.current)
-            .background(containerColor),
+            .then(
+                if (gradient != null) {
+                    Modifier.background(gradient)
+                } else {
+                    Modifier.background(color = containerColor)
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(

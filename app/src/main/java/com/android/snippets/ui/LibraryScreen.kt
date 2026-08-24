@@ -4,6 +4,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.boundsInParent
 
 import com.android.snippets.ui.components.*
+import com.android.snippets.ui.util.Motion
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -555,10 +556,13 @@ fun LibraryScreen(
                                   )
 
                                  // Floating Tab Bar (Pill Shape)
+                                 val tabSurfaceGradient = rememberAnimatedGradientBrush(
+                                     colors = AnimatedGradientDefaults.subtleSurfaceGradient()
+                                 )
                                  Surface(
                                      shape = CircleShape,
-                                     color = MaterialTheme.colorScheme.surface,
-                                     shadowElevation = 0.dp,
+                                     color = Color.Transparent,
+                                     shadowElevation = 2.dp,
                                      tonalElevation = 0.dp,
                                      modifier = Modifier
                                          .align(Alignment.TopCenter)
@@ -568,6 +572,13 @@ fun LibraryScreen(
                                          .fillMaxWidth()
                                          .height(64.dp)
                                          .graphicsLayer { translationY = topBarOffset.toPx() }
+                                         .clip(CircleShape)
+                                         .background(tabSurfaceGradient)
+                                         .animatedGradientBorder(
+                                             borderWidth = 1.dp,
+                                             colors = AnimatedGradientDefaults.themeGradient(),
+                                             shape = CircleShape
+                                         )
                                  ) {
                                       Row(
                                           modifier = Modifier
@@ -701,37 +712,48 @@ fun LibraryScreen(
                                                                    ),
                                                                    label = "tabWidth_$tabName"
                                                                )
+                                                                val shapes = when {
+                                                                    allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                                                    tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                                                    tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                                                    else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                                                }
+                                                                val tabGradientBrush = if (isSelected) {
+                                                                    rememberAnimatedGradientBrush()
+                                                                } else null
 
-                                                               val shapes = when {
-                                                                   allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                                                   tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                                                   tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                                                   else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                                               }
-
-                                                               ToggleButton(
-                                                                   checked = isSelected,
-                                                                   onCheckedChange = { checked ->
-                                                                       val pageIndex = pageTabs.indexOf(tabName)
-                                                                       if (pageIndex != -1) {
-                                                                           if (isSelected) {
-                                                                               view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                           } else {
-                                                                               scope.launch { pagerState.animateScrollToPage(pageIndex) }
-                                                                           }
-                                                                       }
-                                                                   },
-                                                                   interactionSource = interactionSource,
-                                                                   shapes = shapes,
-                                                                   contentPadding = PaddingValues(horizontal = 12.dp),
-                                                                   colors = ToggleButtonDefaults.toggleButtonColors(
-                                                                       checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                                                       checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                                       containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                                       contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                                   ),
-                                                                   modifier = dragModifier.then(positionModifier).height(48.dp).width(animatedWidth)
-                                                               ) {
+                                                                ToggleButton(
+                                                                    checked = isSelected,
+                                                                    onCheckedChange = { checked ->
+                                                                        val pageIndex = pageTabs.indexOf(tabName)
+                                                                        if (pageIndex != -1) {
+                                                                            if (isSelected) {
+                                                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                            } else {
+                                                                                scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    interactionSource = interactionSource,
+                                                                    shapes = shapes,
+                                                                    contentPadding = PaddingValues(horizontal = 12.dp),
+                                                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                                                        checkedContainerColor = if (tabGradientBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
+                                                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                    ),
+                                                                    modifier = dragModifier.then(positionModifier).height(48.dp).width(animatedWidth)
+                                                                        .then(
+                                                                            if (tabGradientBrush != null) {
+                                                                                Modifier
+                                                                                    .clip(shapes.shape)
+                                                                                    .background(tabGradientBrush)
+                                                                            } else {
+                                                                                Modifier
+                                                                            }
+                                                                        )
+                                                                ) {
                                                                  Row(
                                                                      verticalAlignment = Alignment.CenterVertically,
                                                                      horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -832,14 +854,19 @@ fun LibraryScreen(
                     } else if (searchMode == 1) {
                         // â”€â”€ SEARCH MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+                        val searchSurfaceGradient = rememberAnimatedGradientBrush(
+                            colors = AnimatedGradientDefaults.themeGradient()
+                        )
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
+                            color = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                             shadowElevation = 8.dp,
                             tonalElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(CircleShape)
+                                .background(searchSurfaceGradient)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -870,11 +897,11 @@ fun LibraryScreen(
                                         .weight(1f)
                                         .focusRequester(searchFocusRequester),
                                     textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 17.sp
                                     ),
-                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onPrimary),
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                     keyboardActions = KeyboardActions(onSearch = {
@@ -888,7 +915,7 @@ fun LibraryScreen(
                                                 Text(
                                                     text = "Search...",
                                                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold),
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                                                 )
                                             }
                                             innerTextField()
@@ -1153,12 +1180,13 @@ fun LibraryScreen(
                     onDismissRequest = { longPressedCollection = null },
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(bottom = 32.dp)
-                    ) {
+                    Motion.ExpressiveSheetContent {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(bottom = 32.dp)
+                        ) {
                         val colName = longPressedCollection ?: ""
                         val iconOrEmoji = when (colName) {
                             "Library" -> Icons.Default.PhotoLibrary
@@ -1523,6 +1551,7 @@ fun LibraryScreen(
                     }
                 }
             }
+        }
 
                 renamingCollection?.let { oldName ->
                     var newName by remember { mutableStateOf(oldName) }
@@ -1655,13 +1684,28 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 label = "sort_weight_$label"
             )
 
+            val gradientBrush = if (checked) {
+                rememberAnimatedGradientBrush()
+            } else null
+
             ToggleButton(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 interactionSource = interactionSource,
-                modifier = Modifier.weight(animatedWeight),
+                modifier = Modifier
+                    .weight(animatedWeight)
+                    .then(
+                        if (gradientBrush != null) {
+                            Modifier.background(gradientBrush)
+                        } else {
+                            Modifier
+                        }
+                    ),
                 colors = ToggleButtonDefaults.toggleButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    checkedContainerColor = if (gradientBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 icon()

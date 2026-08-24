@@ -40,7 +40,9 @@ fun AnimatedCookieButton(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    useAnimatedGradient: Boolean = true,
+    gradientColors: List<Color>? = null
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -62,7 +64,9 @@ fun AnimatedCookieButton(
         spinOnEntry = spinOnEntry,
         enabled = enabled,
         hapticOnHold = hapticOnHold,
-        iconSize = iconSize
+        iconSize = iconSize,
+        useAnimatedGradient = useAnimatedGradient,
+        gradientColors = gradientColors
     )
 }
 
@@ -82,7 +86,9 @@ fun AnimatedCookieButton(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    useAnimatedGradient: Boolean = true,
+    gradientColors: List<Color>? = null
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -104,7 +110,9 @@ fun AnimatedCookieButton(
         spinOnEntry = spinOnEntry,
         enabled = enabled,
         hapticOnHold = hapticOnHold,
-        iconSize = iconSize
+        iconSize = iconSize,
+        useAnimatedGradient = useAnimatedGradient,
+        gradientColors = gradientColors
     )
 }
 
@@ -123,7 +131,9 @@ private fun AnimatedCookieButtonImpl(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    useAnimatedGradient: Boolean = true,
+    gradientColors: List<Color>? = null
 ) {
     val view = LocalView.current
     var isHolding by remember { mutableStateOf(false) }
@@ -134,7 +144,7 @@ private fun AnimatedCookieButtonImpl(
 
     val isActive = isHolding || isTapped
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
-    val targetContent = if (isActive) MaterialTheme.colorScheme.onPrimary else contentColor
+    val targetContent = if (isActive || useAnimatedGradient) MaterialTheme.colorScheme.onPrimary else contentColor
 
     val animatedContainerColor by animateColorAsState(
         targetValue = targetContainer,
@@ -146,6 +156,12 @@ private fun AnimatedCookieButtonImpl(
         animationSpec = tween(150),
         label = "cookie_button_content_color"
     )
+
+    val gradientBrush = if (useAnimatedGradient || isActive) {
+        rememberAnimatedGradientBrush(
+            colors = gradientColors ?: AnimatedGradientDefaults.themeGradient()
+        )
+    } else null
 
     val scope = rememberCoroutineScope()
     var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -160,7 +176,13 @@ private fun AnimatedCookieButtonImpl(
                     scaleY = animScaleY.value
                 }
                 .clip(shape)
-                .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+                .then(
+                    if (gradientBrush != null && enabled) {
+                        Modifier.background(gradientBrush)
+                    } else {
+                        Modifier.background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+                    }
+                )
                 .pointerInput(enabled, isSpinning) {
                     if (!enabled) return@pointerInput
                     detectTapGestures(

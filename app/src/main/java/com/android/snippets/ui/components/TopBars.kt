@@ -93,14 +93,19 @@ fun SelectionToolbar(
             .padding(bottom = 0.dp),
         contentAlignment = Alignment.Center
     ) {
+        val toolbarGradient = rememberAnimatedGradientBrush(
+            colors = AnimatedGradientDefaults.themeGradient()
+        )
         Surface(
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface,
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             shadowElevation = 8.dp,
             tonalElevation = 0.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(CircleShape)
+                .background(toolbarGradient)
         ) {
             Row(
                 modifier = Modifier
@@ -300,15 +305,16 @@ fun FloatingTitlePill(
         }
     }
 
+    val pillGradient = rememberAnimatedGradientBrush(
+        colors = AnimatedGradientDefaults.themeGradient()
+    )
+
     Surface(
         shape = CircleShape,
-        color = resolvedContainerColor,
+        color = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
         shadowElevation = if (isScrolled) 6.dp else 2.dp,
         tonalElevation = if (isScrolled) 6.dp else 2.dp,
-        border = if (hasPrimaryOutline) BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        ) else null,
         modifier = modifier
             .graphicsLayer {
                 scaleX = animatedScaleState.value
@@ -321,6 +327,7 @@ fun FloatingTitlePill(
                 )
             )
             .clip(CircleShape)
+            .background(pillGradient)
             .let { mod ->
                 if (onClick != null || onLongClick != null) {
                     mod.pointerInput(Unit) {
@@ -370,7 +377,7 @@ fun FloatingTitlePill(
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -389,7 +396,7 @@ fun FloatingTitlePill(
                             fontSize = 20.sp,
                             letterSpacing = (-0.5).sp
                         ),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.widthIn(max = textMaxWidth)
@@ -400,7 +407,7 @@ fun FloatingTitlePill(
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(100),
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.25f)
                         ) {
                             Text(
                                 text = digitOnlyCount,
@@ -408,7 +415,7 @@ fun FloatingTitlePill(
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.ExtraBold
                                 ),
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -424,7 +431,7 @@ fun FloatingTitlePill(
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(if (subtitle != null) 32.dp else 28.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -440,7 +447,7 @@ fun FloatingTitlePill(
                         Text(
                             text = title,
                             style = titleEmphasized,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -451,7 +458,7 @@ fun FloatingTitlePill(
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Normal
                                 ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -502,10 +509,21 @@ fun MainTopBar(
         headerColor.animateTo(targetHeaderColor, tween(250))
     }
     
+    val topBarGradient = rememberAnimatedGradientBrush(
+        colors = AnimatedGradientDefaults.themeGradient()
+    )
+    
     Surface(
         modifier = Modifier
-            .fillMaxWidth(),
-        color = if (forceTransparentBackground) Color.Transparent else headerColor.value,
+            .fillMaxWidth()
+            .then(
+                if (!forceTransparentBackground) {
+                    Modifier.background(topBarGradient)
+                } else {
+                    Modifier
+                }
+            ),
+        color = Color.Transparent,
         shape = RectangleShape,
         tonalElevation = 0.dp
     ) {
@@ -621,6 +639,17 @@ fun MainTopBar(
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.Transparent
                 )
+            } else if (isScrolled && !forceTransparentBackground) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.5.dp)
+                        .align(Alignment.BottomCenter)
+                        .animatedGradientBackground(
+                            colors = AnimatedGradientDefaults.themeGradient(),
+                            alpha = 0.6f
+                        )
+                )
             }
         }
     }
@@ -647,10 +676,13 @@ fun HomeTopAppBar(
     },
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
+    val homeGradient = rememberAnimatedGradientBrush(
+        colors = AnimatedGradientDefaults.themeGradient()
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(homeGradient)
             .statusBarsPadding()
     ) {
         TopAppBar(

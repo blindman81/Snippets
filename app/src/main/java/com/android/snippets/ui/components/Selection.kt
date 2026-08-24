@@ -38,18 +38,11 @@ fun PremiumSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    val targetContainerColor = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-    val containerColor = remember { Animatable(targetContainerColor) }
+    val gradientBrush = rememberAnimatedGradientBrush(
+        colors = AnimatedGradientDefaults.themeGradient()
+    )
+    val inactiveColor = MaterialTheme.colorScheme.outlineVariant
     
-    val colorScheme = MaterialTheme.colorScheme
-    LaunchedEffect(colorScheme) {
-        containerColor.snapTo(targetContainerColor)
-    }
-
-    LaunchedEffect(checked) {
-        containerColor.animateTo(targetContainerColor, tween(300))
-    }
-
     val rotation by animateFloatAsState(
         targetValue = if (checked) 360f else 0f,
         animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
@@ -61,7 +54,13 @@ fun PremiumSwitch(
             .size(40.dp)
             .graphicsLayer { rotationZ = rotation }
             .clip(LocalAppShape.current)
-            .background(if (enabled) containerColor.value else containerColor.value.copy(alpha = 0.38f))
+            .then(
+                if (checked) {
+                    Modifier.background(gradientBrush)
+                } else {
+                    Modifier.background(if (enabled) inactiveColor else inactiveColor.copy(alpha = 0.38f))
+                }
+            )
             .clickable(enabled = enabled) { onCheckedChange(!checked) },
         contentAlignment = Alignment.Center
     ) {
@@ -91,11 +90,11 @@ fun CookieCheckmark(
     checked: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val containerColor by animateColorAsState(
-        targetValue = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
-        animationSpec = tween(300),
-        label = "cookie_check_bg"
+    val checkmarkGradient = rememberAnimatedGradientBrush(
+        colors = AnimatedGradientDefaults.themeGradient()
     )
+    val inactiveColor = MaterialTheme.colorScheme.surfaceContainerLow
+
     val contentColor by animateColorAsState(
         targetValue = if (checked) MaterialTheme.colorScheme.onPrimary else Color.Transparent,
         animationSpec = tween(300),
@@ -106,7 +105,13 @@ fun CookieCheckmark(
         modifier = modifier
             .size(32.dp)
             .clip(LocalAppShape.current)
-            .background(containerColor),
+            .then(
+                if (checked) {
+                    Modifier.background(checkmarkGradient)
+                } else {
+                    Modifier.background(inactiveColor)
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(

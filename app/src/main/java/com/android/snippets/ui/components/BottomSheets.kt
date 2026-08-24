@@ -52,8 +52,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.sp
 import com.android.snippets.ui.util.Motion
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MenuBottomSheet(
     show: Boolean,
@@ -74,115 +80,179 @@ fun MenuBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                 ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(bottom = 24.dp, top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Surface(
-                            shape = com.android.snippets.ui.shapes.CookieShape,
-                            color = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(44.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(24.dp))
+                            val menuHeaderGradient = rememberAnimatedGradientBrush(
+                                colors = AnimatedGradientDefaults.themeGradient()
+                            )
+                            Surface(
+                                shape = com.android.snippets.ui.shapes.CookieShape,
+                                color = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(com.android.snippets.ui.shapes.CookieShape)
+                                    .background(menuHeaderGradient)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(24.dp))
+                                }
                             }
+                            Text(
+                                text = "Menu",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                        Text(
-                            text = "Menu",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+
+                        // Row 1: Stats, Select, Templates
+                        ButtonGroup(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            overflowIndicator = {}
+                        ) {
+                            menuItem(
+                                icon = { Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                label = "Stats",
+                                onClick = {
+                                    onDismissRequest()
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    viewModel.navigateStats()
+                                }
+                            )
+
+                            menuItem(
+                                icon = { Icon(SelectIcon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                label = "Select",
+                                onClick = {
+                                    onDismissRequest()
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    viewModel.forceSelectionMode = true
+                                }
+                            )
+
+                            menuItem(
+                                icon = { Icon(Icons.Default.TextSnippet, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                label = "Templates",
+                                onClick = {
+                                    onDismissRequest()
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    viewModel.navigateTemplates()
+                                }
+                            )
+                        }
+
+                        // Row 2: Collection, Settings, About
+                        ButtonGroup(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            overflowIndicator = {}
+                        ) {
+                            menuItem(
+                                icon = { Icon(painterResource(id = com.ln.android.snippets.R.drawable.ic_create_new_folder), contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                label = "Collection",
+                                onClick = {
+                                    onDismissRequest()
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    viewModel.navigateCollections(focusCreate = true)
+                                }
+                            )
+
+                            menuItem(
+                                icon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                label = "Settings",
+                                onClick = {
+                                    onDismissRequest()
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    viewModel.navigateSettings()
+                                }
+                            )
+
+                            menuItem(
+                                icon = { Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                label = "About",
+                                onClick = {
+                                    onDismissRequest()
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    viewModel.navigateAbout()
+                                }
+                            )
+                        }
                     }
-
-                    SettingsCardItem(
-                        icon = Icons.Default.BarChart,
-                        title = "Stats",
-                        position = CardPosition.First,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        onClick = {
-                            onDismissRequest()
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.navigateStats()
-                        }
-                    )
-
-                    SettingsCardItem(
-                        icon = SelectIcon(),
-                        title = "Select",
-                        position = CardPosition.Middle,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        onClick = {
-                            onDismissRequest()
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.forceSelectionMode = true
-                        }
-                    )
-
-                    SettingsCardItem(
-                        icon = Icons.Default.TextSnippet,
-                        title = "Templates",
-                        position = CardPosition.Middle,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        onClick = {
-                            onDismissRequest()
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.navigateTemplates()
-                        }
-                    )
-
-                    SettingsCardItem(
-                        icon = com.ln.android.snippets.R.drawable.ic_create_new_folder,
-                        title = "New Collection",
-                        position = CardPosition.Middle,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        onClick = {
-                            onDismissRequest()
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.navigateCollections(focusCreate = true)
-                        }
-                    )
-
-                    SettingsCardItem(
-                        icon = Icons.Default.Settings,
-                        title = "Settings",
-                        position = CardPosition.Middle,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        onClick = {
-                            onDismissRequest()
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.navigateSettings()
-                        }
-                    )
-
-                    SettingsCardItem(
-                        icon = Icons.Default.Info,
-                        title = "About",
-                        position = CardPosition.Last,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        onClick = {
-                            onDismissRequest()
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.navigateAbout()
-                        }
-                    )
                 }
             }
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun ButtonGroupScope.menuItem(
+    icon: @Composable () -> Unit,
+    label: String,
+    onClick: () -> Unit
+) {
+    customItem(
+        buttonGroupContent = {
+            Button(
+                onClick = onClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shapes = ButtonDefaults.shapes(
+                    shape = CircleShape,
+                    pressedShape = RoundedCornerShape(12.dp)
+                ),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    icon()
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        },
+        menuContent = {
+            DropdownMenuItem(
+                text = { Text(label) },
+                leadingIcon = icon,
+                onClick = onClick
+            )
+        }
+    )
 }
 
 
@@ -312,11 +382,17 @@ fun HistoryBottomSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        val historyHeaderGradient = rememberAnimatedGradientBrush(
+                            colors = AnimatedGradientDefaults.themeGradient()
+                        )
                         Surface(
                             shape = com.android.snippets.ui.shapes.CookieShape,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = Color.Transparent,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(com.android.snippets.ui.shapes.CookieShape)
+                                .background(historyHeaderGradient)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(24.dp))

@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.android.snippets.ui.util.Motion
 import com.android.snippets.ui.util.rotateWithBounds
 import com.android.snippets.viewmodel.SnippetsViewModel
 import kotlin.random.Random
@@ -536,6 +535,12 @@ fun CurrentSnippetsModal(
                     scaleX = scaleFactor
                     scaleY = scaleFactor
                 }
+                .clip(RoundedCornerShape(48.dp))
+                .animatedGradientBorder(
+                    borderWidth = 1.5.dp,
+                    colors = AnimatedGradientDefaults.themeGradient(),
+                    shape = RoundedCornerShape(48.dp)
+                )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -698,24 +703,42 @@ fun AddSnippetsModal(
 
                         customItem(
                             buttonGroupContent = {
-                                val leading = ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                val trailing = ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                val middle = ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 val shapes = when {
-                                    isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
-                                    isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = leading.shape)
-                                    isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes(pressedShape = trailing.shape)
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes(pressedShape = middle.shape)
+                                    isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
 
+                                val isSelected = index == selectedIndex
+                                val gradientBrush = if (isSelected) {
+                                    rememberAnimatedGradientBrush()
+                                } else null
+
                                 ToggleButton(
-                                    checked = index == selectedIndex,
+                                    checked = isSelected,
                                     onCheckedChange = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         selectedIndex = index
                                     },
-                                    modifier = Modifier.weight(1f),
-                                    shapes = shapes
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .then(
+                                            if (gradientBrush != null) {
+                                                Modifier
+                                                    .clip(shapes.shape)
+                                                    .background(gradientBrush)
+                                            } else {
+                                                Modifier
+                                            }
+                                        ),
+                                    shapes = shapes,
+                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                        checkedContainerColor = if (gradientBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
                                 ) {
                                     Text(
                                         text = label,

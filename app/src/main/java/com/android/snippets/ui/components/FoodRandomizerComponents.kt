@@ -36,6 +36,7 @@ import coil.compose.AsyncImage
 import com.ln.android.snippets.R
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.shapes.LocalAppShape
+import com.android.snippets.ui.util.Motion
 
 /**
  * Official Material 3 Specs Floating Action Button (FAB) for the Food Randomizer feature.
@@ -98,14 +99,15 @@ fun FoodRandomizerBottomSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Motion.ExpressiveSheetContent {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -113,12 +115,17 @@ fun FoodRandomizerBottomSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 val appShape = LocalAppShape.current
+                val headerGradient = rememberAnimatedGradientBrush(
+                    colors = AnimatedGradientDefaults.themeGradient()
+                )
                 Surface(
                     shape = appShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier
                         .size(44.dp)
                         .clip(appShape)
+                        .background(headerGradient)
                         .clickable {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             pickNextRandom()
@@ -128,7 +135,7 @@ fun FoodRandomizerBottomSheet(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
                             contentDescription = "Shuffle",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -299,19 +306,34 @@ fun FoodRandomizerBottomSheet(
                     label = "eat_corner_morph"
                 )
 
+                val buttonGradient = rememberAnimatedGradientBrush(
+                    colors = AnimatedGradientDefaults.themeGradient()
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val shuffleShape = RoundedCornerShape(shuffleCornerRadius)
                     OutlinedButton(
                         onClick = { pickNextRandom() },
-                        shape = RoundedCornerShape(shuffleCornerRadius),
+                        shape = shuffleShape,
                         interactionSource = shuffleInteraction,
                         contentPadding = ButtonDefaults.ContentPadding,
+                        border = null,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
+                            .clip(shuffleShape)
+                            .animatedGradientBorder(
+                                borderWidth = 1.5.dp,
+                                colors = AnimatedGradientDefaults.themeGradient(),
+                                shape = shuffleShape
+                            )
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
@@ -327,6 +349,7 @@ fun FoodRandomizerBottomSheet(
                         )
                     }
 
+                    val eatShape = RoundedCornerShape(eatCornerRadius)
                     Button(
                         onClick = {
                             currentPhoto?.let {
@@ -335,27 +358,36 @@ fun FoodRandomizerBottomSheet(
                                 onSelectPhoto(it)
                             }
                         },
-                        shape = RoundedCornerShape(eatCornerRadius),
+                        shape = eatShape,
                         interactionSource = eatInteraction,
                         contentPadding = ButtonDefaults.ContentPadding,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
+                            .clip(eatShape)
+                            .background(buttonGradient)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Restaurant,
                             contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
                         Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
                         Text(
                             text = "Let's Eat!",
                             style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 }
             }
         }
     }
+}
 }

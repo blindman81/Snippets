@@ -339,11 +339,13 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-            ) {
-                FilterScreen(viewModel)
+            Motion.ExpressiveSheetContent {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    FilterScreen(viewModel)
+                }
             }
         }
     }
