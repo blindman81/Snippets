@@ -237,7 +237,8 @@ private fun ButtonGroupScope.menuItem(
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
