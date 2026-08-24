@@ -146,6 +146,9 @@ private fun AnimatedCookieButtonImpl(
         label = "cookie_button_content_color"
     )
 
+    val scope = rememberCoroutineScope()
+    var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
     val content = @Composable {
         Box(
             modifier = modifier
@@ -157,7 +160,7 @@ private fun AnimatedCookieButtonImpl(
                 }
                 .clip(shape)
                 .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
-                .pointerInput(enabled) {
+                .pointerInput(enabled, isSpinning) {
                     if (!enabled) return@pointerInput
                     detectTapGestures(
                         onPress = {
@@ -169,9 +172,31 @@ private fun AnimatedCookieButtonImpl(
                             }
                         },
                         onTap = {
-                            isTapped = true
+                            if (spinJob?.isActive == true) return@detectTapGestures
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            onClick()
+                            if (isSpinning) {
+                                spinJob = scope.launch {
+                                    isTapped = true
+                                    val anim = launch {
+                                        rotation.animateTo(
+                                            targetValue = rotation.value + 360f,
+                                            animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+                                        )
+                                    }
+                                    kotlinx.coroutines.delay(220)
+                                    onClick()
+                                    anim.join()
+                                    kotlinx.coroutines.delay(60)
+                                    isTapped = false
+                                }
+                            } else {
+                                isTapped = true
+                                scope.launch {
+                                    kotlinx.coroutines.delay(100)
+                                    isTapped = false
+                                }
+                                onClick()
+                            }
                         }
                     )
                 },
@@ -187,24 +212,14 @@ private fun AnimatedCookieButtonImpl(
         }
     }
 
-    // Spin animation loop
-    LaunchedEffect(Unit) {
-        while (true) {
-            if (isTapped) {
-                rotation.animateTo(
-                    targetValue = rotation.value + 360f,
-                    animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-                )
-                kotlinx.coroutines.delay(150)
-                isTapped = false
-            } else if (isHolding) {
+    // Continuous spin while holding
+    LaunchedEffect(isHolding) {
+        if (isHolding) {
+            while (true) {
                 rotation.animateTo(
                     targetValue = rotation.value + 360f,
                     animationSpec = tween(600, easing = LinearEasing)
                 )
-            } else {
-                androidx.compose.runtime.snapshotFlow { isHolding || isTapped }
-                    .first { it }
             }
         }
     }
