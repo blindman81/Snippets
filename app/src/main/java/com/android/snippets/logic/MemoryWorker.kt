@@ -34,6 +34,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Handles memory notifications with rich metadata (day & date, favorite status,
+ * star rating, location) and displays the memory image inside a 12-sided cookie polygon
+ * with a dimmed, blurred background in BigPictureStyle.
+ */
 class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     companion object {
         const val CHANNEL_ID = "new_memory_channel"
