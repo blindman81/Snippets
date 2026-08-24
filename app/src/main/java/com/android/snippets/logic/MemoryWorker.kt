@@ -119,7 +119,12 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val pendingIntent = PendingIntent.getActivity(
             applicationContext,
             0,
-            Intent(applicationContext, com.android.snippets.MainActivity::class.java),
+            Intent(applicationContext, com.android.snippets.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("open_memory", true)
+            },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return ForegroundInfo(SUMMARY_NOTIFICATION_ID, summaryNotification(pendingIntent))

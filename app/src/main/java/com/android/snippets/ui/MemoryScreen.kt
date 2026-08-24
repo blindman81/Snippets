@@ -73,14 +73,22 @@ fun MemoryScreen(
         viewModel.navigateLibrary()
     }
     val photoList = viewModel.activeMemoriesSnapshot.ifEmpty { viewModel.curatedMemories }
-    val pagerState = rememberPagerState(initialPage = viewModel.currentMemoryIndex + 1) {
+    val initialPage = (viewModel.currentMemoryIndex + 1).coerceIn(1, (photoList.size).coerceAtLeast(1))
+    val pagerState = rememberPagerState(initialPage = initialPage) {
         photoList.size + 2 // [Close, Photos..., Close]
     }
     val transitionTargetId by remember { derivedStateOf { photoList.getOrNull(pagerState.currentPage - 1)?.id } }
+
+    val targetPage = (viewModel.currentMemoryIndex + 1).coerceIn(1, (photoList.size).coerceAtLeast(1))
+    LaunchedEffect(targetPage, photoList) {
+        if (photoList.isNotEmpty() && pagerState.currentPage != targetPage) {
+            pagerState.scrollToPage(targetPage)
+        }
+    }
     
     // Sync pager state back to ViewModel and handle swipe-to-close
-    LaunchedEffect(pagerState.currentPage) {
-        if (pagerState.currentPage == 0 || pagerState.currentPage == photoList.size + 1) {
+    LaunchedEffect(pagerState.currentPage, photoList) {
+        if (photoList.isNotEmpty() && (pagerState.currentPage == 0 || pagerState.currentPage == photoList.size + 1)) {
             // Immediate transition trigger
             viewModel.navigateLibrary()
         }

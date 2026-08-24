@@ -137,7 +137,7 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                     Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra("open_history", true)
+                putExtra("open_memory", true)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

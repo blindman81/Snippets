@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
             pendingNotificationPhotoId = intent.getStringExtra("photo_id")
             pendingNotificationToken = System.currentTimeMillis()
             intent.removeExtra("open_memory")
+            intent.removeExtra("photo_id")
         }
     }
 
@@ -161,12 +162,17 @@ class MainActivity : ComponentActivity() {
                             val photos = viewModel.photos
                             val targetPhotoId = pendingNotificationPhotoId
                             val notificationToken = pendingNotificationToken
-                            androidx.compose.runtime.LaunchedEffect(notificationToken, photos) {
-                                if (photos.isNotEmpty() && notificationToken != 0L) {
+                            val isInitialLoading = viewModel.isInitialLoading
+                            androidx.compose.runtime.LaunchedEffect(notificationToken, isInitialLoading, photos) {
+                                if (!isInitialLoading && notificationToken != 0L && photos.isNotEmpty()) {
                                     if (targetPhotoId != null) {
                                         viewModel.openMemoryForPhoto(targetPhotoId)
                                     } else if (viewModel.curatedMemories.isNotEmpty()) {
                                         viewModel.openMemory(0)
+                                    } else {
+                                        photos.firstOrNull { !it.collections.contains("Eatlist") }?.let {
+                                            viewModel.openMemoryForPhoto(it.id)
+                                        }
                                     }
                                     
                                     pendingNotificationToken = 0L
