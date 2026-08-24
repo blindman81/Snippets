@@ -179,17 +179,17 @@ private fun AnimatedCookieButtonImpl(
                                 spinJob = scope.launch {
                                     isTapped = true
                                     val scaleJobX = launch {
-                                        animScaleX.animateTo(0.90f, Motion.PressSpring)
-                                        animScaleX.animateTo(1f, Motion.ExpressiveSpring)
+                                        animScaleX.animateTo(0.84f, Motion.PressSpring)
+                                        animScaleX.animateTo(1f, Motion.BouncySpring)
                                     }
                                     val scaleJobY = launch {
-                                        animScaleY.animateTo(0.90f, Motion.PressSpring)
-                                        animScaleY.animateTo(1f, Motion.ExpressiveSpring)
+                                        animScaleY.animateTo(0.84f, Motion.PressSpring)
+                                        animScaleY.animateTo(1f, Motion.BouncySpring)
                                     }
                                     val anim = launch {
                                         rotation.animateTo(
                                             targetValue = rotation.value + 360f,
-                                            animationSpec = Motion.ExpressiveSpring
+                                            animationSpec = Motion.BouncySpring
                                         )
                                     }
                                     kotlinx.coroutines.delay(180)
@@ -203,12 +203,12 @@ private fun AnimatedCookieButtonImpl(
                                 isTapped = true
                                 scope.launch {
                                     val scaleJobX = launch {
-                                        animScaleX.animateTo(0.90f, Motion.PressSpring)
-                                        animScaleX.animateTo(1f, Motion.ExpressiveSpring)
+                                        animScaleX.animateTo(0.84f, Motion.PressSpring)
+                                        animScaleX.animateTo(1f, Motion.BouncySpring)
                                     }
                                     val scaleJobY = launch {
-                                        animScaleY.animateTo(0.90f, Motion.PressSpring)
-                                        animScaleY.animateTo(1f, Motion.ExpressiveSpring)
+                                        animScaleY.animateTo(0.84f, Motion.PressSpring)
+                                        animScaleY.animateTo(1f, Motion.BouncySpring)
                                     }
                                     kotlinx.coroutines.delay(120)
                                     scaleJobX.join()
@@ -235,11 +235,11 @@ private fun AnimatedCookieButtonImpl(
     // Press scale animation when holding
     LaunchedEffect(isHolding) {
         if (isHolding) {
-            launch { animScaleX.animateTo(0.88f, animationSpec = Motion.PressSpring) }
-            launch { animScaleY.animateTo(0.88f, animationSpec = Motion.PressSpring) }
+            launch { animScaleX.animateTo(0.84f, animationSpec = Motion.PressSpring) }
+            launch { animScaleY.animateTo(0.84f, animationSpec = Motion.PressSpring) }
         } else if (!isTapped) {
-            launch { animScaleX.animateTo(1f, animationSpec = Motion.ExpressiveSpring) }
-            launch { animScaleY.animateTo(1f, animationSpec = Motion.ExpressiveSpring) }
+            launch { animScaleX.animateTo(1f, animationSpec = Motion.BouncySpring) }
+            launch { animScaleY.animateTo(1f, animationSpec = Motion.BouncySpring) }
         }
     }
 
@@ -270,7 +270,7 @@ private fun AnimatedCookieButtonImpl(
         if (spinOnEntry) {
             rotation.animateTo(
                 targetValue = rotation.value + 360f,
-                animationSpec = Motion.ExpressiveSpring
+                animationSpec = Motion.BouncySpring
             )
         }
     }

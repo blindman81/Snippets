@@ -2,6 +2,7 @@ package com.android.snippets.ui
 import com.ln.android.snippets.R
 import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.*
+import com.android.snippets.ui.util.Motion
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import kotlinx.coroutines.launch
@@ -663,13 +664,14 @@ fun AddSnippetsModal(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         scrimColor = BottomSheetDefaults.ScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Motion.ExpressiveSheetContent {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -983,6 +985,7 @@ fun AddSnippetsModal(
             }
         }
     }
+}
 }
 
 

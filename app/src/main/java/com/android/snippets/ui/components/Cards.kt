@@ -443,7 +443,7 @@ fun PhotoMasonryItem(
         label = "photoMasonryTopBottomCardCorner"
     )
     val bottomBottomCardCornerAnimated by animateDpAsState(
-        targetValue = if (isPressed) 24.dp else 16.dp,
+        targetValue = if (isPressed) 24.dp else 12.dp,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "photoMasonryBottomBottomCardCorner"
     )
@@ -1260,7 +1260,7 @@ fun PhotoCardListItem(
     )
     val bottomCornerSize by animateDpAsState(
         targetValue = if (isPressed) 24.dp else {
-            if (position == CardPosition.Last || position == CardPosition.Single) 16.dp else 4.dp
+            if (position == CardPosition.Last || position == CardPosition.Single) 12.dp else 4.dp
         },
         label = "bottomCardBottomCorner"
     )
