@@ -22,6 +22,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import com.android.snippets.ui.shapes.CookieShape
+import com.android.snippets.ui.util.Motion
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -177,22 +178,41 @@ private fun AnimatedCookieButtonImpl(
                             if (isSpinning) {
                                 spinJob = scope.launch {
                                     isTapped = true
+                                    val scaleJobX = launch {
+                                        animScaleX.animateTo(0.90f, Motion.PressSpring)
+                                        animScaleX.animateTo(1f, Motion.ExpressiveSpring)
+                                    }
+                                    val scaleJobY = launch {
+                                        animScaleY.animateTo(0.90f, Motion.PressSpring)
+                                        animScaleY.animateTo(1f, Motion.ExpressiveSpring)
+                                    }
                                     val anim = launch {
                                         rotation.animateTo(
                                             targetValue = rotation.value + 360f,
-                                            animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+                                            animationSpec = Motion.ExpressiveSpring
                                         )
                                     }
-                                    kotlinx.coroutines.delay(220)
+                                    kotlinx.coroutines.delay(180)
                                     onClick()
                                     anim.join()
-                                    kotlinx.coroutines.delay(60)
+                                    scaleJobX.join()
+                                    scaleJobY.join()
                                     isTapped = false
                                 }
                             } else {
                                 isTapped = true
                                 scope.launch {
-                                    kotlinx.coroutines.delay(100)
+                                    val scaleJobX = launch {
+                                        animScaleX.animateTo(0.90f, Motion.PressSpring)
+                                        animScaleX.animateTo(1f, Motion.ExpressiveSpring)
+                                    }
+                                    val scaleJobY = launch {
+                                        animScaleY.animateTo(0.90f, Motion.PressSpring)
+                                        animScaleY.animateTo(1f, Motion.ExpressiveSpring)
+                                    }
+                                    kotlinx.coroutines.delay(120)
+                                    scaleJobX.join()
+                                    scaleJobY.join()
                                     isTapped = false
                                 }
                                 onClick()
@@ -209,6 +229,17 @@ private fun AnimatedCookieButtonImpl(
                 }
             val tint = if (enabled) animatedContentColor else animatedContentColor.copy(alpha = 0.38f)
             iconContent(iconModifier, tint)
+        }
+    }
+
+    // Press scale animation when holding
+    LaunchedEffect(isHolding) {
+        if (isHolding) {
+            launch { animScaleX.animateTo(0.88f, animationSpec = Motion.PressSpring) }
+            launch { animScaleY.animateTo(0.88f, animationSpec = Motion.PressSpring) }
+        } else if (!isTapped) {
+            launch { animScaleX.animateTo(1f, animationSpec = Motion.ExpressiveSpring) }
+            launch { animScaleY.animateTo(1f, animationSpec = Motion.ExpressiveSpring) }
         }
     }
 
@@ -239,7 +270,7 @@ private fun AnimatedCookieButtonImpl(
         if (spinOnEntry) {
             rotation.animateTo(
                 targetValue = rotation.value + 360f,
-                animationSpec = tween(1000, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
+                animationSpec = Motion.ExpressiveSpring
             )
         }
     }
