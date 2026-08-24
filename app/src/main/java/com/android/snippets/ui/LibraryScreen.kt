@@ -556,13 +556,10 @@ fun LibraryScreen(
                                   )
 
                                  // Floating Tab Bar (Pill Shape)
-                                 val tabSurfaceGradient = rememberAnimatedGradientBrush(
-                                     colors = AnimatedGradientDefaults.subtleSurfaceGradient()
-                                 )
                                  Surface(
                                      shape = CircleShape,
-                                     color = Color.Transparent,
-                                     shadowElevation = 2.dp,
+                                     color = MaterialTheme.colorScheme.surface,
+                                     shadowElevation = 0.dp,
                                      tonalElevation = 0.dp,
                                      modifier = Modifier
                                          .align(Alignment.TopCenter)
@@ -572,13 +569,6 @@ fun LibraryScreen(
                                          .fillMaxWidth()
                                          .height(64.dp)
                                          .graphicsLayer { translationY = topBarOffset.toPx() }
-                                         .clip(CircleShape)
-                                         .background(tabSurfaceGradient)
-                                         .animatedGradientBorder(
-                                             borderWidth = 1.dp,
-                                             colors = AnimatedGradientDefaults.themeGradient(),
-                                             shape = CircleShape
-                                         )
                                  ) {
                                       Row(
                                           modifier = Modifier
@@ -747,7 +737,7 @@ fun LibraryScreen(
                                                                         .then(
                                                                             if (tabGradientBrush != null) {
                                                                                 Modifier
-                                                                                    .clip(shapes.shape)
+                                                                                    .clip(if (isSelected) shapes.checkedShape else shapes.shape)
                                                                                     .background(tabGradientBrush)
                                                                             } else {
                                                                                 Modifier
@@ -854,19 +844,13 @@ fun LibraryScreen(
                     } else if (searchMode == 1) {
                         // â”€â”€ SEARCH MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-                        val searchSurfaceGradient = rememberAnimatedGradientBrush(
-                            colors = AnimatedGradientDefaults.themeGradient()
-                        )
                         Surface(
                             shape = CircleShape,
-                            color = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            color = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
                             shadowElevation = 8.dp,
                             tonalElevation = 0.dp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(CircleShape)
-                                .background(searchSurfaceGradient)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -897,11 +881,11 @@ fun LibraryScreen(
                                         .weight(1f)
                                         .focusRequester(searchFocusRequester),
                                     textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 17.sp
                                     ),
-                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onPrimary),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                     keyboardActions = KeyboardActions(onSearch = {
@@ -915,7 +899,7 @@ fun LibraryScreen(
                                                 Text(
                                                     text = "Search...",
                                                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold),
-                                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                             }
                                             innerTextField()
@@ -1355,7 +1339,9 @@ fun LibraryScreen(
                                             }
                                         },
                                         icon = { Icon(dateIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
-                                        label = dateLabels[index]
+                                        label = dateLabels[index],
+                                        isFirst = index == 0,
+                                        isLast = index == dateOptions.size - 1
                                     )
                                 }
                             }
@@ -1387,7 +1373,9 @@ fun LibraryScreen(
                                                 }
                                             },
                                             icon = { Icon(snippetIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
-                                            label = snippetLabels[index]
+                                            label = snippetLabels[index],
+                                            isFirst = index == 0,
+                                            isLast = index == snippetOptions.size - 1
                                         )
                                     }
                                 }
@@ -1417,7 +1405,9 @@ fun LibraryScreen(
                                                 }
                                             },
                                             icon = { Icon(painterResource(id = R.drawable.ic_star_rating), null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
-                                            label = starLabels[index]
+                                            label = starLabels[index],
+                                            isFirst = index == 0,
+                                            isLast = index == starOptions.size - 1
                                         )
                                     }
                                 }
@@ -1662,7 +1652,9 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     icon: @Composable () -> Unit,
-    label: String
+    label: String,
+    isFirst: Boolean = false,
+    isLast: Boolean = false
 ) {
     customItem(
         buttonGroupContent = {
@@ -1684,6 +1676,13 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 label = "sort_weight_$label"
             )
 
+            val shapes = when {
+                isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+            }
+
             val gradientBrush = if (checked) {
                 rememberAnimatedGradientBrush()
             } else null
@@ -1692,11 +1691,14 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 interactionSource = interactionSource,
+                shapes = shapes,
                 modifier = Modifier
                     .weight(animatedWeight)
                     .then(
                         if (gradientBrush != null) {
-                            Modifier.background(gradientBrush)
+                            Modifier
+                                .clip(if (checked) shapes.checkedShape else shapes.shape)
+                                .background(gradientBrush)
                         } else {
                             Modifier
                         }

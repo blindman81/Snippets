@@ -1773,12 +1773,6 @@ fun DynamicCardContainer(
         label = "scale"
     )
 
-    val cardGradient = if (isSelected) {
-        rememberAnimatedGradientBrush(colors = AnimatedGradientDefaults.themeGradient())
-    } else if (containerColor == null) {
-        rememberAnimatedGradientBrush(colors = AnimatedGradientDefaults.subtleSurfaceGradient())
-    } else null
-
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -1793,13 +1787,6 @@ fun DynamicCardContainer(
                 scaleY = animatedScale
             }
             .clip(shape)
-            .then(
-                if (cardGradient != null) {
-                    Modifier.background(cardGradient)
-                } else {
-                    Modifier
-                }
-            )
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1818,7 +1805,7 @@ fun DynamicCardContainer(
                 }
             ),
         shape = shape,
-        color = if (cardGradient != null) Color.Transparent else (containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else (containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest),
         shadowElevation = if (isSelected) 6.dp else 1.dp,
         border = null
     ) {

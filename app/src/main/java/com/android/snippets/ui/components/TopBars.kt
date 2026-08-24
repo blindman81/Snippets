@@ -93,19 +93,13 @@ fun SelectionToolbar(
             .padding(bottom = 0.dp),
         contentAlignment = Alignment.Center
     ) {
-        val toolbarGradient = rememberAnimatedGradientBrush(
-            colors = AnimatedGradientDefaults.themeGradient()
-        )
         Surface(
             shape = CircleShape,
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            color = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 8.dp,
             tonalElevation = 0.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(CircleShape)
-                .background(toolbarGradient)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier
@@ -305,14 +299,10 @@ fun FloatingTitlePill(
         }
     }
 
-    val pillGradient = rememberAnimatedGradientBrush(
-        colors = AnimatedGradientDefaults.themeGradient()
-    )
-
     Surface(
         shape = CircleShape,
-        color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
+        color = resolvedContainerColor,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         shadowElevation = if (isScrolled) 6.dp else 2.dp,
         tonalElevation = if (isScrolled) 6.dp else 2.dp,
         modifier = modifier
@@ -327,7 +317,6 @@ fun FloatingTitlePill(
                 )
             )
             .clip(CircleShape)
-            .background(pillGradient)
             .let { mod ->
                 if (onClick != null || onLongClick != null) {
                     mod.pointerInput(Unit) {
@@ -377,7 +366,7 @@ fun FloatingTitlePill(
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -396,7 +385,7 @@ fun FloatingTitlePill(
                             fontSize = 20.sp,
                             letterSpacing = (-0.5).sp
                         ),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.widthIn(max = textMaxWidth)
@@ -407,7 +396,7 @@ fun FloatingTitlePill(
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(100),
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.25f)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                         ) {
                             Text(
                                 text = digitOnlyCount,
@@ -415,7 +404,7 @@ fun FloatingTitlePill(
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.ExtraBold
                                 ),
-                                color = MaterialTheme.colorScheme.onPrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -431,7 +420,7 @@ fun FloatingTitlePill(
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(if (subtitle != null) 32.dp else 28.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -447,7 +436,7 @@ fun FloatingTitlePill(
                         Text(
                             text = title,
                             style = titleEmphasized,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -458,7 +447,7 @@ fun FloatingTitlePill(
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Normal
                                 ),
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -509,21 +498,9 @@ fun MainTopBar(
         headerColor.animateTo(targetHeaderColor, tween(250))
     }
     
-    val topBarGradient = rememberAnimatedGradientBrush(
-        colors = AnimatedGradientDefaults.themeGradient()
-    )
-    
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (!forceTransparentBackground) {
-                    Modifier.background(topBarGradient)
-                } else {
-                    Modifier
-                }
-            ),
-        color = Color.Transparent,
+        modifier = Modifier.fillMaxWidth(),
+        color = if (forceTransparentBackground) Color.Transparent else headerColor.value,
         shape = RectangleShape,
         tonalElevation = 0.dp
     ) {
@@ -640,15 +617,10 @@ fun MainTopBar(
                     trackColor = Color.Transparent
                 )
             } else if (isScrolled && !forceTransparentBackground) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.5.dp)
-                        .align(Alignment.BottomCenter)
-                        .animatedGradientBackground(
-                            colors = AnimatedGradientDefaults.themeGradient(),
-                            alpha = 0.6f
-                        )
+                HorizontalDivider(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                 )
             }
         }
@@ -676,35 +648,23 @@ fun HomeTopAppBar(
     },
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
-    val homeGradient = rememberAnimatedGradientBrush(
-        colors = AnimatedGradientDefaults.themeGradient()
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(homeGradient)
-            .statusBarsPadding()
-    ) {
-        TopAppBar(
-            windowInsets = WindowInsets(0, 0, 0, 0),
-            title = {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            navigationIcon = navigationIcon,
-            actions = actions,
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                scrolledContainerColor = Color.Transparent
+    TopAppBar(
+        windowInsets = WindowInsets(0, 0, 0, 0),
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.ExtraBold
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-        )
-    }
+        },
+        navigationIcon = navigationIcon,
+        actions = actions,
+        scrollBehavior = scrollBehavior,
+        modifier = Modifier.statusBarsPadding()
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

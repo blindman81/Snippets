@@ -535,12 +535,6 @@ fun CurrentSnippetsModal(
                     scaleX = scaleFactor
                     scaleY = scaleFactor
                 }
-                .clip(RoundedCornerShape(48.dp))
-                .animatedGradientBorder(
-                    borderWidth = 1.5.dp,
-                    colors = AnimatedGradientDefaults.themeGradient(),
-                    shape = RoundedCornerShape(48.dp)
-                )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -726,7 +720,7 @@ fun AddSnippetsModal(
                                         .then(
                                             if (gradientBrush != null) {
                                                 Modifier
-                                                    .clip(shapes.shape)
+                                                    .clip(if (isSelected) shapes.checkedShape else shapes.shape)
                                                     .background(gradientBrush)
                                             } else {
                                                 Modifier
@@ -981,6 +975,9 @@ fun AddSnippetsModal(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val buttonGradient = rememberAnimatedGradientBrush(
+                colors = AnimatedGradientDefaults.themeGradient()
+            )
             Button(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -989,14 +986,26 @@ fun AddSnippetsModal(
                     onClose()
                 },
                 enabled = text.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (text.isNotBlank()) {
+                            Modifier
+                                .clip(CircleShape)
+                                .background(buttonGradient)
+                        } else {
+                            Modifier
+                        }
+                    ),
                 shapes = ButtonDefaults.shapes(
                     shape = CircleShape,
                     pressedShape = RoundedCornerShape(12.dp)
                 ),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = if (text.isNotBlank()) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                 ),
                 contentPadding = PaddingValues(16.dp)
             ) {

@@ -115,17 +115,12 @@ fun FoodRandomizerBottomSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 val appShape = LocalAppShape.current
-                val headerGradient = rememberAnimatedGradientBrush(
-                    colors = AnimatedGradientDefaults.themeGradient()
-                )
                 Surface(
                     shape = appShape,
-                    color = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(appShape)
-                        .background(headerGradient)
                         .clickable {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             pickNextRandom()
@@ -135,7 +130,7 @@ fun FoodRandomizerBottomSheet(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
                             contentDescription = "Shuffle",
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
                     }

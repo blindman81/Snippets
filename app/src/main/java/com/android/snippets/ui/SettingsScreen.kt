@@ -528,7 +528,7 @@ private fun ButtonGroupScope.themeToggleableItem(
                     .then(
                         if (gradientBrush != null) {
                             Modifier
-                                .clip(shapes.shape)
+                                .clip(if (checked) shapes.checkedShape else shapes.shape)
                                 .background(gradientBrush)
                         } else {
                             Modifier

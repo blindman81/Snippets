@@ -1188,26 +1188,16 @@ fun SettingsSectionIcon(): ImageVector {
 fun ShapedSectionHeader(
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    usePrimary: Boolean = false,
-    useAnimatedGradient: Boolean = true
+    usePrimary: Boolean = false
 ) {
-    val gradient = if (useAnimatedGradient) {
-        rememberAnimatedGradientBrush(colors = AnimatedGradientDefaults.themeGradient())
-    } else null
     val containerColor = if (usePrimary) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
-    val iconColor = if (useAnimatedGradient) MaterialTheme.colorScheme.onPrimary else if (usePrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer
+    val iconColor = if (usePrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer
 
     Box(
         modifier = modifier
             .size(36.dp)
             .clip(LocalAppShape.current)
-            .then(
-                if (gradient != null) {
-                    Modifier.background(gradient)
-                } else {
-                    Modifier.background(color = containerColor)
-                }
-            ),
+            .background(color = containerColor),
         contentAlignment = Alignment.Center
     ) {
         Icon(

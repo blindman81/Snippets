@@ -90,11 +90,11 @@ fun CookieCheckmark(
     checked: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val checkmarkGradient = rememberAnimatedGradientBrush(
-        colors = AnimatedGradientDefaults.themeGradient()
+    val containerColor by animateColorAsState(
+        targetValue = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
+        animationSpec = tween(300),
+        label = "cookie_check_container"
     )
-    val inactiveColor = MaterialTheme.colorScheme.surfaceContainerLow
-
     val contentColor by animateColorAsState(
         targetValue = if (checked) MaterialTheme.colorScheme.onPrimary else Color.Transparent,
         animationSpec = tween(300),
@@ -105,13 +105,7 @@ fun CookieCheckmark(
         modifier = modifier
             .size(32.dp)
             .clip(LocalAppShape.current)
-            .then(
-                if (checked) {
-                    Modifier.background(checkmarkGradient)
-                } else {
-                    Modifier.background(inactiveColor)
-                }
-            ),
+            .background(containerColor),
         contentAlignment = Alignment.Center
     ) {
         Icon(

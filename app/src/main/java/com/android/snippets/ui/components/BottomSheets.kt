@@ -93,17 +93,11 @@ fun MenuBottomSheet(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            val menuHeaderGradient = rememberAnimatedGradientBrush(
-                                colors = AnimatedGradientDefaults.themeGradient()
-                            )
                             Surface(
                                 shape = com.android.snippets.ui.shapes.CookieShape,
-                                color = Color.Transparent,
+                                color = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(com.android.snippets.ui.shapes.CookieShape)
-                                    .background(menuHeaderGradient)
+                                modifier = Modifier.size(44.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(24.dp))
@@ -130,6 +124,7 @@ fun MenuBottomSheet(
                             menuItem(
                                 icon = { Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(18.dp)) },
                                 label = "Stats",
+                                weight = 0.9f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -140,6 +135,7 @@ fun MenuBottomSheet(
                             menuItem(
                                 icon = { Icon(SelectIcon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
                                 label = "Select",
+                                weight = 0.9f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -150,6 +146,7 @@ fun MenuBottomSheet(
                             menuItem(
                                 icon = { Icon(Icons.Default.TextSnippet, contentDescription = null, modifier = Modifier.size(18.dp)) },
                                 label = "Templates",
+                                weight = 1.2f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -158,7 +155,7 @@ fun MenuBottomSheet(
                             )
                         }
 
-                        // Row 2: Collection, Settings, About
+                        // Row 2: New Collection, Settings, About
                         ButtonGroup(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -168,7 +165,8 @@ fun MenuBottomSheet(
                         ) {
                             menuItem(
                                 icon = { Icon(painterResource(id = com.ln.android.snippets.R.drawable.ic_create_new_folder), contentDescription = null, modifier = Modifier.size(18.dp)) },
-                                label = "Collection",
+                                label = "New Collection",
+                                weight = 1.45f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -179,6 +177,7 @@ fun MenuBottomSheet(
                             menuItem(
                                 icon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp)) },
                                 label = "Settings",
+                                weight = 0.95f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -189,6 +188,7 @@ fun MenuBottomSheet(
                             menuItem(
                                 icon = { Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp)) },
                                 label = "About",
+                                weight = 0.65f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -207,6 +207,7 @@ fun MenuBottomSheet(
 private fun ButtonGroupScope.menuItem(
     icon: @Composable () -> Unit,
     label: String,
+    weight: Float = 1f,
     onClick: () -> Unit
 ) {
     customItem(
@@ -214,7 +215,7 @@ private fun ButtonGroupScope.menuItem(
             Button(
                 onClick = onClick,
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(weight)
                     .height(48.dp),
                 shapes = ButtonDefaults.shapes(
                     shape = CircleShape,
@@ -236,8 +237,7 @@ private fun ButtonGroupScope.menuItem(
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            fontWeight = FontWeight.Medium
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -382,17 +382,11 @@ fun HistoryBottomSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        val historyHeaderGradient = rememberAnimatedGradientBrush(
-                            colors = AnimatedGradientDefaults.themeGradient()
-                        )
                         Surface(
                             shape = com.android.snippets.ui.shapes.CookieShape,
-                            color = Color.Transparent,
+                            color = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(com.android.snippets.ui.shapes.CookieShape)
-                                .background(historyHeaderGradient)
+                            modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(24.dp))
