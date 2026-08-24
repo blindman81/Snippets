@@ -122,6 +122,7 @@ fun SnippetsTheme(
         colorScheme = sanitizedColorScheme,
         typography = Typography,
         shapes = Shapes,
+        motionScheme = MotionScheme.expressive(),
         content = content
     )
 }
