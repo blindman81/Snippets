@@ -140,6 +140,7 @@ private fun AnimatedCookieButtonImpl(
     val view = LocalView.current
     var isHolding by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
+    var pressStartTime by remember { mutableLongStateOf(0L) }
     val rotation = remember { Animatable(0f) }
     val animScaleX = remember { Animatable(1f) }
     val animScaleY = remember { Animatable(1f) }
@@ -196,6 +197,7 @@ private fun AnimatedCookieButtonImpl(
                     if (!enabled) return@pointerInput
                     detectTapGestures(
                         onPress = {
+                            pressStartTime = System.currentTimeMillis()
                             isHolding = true
                             try {
                                 awaitRelease()
@@ -203,7 +205,12 @@ private fun AnimatedCookieButtonImpl(
                                 isHolding = false
                             }
                         },
+                        onLongPress = {
+                            // Absorbs long-press gesture so releasing does not fire tap
+                        },
                         onTap = {
+                            // Do not trigger action if the user was holding/long-pressing
+                            if (System.currentTimeMillis() - pressStartTime >= 300L) return@detectTapGestures
                             if (spinJob?.isActive == true) return@detectTapGestures
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                             if (isSpinning) {
