@@ -965,7 +965,7 @@ fun LibraryScreen(
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "Menu",
                                         style = MaterialTheme.typography.labelSmall,
@@ -992,7 +992,7 @@ fun LibraryScreen(
                                         containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
                                     )
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "Search",
                                         style = MaterialTheme.typography.labelSmall,
@@ -1018,7 +1018,7 @@ fun LibraryScreen(
                                          containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                          contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                      )
-                                     Spacer(modifier = Modifier.height(2.dp))
+                                     Spacer(modifier = Modifier.height(4.dp))
                                      Text(
                                          text = "More",
                                          style = MaterialTheme.typography.labelSmall,
@@ -1058,7 +1058,7 @@ fun LibraryScreen(
                                             )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "History",
                                         style = MaterialTheme.typography.labelSmall,
@@ -1085,7 +1085,7 @@ fun LibraryScreen(
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "Filter",
                                         style = MaterialTheme.typography.labelSmall,
