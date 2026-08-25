@@ -1439,18 +1439,25 @@ fun LibraryScreen(
                                     .padding(bottom = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                val addPhotosGradient = rememberAnimatedGradientBrush(
+                                    colors = AnimatedGradientDefaults.themeGradient()
+                                )
                                 Button(
                                     onClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         onAddPhotos(longPressedCollection!!)
                                         longPressedCollection = null
                                     },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(CircleShape)
+                                        .background(addPhotosGradient),
                                     shapes = ButtonDefaults.shapes(
                                         shape = CircleShape,
                                         pressedShape = RoundedCornerShape(12.dp)
                                     ),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        containerColor = Color.Transparent,
                                         contentColor = MaterialTheme.colorScheme.onPrimary
                                     ),
                                     contentPadding = PaddingValues(16.dp)
