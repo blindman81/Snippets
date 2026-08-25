@@ -294,13 +294,17 @@ private fun AnimatedCookieButtonImpl(
         }
     }
 
-    // Haptic feedback loop while holding (opt-in per call site)
-    LaunchedEffect(isHolding) {
+    // Haptic feedback precisely when the shape morphs to another shape
+    var lastHapticStep by remember { mutableStateOf(-1) }
+    LaunchedEffect(isHolding, morphProgress.value) {
         if (isHolding && hapticOnHold) {
-            while (true) {
+            val currentStep = morphProgress.value.toInt()
+            if (currentStep != lastHapticStep) {
+                lastHapticStep = currentStep
                 view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
-                kotlinx.coroutines.delay(160)
             }
+        } else if (!isHolding) {
+            lastHapticStep = -1
         }
     }
 
