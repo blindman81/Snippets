@@ -177,10 +177,12 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                             Icon(icon, null, modifier = Modifier.size(24.dp))
                              Text(
                                  text = label,
-                                 style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized else MaterialTheme.typography.titleMedium.copy(
-                                     fontFamily = com.android.snippets.ui.theme.GoogleSans
-                                  ),
-                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                 style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized.copy(
+                                     fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                 ) else MaterialTheme.typography.titleMedium.copy(
+                                     fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
+                                 ),
+                                 fontWeight = FontWeight.Bold
                              )
                         }
                     },

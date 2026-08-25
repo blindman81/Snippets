@@ -50,6 +50,16 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
         3
     }
     val coroutineScope = rememberCoroutineScope()
+
+    var isFirstTabLoad by remember { mutableStateOf(true) }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect {
+            if (!isFirstTabLoad) {
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+            }
+            isFirstTabLoad = false
+        }
+    }
     val snippetsScrollState = rememberScrollState()
     val locationsScrollState = rememberScrollState()
     val starsScrollState = rememberScrollState()
@@ -111,7 +121,6 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                         Tab(
                             selected = isSelected,
                             onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(index)
                                 }
@@ -131,9 +140,9 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                         style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized.copy(
                                             fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
                                         ) else MaterialTheme.typography.titleMedium.copy(
-                                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
                                         ),
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
                             },
