@@ -167,7 +167,6 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                             },
                             icon = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tooltip = "Back",
                             size = 56.dp,
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer

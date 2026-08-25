@@ -121,7 +121,6 @@ fun DetailTopBar(
                     onClick = onBack,
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    tooltip = "Back",
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     isSpinning = isSpinning,

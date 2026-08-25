@@ -521,7 +521,6 @@ fun MainTopBar(
                         },
                         icon = navigationIcon,
                         contentDescription = "Navigation",
-                        tooltip = if (navigationIcon == Icons.Default.Menu) "Menu" else "Back",
                         isSpinning = isSpinning
                     )
                     if (leftAlignTitle) {
@@ -594,7 +593,6 @@ fun MainTopBar(
                             },
                             icon = Icons.Default.Search,
                             contentDescription = "Search",
-                            tooltip = "Search",
                             isSpinning = isSpinning
                         )
                     }
@@ -713,7 +711,6 @@ fun SearchViewOverlay(
                         },
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tooltip = "Back",
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         size = 56.dp
@@ -791,7 +788,6 @@ fun SearchViewOverlay(
                         },
                         icon = Icons.Default.Delete,
                         contentDescription = "Clear History",
-                        tooltip = "Clear History",
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         size = 56.dp
@@ -991,7 +987,6 @@ fun LargeMainTopBar(
                 },
                 icon = navigationIcon,
                 contentDescription = "Navigation",
-                tooltip = if (navigationIcon == Icons.Default.Menu) "Menu" else "Back",
                 size = 44.dp,
                 isSpinning = isSpinning
             )
