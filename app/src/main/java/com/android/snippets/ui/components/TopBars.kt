@@ -984,7 +984,7 @@ fun LargeMainTopBar(
         },
         navigationIcon = {
             AnimatedCookieButton(
-                modifier = Modifier.padding(start = 12.dp),
+                modifier = Modifier.padding(start = 8.dp),
                 onClick = {
                     focusManager.clearFocus()
                     onNavigationClick()
@@ -992,6 +992,7 @@ fun LargeMainTopBar(
                 icon = navigationIcon,
                 contentDescription = "Navigation",
                 tooltip = if (navigationIcon == Icons.Default.Menu) "Menu" else "Back",
+                size = 44.dp,
                 isSpinning = isSpinning
             )
         },
