@@ -263,11 +263,11 @@ private fun AnimatedCookieButtonImpl(
         }
     }
 
-    // Hold scale expansion: grows to 1.45x so morphing shapes are clearly visible outside the finger
+    // Hold scale expansion: grows to 1.3x so morphing shapes are clearly visible outside the finger
     LaunchedEffect(isHolding) {
         if (isHolding) {
-            launch { animScaleX.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
-            launch { animScaleY.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
+            launch { animScaleX.animateTo(1.3f, animationSpec = Motion.BouncySpring) }
+            launch { animScaleY.animateTo(1.3f, animationSpec = Motion.BouncySpring) }
         } else if (!isTapped) {
             launch { animScaleX.animateTo(1f, animationSpec = Motion.BouncySpring) }
             launch { animScaleY.animateTo(1f, animationSpec = Motion.BouncySpring) }
