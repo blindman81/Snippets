@@ -21,7 +21,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import com.android.snippets.ui.shapes.CookieHoldMorphs
 import com.android.snippets.ui.shapes.CookieShape
+import com.android.snippets.ui.shapes.MorphSequenceShape
 import com.android.snippets.ui.util.Motion
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -141,6 +143,7 @@ private fun AnimatedCookieButtonImpl(
     val rotation = remember { Animatable(0f) }
     val animScaleX = remember { Animatable(1f) }
     val animScaleY = remember { Animatable(1f) }
+    val morphProgress = remember { Animatable(0f) }
 
     val isActive = isHolding || isTapped
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
@@ -163,6 +166,12 @@ private fun AnimatedCookieButtonImpl(
         )
     } else null
 
+    val currentShape = if (isHolding || morphProgress.value > 0.001f) {
+        MorphSequenceShape(CookieHoldMorphs, morphProgress.value)
+    } else {
+        shape
+    }
+
     val scope = rememberCoroutineScope()
     var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
@@ -175,7 +184,7 @@ private fun AnimatedCookieButtonImpl(
                     scaleX = animScaleX.value
                     scaleY = animScaleY.value
                 }
-                .clip(shape)
+                .clip(currentShape)
                 .then(
                     if (gradientBrush != null && enabled) {
                         Modifier.background(gradientBrush)
@@ -272,6 +281,25 @@ private fun AnimatedCookieButtonImpl(
                 rotation.animateTo(
                     targetValue = rotation.value + 360f,
                     animationSpec = tween(600, easing = LinearEasing)
+                )
+            }
+        }
+    }
+
+    // Continuous shape morphing while holding: 12-sided cookie -> pill -> pentagon -> 12-sided cookie -> 4-sided cookie -> very sunny -> oval -> 12-sided cookie
+    LaunchedEffect(isHolding) {
+        if (isHolding) {
+            while (true) {
+                morphProgress.animateTo(
+                    targetValue = morphProgress.value + CookieHoldMorphs.size,
+                    animationSpec = tween(CookieHoldMorphs.size * 450, easing = LinearEasing)
+                )
+            }
+        } else {
+            if (morphProgress.value > 0f) {
+                morphProgress.animateTo(
+                    targetValue = 0f,
+                    animationSpec = Motion.BouncySpring
                 )
             }
         }

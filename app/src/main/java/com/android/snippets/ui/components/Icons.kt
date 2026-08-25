@@ -360,7 +360,7 @@ fun CollectionIcon(
             
             if (animMode == "icon button") {
                 when (icon) {
-                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
+                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
                         rotationZ = infiniteTransition.animateFloat(
                             initialValue = 0f,
                             targetValue = 360f,
@@ -370,32 +370,6 @@ fun CollectionIcon(
                             ),
                             label = "icon_spin"
                         ).value
-                    }
-                    AppShape.CLOVER_4_LEAF -> {
-                        val pulse = infiniteTransition.animateFloat(
-                            initialValue = 0.85f,
-                            targetValue = 1.15f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1000, easing = FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "icon_clover4_pulse"
-                        ).value
-                        scaleX = pulse
-                        scaleY = 2f - pulse
-                    }
-                    AppShape.CLOVER_8_LEAF -> {
-                        val pulse = infiniteTransition.animateFloat(
-                            initialValue = 0.90f,
-                            targetValue = 1.10f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1000, easing = FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "icon_clover8_pulse"
-                        ).value
-                        scaleX = pulse
-                        scaleY = 2f - pulse
                     }
                     else -> {
                         val scale = infiniteTransition.animateFloat(
@@ -413,7 +387,7 @@ fun CollectionIcon(
                 }
             } else {
                 when (icon) {
-                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL -> {
+                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
                         rotationZ = infiniteTransition.animateFloat(
                             initialValue = 0f,
                             targetValue = 360f,
@@ -422,17 +396,6 @@ fun CollectionIcon(
                                 repeatMode = RepeatMode.Restart
                             ),
                             label = "memory_spin"
-                        ).value
-                    }
-                    AppShape.GEM, AppShape.SQUARE -> {
-                        rotationZ = infiniteTransition.animateFloat(
-                            initialValue = -3f,
-                            targetValue = 3f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(2000, easing = FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "memory_sway"
                         ).value
                     }
                     AppShape.PENTAGON, AppShape.COOKIE_4_SIDED -> {
@@ -447,28 +410,6 @@ fun CollectionIcon(
                         ).value
                         scaleX = scale
                         scaleY = scale
-                    }
-                    AppShape.CLOVER_4_LEAF -> {
-                        translateY = infiniteTransition.animateFloat(
-                            initialValue = -25f,
-                            targetValue = 25f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(2000, easing = FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "memory_translateY"
-                        ).value
-                    }
-                    AppShape.CLOVER_8_LEAF -> {
-                        translateX = infiniteTransition.animateFloat(
-                            initialValue = -25f,
-                            targetValue = 25f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(2000, easing = FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "memory_translateX"
-                        ).value
                     }
                 }
             }

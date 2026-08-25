@@ -16,16 +16,15 @@ import androidx.graphics.shapes.star
 import androidx.graphics.shapes.toPath
 import androidx.compose.ui.graphics.Matrix
 
+import androidx.graphics.shapes.Morph
+
 enum class AppShape(val displayName: String) {
     COOKIE_12_SIDED("12-sided cookie"),
     COOKIE_4_SIDED("4-sided cookie"),
     VERY_SUNNY("Very sunny"),
-    GEM("Gem"),
-    SQUARE("Square"),
     PILL("Pill"),
     PENTAGON("Pentagon"),
-    CLOVER_4_LEAF("4-leaf clover"),
-    CLOVER_8_LEAF("8-leaf clover")
+    OVAL("Oval")
 }
 
 val CookiePolygon = RoundedPolygon.star(
@@ -60,17 +59,63 @@ class RoundedPolygonShape(
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+val CookieHoldMorphPolygons: List<RoundedPolygon> by lazy {
+    listOf(
+        CookiePolygon,
+        MaterialShapes.Pill,
+        MaterialShapes.Pentagon,
+        CookiePolygon,
+        MaterialShapes.Cookie4Sided,
+        MaterialShapes.VerySunny,
+        MaterialShapes.Oval,
+        CookiePolygon
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+val CookieHoldMorphs: List<Morph> by lazy {
+    val polygons = CookieHoldMorphPolygons
+    (0 until polygons.size - 1).map { Morph(polygons[it], polygons[it + 1]) }
+}
+
+class MorphSequenceShape(
+    val morphs: List<Morph>,
+    val progress: Float
+) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        if (morphs.isEmpty()) {
+            return Outline.Rectangle(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+        }
+        val total = morphs.size
+        val normalized = ((progress % total) + total) % total
+        val index = normalized.toInt().coerceIn(0, total - 1)
+        val fraction = (normalized - index).coerceIn(0f, 1f)
+
+        val path = morphs[index].toPath(fraction).asComposePath()
+        val bounds = path.getBounds()
+        val matrix = Matrix()
+        matrix.translate(-bounds.left, -bounds.top)
+        val scaleX = if (bounds.width > 0f) size.width / bounds.width else 1f
+        val scaleY = if (bounds.height > 0f) size.height / bounds.height else 1f
+        matrix.scale(scaleX, scaleY)
+        path.transform(matrix)
+        return Outline.Generic(path)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun AppShape.toComposeShape(): Shape {
     return when (this) {
         AppShape.COOKIE_12_SIDED -> RoundedPolygonShape(CookiePolygon)
         AppShape.COOKIE_4_SIDED -> RoundedPolygonShape(MaterialShapes.Cookie4Sided)
         AppShape.VERY_SUNNY -> RoundedPolygonShape(MaterialShapes.VerySunny)
-        AppShape.GEM -> RoundedPolygonShape(MaterialShapes.Gem)
-        AppShape.SQUARE -> RoundedPolygonShape(MaterialShapes.Square)
         AppShape.PILL -> RoundedPolygonShape(MaterialShapes.Pill)
         AppShape.PENTAGON -> RoundedPolygonShape(MaterialShapes.Pentagon)
-        AppShape.CLOVER_4_LEAF -> RoundedPolygonShape(MaterialShapes.Clover4Leaf)
-        AppShape.CLOVER_8_LEAF -> RoundedPolygonShape(MaterialShapes.Clover8Leaf)
+        AppShape.OVAL -> RoundedPolygonShape(MaterialShapes.Oval)
     }
 }
 
@@ -80,12 +125,9 @@ fun AppShape.getNormalizedPolygon(): RoundedPolygon {
         AppShape.COOKIE_12_SIDED -> CookiePolygon
         AppShape.COOKIE_4_SIDED -> MaterialShapes.Cookie4Sided
         AppShape.VERY_SUNNY -> MaterialShapes.VerySunny
-        AppShape.GEM -> MaterialShapes.Gem
-        AppShape.SQUARE -> MaterialShapes.Square
         AppShape.PILL -> MaterialShapes.Pill
         AppShape.PENTAGON -> MaterialShapes.Pentagon
-        AppShape.CLOVER_4_LEAF -> MaterialShapes.Clover4Leaf
-        AppShape.CLOVER_8_LEAF -> MaterialShapes.Clover8Leaf
+        AppShape.OVAL -> MaterialShapes.Oval
     }
 }
 

@@ -18,8 +18,6 @@ import com.android.snippets.ui.SnippetsApp
 import com.android.snippets.ui.theme.SnippetsTheme
 import com.android.snippets.viewmodel.SnippetsViewModel
 import androidx.compose.runtime.getValue
-
-import com.ln.android.snippets.R
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
@@ -32,7 +30,6 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import com.android.snippets.ui.components.LoadingIndicator
@@ -260,7 +257,6 @@ private fun ComposeSplashScreen(
     onAnimationFinished: () -> Unit
 ) {
     val bgColor = if (isDarkTheme) Color(0xFF42474E) else Color(0xFFF2E0D1)
-    val iconColor = colorResource(id = R.color.splash_cookie_color)
 
     var startExitAnimation by remember { mutableStateOf(false) }
 
@@ -291,9 +287,7 @@ private fun ComposeSplashScreen(
                 .background(bgColor),
             contentAlignment = Alignment.Center
         ) {
-            LoadingIndicator(
-                color = iconColor
-            )
+            LoadingIndicator()
         }
     }
 }
