@@ -393,7 +393,7 @@ fun LibraryScreen(
                                     start = 0.dp,
                                     end = 0.dp,
                                     top = topGridPadding,
-                                    bottom = 120.dp
+                                    bottom = 140.dp
                                 ),
                                               horizontalArrangement = Arrangement.spacedBy(4.dp),
                                               verticalItemSpacing = if (currentGridColumns == 0) 2.dp else 4.dp
@@ -850,10 +850,15 @@ fun LibraryScreen(
                             contentColor = MaterialTheme.colorScheme.onSurface,
                             shadowElevation = 8.dp,
                             tonalElevation = 0.dp,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .clip(CircleShape)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -934,7 +939,7 @@ fun LibraryScreen(
                             tonalElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(80.dp)
+                                .height(100.dp)
                                 .clip(CircleShape)
                         ) {
                             Row(
@@ -1115,7 +1120,7 @@ fun LibraryScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .safeDrawingPadding()
-                        .padding(bottom = 112.dp)
+                        .padding(bottom = 132.dp)
                         .offset(y = toolbarOffset)
                 ) {
                     AnimatedCookieButton(
@@ -1144,7 +1149,7 @@ fun LibraryScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .safeDrawingPadding()
-                        .padding(end = 20.dp, bottom = 108.dp)
+                        .padding(end = 20.dp, bottom = 128.dp)
                         .offset(y = toolbarOffset)
                 ) {
                     FoodRandomizerFab(

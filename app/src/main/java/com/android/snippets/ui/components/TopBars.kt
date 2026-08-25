@@ -103,7 +103,7 @@ fun SelectionToolbar(
         ) {
             Row(
                 modifier = Modifier
-                    .height(64.dp)
+                    .height(100.dp)
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
