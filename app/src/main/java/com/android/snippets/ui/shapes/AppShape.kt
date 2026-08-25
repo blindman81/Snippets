@@ -27,14 +27,8 @@ enum class AppShape(val displayName: String) {
     OVAL("Oval")
 }
 
-val CookiePolygon = RoundedPolygon.star(
-    numVerticesPerRadius = 12,
-    radius = 0.5f,
-    innerRadius = 0.5f * 0.88f,
-    rounding = CornerRounding(0.5f * 0.12f),
-    centerX = 0.5f,
-    centerY = 0.5f
-)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+val CookiePolygon: RoundedPolygon = MaterialShapes.Cookie12Sided
 
 val CookieShape = RoundedPolygonShape(CookiePolygon)
 
@@ -47,12 +41,10 @@ class RoundedPolygonShape(
         density: Density
     ): Outline {
         val path = polygon.toPath().asComposePath()
-        val bounds = path.getBounds()
         val matrix = Matrix()
-        matrix.translate(-bounds.left, -bounds.top)
-        val scaleX = if (bounds.width > 0f) size.width / bounds.width else 1f
-        val scaleY = if (bounds.height > 0f) size.height / bounds.height else 1f
-        matrix.scale(scaleX, scaleY)
+        val scale = minOf(size.width, size.height) / 2f
+        matrix.translate(size.width / 2f, size.height / 2f)
+        matrix.scale(scale, scale)
         path.transform(matrix)
         return Outline.Generic(path)
     }
@@ -61,14 +53,14 @@ class RoundedPolygonShape(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val CookieHoldMorphPolygons: List<RoundedPolygon> by lazy {
     listOf(
-        CookiePolygon,
+        MaterialShapes.Cookie12Sided,
         MaterialShapes.Pill,
         MaterialShapes.Pentagon,
-        CookiePolygon,
+        MaterialShapes.Cookie12Sided,
         MaterialShapes.Cookie4Sided,
         MaterialShapes.VerySunny,
         MaterialShapes.Oval,
-        CookiePolygon
+        MaterialShapes.Cookie12Sided
     )
 }
 
@@ -96,12 +88,10 @@ class MorphSequenceShape(
         val fraction = (normalized - index).coerceIn(0f, 1f)
 
         val path = morphs[index].toPath(fraction).asComposePath()
-        val bounds = path.getBounds()
         val matrix = Matrix()
-        matrix.translate(-bounds.left, -bounds.top)
-        val scaleX = if (bounds.width > 0f) size.width / bounds.width else 1f
-        val scaleY = if (bounds.height > 0f) size.height / bounds.height else 1f
-        matrix.scale(scaleX, scaleY)
+        val scale = minOf(size.width, size.height) / 2f
+        matrix.translate(size.width / 2f, size.height / 2f)
+        matrix.scale(scale, scale)
         path.transform(matrix)
         return Outline.Generic(path)
     }
@@ -147,14 +137,10 @@ class PolygonDrawable(
     override fun onBoundsChange(bounds: android.graphics.Rect) {
         super.onBoundsChange(bounds)
         val polyPath = polygon.toPath()
-        val boundsF = android.graphics.RectF()
-        polyPath.computeBounds(boundsF, true)
-
         val matrix = android.graphics.Matrix()
-        matrix.postTranslate(-boundsF.left, -boundsF.top)
-        val scaleX = if (boundsF.width() > 0f) bounds.width().toFloat() / boundsF.width() else 1f
-        val scaleY = if (boundsF.height() > 0f) bounds.height().toFloat() / boundsF.height() else 1f
-        matrix.postScale(scaleX, scaleY)
+        val scale = minOf(bounds.width(), bounds.height()).toFloat() / 2f
+        matrix.setScale(scale, scale)
+        matrix.postTranslate(bounds.exactCenterX(), bounds.exactCenterY())
 
         path.reset()
         polyPath.transform(matrix, path)
