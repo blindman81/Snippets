@@ -41,9 +41,16 @@ class RoundedPolygonShape(
         density: Density
     ): Outline {
         val path = polygon.toPath().asComposePath()
+        val bounds = path.getBounds()
+        val scale = if (bounds.width > 0f && bounds.height > 0f) {
+            minOf(size.width / bounds.width, size.height / bounds.height)
+        } else 1f
+
         val matrix = Matrix()
-        val scale = minOf(size.width, size.height) / 2f
-        matrix.translate(size.width / 2f, size.height / 2f)
+        matrix.translate(
+            x = (size.width - bounds.width * scale) / 2f - bounds.left * scale,
+            y = (size.height - bounds.height * scale) / 2f - bounds.top * scale
+        )
         matrix.scale(scale, scale)
         path.transform(matrix)
         return Outline.Generic(path)
@@ -88,9 +95,16 @@ class MorphSequenceShape(
         val fraction = (normalized - index).coerceIn(0f, 1f)
 
         val path = morphs[index].toPath(fraction).asComposePath()
+        val bounds = path.getBounds()
+        val scale = if (bounds.width > 0f && bounds.height > 0f) {
+            minOf(size.width / bounds.width, size.height / bounds.height)
+        } else 1f
+
         val matrix = Matrix()
-        val scale = minOf(size.width, size.height) / 2f
-        matrix.translate(size.width / 2f, size.height / 2f)
+        matrix.translate(
+            x = (size.width - bounds.width * scale) / 2f - bounds.left * scale,
+            y = (size.height - bounds.height * scale) / 2f - bounds.top * scale
+        )
         matrix.scale(scale, scale)
         path.transform(matrix)
         return Outline.Generic(path)

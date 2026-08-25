@@ -274,17 +274,6 @@ private fun AnimatedCookieButtonImpl(
         }
     }
 
-    // Continuous spin while holding (slower, relaxed pace)
-    LaunchedEffect(isHolding) {
-        if (isHolding) {
-            while (true) {
-                rotation.animateTo(
-                    targetValue = rotation.value + 360f,
-                    animationSpec = tween(1400, easing = LinearEasing)
-                )
-            }
-        }
-    }
 
     // Continuous shape morphing while holding (slower pace to clearly admire each shape transition): 12-sided cookie -> pill -> pentagon -> 12-sided cookie -> 4-sided cookie -> very sunny -> oval -> 12-sided cookie
     LaunchedEffect(isHolding) {
