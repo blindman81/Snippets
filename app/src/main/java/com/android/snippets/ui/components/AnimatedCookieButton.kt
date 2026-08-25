@@ -274,25 +274,25 @@ private fun AnimatedCookieButtonImpl(
         }
     }
 
-    // Continuous spin while holding
+    // Continuous spin while holding (slower, relaxed pace)
     LaunchedEffect(isHolding) {
         if (isHolding) {
             while (true) {
                 rotation.animateTo(
                     targetValue = rotation.value + 360f,
-                    animationSpec = tween(600, easing = LinearEasing)
+                    animationSpec = tween(1400, easing = LinearEasing)
                 )
             }
         }
     }
 
-    // Continuous shape morphing while holding: 12-sided cookie -> pill -> pentagon -> 12-sided cookie -> 4-sided cookie -> very sunny -> oval -> 12-sided cookie
+    // Continuous shape morphing while holding (slower pace to clearly admire each shape transition): 12-sided cookie -> pill -> pentagon -> 12-sided cookie -> 4-sided cookie -> very sunny -> oval -> 12-sided cookie
     LaunchedEffect(isHolding) {
         if (isHolding) {
             while (true) {
                 morphProgress.animateTo(
                     targetValue = morphProgress.value + CookieHoldMorphs.size,
-                    animationSpec = tween(CookieHoldMorphs.size * 450, easing = LinearEasing)
+                    animationSpec = tween(CookieHoldMorphs.size * 900, easing = LinearEasing)
                 )
             }
         } else {
@@ -310,7 +310,7 @@ private fun AnimatedCookieButtonImpl(
         if (isHolding && hapticOnHold) {
             while (true) {
                 view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
-                kotlinx.coroutines.delay(100)
+                kotlinx.coroutines.delay(160)
             }
         }
     }
