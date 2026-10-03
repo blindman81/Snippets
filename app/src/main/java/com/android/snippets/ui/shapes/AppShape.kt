@@ -59,10 +59,16 @@ class RoundedPolygonShape(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val CookieHoldMorphPolygons: List<RoundedPolygon> by lazy {
+    val pentagonMatrix = android.graphics.Matrix().apply { postRotate(180f) }
+    val alignedPentagon = MaterialShapes.Pentagon.transformed { x, y ->
+        val pts = floatArrayOf(x, y)
+        pentagonMatrix.mapPoints(pts)
+        androidx.graphics.shapes.TransformResult(pts[0], pts[1])
+    }
     listOf(
         MaterialShapes.Cookie12Sided,
         MaterialShapes.Pill,
-        MaterialShapes.Pentagon,
+        alignedPentagon,
         MaterialShapes.Cookie12Sided,
         MaterialShapes.Cookie4Sided,
         MaterialShapes.VerySunny,
@@ -109,25 +115,19 @@ class MorphSequenceShape(
         rotateMatrix.postRotate(rotationDegrees)
         androidPath.transform(rotateMatrix)
 
-        // 2. Measure actual bounding box after rotation so rotated shapes never clip or get cut off
-        val rotatedBounds = android.graphics.RectF()
-        androidPath.computeBounds(rotatedBounds, true)
-
-        val rotWidth = rotatedBounds.width()
-        val rotHeight = rotatedBounds.height()
-        val scale = if (rotWidth > 0f && rotHeight > 0f) {
-            minOf(size.width / rotWidth, size.height / rotHeight) * 0.92f
-        } else 1f
+        // 2. Fixed uniform scale based on container size:
+        // Polygons are normalized (radius <= 1f). Using a constant scale factor prevents
+        // the shape from pulsing/zooming in and out as it turns and morphs, while guaranteeing
+        // that corners and tips are never cut off.
+        val baseSize = minOf(size.width, size.height)
+        val scale = (baseSize / 2f) * 0.88f
 
         // 3. Scale and center perfectly within the available container size
         val targetCenterX = size.width / 2f
         val targetCenterY = size.height / 2f
         val scaleMatrix = android.graphics.Matrix()
         scaleMatrix.postScale(scale, scale)
-        scaleMatrix.postTranslate(
-            targetCenterX - rotatedBounds.centerX() * scale,
-            targetCenterY - rotatedBounds.centerY() * scale
-        )
+        scaleMatrix.postTranslate(targetCenterX, targetCenterY)
         androidPath.transform(scaleMatrix)
 
         return Outline.Generic(androidPath.asComposePath())

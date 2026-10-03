@@ -520,7 +520,7 @@ fun CurrentSnippetsModal(
         )
 
         BlurredSurface(
-            shape = RoundedCornerShape(48.dp),
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.background,
             alpha = 0.82f,
             modifier = Modifier
