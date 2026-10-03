@@ -74,13 +74,14 @@ fun BulkEditSnippetsDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
+        BlurredSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 32.dp)
                 .wrapContentHeight(),
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            alpha = 0.82f,
             tonalElevation = 6.dp
         ) {
             Column(

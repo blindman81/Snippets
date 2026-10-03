@@ -93,18 +93,20 @@ fun SelectionToolbar(
             .padding(bottom = 0.dp),
         contentAlignment = Alignment.Center
     ) {
-        Surface(
+        BlurredSurface(
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            alpha = 0.82f,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 8.dp,
             tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
         ) {
             Row(
                 modifier = Modifier
-                    .height(100.dp)
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly

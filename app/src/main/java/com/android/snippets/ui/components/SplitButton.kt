@@ -16,7 +16,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.os.Build
 import android.view.HapticFeedbackConstants
+
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -25,9 +27,7 @@ fun SplitButton(
     primaryText: String,
     onPrimaryClick: () -> Unit,
     dropdownContent: @Composable ColumnScope.(() -> Unit) -> Unit,
-    modifier: Modifier = Modifier,
-    useAnimatedGradient: Boolean = true,
-    gradientColors: List<Color>? = null
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val view = LocalView.current
@@ -36,12 +36,6 @@ fun SplitButton(
         targetValue = if (expanded) 180f else 0f,
         label = "arrowRotation"
     )
-
-    val gradientBrush = if (useAnimatedGradient) {
-        rememberAnimatedGradientBrush(
-            colors = gradientColors ?: AnimatedGradientDefaults.themeGradient()
-        )
-    } else null
 
     val leadingShapes = SplitButtonDefaults.leadingButtonShapesFor(48.dp)
     val trailingShapes = SplitButtonDefaults.trailingButtonShapesFor(48.dp)
@@ -54,22 +48,7 @@ fun SplitButton(
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                         onPrimaryClick()
                     },
-                    shapes = leadingShapes,
-                    colors = if (gradientBrush != null) {
-                        ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        ButtonDefaults.buttonColors()
-                    },
-                    modifier = if (gradientBrush != null) {
-                        Modifier
-                            .clip(leadingShapes.shape)
-                            .background(gradientBrush)
-                    } else {
-                        Modifier
-                    }
+                    shapes = leadingShapes
                 ) {
                     Icon(
                         imageVector = primaryIcon,
@@ -88,22 +67,7 @@ fun SplitButton(
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             expanded = isChecked
                         },
-                        shapes = trailingShapes,
-                        colors = if (gradientBrush != null) {
-                            ButtonDefaults.buttonColors(
-                                containerColor = if (expanded) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                contentColor = if (expanded) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onPrimary
-                            )
-                        } else {
-                            ButtonDefaults.buttonColors()
-                        },
-                        modifier = if (gradientBrush != null && !expanded) {
-                            Modifier
-                                .clip(trailingShapes.shape)
-                                .background(gradientBrush)
-                        } else {
-                            Modifier
-                        }
+                        shapes = trailingShapes
                     ) {
                         Icon(
                             imageVector = Icons.Default.KeyboardArrowDown,
@@ -117,10 +81,25 @@ fun SplitButton(
                         onDismissRequest = { expanded = false },
                         shape = RoundedCornerShape(12.dp),
                         offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shadowElevation = 6.dp
+                        containerColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shadowElevation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 0.dp else 6.dp
                     ) {
-                        dropdownContent { expanded = false }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            BlurredSurface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                alpha = 0.82f,
+                                shadowElevation = 6.dp,
+                                blurStartRadius = 4.dp,
+                                blurEndRadius = 24.dp
+                            ) {
+                                Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                                    dropdownContent { expanded = false }
+                                }
+                            }
+                        } else {
+                            dropdownContent { expanded = false }
+                        }
                     }
                 }
             }

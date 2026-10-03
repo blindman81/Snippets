@@ -48,6 +48,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
 import com.android.snippets.ui.components.LoadingIndicator
 import com.android.snippets.ui.components.HistoryBottomSheet
+import dev.chrisbanes.haze.hazeSource
 
 import androidx.compose.foundation.pager.*
 import androidx.compose.foundation.rememberScrollState
@@ -101,6 +102,11 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.Remove
+import com.android.snippets.ui.components.BlurredSurface
+import com.android.snippets.ui.components.BlurredModalBottomSheet
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+
 
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -253,18 +259,22 @@ fun LibraryScreen(
     }
 
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val hazeState = dev.chrisbanes.haze.rememberHazeState()
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { focusManager.clearFocus() })
-            }
-        ) {
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.android.snippets.ui.components.LocalHazeState provides hazeState
+    ) {
+        Scaffold(
+            modifier = Modifier.nestedScroll(nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { paddingValues ->
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { focusManager.clearFocus() })
+                }
+            ) {
             @OptIn(ExperimentalMaterial3Api::class)
             if (viewModel.isInitialLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -296,7 +306,13 @@ fun LibraryScreen(
 
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                    Modifier.hazeSource(state = hazeState)
+                                } else Modifier
+                            ),
                         pageSpacing = 16.dp
                     ) { page ->
                         val tabForPage = pageTabs.getOrNull(page) ?: "Library"
@@ -556,9 +572,10 @@ fun LibraryScreen(
                                   )
 
                                  // Floating Tab Bar (Pill Shape)
-                                 Surface(
+                                 BlurredSurface(
                                      shape = CircleShape,
-                                     color = MaterialTheme.colorScheme.surface,
+                                     color = MaterialTheme.colorScheme.surfaceContainer,
+                                     alpha = 0.82f,
                                      shadowElevation = 0.dp,
                                      tonalElevation = 0.dp,
                                      modifier = Modifier
@@ -708,10 +725,6 @@ fun LibraryScreen(
                                                                     tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes()
                                                                     else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
                                                                 }
-                                                                val tabGradientBrush = if (isSelected) {
-                                                                    rememberAnimatedGradientBrush()
-                                                                } else null
-
                                                                 ToggleButton(
                                                                     checked = isSelected,
                                                                     onCheckedChange = { checked ->
@@ -728,21 +741,12 @@ fun LibraryScreen(
                                                                     shapes = shapes,
                                                                     contentPadding = PaddingValues(horizontal = 12.dp),
                                                                     colors = ToggleButtonDefaults.toggleButtonColors(
-                                                                        checkedContainerColor = if (tabGradientBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
+                                                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
                                                                         checkedContentColor = MaterialTheme.colorScheme.onPrimary,
                                                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                                                     ),
                                                                     modifier = dragModifier.then(positionModifier).height(48.dp).width(animatedWidth)
-                                                                        .then(
-                                                                            if (tabGradientBrush != null) {
-                                                                                Modifier
-                                                                                    .clip(if (isSelected) shapes.checkedShape else shapes.shape)
-                                                                                    .background(tabGradientBrush)
-                                                                            } else {
-                                                                                Modifier
-                                                                            }
-                                                                        )
                                                                 ) {
                                                                  Row(
                                                                      verticalAlignment = Alignment.CenterVertically,
@@ -844,16 +848,16 @@ fun LibraryScreen(
                     } else if (searchMode == 1) {
                         // â”€â”€ SEARCH MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-                        Surface(
+                        BlurredSurface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            alpha = 0.82f,
                             contentColor = MaterialTheme.colorScheme.onSurface,
                             shadowElevation = 8.dp,
                             tonalElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(100.dp)
-                                .clip(CircleShape)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -932,15 +936,15 @@ fun LibraryScreen(
                         }
                     } else {
                         // â”€â”€ NORMAL MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                        Surface(
+                        BlurredSurface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surface,
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            alpha = 0.82f,
                             shadowElevation = 8.dp,
                             tonalElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(100.dp)
-                                .clip(CircleShape)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -1160,7 +1164,7 @@ fun LibraryScreen(
                 }
 
             if (longPressedCollection != null) {
-                ModalBottomSheet(
+                BlurredModalBottomSheet(
                     onDismissRequest = { longPressedCollection = null },
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ) {
@@ -1439,25 +1443,19 @@ fun LibraryScreen(
                                     .padding(bottom = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                val addPhotosGradient = rememberAnimatedGradientBrush(
-                                    colors = AnimatedGradientDefaults.themeGradient()
-                                )
                                 Button(
                                     onClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         onAddPhotos(longPressedCollection!!)
                                         longPressedCollection = null
                                     },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(CircleShape)
-                                        .background(addPhotosGradient),
+                                    modifier = Modifier.fillMaxWidth(),
                                     shapes = ButtonDefaults.shapes(
                                         shape = CircleShape,
                                         pressedShape = RoundedCornerShape(12.dp)
                                     ),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.Transparent,
+                                        containerColor = MaterialTheme.colorScheme.primary,
                                         contentColor = MaterialTheme.colorScheme.onPrimary
                                     ),
                                     contentPadding = PaddingValues(16.dp)
@@ -1609,26 +1607,54 @@ fun LibraryScreen(
                 }
 
                 photoToDeleteFromEatlist?.let { photo ->
-                    AlertDialog(
+                    Dialog(
                         onDismissRequest = { photoToDeleteFromEatlist = null },
-                        title = { Text("Mark as eaten and delete") },
-                        text = { Text("Are you sure you want to mark this item as eaten and delete it from Eatlist?") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    viewModel.deletePhoto(photo.id)
-                                    photoToDeleteFromEatlist = null
-                                }
+                        properties = DialogProperties(usePlatformDefaultWidth = false)
+                    ) {
+                        BlurredSurface(
+                            shape = RoundedCornerShape(28.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            alpha = 0.82f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .widthIn(max = 400.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                Text("Mark as eaten", color = MaterialTheme.colorScheme.primary)
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { photoToDeleteFromEatlist = null }) {
-                                Text("Cancel")
+                                Text(
+                                    text = "Mark as eaten and delete",
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Are you sure you want to mark this item as eaten and delete it from Eatlist?",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    TextButton(onClick = { photoToDeleteFromEatlist = null }) {
+                                        Text("Cancel")
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    TextButton(
+                                        onClick = {
+                                            viewModel.deletePhoto(photo.id)
+                                            photoToDeleteFromEatlist = null
+                                        }
+                                    ) {
+                                        Text("Mark as eaten", color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                             }
                         }
-                    )
+                    }
                 }
 
                 FoodRandomizerBottomSheet(
@@ -1646,6 +1672,7 @@ fun LibraryScreen(
             }
         }
     }
+}
 }
 
 
@@ -1690,28 +1717,14 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
             }
 
-            val gradientBrush = if (checked) {
-                rememberAnimatedGradientBrush()
-            } else null
-
             ToggleButton(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 interactionSource = interactionSource,
                 shapes = shapes,
-                modifier = Modifier
-                    .weight(animatedWeight)
-                    .then(
-                        if (gradientBrush != null) {
-                            Modifier
-                                .clip(if (checked) shapes.checkedShape else shapes.shape)
-                                .background(gradientBrush)
-                        } else {
-                            Modifier
-                        }
-                    ),
+                modifier = Modifier.weight(animatedWeight),
                 colors = ToggleButtonDefaults.toggleButtonColors(
-                    checkedContainerColor = if (gradientBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant

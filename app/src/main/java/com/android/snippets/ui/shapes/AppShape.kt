@@ -74,12 +74,13 @@ val CookieHoldMorphPolygons: List<RoundedPolygon> by lazy {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val CookieHoldMorphs: List<Morph> by lazy {
     val polygons = CookieHoldMorphPolygons
-    (0 until polygons.size - 1).map { Morph(polygons[it], polygons[it + 1]) }
+    (0 until polygons.size - 1).map { Morph(polygons[it].normalized(), polygons[it + 1].normalized()) }
 }
 
 class MorphSequenceShape(
     val morphs: List<Morph>,
-    val progress: Float
+    val progress: Float,
+    val rotationPerMorph: Float = 90f
 ) : Shape {
     override fun createOutline(
         size: Size,
@@ -94,20 +95,42 @@ class MorphSequenceShape(
         val index = normalized.toInt().coerceIn(0, total - 1)
         val fraction = (normalized - index).coerceIn(0f, 1f)
 
-        val path = morphs[index].toPath(fraction).asComposePath()
-        val bounds = path.getBounds()
-        val scale = if (bounds.width > 0f && bounds.height > 0f) {
-            minOf(size.width / bounds.width, size.height / bounds.height)
+        val androidPath = morphs[index].toPath(fraction)
+        val bounds = android.graphics.RectF()
+        androidPath.computeBounds(bounds, true)
+
+        val pathCenterX = bounds.centerX()
+        val pathCenterY = bounds.centerY()
+
+        // 1. Center at origin and rotate by progress * rotationPerMorph (90 deg clockwise per morph)
+        val rotationDegrees = progress * rotationPerMorph
+        val rotateMatrix = android.graphics.Matrix()
+        rotateMatrix.postTranslate(-pathCenterX, -pathCenterY)
+        rotateMatrix.postRotate(rotationDegrees)
+        androidPath.transform(rotateMatrix)
+
+        // 2. Measure actual bounding box after rotation so rotated shapes never clip or get cut off
+        val rotatedBounds = android.graphics.RectF()
+        androidPath.computeBounds(rotatedBounds, true)
+
+        val rotWidth = rotatedBounds.width()
+        val rotHeight = rotatedBounds.height()
+        val scale = if (rotWidth > 0f && rotHeight > 0f) {
+            minOf(size.width / rotWidth, size.height / rotHeight) * 0.92f
         } else 1f
 
-        val matrix = Matrix()
-        matrix.translate(
-            x = (size.width - bounds.width * scale) / 2f - bounds.left * scale,
-            y = (size.height - bounds.height * scale) / 2f - bounds.top * scale
+        // 3. Scale and center perfectly within the available container size
+        val targetCenterX = size.width / 2f
+        val targetCenterY = size.height / 2f
+        val scaleMatrix = android.graphics.Matrix()
+        scaleMatrix.postScale(scale, scale)
+        scaleMatrix.postTranslate(
+            targetCenterX - rotatedBounds.centerX() * scale,
+            targetCenterY - rotatedBounds.centerY() * scale
         )
-        matrix.scale(scale, scale)
-        path.transform(matrix)
-        return Outline.Generic(path)
+        androidPath.transform(scaleMatrix)
+
+        return Outline.Generic(androidPath.asComposePath())
     }
 }
 

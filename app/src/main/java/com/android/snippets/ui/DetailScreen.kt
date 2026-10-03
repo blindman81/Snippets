@@ -49,6 +49,9 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import com.android.snippets.ui.components.LoadingIndicator
+import com.android.snippets.ui.components.BlurredSurface
+import dev.chrisbanes.haze.hazeSource
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -253,17 +256,27 @@ fun DetailScreen(
 
 
     val focusManager = LocalFocusManager.current
+    val hazeState = dev.chrisbanes.haze.rememberHazeState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = sharedBgAlpha.floatValue }
-                .background(MaterialTheme.colorScheme.surface)
-        )
-        Scaffold(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-            modifier = Modifier.fillMaxSize(),
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.android.snippets.ui.components.LocalHazeState provides hazeState
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = sharedBgAlpha.floatValue }
+                    .background(MaterialTheme.colorScheme.surface)
+            )
+            Scaffold(
+                containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            Modifier.hazeSource(state = hazeState)
+                        } else Modifier
+                    ),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Box(modifier = Modifier.graphicsLayer { alpha = sharedUiAlpha.floatValue }) {
@@ -478,7 +491,7 @@ fun DetailScreen(
             }
         )
     }
-
+    }
 }
 
 @Composable
@@ -492,9 +505,10 @@ fun DeleteConfirmationModal(
     val view = androidx.compose.ui.platform.LocalView.current
     var unpublish by remember { mutableStateOf(true) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+        BlurredSurface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
+            alpha = 0.82f,
             shadowElevation = 0.dp,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 400.dp)
         ) {
@@ -766,10 +780,6 @@ fun SnippetsDetailContent(
                             else baseSnippetColor
                         }
 
-                        val snippetGradient = remember(snippetColor) {
-                            Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
-                        }
-
                         val view = LocalView.current
 
                         Surface(
@@ -792,8 +802,8 @@ fun SnippetsDetailContent(
                                         forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
                                         MaterialTheme.typography.titleMedium,
                                         isCloud = true
-                                    ).copy(brush = snippetGradient),
-                                    color = Color.Unspecified,
+                                    ),
+                                    color = snippetColor,
                                     maxLines = 1
                                 )
                             }
@@ -896,9 +906,10 @@ fun RateFoodDialog(
     }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+        BlurredSurface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
+            alpha = 0.82f,
             shadowElevation = 6.dp,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 360.dp)
         ) {
@@ -1131,9 +1142,10 @@ fun LocationLinkModal(
     }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+        BlurredSurface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
+            alpha = 0.82f,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 400.dp)
         ) {
             Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

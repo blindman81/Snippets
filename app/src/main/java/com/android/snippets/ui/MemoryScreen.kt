@@ -1,6 +1,9 @@
 package com.android.snippets.ui
 
+import android.os.Build
+import androidx.compose.ui.graphics.blur.BlurRadiusSpec
 import kotlinx.coroutines.launch
+
 import kotlinx.coroutines.flow.first
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -249,7 +252,21 @@ fun MemoryScreen(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                        .then(
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                Modifier.blur(
+                                    BlurRadiusSpec.verticalGradient(
+                                        startRadius = 4.dp,
+                                        endRadius = 24.dp
+                                    ),
+                                    edgeTreatment = BlurredEdgeTreatment.Unbounded
+                                )
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                Modifier.blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                            } else {
+                                Modifier
+                            }
+                        )
                 )
 
                 // Dim/Tint overlay
@@ -670,16 +687,12 @@ fun FloatingSnippet(
             Box(
                 contentAlignment = Alignment.Center
             ) {
-                val snippetGradient = remember(snippetColor) {
-                    Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
-                }
                 Text(
                     text = text,
                     style = textStyle.copy(
-                        brush = snippetGradient,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     ),
-                    color = Color.Unspecified,
+                    color = snippetColor,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     modifier = Modifier.padding(
                         horizontal = (when (personality) {

@@ -691,12 +691,6 @@ fun PhotoMasonryItem(
                                         else baseSnippetColor
                                     }
 
-                                    val snippetGradient = remember(snippetColor) {
-                                        androidx.compose.ui.graphics.Brush.linearGradient(
-                                            colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f))
-                                        )
-                                    }
-
                                     Surface(
                                         shape = CircleShape,
                                         color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
@@ -715,8 +709,8 @@ fun PhotoMasonryItem(
                                                     forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
                                                     MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
                                                     isCloud = true
-                                                ).copy(color = Color.Unspecified).copy(brush = snippetGradient),
-                                                color = Color.Unspecified,
+                                                ),
+                                                color = snippetColor,
                                                 maxLines = 1,
                                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                             )
@@ -861,12 +855,6 @@ fun PhotoMasonryItem(
                                     else baseSnippetColor
                                 }
 
-                                val snippetGradient = remember(snippetColor) {
-                                    androidx.compose.ui.graphics.Brush.linearGradient(
-                                        colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f))
-                                    )
-                                }
-
                                 Surface(
                                     shape = CircleShape,
                                     color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
@@ -883,8 +871,8 @@ fun PhotoMasonryItem(
                                                 forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
                                                 MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
                                                 isCloud = true
-                                            ).copy(color = Color.Unspecified).copy(brush = snippetGradient),
-                                            color = Color.Unspecified,
+                                            ),
+                                            color = snippetColor,
                                             maxLines = 1,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
@@ -1122,10 +1110,6 @@ fun PhotoListItem(
                                 else baseSnippetColor
                             }
 
-                            val snippetGradient = remember(snippetColor) {
-                                androidx.compose.ui.graphics.Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
-                            }
-
                             Surface(
                                 onClick = { onClick() },
                                 shape = CircleShape,
@@ -1143,8 +1127,8 @@ fun PhotoListItem(
                                             forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
                                             MaterialTheme.typography.labelLarge,
                                             isCloud = true
-                                        ).copy(brush = snippetGradient),
-                                        color = Color.Unspecified,
+                                        ),
+                                        color = snippetColor,
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
@@ -1471,12 +1455,6 @@ fun PhotoCardListItem(
                                             else baseSnippetColor
                                         }
 
-                                        val snippetGradient = remember(snippetColor) {
-                                            androidx.compose.ui.graphics.Brush.linearGradient(
-                                                colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f))
-                                            )
-                                        }
-
                                         Surface(
                                             shape = CircleShape,
                                             color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
@@ -1495,8 +1473,8 @@ fun PhotoCardListItem(
                                                         forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
                                                         MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                                         isCloud = true
-                                                    ).copy(color = Color.Unspecified).copy(brush = snippetGradient),
-                                                    color = Color.Unspecified,
+                                                    ),
+                                                    color = snippetColor,
                                                     maxLines = 1,
                                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                                 )
@@ -1680,12 +1658,6 @@ fun PhotoCardListItem(
                                         else baseSnippetColor
                                     }
 
-                                    val snippetGradient = remember(snippetColor) {
-                                        androidx.compose.ui.graphics.Brush.linearGradient(
-                                            colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f))
-                                        )
-                                    }
-
                                     Surface(
                                         shape = CircleShape,
                                         color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
@@ -1702,8 +1674,8 @@ fun PhotoCardListItem(
                                                     forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
                                                     MaterialTheme.typography.labelLarge,
                                                     isCloud = true
-                                                ).copy(color = Color.Unspecified).copy(brush = snippetGradient),
-                                                color = Color.Unspecified,
+                                                ),
+                                                color = snippetColor,
                                                 maxLines = 1,
                                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                             )

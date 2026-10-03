@@ -69,7 +69,7 @@ fun MenuBottomSheet(
 ) {
     if (show) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
+        BlurredModalBottomSheet(
             onDismissRequest = onDismissRequest,
             sheetState = sheetState,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -269,7 +269,7 @@ fun CollectionOptionsBottomSheet(
     onRemovePhotos: () -> Unit
 ) {
     if (show) {
-        ModalBottomSheet(
+        BlurredModalBottomSheet(
             onDismissRequest = onDismissRequest,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
@@ -305,24 +305,18 @@ fun CollectionOptionsBottomSheet(
                             .padding(bottom = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val addPhotosGradient = rememberAnimatedGradientBrush(
-                            colors = AnimatedGradientDefaults.themeGradient()
-                        )
                         Button(
                             onClick = {
                                 onAddPhotos()
                                 onDismissRequest()
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(CircleShape)
-                                .background(addPhotosGradient),
+                            modifier = Modifier.fillMaxWidth(),
                             shapes = ButtonDefaults.shapes(
                                 shape = CircleShape,
                                 pressedShape = RoundedCornerShape(12.dp)
                             ),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Transparent,
+                                containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             contentPadding = PaddingValues(16.dp)
@@ -371,7 +365,7 @@ fun HistoryBottomSheet(
         val curated = remember(viewModel.curatedMemories) {
             viewModel.curatedMemories.sortedByDescending { it.date }
         }
-        ModalBottomSheet(
+        BlurredModalBottomSheet(
             onDismissRequest = onDismissRequest,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor

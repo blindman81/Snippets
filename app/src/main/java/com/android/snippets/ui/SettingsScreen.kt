@@ -515,28 +515,14 @@ private fun ButtonGroupScope.themeToggleableItem(
                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
             }
 
-            val gradientBrush = if (checked) {
-                rememberAnimatedGradientBrush()
-            } else null
-
             ToggleButton(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 interactionSource = interactionSource,
-                modifier = Modifier
-                    .weight(animatedWeight)
-                    .then(
-                        if (gradientBrush != null) {
-                            Modifier
-                                .clip(if (checked) shapes.checkedShape else shapes.shape)
-                                .background(gradientBrush)
-                        } else {
-                            Modifier
-                        }
-                    ),
+                modifier = Modifier.weight(animatedWeight),
                 shapes = shapes,
                 colors = ToggleButtonDefaults.toggleButtonColors(
-                    checkedContainerColor = if (gradientBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer

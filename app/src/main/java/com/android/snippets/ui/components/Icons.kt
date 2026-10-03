@@ -29,9 +29,6 @@ import com.android.snippets.ui.shapes.LocalAppShape
 import com.android.snippets.ui.shapes.toComposeShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
-import com.android.snippets.ui.components.rememberAnimatedGradientBrush
-import com.android.snippets.ui.components.AnimatedGradientDefaults
-import androidx.compose.foundation.background
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
 
@@ -415,21 +412,7 @@ fun CollectionIcon(
             }
         }
 
-        val brush = if (isSelected) {
-            androidx.compose.ui.graphics.Brush.linearGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.onPrimary,
-                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                )
-            )
-        } else {
-            androidx.compose.ui.graphics.Brush.linearGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.secondary
-                )
-            )
-        }
+        val backgroundColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
         Box(
             modifier = modifier
                 .graphicsLayer {
@@ -440,7 +423,7 @@ fun CollectionIcon(
                     this.translationY = translateY.dp.toPx()
                 }
                 .clip(icon.toComposeShape())
-                .background(brush)
+                .background(backgroundColor)
         )
     } else if (icon is String) {
         BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {

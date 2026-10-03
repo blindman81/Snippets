@@ -38,9 +38,7 @@ fun PremiumSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    val gradientBrush = rememberAnimatedGradientBrush(
-        colors = AnimatedGradientDefaults.themeGradient()
-    )
+    val activeColor = MaterialTheme.colorScheme.primary
     val inactiveColor = MaterialTheme.colorScheme.outlineVariant
     
     val rotation by animateFloatAsState(
@@ -54,11 +52,11 @@ fun PremiumSwitch(
             .size(40.dp)
             .graphicsLayer { rotationZ = rotation }
             .clip(LocalAppShape.current)
-            .then(
+            .background(
                 if (checked) {
-                    Modifier.background(gradientBrush)
+                    if (enabled) activeColor else activeColor.copy(alpha = 0.38f)
                 } else {
-                    Modifier.background(if (enabled) inactiveColor else inactiveColor.copy(alpha = 0.38f))
+                    if (enabled) inactiveColor else inactiveColor.copy(alpha = 0.38f)
                 }
             )
             .clickable(enabled = enabled) { onCheckedChange(!checked) },

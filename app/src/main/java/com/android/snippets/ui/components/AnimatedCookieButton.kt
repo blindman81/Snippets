@@ -42,9 +42,7 @@ fun AnimatedCookieButton(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    useAnimatedGradient: Boolean = true,
-    gradientColors: List<Color>? = null
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -66,9 +64,7 @@ fun AnimatedCookieButton(
         spinOnEntry = spinOnEntry,
         enabled = enabled,
         hapticOnHold = hapticOnHold,
-        iconSize = iconSize,
-        useAnimatedGradient = useAnimatedGradient,
-        gradientColors = gradientColors
+        iconSize = iconSize
     )
 }
 
@@ -88,9 +84,7 @@ fun AnimatedCookieButton(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    useAnimatedGradient: Boolean = true,
-    gradientColors: List<Color>? = null
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -112,9 +106,7 @@ fun AnimatedCookieButton(
         spinOnEntry = spinOnEntry,
         enabled = enabled,
         hapticOnHold = hapticOnHold,
-        iconSize = iconSize,
-        useAnimatedGradient = useAnimatedGradient,
-        gradientColors = gradientColors
+        iconSize = iconSize
     )
 }
 
@@ -133,9 +125,7 @@ private fun AnimatedCookieButtonImpl(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    useAnimatedGradient: Boolean = true,
-    gradientColors: List<Color>? = null
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
 ) {
     val view = LocalView.current
     var isHolding by remember { mutableStateOf(false) }
@@ -148,7 +138,7 @@ private fun AnimatedCookieButtonImpl(
 
     val isActive = isHolding || isTapped
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
-    val targetContent = if (isActive || useAnimatedGradient) MaterialTheme.colorScheme.onPrimary else contentColor
+    val targetContent = if (isActive) MaterialTheme.colorScheme.onPrimary else contentColor
 
     val animatedContainerColor by animateColorAsState(
         targetValue = targetContainer,
@@ -160,12 +150,6 @@ private fun AnimatedCookieButtonImpl(
         animationSpec = tween(150),
         label = "cookie_button_content_color"
     )
-
-    val gradientBrush = if (useAnimatedGradient || isActive) {
-        rememberAnimatedGradientBrush(
-            colors = gradientColors ?: AnimatedGradientDefaults.themeGradient()
-        )
-    } else null
 
     val currentShape = if (isHolding || morphProgress.value > 0.001f) {
         MorphSequenceShape(CookieHoldMorphs, morphProgress.value)
@@ -186,13 +170,7 @@ private fun AnimatedCookieButtonImpl(
                     scaleY = animScaleY.value
                 }
                 .clip(currentShape)
-                .then(
-                    if (gradientBrush != null && enabled) {
-                        Modifier.background(gradientBrush)
-                    } else {
-                        Modifier.background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
-                    }
-                )
+                .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
                 .pointerInput(enabled, isSpinning) {
                     if (!enabled) return@pointerInput
                     detectTapGestures(
@@ -282,14 +260,18 @@ private fun AnimatedCookieButtonImpl(
     }
 
 
-    // Continuous shape morphing while holding (slower pace to clearly admire each shape transition): 12-sided cookie -> pill -> pentagon -> 12-sided cookie -> 4-sided cookie -> very sunny -> oval -> 12-sided cookie
+    // Continuous shape morphing while holding:
+    // Follows the official M3 Expressive shape morph implementation:
+    // Morph between shapes with bouncy spring motion + 90 degree clockwise right-turn per shape
     LaunchedEffect(isHolding) {
         if (isHolding) {
+            val stepSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 200f)
             while (true) {
                 morphProgress.animateTo(
-                    targetValue = morphProgress.value + CookieHoldMorphs.size,
-                    animationSpec = tween(CookieHoldMorphs.size * 900, easing = LinearEasing)
+                    targetValue = morphProgress.value + 1f,
+                    animationSpec = stepSpec
                 )
+                kotlinx.coroutines.delay(160L)
             }
         } else {
             if (morphProgress.value > 0f) {

@@ -393,10 +393,6 @@ fun CloudSnippetItem(
         ) {
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getGridScalingFactor(totalCount)
     
-            val snippetGradient = remember(snippetColor) {
-                Brush.linearGradient(colors = listOf(snippetColor, snippetColor.copy(alpha = 0.55f)))
-            }
-
             if (isSegmented) {
                 Box(
                     modifier = Modifier.fillMaxHeight(),
@@ -409,8 +405,8 @@ fun CloudSnippetItem(
                             forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, 
                             MaterialTheme.typography.titleMedium, 
                             isCloud = true
-                        ).copy(brush = snippetGradient),
-                        color = Color.Unspecified
+                        ),
+                        color = snippetColor
                     )
                 }
             } else {
@@ -421,8 +417,8 @@ fun CloudSnippetItem(
                             Text(
                                 text = text, 
                                 modifier = Modifier.padding(horizontal = (24 * scalingFactor).dp, vertical = (12 * scalingFactor).dp), 
-                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp, brush = snippetGradient),
-                                color = Color.Unspecified,
+                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp),
+                                color = snippetColor,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -430,8 +426,8 @@ fun CloudSnippetItem(
                             Text(
                                 text = text, 
                                 modifier = Modifier.padding(horizontal = (18 * scalingFactor).dp, vertical = (9 * scalingFactor).dp), 
-                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient),
-                                color = Color.Unspecified,
+                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp),
+                                color = snippetColor,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -439,8 +435,8 @@ fun CloudSnippetItem(
                             Text(
                                 text = text, 
                                 modifier = Modifier.padding(horizontal = (12 * scalingFactor).dp, vertical = (6 * scalingFactor).dp), 
-                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp, brush = snippetGradient),
-                                color = Color.Unspecified,
+                                style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp),
+                                color = snippetColor,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -523,9 +519,10 @@ fun CurrentSnippetsModal(
             label = "card_scale"
         )
 
-        Surface(
+        BlurredSurface(
             shape = RoundedCornerShape(48.dp),
             color = MaterialTheme.colorScheme.background,
+            alpha = 0.82f,
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .padding(16.dp)
@@ -657,7 +654,7 @@ fun AddSnippetsModal(
 
     val localSnippetsCount = photo.snippets.size
 
-    ModalBottomSheet(
+    BlurredModalBottomSheet(
         onDismissRequest = onClose,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         scrimColor = BottomSheetDefaults.ScrimColor
@@ -693,6 +690,7 @@ fun AddSnippetsModal(
                     options.forEachIndexed { index, label ->
                         val isFirst = index == 0
                         val isLast = index == options.size - 1
+                        val isSelected = selectedIndex == index
 
                         customItem(
                             buttonGroupContent = {
@@ -703,31 +701,16 @@ fun AddSnippetsModal(
                                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
 
-                                val isSelected = index == selectedIndex
-                                val gradientBrush = if (isSelected) {
-                                    rememberAnimatedGradientBrush()
-                                } else null
-
                                 ToggleButton(
                                     checked = isSelected,
                                     onCheckedChange = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         selectedIndex = index
                                     },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .then(
-                                            if (gradientBrush != null) {
-                                                Modifier
-                                                    .clip(if (isSelected) shapes.checkedShape else shapes.shape)
-                                                    .background(gradientBrush)
-                                            } else {
-                                                Modifier
-                                            }
-                                        ),
+                                    modifier = Modifier.weight(1f),
                                     shapes = shapes,
                                     colors = ToggleButtonDefaults.toggleButtonColors(
-                                        checkedContainerColor = if (gradientBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
                                         checkedContentColor = MaterialTheme.colorScheme.onPrimary,
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -974,9 +957,6 @@ fun AddSnippetsModal(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val buttonGradient = rememberAnimatedGradientBrush(
-                colors = AnimatedGradientDefaults.themeGradient()
-            )
             Button(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -985,23 +965,13 @@ fun AddSnippetsModal(
                     onClose()
                 },
                 enabled = text.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (text.isNotBlank()) {
-                            Modifier
-                                .clip(CircleShape)
-                                .background(buttonGradient)
-                        } else {
-                            Modifier
-                        }
-                    ),
+                modifier = Modifier.fillMaxWidth(),
                 shapes = ButtonDefaults.shapes(
                     shape = CircleShape,
                     pressedShape = RoundedCornerShape(12.dp)
                 ),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (text.isNotBlank()) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)

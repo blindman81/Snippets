@@ -9,6 +9,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -94,7 +95,7 @@ fun FoodRandomizerBottomSheet(
         shuffleTrigger++
     }
 
-    ModalBottomSheet(
+    BlurredModalBottomSheet(
         onDismissRequest = onDismissRequest,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
@@ -301,10 +302,6 @@ fun FoodRandomizerBottomSheet(
                     label = "eat_corner_morph"
                 )
 
-                val buttonGradient = rememberAnimatedGradientBrush(
-                    colors = AnimatedGradientDefaults.themeGradient()
-                )
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -316,7 +313,7 @@ fun FoodRandomizerBottomSheet(
                         shape = shuffleShape,
                         interactionSource = shuffleInteraction,
                         contentPadding = ButtonDefaults.ContentPadding,
-                        border = null,
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
@@ -324,11 +321,6 @@ fun FoodRandomizerBottomSheet(
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
                             .clip(shuffleShape)
-                            .animatedGradientBorder(
-                                borderWidth = 1.5.dp,
-                                colors = AnimatedGradientDefaults.themeGradient(),
-                                shape = shuffleShape
-                            )
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_food_randomizer),
@@ -357,14 +349,13 @@ fun FoodRandomizerBottomSheet(
                         interactionSource = eatInteraction,
                         contentPadding = ButtonDefaults.ContentPadding,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Transparent,
+                            containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         modifier = Modifier
                             .weight(1f)
                             .height(ButtonDefaults.MinHeight)
                             .clip(eatShape)
-                            .background(buttonGradient)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Restaurant,

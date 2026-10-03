@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.ui.components.BulkEditSnippetsDialog
+import com.android.snippets.ui.components.BlurredModalBottomSheet
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -334,7 +336,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     }
 
     if (viewModel.showFilterSheet) {
-        ModalBottomSheet(
+        BlurredModalBottomSheet(
             onDismissRequest = { viewModel.closeFilter() },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrimColor = BottomSheetDefaults.ScrimColor
