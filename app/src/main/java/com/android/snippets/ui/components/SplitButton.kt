@@ -24,7 +24,8 @@ import android.view.HapticFeedbackConstants
 @Composable
 fun SplitButton(
     primaryIcon: ImageVector,
-    primaryText: String,
+    primaryText: String? = null,
+    contentDescription: String? = primaryText,
     onPrimaryClick: () -> Unit,
     dropdownContent: @Composable ColumnScope.(() -> Unit) -> Unit,
     modifier: Modifier = Modifier
@@ -52,11 +53,13 @@ fun SplitButton(
                 ) {
                     Icon(
                         imageVector = primaryIcon,
-                        contentDescription = primaryText,
+                        contentDescription = contentDescription ?: primaryText,
                         modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = primaryText)
+                    if (!primaryText.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = primaryText)
+                    }
                 }
             },
             trailingButton = {
@@ -88,7 +91,6 @@ fun SplitButton(
                             BlurredSurface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                alpha = 0.82f,
                                 shadowElevation = 6.dp,
                                 blurStartRadius = 4.dp,
                                 blurEndRadius = 24.dp

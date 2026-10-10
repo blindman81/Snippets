@@ -2,6 +2,7 @@ package com.android.snippets.ui
 import com.ln.android.snippets.R
 import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.*
+import dev.chrisbanes.haze.HazeDefaults
 import com.android.snippets.ui.util.Motion
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
@@ -36,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -88,6 +90,7 @@ fun DetailTopBar(
     onToggleFavorite: () -> Unit = {},
     hasLocationLink: Boolean = false,
     onAddLinkClick: () -> Unit = {},
+    onNamePhotoClick: () -> Unit = {},
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null
 ) {
     val view = LocalView.current
@@ -136,7 +139,7 @@ fun DetailTopBar(
                 MealDropdownChip()
             } else if (showAddButton) SplitButton(
                 primaryIcon = Icons.Default.Add,
-                primaryText = "Add snippets",
+                contentDescription = "Add snippets",
                 onPrimaryClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     onAdd()
@@ -164,6 +167,13 @@ fun DetailTopBar(
                         )
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Name photo
+                        DropdownMenuItem(
+                            text = { Text(if (!photo.name.isNullOrBlank()) "Rename photo" else "Name photo") },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Label, null) },
+                            onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onNamePhotoClick(); closeMenu() }
+                        )
 
                         // Group 2: Location link
                         DropdownMenuItem(
@@ -522,7 +532,6 @@ fun CurrentSnippetsModal(
         BlurredSurface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.background,
-            alpha = 0.82f,
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .padding(16.dp)
@@ -656,8 +665,7 @@ fun AddSnippetsModal(
 
     BlurredModalBottomSheet(
         onDismissRequest = onClose,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        scrimColor = BottomSheetDefaults.ScrimColor
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Motion.ExpressiveSheetContent {
             Column(
@@ -701,31 +709,40 @@ fun AddSnippetsModal(
                                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
 
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                        selectedIndex = index
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shapes = shapes,
-                                    colors = ToggleButtonDefaults.toggleButtonColors(
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
+                                val currentShape = if (isSelected) shapes.checkedShape else shapes.shape
+
+                                BlurredSurface(
+                                    shape = currentShape,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                    alpha = if (isSelected) 1f else HazeDefaults.tintAlpha,
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Text(
-                                        text = label,
-                                        style = if (index == selectedIndex) {
-                                            MaterialTheme.typography.labelLarge.copy(
-                                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                                            )
-                                        } else {
-                                            MaterialTheme.typography.labelLarge
-                                        }
-                                    )
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                            selectedIndex = index
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shapes = shapes,
+                                        colors = ToggleButtonDefaults.toggleButtonColors(
+                                            checkedContainerColor = Color.Transparent,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                            containerColor = Color.Transparent,
+                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = if (index == selectedIndex) {
+                                                MaterialTheme.typography.labelLarge.copy(
+                                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                                )
+                                            } else {
+                                                MaterialTheme.typography.labelLarge
+                                            }
+                                        )
+                                    }
                                 }
                             },
                             menuContent = {
