@@ -49,6 +49,12 @@ import androidx.compose.material3.*
 import com.android.snippets.ui.components.LoadingIndicator
 import com.android.snippets.ui.components.HistoryBottomSheet
 import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import com.android.snippets.ui.components.rememberMonetTintedColor
 
 import androidx.compose.foundation.pager.*
 import androidx.compose.foundation.rememberScrollState
@@ -104,6 +110,7 @@ import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.Remove
 import com.android.snippets.ui.components.BlurredSurface
 import com.android.snippets.ui.components.BlurredModalBottomSheet
+import com.android.snippets.ui.components.BlurredAlertDialog
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
@@ -236,12 +243,6 @@ fun LibraryScreen(
         }
     }
 
-    val topBarOffset by animateDpAsState(
-        targetValue = if (isFabVisible) 0.dp else (-160).dp,
-        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-        label = "topbar_offset"
-    )
-
     val toolbarOffset by animateDpAsState(
         targetValue = if (viewModel.isSelectionMode || isFabVisible) 0.dp else 200.dp,
         animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
@@ -258,8 +259,39 @@ fun LibraryScreen(
         }
     }
 
+    val tabBarOffset by animateDpAsState(
+        targetValue = if (isScrolled) (-100).dp else 0.dp,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        label = "tab_bar_offset"
+    )
+
+    val tabBarAlpha by animateFloatAsState(
+        targetValue = if (isScrolled) 0f else 1f,
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        label = "tab_bar_alpha"
+    )
+
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    val hazeState = dev.chrisbanes.haze.rememberHazeState()
+    val hazeState = com.android.snippets.ui.components.LocalHazeState.current ?: dev.chrisbanes.haze.rememberHazeState()
+
+    var hazeInvalidationTrigger by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(viewModel.customGridColumns, currentTab) {
+        repeat(12) {
+            hazeInvalidationTrigger++
+            kotlinx.coroutines.delay(30)
+        }
+    }
+
+    LaunchedEffect(currentGridState.isScrollInProgress) {
+        if (currentGridState.isScrollInProgress) {
+            while (currentGridState.isScrollInProgress) {
+                hazeInvalidationTrigger++
+                kotlinx.coroutines.delay(16)
+            }
+            hazeInvalidationTrigger++
+        }
+    }
 
     androidx.compose.runtime.CompositionLocalProvider(
         com.android.snippets.ui.components.LocalHazeState provides hazeState
@@ -283,13 +315,25 @@ fun LibraryScreen(
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
                     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                    val topGridPadding = statusBarTop + 88.dp
+                    val topGridPadding = statusBarTop + 72.dp
 
-                    val statusBarBrushAlpha by animateFloatAsState(
+                    val statusBarBlurAlpha by animateFloatAsState(
                         targetValue = if (isScrolled) 1f else 0f,
                         animationSpec = tween(durationMillis = 300),
-                        label = "status_bar_brush_alpha"
+                        label = "status_bar_blur_alpha"
                     )
+
+                    val statusBarTint = rememberMonetTintedColor(
+                        baseColor = MaterialTheme.colorScheme.surfaceContainer,
+                        weight = 0.28f
+                    )
+                    val statusBarHazeStyle = remember(statusBarTint) {
+                        HazeStyle(
+                            tint = HazeTint(statusBarTint.copy(alpha = HazeDefaults.tintAlpha)),
+                            blurRadius = HazeDefaults.blurRadius,
+                            noiseFactor = HazeDefaults.noiseFactor
+                        )
+                    }
 
                     val allTabs = pageTabs
                     val tabRowScrollState = rememberScrollState()
@@ -308,9 +352,14 @@ fun LibraryScreen(
                         state = pagerState,
                         modifier = Modifier
                             .fillMaxSize()
+                            .drawWithContent {
+                                hazeInvalidationTrigger
+                                viewModel.customGridColumns
+                                drawContent()
+                            }
                             .then(
                                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                    Modifier.hazeSource(state = hazeState)
+                                    Modifier.hazeSource(state = hazeState, key = viewModel.customGridColumns)
                                 } else Modifier
                             ),
                         pageSpacing = 16.dp
@@ -552,51 +601,60 @@ fun LibraryScreen(
                                      }
                                  } // end of HorizontalPager
 
-                                  // Status Bar Brush Overlay when scrolling
+                                  // Status Bar Progressive Blur Overlay when scrolling
                                   Box(
                                       modifier = Modifier
                                           .fillMaxWidth()
-                                          .height(statusBarTop + 30.dp)
+                                          .height(statusBarTop + 14.dp)
                                           .align(Alignment.TopCenter)
-                                          .graphicsLayer { alpha = statusBarBrushAlpha }
-                                          .background(
-                                              Brush.verticalGradient(
-                                                  colors = listOf(
-                                                      MaterialTheme.colorScheme.surfaceContainer,
-                                                      MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f),
-                                                      MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f),
-                                                      androidx.compose.ui.graphics.Color.Transparent
+                                          .graphicsLayer { alpha = statusBarBlurAlpha }
+                                          .then(
+                                              if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                                  Modifier.hazeEffect(
+                                                      state = hazeState,
+                                                      style = statusBarHazeStyle
+                                                  ) {
+                                                      progressive = HazeProgressive.verticalGradient(
+                                                          startIntensity = 1f,
+                                                          endIntensity = 0f
+                                                      )
+                                                  }
+                                              } else {
+                                                  Modifier.background(
+                                                      Brush.verticalGradient(
+                                                          colors = listOf(
+                                                              MaterialTheme.colorScheme.surfaceContainer,
+                                                              MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.7f),
+                                                              MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.3f),
+                                                              androidx.compose.ui.graphics.Color.Transparent
+                                                          )
+                                                      )
                                                   )
-                                              )
+                                              }
                                           )
                                   )
 
-                                 // Floating Tab Bar (Pill Shape)
-                                 BlurredSurface(
-                                     shape = CircleShape,
-                                     color = MaterialTheme.colorScheme.surfaceContainer,
-                                     alpha = 0.82f,
-                                     shadowElevation = 0.dp,
-                                     tonalElevation = 0.dp,
+                                 // Tab Bar stuck at the top of the surface background
+                                 Box(
                                      modifier = Modifier
                                          .align(Alignment.TopCenter)
-                                         .padding(top = statusBarTop + 8.dp)
-                                         .padding(start = 16.dp, end = 16.dp)
-                                         .widthIn(max = 500.dp)
                                          .fillMaxWidth()
-                                         .height(64.dp)
-                                         .graphicsLayer { translationY = topBarOffset.toPx() }
+                                         .padding(top = statusBarTop + 8.dp)
+                                         .graphicsLayer {
+                                             translationY = tabBarOffset.toPx()
+                                             alpha = tabBarAlpha
+                                         },
+                                     contentAlignment = Alignment.Center
                                  ) {
-                                      Row(
-                                          modifier = Modifier
-                                              .fillMaxHeight()
-                                              .wrapContentWidth()
-                                              .horizontalScroll(tabRowScrollState)
-                                              .padding(horizontal = 8.dp, vertical = 6.dp),
-                                          horizontalArrangement = Arrangement.Start,
-                                          verticalAlignment = Alignment.CenterVertically
-                                      ) {
-                                          androidx.compose.material3.ButtonGroup(
+                                     Row(
+                                         modifier = Modifier
+                                             .wrapContentWidth()
+                                             .horizontalScroll(tabRowScrollState)
+                                             .padding(horizontal = 16.dp),
+                                         horizontalArrangement = Arrangement.Center,
+                                         verticalAlignment = Alignment.CenterVertically
+                                     ) {
+                                         androidx.compose.material3.ButtonGroup(
                                               horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
                                               overflowIndicator = {}
                                           ) {
@@ -700,12 +758,13 @@ fun LibraryScreen(
                                                               val isPressed by interactionSource.collectIsPressedAsState()
 
                                                                // Calculate target width for spring animation & press compression accommodating wide font
-                                                               val textExtra = (tabName.length * 10f).dp
-                                                               val baseSelectedWidth = (88.dp + textExtra).coerceAtLeast(136.dp)
+                                                               val showLabel = viewModel.showCollectionName && isSelected
+                                                               val textExtra = if (showLabel) (tabName.length * 10f).dp else 0.dp
+                                                               val baseSelectedWidth = if (showLabel) (88.dp + textExtra).coerceAtLeast(136.dp) else 64.dp
                                                                val baseUnselectedWidth = 64.dp
 
                                                                val targetWidth = when {
-                                                                   isSelected && isPressed -> baseSelectedWidth - 18.dp
+                                                                   isSelected && isPressed -> if (showLabel) baseSelectedWidth - 18.dp else 52.dp
                                                                    isSelected -> baseSelectedWidth
                                                                    isPressed -> 52.dp
                                                                    else -> baseUnselectedWidth
@@ -765,7 +824,7 @@ fun LibraryScreen(
                                                                          }
                                                                      }
                                                                      
-                                                                     if (isSelected) {
+                                                                     if (showLabel) {
                                                                          Text(
                                                                              text = tabName,
                                                                              style = com.android.snippets.ui.theme.titleMediumEmphasized.copy(
@@ -811,7 +870,7 @@ fun LibraryScreen(
                                              }
                                          }
                                      }
-                                  }
+                                 }
 
 
 
@@ -851,7 +910,6 @@ fun LibraryScreen(
                         BlurredSurface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainer,
-                            alpha = 0.82f,
                             contentColor = MaterialTheme.colorScheme.onSurface,
                             shadowElevation = 8.dp,
                             tonalElevation = 0.dp,
@@ -939,7 +997,6 @@ fun LibraryScreen(
                         BlurredSurface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainer,
-                            alpha = 0.82f,
                             shadowElevation = 8.dp,
                             tonalElevation = 0.dp,
                             modifier = Modifier
@@ -1550,7 +1607,7 @@ fun LibraryScreen(
 
                 renamingCollection?.let { oldName ->
                     var newName by remember { mutableStateOf(oldName) }
-                    AlertDialog(
+                    BlurredAlertDialog(
                         onDismissRequest = { renamingCollection = null },
                         title = { Text("Rename collection") },
                         text = {
@@ -1581,7 +1638,7 @@ fun LibraryScreen(
                 }
 
                 deletingCollection?.let { collectionName ->
-                    AlertDialog(
+                    BlurredAlertDialog(
                         onDismissRequest = { deletingCollection = null },
                         title = { Text("Delete collection") },
                         text = { Text("Are you sure you want to delete '$collectionName'? Your photos will be saved.") },
@@ -1607,54 +1664,26 @@ fun LibraryScreen(
                 }
 
                 photoToDeleteFromEatlist?.let { photo ->
-                    Dialog(
+                    BlurredAlertDialog(
                         onDismissRequest = { photoToDeleteFromEatlist = null },
-                        properties = DialogProperties(usePlatformDefaultWidth = false)
-                    ) {
-                        BlurredSurface(
-                            shape = RoundedCornerShape(28.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            alpha = 0.82f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp)
-                                .widthIn(max = 400.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(24.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Text(
-                                    text = "Mark as eaten and delete",
-                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Are you sure you want to mark this item as eaten and delete it from Eatlist?",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    TextButton(onClick = { photoToDeleteFromEatlist = null }) {
-                                        Text("Cancel")
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    TextButton(
-                                        onClick = {
-                                            viewModel.deletePhoto(photo.id)
-                                            photoToDeleteFromEatlist = null
-                                        }
-                                    ) {
-                                        Text("Mark as eaten", color = MaterialTheme.colorScheme.primary)
-                                    }
+                        title = { Text("Mark as eaten and delete") },
+                        text = { Text("Are you sure you want to mark this item as eaten and delete it from Eatlist?") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    viewModel.deletePhoto(photo.id)
+                                    photoToDeleteFromEatlist = null
                                 }
+                            ) {
+                                Text("Mark as eaten", color = MaterialTheme.colorScheme.primary)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { photoToDeleteFromEatlist = null }) {
+                                Text("Cancel")
                             }
                         }
-                    }
+                    )
                 }
 
                 FoodRandomizerBottomSheet(
@@ -1717,31 +1746,40 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
             }
 
-            ToggleButton(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                interactionSource = interactionSource,
-                shapes = shapes,
-                modifier = Modifier.weight(animatedWeight),
-                colors = ToggleButtonDefaults.toggleButtonColors(
-                    checkedContainerColor = MaterialTheme.colorScheme.primary,
-                    checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            val currentShape = if (checked) shapes.checkedShape else shapes.shape
+
+            BlurredSurface(
+                shape = currentShape,
+                color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                alpha = if (checked) 1f else HazeDefaults.tintAlpha,
+                modifier = Modifier.weight(animatedWeight)
             ) {
-                icon()
-                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text(
-                    text = label,
-                    style = if (checked) {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                        )
-                    } else {
-                        MaterialTheme.typography.labelLarge
-                    }
-                )
+                ToggleButton(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    interactionSource = interactionSource,
+                    shapes = shapes,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ToggleButtonDefaults.toggleButtonColors(
+                        checkedContainerColor = Color.Transparent,
+                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    icon()
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(
+                        text = label,
+                        style = if (checked) {
+                            MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            )
+                        } else {
+                            MaterialTheme.typography.labelLarge
+                        }
+                    )
+                }
             }
         },
         menuContent = { state ->
@@ -1812,23 +1850,52 @@ private fun ViewOptionItem(
             modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        this.rotationZ = rotation.value
-                        this.scaleX = scaleX.value
-                        this.scaleY = scaleY.value
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            this.rotationZ = rotation.value
+                            this.scaleX = scaleX.value
+                            this.scaleY = scaleY.value
+                        }
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            } else {
+                BlurredSurface(
+                    shape = shape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    alpha = HazeDefaults.tintAlpha,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            this.rotationZ = rotation.value
+                            this.scaleX = scaleX.value
+                            this.scaleY = scaleY.value
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
-                    .clip(shape)
-                    .background(containerColor)
-            )
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(24.dp)
-            )
+                }
+            }
         }
         
         RadioButton(

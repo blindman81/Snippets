@@ -50,6 +50,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import com.android.snippets.ui.components.LoadingIndicator
 import com.android.snippets.ui.components.BlurredSurface
+import com.android.snippets.ui.components.BlurredAlertDialog
 import dev.chrisbanes.haze.hazeSource
 
 import androidx.compose.runtime.*
@@ -239,6 +240,7 @@ fun DetailScreen(
     var showDeleteModal by remember { mutableStateOf(false) }
     var showRateModal by remember { mutableStateOf(false) }
     var showLinkModal by remember { mutableStateOf(false) }
+    var showNameModal by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.pendingOpenAddSnippetDialog, photo.id) {
         if (viewModel.pendingOpenAddSnippetDialog && viewModel.activePhotoId == photo.id) {
@@ -248,7 +250,7 @@ fun DetailScreen(
     }
 
     val context = LocalContext.current
-    val isAnyPopupActive = showCurrentSnippetsModal || showAddModal || showDeleteModal || showRateModal || showLinkModal
+    val isAnyPopupActive = showCurrentSnippetsModal || showAddModal || showDeleteModal || showRateModal || showLinkModal || showNameModal
     
     val scrollStates = remember { mutableStateMapOf<Int, Boolean>() }
     val isScrolled = scrollStates[pagerState.currentPage] ?: false
@@ -256,7 +258,7 @@ fun DetailScreen(
 
 
     val focusManager = LocalFocusManager.current
-    val hazeState = dev.chrisbanes.haze.rememberHazeState()
+    val hazeState = com.android.snippets.ui.components.LocalHazeState.current ?: dev.chrisbanes.haze.rememberHazeState()
 
     androidx.compose.runtime.CompositionLocalProvider(
         com.android.snippets.ui.components.LocalHazeState provides hazeState
@@ -302,6 +304,7 @@ fun DetailScreen(
                         onToggleFavorite = { viewModel.toggleFavorite(photo.id) },
                         hasLocationLink = !photo.locationLink.isNullOrBlank(),
                         onAddLinkClick = { showLinkModal = true },
+                        onNamePhotoClick = { showNameModal = true },
                         animatedVisibilityScope = animatedVisibilityScope
                     )
                 }
@@ -491,6 +494,17 @@ fun DetailScreen(
             }
         )
     }
+
+    if (showNameModal) {
+        NamePhotoModal(
+            initialName = photo.name,
+            onDismiss = { showNameModal = false },
+            onSave = { name ->
+                showNameModal = false
+                viewModel.updatePhotoName(photo.id, name)
+            }
+        )
+    }
     }
 }
 
@@ -504,80 +518,70 @@ fun DeleteConfirmationModal(
 ) {
     val view = androidx.compose.ui.platform.LocalView.current
     var unpublish by remember { mutableStateOf(true) }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BlurredSurface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            alpha = 0.82f,
-            shadowElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 400.dp)
-        ) {
-            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = if (count > 1) "Delete $count photos?" else "Delete photo?",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = (-0.5).sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
+    BlurredAlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (count > 1) "Delete $count photos?" else "Delete photo?",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-0.5).sp
+                )
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = if (isEatlist) {
+                        if (count > 1) "Are you sure you want to delete these photos?" else "Are you sure you want to delete this photo?"
+                    } else {
+                        if (count > 1) "Deleting these photos also removes the snippets you created for them." else "Deleting this photo also removes the snippets you created for this photo."
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (hasPublicPhotos) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                        Checkbox(
+                            checked = unpublish,
+                            onCheckedChange = { unpublish = it },
+                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isEatlist) {
-                                if (count > 1) "Are you sure you want to delete these photos?" else "Are you sure you want to delete this photo?"
-                            } else {
-                                if (count > 1) "Deleting these photos also removes the snippets you created for them." else "Deleting this photo also removes the snippets you created for this photo."
-                            },
-                            style = MaterialTheme.typography.bodyLarge,
+                            text = "Also remove from public community feed",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (hasPublicPhotos) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                                Checkbox(
-                                    checked = unpublish,
-                                    onCheckedChange = { unpublish = it },
-                                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Also remove from public community feed",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = {
-                                view.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_END)
-                                onDismiss()
-                            },
-                            modifier = Modifier.height(40.dp),
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
-                        ) {
-                            Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Button(
-                            onClick = {
-                                view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                                onConfirm(unpublish)
-                            },
-                            modifier = Modifier.height(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
-                        ) {
-                            Text("Delete", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                        }
                     }
                 }
             }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                    onConfirm(unpublish)
+                },
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+            ) {
+                Text("Delete", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_END)
+                    onDismiss()
+                },
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+            ) {
+                Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            }
         }
+    )
 }
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -909,7 +913,6 @@ fun RateFoodDialog(
         BlurredSurface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
-            alpha = 0.82f,
             shadowElevation = 6.dp,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 360.dp)
         ) {
@@ -1145,7 +1148,6 @@ fun LocationLinkModal(
         BlurredSurface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
-            alpha = 0.82f,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 400.dp)
         ) {
             Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -1246,6 +1248,90 @@ fun LocationLinkModal(
                             val name = resolvedNames[linkValue] ?: LocationUtils.extractPlaceNameFromLink(linkValue) ?: LocationUtils.cleanLocationName(linkValue)
                             val finalName = if (name.startsWith("http")) null else LocationUtils.cleanLocationName(name)
                             onSave(linkValue, finalName)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                    ) {
+                        Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NamePhotoModal(
+    initialName: String?,
+    onDismiss: () -> Unit,
+    onSave: (String?) -> Unit
+) {
+    val view = LocalView.current
+    var nameValue by remember { mutableStateOf(initialName ?: "") }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        BlurredSurface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 400.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = "Name photo",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                OutlinedTextField(
+                    value = nameValue,
+                    onValueChange = {
+                        if (it.length <= 25) {
+                            nameValue = it
+                        }
+                    },
+                    placeholder = { Text("Photo name") },
+                    singleLine = true,
+                    supportingText = {
+                        Text(
+                            text = "${nameValue.length}/25",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.End,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon = if (nameValue.isNotEmpty()) {
+                        {
+                            IconButton(onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                nameValue = ""
+                            }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                    ) {
+                        Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onSave(nameValue.trim().takeIf { it.isNotBlank() })
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                     ) {

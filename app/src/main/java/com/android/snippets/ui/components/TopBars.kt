@@ -96,7 +96,6 @@ fun SelectionToolbar(
         BlurredSurface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainer,
-            alpha = 0.82f,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 8.dp,
             tonalElevation = 0.dp,
@@ -885,7 +884,7 @@ fun SearchViewOverlay(
     }
 
     if (viewModel.showClearHistoryDialog) {
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { viewModel.showClearHistoryDialog = false },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             title = { 

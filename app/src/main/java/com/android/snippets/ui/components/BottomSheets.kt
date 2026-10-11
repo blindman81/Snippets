@@ -1,6 +1,7 @@
 package com.android.snippets.ui.components
 
 import kotlinx.coroutines.launch
+import dev.chrisbanes.haze.HazeDefaults
 
 import android.view.HapticFeedbackConstants
 import android.view.View
@@ -72,8 +73,7 @@ fun MenuBottomSheet(
         BlurredModalBottomSheet(
             onDismissRequest = onDismissRequest,
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            scrimColor = BottomSheetDefaults.ScrimColor
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Motion.ExpressiveSheetContent {
                 Box(
@@ -212,37 +212,44 @@ private fun ButtonGroupScope.menuItem(
 ) {
     customItem(
         buttonGroupContent = {
-            Button(
-                onClick = onClick,
+            BlurredSurface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                alpha = HazeDefaults.tintAlpha,
                 modifier = Modifier
                     .weight(weight)
-                    .height(48.dp),
-                shapes = ButtonDefaults.shapes(
-                    shape = CircleShape,
-                    pressedShape = RoundedCornerShape(12.dp)
-                ),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                contentPadding = PaddingValues(horizontal = 4.dp)
+                    .height(48.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
+                Button(
+                    onClick = onClick,
+                    modifier = Modifier.fillMaxSize(),
+                    shapes = ButtonDefaults.shapes(
+                        shape = CircleShape,
+                        pressedShape = RoundedCornerShape(12.dp)
+                    ),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
-                    icon()
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        icon()
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         },
@@ -271,8 +278,7 @@ fun CollectionOptionsBottomSheet(
     if (show) {
         BlurredModalBottomSheet(
             onDismissRequest = onDismissRequest,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            scrimColor = BottomSheetDefaults.ScrimColor
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Motion.ExpressiveSheetContent {
                 Column(
@@ -367,8 +373,7 @@ fun HistoryBottomSheet(
         }
         BlurredModalBottomSheet(
             onDismissRequest = onDismissRequest,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            scrimColor = BottomSheetDefaults.ScrimColor
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Motion.ExpressiveSheetContent {
                 Column(

@@ -37,11 +37,23 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LibraryAdd
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.ui.text.style.TextOverflow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.material3.*
 import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
 import com.android.snippets.ui.shapes.*
@@ -469,6 +481,11 @@ fun PhotoMasonryItem(
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
         label = "scale"
     )
+    val selectionBlurRadius by animateDpAsState(
+        targetValue = if (isSelected) 18.dp else 0.dp,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
+        label = "photoSelectionBlur"
+    )
 
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (isDark) Color.White else Color.Black
@@ -544,33 +561,35 @@ fun PhotoMasonryItem(
                             } ?: Modifier.fillMaxWidth().wrapContentHeight()
                         }
 
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(photo.uriString)
+                                .crossfade(true)
+                                .memoryCacheKey(photo.uriString)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = if (fillCard || isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
+                            colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
+                            alignment = Alignment { size, space, _ ->
+                                val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
+                                    (space.width - size.width).coerceAtMost(0),
+                                    (space.width - size.width).coerceAtLeast(0)
+                                )
+                                val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
+                                    (space.height - size.height).coerceAtMost(0),
+                                    (space.height - size.height).coerceAtLeast(0)
+                                )
+                                androidx.compose.ui.unit.IntOffset(x, y)
+                            },
+                            modifier = aspectModifier.then(
+                                if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
+                            )
+                        )
+
                         if (isSelected) {
                             Box(
                                 modifier = aspectModifier
-                                    .background(MaterialTheme.colorScheme.primaryContainer)
-                            )
-                        } else {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(photo.uriString)
-                                    .crossfade(true)
-                                    .memoryCacheKey(photo.uriString)
-                                    .build(),
-                                contentDescription = null,
-                                contentScale = if (fillCard || isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
-                                colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
-                                alignment = Alignment { size, space, _ ->
-                                    val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
-                                        (space.width - size.width).coerceAtMost(0),
-                                        (space.width - size.width).coerceAtLeast(0)
-                                    )
-                                    val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
-                                        (space.height - size.height).coerceAtMost(0),
-                                        (space.height - size.height).coerceAtLeast(0)
-                                    )
-                                    androidx.compose.ui.unit.IntOffset(x, y)
-                                },
-                                modifier = aspectModifier
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
                             )
                         }
 
@@ -959,6 +978,11 @@ fun PhotoListItem(
         animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 400f),
         label = "scale"
     )
+    val selectionBlurRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isSelected) 18.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 400f),
+        label = "photoSelectionBlur"
+    )
 
     Card(
         modifier = modifier
@@ -1015,25 +1039,27 @@ fun PhotoListItem(
                     )
                     .clip(photoShape)
             ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(photo.uriString)
+                        .crossfade(true)
+                        .memoryCacheKey(photo.uriString)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                        androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                    ),
+                    modifier = Modifier.fillMaxSize().then(
+                        if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
+                    )
+                )
+
                 if (isSelected) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                    )
-                } else {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(photo.uriString)
-                            .crossfade(true)
-                            .memoryCacheKey(photo.uriString)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                        ),
-                        modifier = Modifier.fillMaxSize()
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
                     )
                 }
 
@@ -1193,6 +1219,92 @@ fun PhotoListItem(
     }
 }
 
+@Composable
+private fun ExpandableCardPillIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    contentDescription: String,
+    iconColor: Color,
+    containerColor: Color,
+    modifier: Modifier = Modifier,
+    alignEnd: Boolean = false,
+    defaultExpanded: Boolean = false,
+    key: Any? = null
+) {
+    val view = LocalView.current
+    var isExpanded by remember(key, defaultExpanded) { mutableStateOf(defaultExpanded) }
+
+    Surface(
+        color = containerColor.copy(alpha = 0.9f),
+        shape = CircleShape,
+        modifier = modifier
+            .padding(8.dp)
+            .height(28.dp)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    isExpanded = !isExpanded
+                }
+            )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val iconBox = @Composable {
+                Box(
+                    modifier = Modifier.size(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = contentDescription,
+                        tint = iconColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            val textBox = @Composable {
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = fadeIn() + expandHorizontally(expandFrom = if (alignEnd) Alignment.End else Alignment.Start),
+                    exit = fadeOut() + shrinkHorizontally(shrinkTowards = if (alignEnd) Alignment.End else Alignment.Start)
+                ) {
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+                        color = iconColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .padding(
+                                start = if (alignEnd) 8.dp else 2.dp,
+                                end = if (alignEnd) 2.dp else 8.dp
+                            )
+                            .widthIn(max = 140.dp)
+                    )
+                }
+            }
+
+            if (alignEnd) {
+                textBox()
+                iconBox()
+            } else {
+                iconBox()
+                textBox()
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun PhotoCardListItem(
@@ -1224,6 +1336,10 @@ fun PhotoCardListItem(
     val animatedScale by animateFloatAsState(
         targetValue = if (isSelected) 0.95f else 1f,
         label = "scale"
+    )
+    val selectionBlurRadius by animateDpAsState(
+        targetValue = if (isSelected) 18.dp else 0.dp,
+        label = "photoSelectionBlur"
     )
 
     val view = LocalView.current
@@ -1343,25 +1459,27 @@ fun PhotoCardListItem(
                                         }
                                     ).clip(photoClipShape)
                                 ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(photo.uriString)
+                                            .crossfade(true)
+                                            .memoryCacheKey(photo.uriString)
+                                            .build(),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                                        ),
+                                        modifier = Modifier.fillMaxSize().then(
+                                            if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
+                                        )
+                                    )
+
                                     if (isSelected) {
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                        )
-                                    } else {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(LocalContext.current)
-                                                .data(photo.uriString)
-                                                .crossfade(true)
-                                                .memoryCacheKey(photo.uriString)
-                                                .build(),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                                                androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                                            ),
-                                            modifier = Modifier.fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
                                         )
                                     }
 
@@ -1380,7 +1498,7 @@ fun PhotoCardListItem(
                             if (photo.rating > 0) {
                                 Surface(
                                     color = iconContainerColor.copy(alpha = 0.9f),
-                                    shape = CookieShape,
+                                    shape = CircleShape,
                                     modifier = Modifier
                                         .align(Alignment.TopStart)
                                         .padding(8.dp)
@@ -1406,7 +1524,7 @@ fun PhotoCardListItem(
                             if (photo.isFavorite && showFavoriteIcon) {
                                 Surface(
                                     color = iconContainerColor.copy(alpha = 0.9f),
-                                    shape = CookieShape,
+                                    shape = CircleShape,
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(8.dp)
@@ -1422,6 +1540,20 @@ fun PhotoCardListItem(
                                     }
                                 }
                             }
+
+                            if (!photo.name.isNullOrBlank()) {
+                                ExpandableCardPillIcon(
+                                    icon = Icons.AutoMirrored.Filled.Label,
+                                    text = photo.name,
+                                    contentDescription = "Photo name",
+                                    iconColor = iconColor,
+                                    containerColor = iconContainerColor,
+                                    modifier = Modifier.align(Alignment.BottomStart),
+                                    defaultExpanded = viewModel.expandPhotoNameIcon,
+                                    key = "${photo.id}_name"
+                                )
+                            }
+
                         }
                     } else {
                         Box(
@@ -1528,25 +1660,27 @@ fun PhotoCardListItem(
                                     }
                                 ).clip(photoClipShape)
                             ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(photo.uriString)
+                                        .crossfade(true)
+                                        .memoryCacheKey(photo.uriString)
+                                        .build(),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+                                        androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+                                    ),
+                                    modifier = Modifier.fillMaxSize().then(
+                                        if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
+                                    )
+                                )
+
                                 if (isSelected) {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.primaryContainer)
-                                    )
-                                } else {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(photo.uriString)
-                                            .crossfade(true)
-                                            .memoryCacheKey(photo.uriString)
-                                            .build(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                                        ),
-                                        modifier = Modifier.fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
                                     )
                                 }
 
@@ -1565,7 +1699,7 @@ fun PhotoCardListItem(
                         if (photo.rating > 0) {
                             Surface(
                                 color = iconContainerColor.copy(alpha = 0.9f),
-                                shape = CookieShape,
+                                shape = CircleShape,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .padding(8.dp)
@@ -1591,7 +1725,7 @@ fun PhotoCardListItem(
                         if (photo.isFavorite && showFavoriteIcon) {
                             Surface(
                                 color = iconContainerColor.copy(alpha = 0.9f),
-                                shape = CookieShape,
+                                shape = CircleShape,
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .padding(8.dp)
@@ -1606,6 +1740,36 @@ fun PhotoCardListItem(
                                     )
                                 }
                             }
+                        }
+
+                        if (!photo.name.isNullOrBlank()) {
+                            ExpandableCardPillIcon(
+                                icon = Icons.AutoMirrored.Filled.Label,
+                                text = photo.name,
+                                contentDescription = "Photo name",
+                                iconColor = iconColor,
+                                containerColor = iconContainerColor,
+                                modifier = Modifier.align(Alignment.BottomStart),
+                                defaultExpanded = viewModel.expandPhotoNameIcon,
+                                key = "${photo.id}_name"
+                            )
+                        }
+
+                        if (!photo.collections.contains("Eatlist")) {
+                            val formattedDate = remember(photo.date) {
+                                SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
+                            }
+                            ExpandableCardPillIcon(
+                                icon = Icons.Default.CalendarMonth,
+                                text = formattedDate,
+                                contentDescription = "Photo date",
+                                iconColor = iconColor,
+                                containerColor = iconContainerColor,
+                                modifier = Modifier.align(Alignment.BottomEnd),
+                                alignEnd = true,
+                                defaultExpanded = viewModel.expandDayAndDateIcon,
+                                key = "${photo.id}_date"
+                            )
                         }
                     }
                 }
@@ -1987,7 +2151,7 @@ fun EatlistSingleListCardContainer(
     }
 
     if (showActionDialog) {
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { showActionDialog = false },
             title = {
                 Text(

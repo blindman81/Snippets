@@ -129,6 +129,7 @@ private fun AnimatedCookieButtonImpl(
 ) {
     val view = LocalView.current
     var isHolding by remember { mutableStateOf(false) }
+    var isHoldCompleted by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
     var pressStartTime by remember { mutableLongStateOf(0L) }
     val rotation = remember { Animatable(0f) }
@@ -136,7 +137,7 @@ private fun AnimatedCookieButtonImpl(
     val animScaleY = remember { Animatable(1f) }
     val morphProgress = remember { Animatable(0f) }
 
-    val isActive = isHolding || isTapped
+    val isActive = (isHolding && !isHoldCompleted) || isTapped
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
     val targetContent = if (isActive) MaterialTheme.colorScheme.onPrimary else contentColor
 
@@ -151,7 +152,7 @@ private fun AnimatedCookieButtonImpl(
         label = "cookie_button_content_color"
     )
 
-    val currentShape = if (isHolding || morphProgress.value > 0.001f) {
+    val currentShape = if ((isHolding && !isHoldCompleted) || morphProgress.value > 0.001f) {
         MorphSequenceShape(CookieHoldMorphs, morphProgress.value)
     } else {
         shape
@@ -177,10 +178,12 @@ private fun AnimatedCookieButtonImpl(
                         onPress = {
                             pressStartTime = System.currentTimeMillis()
                             isHolding = true
+                            isHoldCompleted = false
                             try {
                                 awaitRelease()
                             } finally {
                                 isHolding = false
+                                isHoldCompleted = false
                             }
                         },
                         onLongPress = {
@@ -248,9 +251,9 @@ private fun AnimatedCookieButtonImpl(
         }
     }
 
-    // Hold scale expansion: grows to 1.3x so morphing shapes are clearly visible outside the finger
-    LaunchedEffect(isHolding) {
-        if (isHolding) {
+    // Hold scale expansion: grows to 1.3x while holding, and springs back to 1f when released OR when the last shape is reached
+    LaunchedEffect(isHolding, isHoldCompleted) {
+        if (isHolding && !isHoldCompleted) {
             launch { animScaleX.animateTo(1.3f, animationSpec = Motion.BouncySpring) }
             launch { animScaleY.animateTo(1.3f, animationSpec = Motion.BouncySpring) }
         } else if (!isTapped) {
@@ -260,19 +263,31 @@ private fun AnimatedCookieButtonImpl(
     }
 
 
-    // Continuous shape morphing while holding:
+    // Shape morphing while holding:
     // Follows the official M3 Expressive shape morph implementation:
-    // Morph between shapes with bouncy spring motion + 90 degree clockwise right-turn per shape
+    // Morphs smoothly between shapes with 90 degree clockwise right-turn per shape.
+    // When the last 9-sided cookie shape is reached, trigger the return animation that happens
+    // when you hold off the button, returning to scale 1.0f with BouncySpring and resting on the last shape.
     LaunchedEffect(isHolding) {
         if (isHolding) {
-            val stepSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 200f)
-            while (true) {
+            isHoldCompleted = false
+            val stepSpec = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 250f)
+            val totalSteps = CookieHoldMorphs.size
+            for (step in 1..totalSteps) {
                 morphProgress.animateTo(
-                    targetValue = morphProgress.value + 1f,
+                    targetValue = step.toFloat(),
                     animationSpec = stepSpec
                 )
-                kotlinx.coroutines.delay(160L)
+                if (step < totalSteps) {
+                    kotlinx.coroutines.delay(160L)
+                }
             }
+            // Last 9-sided cookie reached!
+            // Snap morph progress cleanly to 0 so currentShape seamlessly rests on CookieShape (9-sided cookie)
+            morphProgress.snapTo(0f)
+            // Trigger the animation that happens when you hold off the button
+            // (animates button scale back to 1.0f with BouncySpring, returns colors, goes back to place with last shape)
+            isHoldCompleted = true
         } else {
             if (morphProgress.value > 0f) {
                 morphProgress.animateTo(

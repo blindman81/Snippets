@@ -210,9 +210,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var showTimeInMemories by mutableStateOf(false)
         private set
+    var expandPhotoNameIcon by mutableStateOf(false)
+        private set
+    var expandDayAndDateIcon by mutableStateOf(false)
+        private set
 
 
     var customGridColumns by mutableStateOf<Int?>(null)
+        private set
+    var showCollectionName by mutableStateOf(false)
         private set
     var showEatlist by mutableStateOf(true)
         private set
@@ -600,7 +606,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     isPublic = p.isPublic,
                     locationLink = p.locationLink,
                     locationName = p.locationName,
-                    rating = p.rating
+                    rating = p.rating,
+                    name = p.name
                 )
             }.sortedByDescending { it.date }
 
@@ -757,8 +764,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
         useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
+        expandPhotoNameIcon = prefs.getBoolean("expand_photo_name_icon", false)
+        expandDayAndDateIcon = prefs.getBoolean("expand_day_and_date_icon", false)
 
 
+        showCollectionName = prefs.getBoolean("show_collection_name", false)
         showEatlist = prefs.getBoolean("show_eatlist", true)
         foodEatenCount = prefs.getInt("food_eaten_count", 0)
         autoBackupSchedule = prefs.getString("auto_backup_schedule", "Disabled") ?: "Disabled"
@@ -1896,6 +1906,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         savePhotos()
     }
 
+    fun updatePhotoName(photoId: String, name: String?) {
+        val trimmed = name?.trim()?.takeIf { it.isNotBlank() }?.take(25)
+        photos = photos.map {
+            if (it.id == photoId) it.copy(name = trimmed) else it
+        }
+        savePhotos()
+    }
+
     fun incrementFoodEatenCount(amount: Int = 1) {
         if (amount <= 0) return
         foodEatenCount += amount
@@ -2192,6 +2210,21 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateShowTimeInMemories(show: Boolean) {
         showTimeInMemories = show
         prefs.edit().putBoolean("show_time_in_memories", show).apply()
+    }
+
+    fun updateExpandPhotoNameIcon(expand: Boolean) {
+        expandPhotoNameIcon = expand
+        prefs.edit().putBoolean("expand_photo_name_icon", expand).apply()
+    }
+
+    fun updateExpandDayAndDateIcon(expand: Boolean) {
+        expandDayAndDateIcon = expand
+        prefs.edit().putBoolean("expand_day_and_date_icon", expand).apply()
+    }
+
+    fun updateShowCollectionName(show: Boolean) {
+        showCollectionName = show
+        prefs.edit().putBoolean("show_collection_name", show).apply()
     }
 
     fun updateShowEatlist(show: Boolean) {
@@ -2589,6 +2622,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     !isPrecededByNot
                 } ||
                 photo.collections.any { it.contains(part, ignoreCase = true) } ||
+                (photo.name?.contains(part, ignoreCase = true) == true) ||
                 run {
                     if (dateObj == null) {
                         dateObj = java.util.Date(photo.date)

@@ -19,7 +19,8 @@ data class Photo(
     val isPublic: Boolean = false,
     val locationLink: String? = null,
     val locationName: String? = null,
-    val rating: Int = 0
+    val rating: Int = 0,
+    val name: String? = null
 ) {
     val uri: Uri get() = if (uriString.isNullOrEmpty()) Uri.EMPTY else Uri.parse(uriString)
     val captureDate: Long get() = date

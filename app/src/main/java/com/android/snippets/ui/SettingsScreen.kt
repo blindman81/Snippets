@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.filled.FormatListBulleted
@@ -332,13 +334,31 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
 
             SettingsCardItem(
+                icon = Icons.AutoMirrored.Filled.Label,
+                title = "Show collection name",
+                onClick = { 
+                    view.performHapticFeedback(if (!viewModel.showCollectionName) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                    viewModel.updateShowCollectionName(!viewModel.showCollectionName) 
+                },
+                position = CardPosition.First,
+                trailingContent = {
+                    PremiumSwitch(
+                        checked = viewModel.showCollectionName,
+                        onCheckedChange = { 
+                            viewModel.updateShowCollectionName(it) 
+                        }
+                    )
+                }
+            )
+
+            SettingsCardItem(
                 icon = Icons.Default.Collections,
                 title = "Show Eatlist",
                 onClick = { 
                     view.performHapticFeedback(if (!viewModel.showEatlist) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
                     viewModel.updateShowEatlist(!viewModel.showEatlist) 
                 },
-                position = CardPosition.Single,
+                position = CardPosition.Last,
                 trailingContent = {
                     PremiumSwitch(
                         checked = viewModel.showEatlist,
@@ -432,12 +452,48 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                      view.performHapticFeedback(if (!viewModel.showTimeInMemories) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
                      viewModel.updateShowTimeInMemories(!viewModel.showTimeInMemories)
                  },
-                 position = CardPosition.Single,
+                 position = CardPosition.First,
                  trailingContent = {
                      PremiumSwitch(
                          checked = viewModel.showTimeInMemories,
                          onCheckedChange = {
                              viewModel.updateShowTimeInMemories(it)
+                         }
+                     )
+                 }
+             )
+
+             SettingsCardItem(
+                 icon = Icons.AutoMirrored.Filled.Label,
+                 title = "Expand photo name icon",
+                 onClick = {
+                     view.performHapticFeedback(if (!viewModel.expandPhotoNameIcon) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                     viewModel.updateExpandPhotoNameIcon(!viewModel.expandPhotoNameIcon)
+                 },
+                 position = CardPosition.Middle,
+                 trailingContent = {
+                     PremiumSwitch(
+                         checked = viewModel.expandPhotoNameIcon,
+                         onCheckedChange = {
+                             viewModel.updateExpandPhotoNameIcon(it)
+                         }
+                     )
+                 }
+             )
+
+             SettingsCardItem(
+                 icon = Icons.Default.CalendarMonth,
+                 title = "Expand day and date icon",
+                 onClick = {
+                     view.performHapticFeedback(if (!viewModel.expandDayAndDateIcon) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
+                     viewModel.updateExpandDayAndDateIcon(!viewModel.expandDayAndDateIcon)
+                 },
+                 position = CardPosition.Last,
+                 trailingContent = {
+                     PremiumSwitch(
+                         checked = viewModel.expandDayAndDateIcon,
+                         onCheckedChange = {
+                             viewModel.updateExpandDayAndDateIcon(it)
                          }
                      )
                  }
@@ -637,7 +693,7 @@ fun AutoBackupScheduleDialog(
     val options = listOf("Disabled", "Daily", "Weekly", "Monthly")
     val labels = listOf("Disabled", "Daily", "Weekly (Sunday)", "Monthly (1st of month)")
 
-    AlertDialog(
+    BlurredAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(

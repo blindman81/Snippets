@@ -192,7 +192,7 @@ fun MealDropdownChip(
             is24Hour = false
         )
 
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { showTimePicker = false },
             confirmButton = {
                 TextButton(

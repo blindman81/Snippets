@@ -408,6 +408,10 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
         title = label,
         isSelected = isSelected,
         position = position,
+        containerColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
+            else rememberMonetTintedColor(MaterialTheme.colorScheme.surfaceContainerHighest, weight = 0.28f).copy(alpha = 0.55f)
+        } else null,
         onClick = {
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
             if (viewModel.snippetSortType == type && (type == SnippetSortType.AZ || type == SnippetSortType.Month || type == SnippetSortType.Year || type == SnippetSortType.Color || type == SnippetSortType.Style)) {

@@ -14,6 +14,9 @@ import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.ui.components.BulkEditSnippetsDialog
 import com.android.snippets.ui.components.BlurredModalBottomSheet
+import com.android.snippets.ui.components.BlurredAlertDialog
+import com.android.snippets.ui.components.LocalHazeState
+import dev.chrisbanes.haze.HazeState
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -120,8 +123,10 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         }
     }
 
+    val rootHazeState = remember { HazeState() }
     CompositionLocalProvider(
-        LocalPredictiveBackMotionController provides predictiveBackMotionController
+        LocalPredictiveBackMotionController provides predictiveBackMotionController,
+        LocalHazeState provides rootHazeState
     ) {
         Box(
             modifier = Modifier
@@ -303,8 +308,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     )
                 }
             )
-        }
-        }
 
         AppPredictiveBackHandler(enabled = predictiveBackEnabled) {
             viewModel.navigateBack()
@@ -338,8 +341,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     if (viewModel.showFilterSheet) {
         BlurredModalBottomSheet(
             onDismissRequest = { viewModel.closeFilter() },
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            scrimColor = BottomSheetDefaults.ScrimColor
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Motion.ExpressiveSheetContent {
                 Box(
@@ -354,7 +356,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
 
     if (viewModel.showCreateDialog) {
         var newCollectionName by remember { mutableStateOf("") }
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { viewModel.showCreateDialog = false },
             title = { Text("Create collection") },
             text = {
@@ -389,5 +391,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                 viewModel = viewModel,
                 onDismiss = { viewModel.showBulkEditSnippetsDialog = false }
             )
+        }
+        }
         }
     }

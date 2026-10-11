@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.MainTopBar
 import com.android.snippets.ui.components.LargeMainTopBar
+import com.android.snippets.ui.components.BlurredAlertDialog
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.ui.platform.LocalContext
 import com.android.snippets.viewmodel.SnippetsViewModel
@@ -407,7 +408,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
 
     if (showActionDialogForSnippet != null) {
         val snippet = showActionDialogForSnippet!!
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { showActionDialogForSnippet = null },
             title = { Text("Add snippet '$snippet'") },
             text = { Text("Where would you like to add this snippet?") },
@@ -445,7 +446,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                 com.android.snippets.model.Photo(uriString = "", locationLink = location)
             ) ?: location
         }
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { showActionDialogForLocation = null },
             title = { Text("Add location '$cleanName'") },
             text = { Text("Where would you like to add this location?") },
@@ -476,7 +477,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
 
     if (showCustomSnippetDialog) {
         var customText by remember { mutableStateOf("") }
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { showCustomSnippetDialog = false },
             title = { Text("Create Custom Snippet") },
             text = {
@@ -523,7 +524,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
 
     if (showCustomLocationDialog) {
         var customLocationText by remember { mutableStateOf("") }
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { showCustomLocationDialog = false },
             title = { Text("Add Location to Photos") },
             text = {
@@ -567,7 +568,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
 
     if (showActionDialogForRating != null) {
         val rating = showActionDialogForRating!!
-        AlertDialog(
+        BlurredAlertDialog(
             onDismissRequest = { showActionDialogForRating = null },
             title = { Text(if (rating == 1) "Add 1 Star rating" else "Add $rating Stars rating") },
             text = { Text("Where would you like to add this rating?") },

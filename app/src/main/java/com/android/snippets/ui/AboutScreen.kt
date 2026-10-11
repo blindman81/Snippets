@@ -249,7 +249,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
 
 @Composable
 fun LicenseDialog(onDismiss: () -> Unit) {
-    AlertDialog(
+    BlurredAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) {

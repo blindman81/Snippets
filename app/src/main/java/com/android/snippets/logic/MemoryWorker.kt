@@ -36,7 +36,7 @@ import java.util.Locale
 
 /**
  * Handles memory notifications with rich metadata (day & date, favorite status,
- * star rating, location) and displays the memory image inside a 12-sided cookie polygon
+ * star rating, location) and displays the memory image inside a 9-sided cookie polygon
  * with a dimmed, blurred background in BigPictureStyle.
  */
 class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -226,7 +226,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     /**
      * Renders the memory image matching the exact Memory Screen design:
      * - Full blurred background with a 50% dark tint overlay
-     * - Centered 12-sided Cookie shape (CookiePolygon)
+     * - Centered 9-sided Cookie shape (CookiePolygon)
      * - Crisp white border around the cookie
      */
     private fun createMemoryCardBitmap(photoBitmap: Bitmap): Bitmap {
@@ -248,7 +248,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             }
             canvas.drawRect(0f, 0f, targetWidth.toFloat(), targetHeight.toFloat(), dimPaint)
 
-            // 2. Calculate dimensions for 12-sided Cookie Shape
+            // 2. Calculate dimensions for 9-sided Cookie Shape
             val cookieDiameter = targetHeight * 0.88f
             val cx = targetWidth / 2f
             val cy = targetHeight / 2f
@@ -266,7 +266,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             }
             path.transform(matrix)
 
-            // 3. Draw photo clipped to the 12-sided Cookie Shape
+            // 3. Draw photo clipped to the 9-sided Cookie Shape
             canvas.save()
             canvas.clipPath(path)
             val srcW = photoBitmap.width.toFloat()

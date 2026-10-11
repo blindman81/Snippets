@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Matrix
 import androidx.graphics.shapes.Morph
 
 enum class AppShape(val displayName: String) {
+    COOKIE_9_SIDED("9-sided cookie"),
     COOKIE_12_SIDED("12-sided cookie"),
     COOKIE_4_SIDED("4-sided cookie"),
     VERY_SUNNY("Very sunny"),
@@ -28,7 +29,7 @@ enum class AppShape(val displayName: String) {
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-val CookiePolygon: RoundedPolygon = MaterialShapes.Cookie12Sided
+val CookiePolygon: RoundedPolygon = MaterialShapes.Cookie9Sided
 
 val CookieShape = RoundedPolygonShape(CookiePolygon)
 
@@ -59,21 +60,21 @@ class RoundedPolygonShape(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val CookieHoldMorphPolygons: List<RoundedPolygon> by lazy {
-    val pentagonMatrix = android.graphics.Matrix().apply { postRotate(180f) }
+    val pentagonMatrix = android.graphics.Matrix().apply { postRotate(270f) }
     val alignedPentagon = MaterialShapes.Pentagon.transformed { x, y ->
         val pts = floatArrayOf(x, y)
         pentagonMatrix.mapPoints(pts)
         androidx.graphics.shapes.TransformResult(pts[0], pts[1])
     }
     listOf(
-        MaterialShapes.Cookie12Sided,
-        MaterialShapes.Pill,
+        MaterialShapes.Cookie9Sided,
         alignedPentagon,
-        MaterialShapes.Cookie12Sided,
+        MaterialShapes.Pill,
+        MaterialShapes.SoftBurst,
         MaterialShapes.Cookie4Sided,
-        MaterialShapes.VerySunny,
         MaterialShapes.Oval,
-        MaterialShapes.Cookie12Sided
+        MaterialShapes.VerySunny,
+        MaterialShapes.Cookie9Sided
     )
 }
 
@@ -81,6 +82,13 @@ val CookieHoldMorphPolygons: List<RoundedPolygon> by lazy {
 val CookieHoldMorphs: List<Morph> by lazy {
     val polygons = CookieHoldMorphPolygons
     (0 until polygons.size - 1).map { Morph(polygons[it].normalized(), polygons[it + 1].normalized()) }
+}
+
+private val ReferenceShapeBounds: android.graphics.RectF by lazy {
+    val path = CookieHoldMorphPolygons[0].normalized().toPath()
+    val bounds = android.graphics.RectF()
+    path.computeBounds(bounds, true)
+    bounds
 }
 
 class MorphSequenceShape(
@@ -102,25 +110,23 @@ class MorphSequenceShape(
         val fraction = (normalized - index).coerceIn(0f, 1f)
 
         val androidPath = morphs[index].toPath(fraction)
-        val bounds = android.graphics.RectF()
-        androidPath.computeBounds(bounds, true)
 
-        val pathCenterX = bounds.centerX()
-        val pathCenterY = bounds.centerY()
+        val refCenterX = ReferenceShapeBounds.centerX()
+        val refCenterY = ReferenceShapeBounds.centerY()
+        val maxDim = maxOf(ReferenceShapeBounds.width(), ReferenceShapeBounds.height())
 
         // 1. Center at origin and rotate by progress * rotationPerMorph (90 deg clockwise per morph)
         val rotationDegrees = progress * rotationPerMorph
         val rotateMatrix = android.graphics.Matrix()
-        rotateMatrix.postTranslate(-pathCenterX, -pathCenterY)
+        rotateMatrix.postTranslate(-refCenterX, -refCenterY)
         rotateMatrix.postRotate(rotationDegrees)
         androidPath.transform(rotateMatrix)
 
-        // 2. Fixed uniform scale based on container size:
-        // Polygons are normalized (radius <= 1f). Using a constant scale factor prevents
-        // the shape from pulsing/zooming in and out as it turns and morphs, while guaranteeing
-        // that corners and tips are never cut off.
-        val baseSize = minOf(size.width, size.height)
-        val scale = (baseSize / 2f) * 0.88f
+        // 2. Uniform, constant scale factor based on reference normalized cookie shape dimensions
+        // Using a constant scale factor completely prevents shapes from pulsing/zooming during morphing.
+        val scale = if (maxDim > 0f) {
+            (minOf(size.width, size.height) / maxDim) * 0.95f
+        } else 1f
 
         // 3. Scale and center perfectly within the available container size
         val targetCenterX = size.width / 2f
@@ -137,7 +143,8 @@ class MorphSequenceShape(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun AppShape.toComposeShape(): Shape {
     return when (this) {
-        AppShape.COOKIE_12_SIDED -> RoundedPolygonShape(CookiePolygon)
+        AppShape.COOKIE_9_SIDED -> RoundedPolygonShape(CookiePolygon)
+        AppShape.COOKIE_12_SIDED -> RoundedPolygonShape(MaterialShapes.Cookie12Sided)
         AppShape.COOKIE_4_SIDED -> RoundedPolygonShape(MaterialShapes.Cookie4Sided)
         AppShape.VERY_SUNNY -> RoundedPolygonShape(MaterialShapes.VerySunny)
         AppShape.PILL -> RoundedPolygonShape(MaterialShapes.Pill)
@@ -149,7 +156,8 @@ fun AppShape.toComposeShape(): Shape {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun AppShape.getNormalizedPolygon(): RoundedPolygon {
     return when (this) {
-        AppShape.COOKIE_12_SIDED -> CookiePolygon
+        AppShape.COOKIE_9_SIDED -> CookiePolygon
+        AppShape.COOKIE_12_SIDED -> MaterialShapes.Cookie12Sided
         AppShape.COOKIE_4_SIDED -> MaterialShapes.Cookie4Sided
         AppShape.VERY_SUNNY -> MaterialShapes.VerySunny
         AppShape.PILL -> MaterialShapes.Pill
@@ -159,7 +167,7 @@ fun AppShape.getNormalizedPolygon(): RoundedPolygon {
 }
 
 val LocalAppShape = staticCompositionLocalOf<Shape> { RoundedPolygonShape(CookiePolygon) }
-val LocalAppShapeType = staticCompositionLocalOf<AppShape> { AppShape.COOKIE_12_SIDED }
+val LocalAppShapeType = staticCompositionLocalOf<AppShape> { AppShape.COOKIE_9_SIDED }
 
 class PolygonDrawable(
     private val polygon: RoundedPolygon,

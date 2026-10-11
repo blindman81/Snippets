@@ -230,7 +230,7 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                             )
                         }
                 ) {
-                    // Spinning 12-Sided Cookie Background
+                    // Spinning 9-Sided Cookie Background
                     Box(
                         modifier = Modifier
                             .fillMaxSize()

@@ -1,5 +1,6 @@
 package com.android.snippets.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -7,9 +8,9 @@ import com.android.snippets.ui.components.LoadingIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 
 /**
  * Global Busy Overlay used for bulk operations and imports.
@@ -18,11 +19,14 @@ import androidx.compose.ui.window.DialogProperties
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BusyOverlay() {
-    Dialog(
-        onDismissRequest = {},
-        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(9999f)
+            .background(Color.Black.copy(alpha = 0.32f)),
+        contentAlignment = Alignment.Center
     ) {
-        Surface(
+        BlurredSurface(
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 8.dp

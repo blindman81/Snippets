@@ -357,7 +357,7 @@ fun CollectionIcon(
             
             if (animMode == "icon button") {
                 when (icon) {
-                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
+                    AppShape.COOKIE_9_SIDED, AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
                         rotationZ = infiniteTransition.animateFloat(
                             initialValue = 0f,
                             targetValue = 360f,
@@ -384,7 +384,7 @@ fun CollectionIcon(
                 }
             } else {
                 when (icon) {
-                    AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
+                    AppShape.COOKIE_9_SIDED, AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
                         rotationZ = infiniteTransition.animateFloat(
                             initialValue = 0f,
                             targetValue = 360f,
