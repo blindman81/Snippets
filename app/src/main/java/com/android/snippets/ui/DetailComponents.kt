@@ -133,11 +133,7 @@ fun DetailTopBar(
                 )
             }
 
-            val isEatlistPhoto = photo.collections.contains("Eatlist") || viewModel.libraryCurrentTab == "Eatlist"
-
-            if (isEatlistPhoto) {
-                MealDropdownChip()
-            } else if (showAddButton) SplitButton(
+            if (showAddButton) SplitButton(
                 primaryIcon = Icons.Default.Add,
                 contentDescription = "Add snippets",
                 onPrimaryClick = {
@@ -714,7 +710,7 @@ fun AddSnippetsModal(
                                 BlurredSurface(
                                     shape = currentShape,
                                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                    alpha = if (isSelected) 1f else HazeDefaults.tintAlpha,
+                                    alpha = if (isSelected) 1f else 0.65f,
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     ToggleButton(

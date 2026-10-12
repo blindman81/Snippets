@@ -587,9 +587,10 @@ fun PhotoMasonryItem(
                         )
 
                         if (isSelected) {
+                            val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
                             Box(
                                 modifier = aspectModifier
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+                                    .background(wallpaperTint.copy(alpha = 0.28f))
                             )
                         }
 
@@ -1056,10 +1057,11 @@ fun PhotoListItem(
                 )
 
                 if (isSelected) {
+                    val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+                            .background(wallpaperTint.copy(alpha = 0.28f))
                     )
                 }
 
@@ -1476,10 +1478,11 @@ fun PhotoCardListItem(
                                     )
 
                                     if (isSelected) {
+                                        val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+                                                .background(wallpaperTint.copy(alpha = 0.28f))
                                         )
                                     }
 
@@ -1677,10 +1680,11 @@ fun PhotoCardListItem(
                                 )
 
                                 if (isSelected) {
+                                    val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+                                            .background(wallpaperTint.copy(alpha = 0.28f))
                                     )
                                 }
 
@@ -1866,6 +1870,9 @@ fun DynamicCardContainer(
     position: CardPosition = CardPosition.Single,
     isSelected: Boolean = false,
     containerColor: Color? = null,
+    useBlur: Boolean = false,
+    alpha: Float = 0.55f,
+    hazeState: dev.chrisbanes.haze.HazeState? = LocalHazeState.current,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
@@ -1909,43 +1916,59 @@ fun DynamicCardContainer(
         label = "scale"
     )
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(
-                start = 12.dp,
-                end = 12.dp,
-                top = if (position == CardPosition.Middle || position == CardPosition.Last) 0.dp else 2.dp,
-                bottom = if (position == CardPosition.First || position == CardPosition.Middle) 0.dp else 2.dp
-            )
-            .graphicsLayer {
-                scaleX = animatedScale
-                scaleY = animatedScale
-            }
-            .clip(shape)
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = onClick != null || onLongClick != null,
-                onClick = {
-                    onClick?.let {
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        it.invoke()
-                    }
-                },
-                onLongClick = {
-                    onLongClick?.let {
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        it.invoke()
-                    }
+    val baseColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else (containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest)
+
+    val containerModifier = modifier
+        .fillMaxWidth()
+        .padding(
+            start = 12.dp,
+            end = 12.dp,
+            top = if (position == CardPosition.Middle || position == CardPosition.Last) 0.dp else 2.dp,
+            bottom = if (position == CardPosition.First || position == CardPosition.Middle) 0.dp else 2.dp
+        )
+        .graphicsLayer {
+            scaleX = animatedScale
+            scaleY = animatedScale
+        }
+        .clip(shape)
+        .combinedClickable(
+            interactionSource = interactionSource,
+            indication = null,
+            enabled = onClick != null || onLongClick != null,
+            onClick = {
+                onClick?.let {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    it.invoke()
                 }
-            ),
-        shape = shape,
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else (containerColor ?: MaterialTheme.colorScheme.surfaceContainerHighest),
-        shadowElevation = if (isSelected) 6.dp else 1.dp,
-        border = null
-    ) {
-        content()
+            },
+            onLongClick = {
+                onLongClick?.let {
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    it.invoke()
+                }
+            }
+        )
+
+    if (useBlur) {
+        BlurredSurface(
+            modifier = containerModifier,
+            shape = shape,
+            color = baseColor,
+            alpha = alpha,
+            hazeState = hazeState
+        ) {
+            content()
+        }
+    } else {
+        Surface(
+            modifier = containerModifier,
+            shape = shape,
+            color = baseColor,
+            shadowElevation = if (isSelected) 6.dp else 1.dp,
+            border = null
+        ) {
+            content()
+        }
     }
 }
 

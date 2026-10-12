@@ -605,7 +605,7 @@ fun LibraryScreen(
                                   Box(
                                       modifier = Modifier
                                           .fillMaxWidth()
-                                          .height(statusBarTop + 14.dp)
+                                          .height(statusBarTop)
                                           .align(Alignment.TopCenter)
                                           .graphicsLayer { alpha = statusBarBlurAlpha }
                                           .then(
@@ -1576,6 +1576,8 @@ fun LibraryScreen(
                                         }
                                         DynamicCardContainer(
                                             position = cardPos,
+                                            useBlur = true,
+                                            alpha = 0.55f,
                                             onClick = { option.action() },
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
@@ -1751,7 +1753,7 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
             BlurredSurface(
                 shape = currentShape,
                 color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                alpha = if (checked) 1f else HazeDefaults.tintAlpha,
+                alpha = if (checked) 1f else 0.65f,
                 modifier = Modifier.weight(animatedWeight)
             ) {
                 ToggleButton(
@@ -1860,21 +1862,19 @@ private fun ViewOptionItem(
                             this.scaleY = scaleY.value
                         }
                         .clip(shape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                        .background(MaterialTheme.colorScheme.primary)
+                )
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
             } else {
                 BlurredSurface(
                     shape = shape,
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    alpha = HazeDefaults.tintAlpha,
+                    alpha = 0.65f,
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
@@ -1887,14 +1887,15 @@ private fun ViewOptionItem(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        // Background surface blurred
                     }
                 }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
         

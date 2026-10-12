@@ -167,7 +167,7 @@ class MainActivity : ComponentActivity() {
                                     } else if (viewModel.curatedMemories.isNotEmpty()) {
                                         viewModel.openMemory(0)
                                     } else {
-                                        photos.firstOrNull { !it.collections.contains("Eatlist") }?.let {
+                                        photos.firstOrNull()?.let {
                                             viewModel.openMemoryForPhoto(it.id)
                                         }
                                     }
@@ -182,10 +182,9 @@ class MainActivity : ComponentActivity() {
                             val sharedLink = pendingSharedText
                             androidx.compose.runtime.LaunchedEffect(shareToken, viewModel.isInitialLoading) {
                                 if (!viewModel.isInitialLoading && shareToken != 0L && sharedUri != null) {
-                                    viewModel.updateShowEatlist(true)
-                                    viewModel.addPhotoToCollection(sharedUri, "Eatlist", locationLink = sharedLink)
+                                    viewModel.addPhotoToLibrary(sharedUri, locationLink = sharedLink)
                                     viewModel.currentScreen = com.android.snippets.viewmodel.Screen.Library
-                                    viewModel.libraryCurrentTab = "Eatlist"
+                                    viewModel.libraryCurrentTab = "Library"
                                     
                                     pendingShareToken = 0L
                                     pendingSharedImageUri = null

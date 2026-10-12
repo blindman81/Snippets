@@ -44,25 +44,8 @@ object Motion {
         modifier: Modifier = Modifier,
         content: @Composable () -> Unit
     ) {
-        val scale = remember { Animatable(0.92f) }
-        val offsetY = remember { Animatable(48f) }
-        val alpha = remember { Animatable(0.6f) }
-
-        LaunchedEffect(Unit) {
-            launch { scale.animateTo(1f, SheetPopSpring) }
-            launch { offsetY.animateTo(0f, SheetPopSpring) }
-            launch { alpha.animateTo(1f, BouncySpring) }
-        }
-
         Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = scale.value
-                    scaleY = scale.value
-                    translationY = offsetY.value
-                    this.alpha = alpha.value
-                }
+            modifier = modifier.fillMaxWidth()
         ) {
             content()
         }

@@ -340,30 +340,12 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     view.performHapticFeedback(if (!viewModel.showCollectionName) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
                     viewModel.updateShowCollectionName(!viewModel.showCollectionName) 
                 },
-                position = CardPosition.First,
+                position = CardPosition.Single,
                 trailingContent = {
                     PremiumSwitch(
                         checked = viewModel.showCollectionName,
                         onCheckedChange = { 
                             viewModel.updateShowCollectionName(it) 
-                        }
-                    )
-                }
-            )
-
-            SettingsCardItem(
-                icon = Icons.Default.Collections,
-                title = "Show Eatlist",
-                onClick = { 
-                    view.performHapticFeedback(if (!viewModel.showEatlist) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                    viewModel.updateShowEatlist(!viewModel.showEatlist) 
-                },
-                position = CardPosition.Last,
-                trailingContent = {
-                    PremiumSwitch(
-                        checked = viewModel.showEatlist,
-                        onCheckedChange = { 
-                            viewModel.updateShowEatlist(it) 
                         }
                     )
                 }

@@ -137,8 +137,7 @@ fun DetailScreen(
         } else {
             when (viewModel.libraryCurrentTab) {
                 "Library" -> {
-                    val filtered = viewModel.filteredPhotos.filter { !it.collections.contains("Eatlist") }
-                    viewModel.sortPhotos(filtered, viewModel.getPhotoSortTypeFor("Library"))
+                    viewModel.sortPhotos(viewModel.filteredPhotos, viewModel.getPhotoSortTypeFor("Library"))
                 }
                 "Favorites" -> viewModel.filteredFavoritesPhotos.values.flatten()
                 else -> {
@@ -291,7 +290,7 @@ fun DetailScreen(
                         isScrolled = isScrolled,
                         onPhotoThumbnailClick = { scrollToTopActions[pagerState.currentPage]?.invoke() },
                         hasSnippets = hasSnippetsCurrent,
-                        showAddButton = viewModel.libraryCurrentTab != "Eatlist",
+                        showAddButton = true,
                         onAdd = { showAddModal = true },
                         onDownload = { 
                             viewModel.downloadPhotoCard(context, photo, true, android.graphics.Color.BLACK) 

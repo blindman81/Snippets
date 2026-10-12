@@ -7,12 +7,19 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -249,7 +256,10 @@ fun BlurredModalBottomSheet(
             visible = !isDismissing,
             enter = slideInVertically(
                 initialOffsetY = { it },
-                animationSpec = tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
             ),
             exit = slideOutVertically(
                 targetOffsetY = { it },
@@ -258,6 +268,56 @@ fun BlurredModalBottomSheet(
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             var dragOffsetY by remember { mutableFloatStateOf(0f) }
+            val animatedDragOffsetY by animateFloatAsState(
+                targetValue = dragOffsetY,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "sheet_drag_offset"
+            )
+
+            val nestedScrollConnection = remember {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        if (dragOffsetY > 0f && available.y != 0f) {
+                            val newOffset = (dragOffsetY + available.y).coerceAtLeast(0f)
+                            val consumedY = newOffset - dragOffsetY
+                            dragOffsetY = newOffset
+                            return Offset(0f, consumedY)
+                        }
+                        return Offset.Zero
+                    }
+
+                    override fun onPostScroll(
+                        consumed: Offset,
+                        available: Offset,
+                        source: NestedScrollSource
+                    ): Offset {
+                        if (available.y > 0f) {
+                            dragOffsetY = (dragOffsetY + available.y).coerceAtLeast(0f)
+                            return Offset(0f, available.y)
+                        }
+                        return Offset.Zero
+                    }
+
+                    override suspend fun onPreFling(available: Velocity): Velocity {
+                        if (dragOffsetY > 160f) {
+                            triggerDismiss()
+                            return available
+                        } else {
+                            dragOffsetY = 0f
+                        }
+                        return Velocity.Zero
+                    }
+
+                    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                        if (dragOffsetY > 160f || available.y > 600f) {
+                            triggerDismiss()
+                        } else {
+                            dragOffsetY = 0f
+                        }
+                        return Velocity.Zero
+                    }
+                }
+            }
 
             BlurredSurface(
                 shape = shape,
@@ -270,7 +330,8 @@ fun BlurredModalBottomSheet(
                 monetTintWeight = 0.28f,
                 modifier = modifier
                     .fillMaxWidth()
-                    .offset { IntOffset(0, dragOffsetY.roundToInt()) }
+                    .offset { IntOffset(0, animatedDragOffsetY.roundToInt()) }
+                    .nestedScroll(nestedScrollConnection)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onDragEnd = {

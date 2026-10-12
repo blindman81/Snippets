@@ -5,6 +5,9 @@ import dev.chrisbanes.haze.HazeDefaults
 
 import android.view.HapticFeedbackConstants
 import android.view.View
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -212,16 +215,25 @@ private fun ButtonGroupScope.menuItem(
 ) {
     customItem(
         buttonGroupContent = {
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val cornerRadius by animateDpAsState(
+                targetValue = if (isPressed) 12.dp else 24.dp,
+                label = "menu_item_shape"
+            )
+            val currentShape = RoundedCornerShape(cornerRadius)
+
             BlurredSurface(
-                shape = CircleShape,
+                shape = currentShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                alpha = HazeDefaults.tintAlpha,
+                alpha = 0.65f,
                 modifier = Modifier
                     .weight(weight)
                     .height(48.dp)
             ) {
                 Button(
                     onClick = onClick,
+                    interactionSource = interactionSource,
                     modifier = Modifier.fillMaxSize(),
                     shapes = ButtonDefaults.shapes(
                         shape = CircleShape,

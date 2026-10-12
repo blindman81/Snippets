@@ -188,10 +188,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                                             photoPickerLauncher.launch("image/*")
                                         }
                                         "Favorites" -> viewModel.startCollectionAssignment("Favorites")
-                                        "Eatlist" -> {
-                                            pendingCollectionForPicker = "Eatlist"
-                                            photoPickerLauncher.launch("image/*")
-                                        }
                                         else -> viewModel.startCollectionAssignment(tab)
                                     }
                                 }
@@ -316,7 +312,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         if (viewModel.showBulkDeleteModal) {
             DeleteConfirmationModal(
                 count = viewModel.selectedPhotoIds.size,
-                isEatlist = viewModel.libraryCurrentTab == "Eatlist",
                 onDismiss = { viewModel.showBulkDeleteModal = false },
                 onConfirm = {
                     viewModel.showBulkDeleteModal = false
