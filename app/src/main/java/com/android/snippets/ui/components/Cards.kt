@@ -424,8 +424,7 @@ fun PhotoMasonryItem(
     grayOutIfViewed: Boolean = false,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
     tab: String? = null,
-    viewModel: SnippetsViewModel? = null,
-    onEatlistCheckClick: (() -> Unit)? = null
+    viewModel: SnippetsViewModel? = null
 ) {
     val isCustomPolygon = shape is com.android.snippets.ui.shapes.RoundedPolygonShape
 
@@ -507,8 +506,7 @@ fun PhotoMasonryItem(
             )
     ) {
         val hasPhoto = photo.uriString.isNotBlank()
-        val isEatlist = tab == "Eatlist"
-        val showBottomSection = !fillCard && !isEatlist && hasPhoto
+        val showBottomSection = !fillCard && hasPhoto
 
         if (!showBottomSection) {
             val finalShape = if (isPressed) RoundedCornerShape(24.dp) else RoundedCornerShape(16.dp)
@@ -925,8 +923,7 @@ fun PhotoListItem(
     isMostSnippets: Boolean = false,
     isLeastSnippets: Boolean = false,
     grayOutIfViewed: Boolean = false,
-    viewModel: SnippetsViewModel,
-    onEatlistCheckClick: (() -> Unit)? = null
+    viewModel: SnippetsViewModel
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -1102,20 +1099,18 @@ fun PhotoListItem(
                     .align(Alignment.CenterVertically)
             ) {
                 if (photo.snippets.isEmpty()) {
-                    if (tab != "Eatlist") {
-                        Surface(
-                            shape = CookieShape,
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_text_snippet_off),
-                                    contentDescription = "No snippets",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
+                    Surface(
+                        shape = CookieShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_text_snippet_off),
+                                contentDescription = "No snippets",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 } else {
@@ -1324,8 +1319,7 @@ fun PhotoCardListItem(
     isMostSnippets: Boolean = false,
     isLeastSnippets: Boolean = false,
     grayOutIfViewed: Boolean = false,
-    viewModel: SnippetsViewModel,
-    onEatlistCheckClick: (() -> Unit)? = null
+    viewModel: SnippetsViewModel
 ) {
     val saturation by animateFloatAsState(
         targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
@@ -1412,8 +1406,7 @@ fun PhotoCardListItem(
             )
     ) {
         val hasPhoto = photo.uriString.isNotBlank()
-        val isEatlist = tab == "Eatlist"
-        val showBottomCard = !isEatlist && hasPhoto
+        val showBottomCard = hasPhoto
 
         Column(
             modifier = Modifier
@@ -1429,142 +1422,12 @@ fun PhotoCardListItem(
                     color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else blockColor,
                     shadowElevation = if (isSelected) 4.dp else 1.dp
                 ) {
-                    if (isEatlist) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            androidx.compose.foundation.layout.BoxWithConstraints(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val photoClipShape = finalShape
-                                Box(
-                                    modifier = Modifier.fillMaxSize().then(
-                                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                                            with(sharedTransitionScope) {
-                                                Modifier.sharedBounds(
-                                                    rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
-                                                    animatedVisibilityScope = animatedVisibilityScope,
-                                                    boundsTransform = { _, _ ->
-                                                        spring()
-                                                    },
-                                                    resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
-                                                        contentScale = ContentScale.Crop,
-                                                        alignment = Alignment.Center
-                                                    ),
-                                                    clipInOverlayDuringTransition = OverlayClip(photoClipShape)
-                                                )
-                                            }
-                                        } else {
-                                            Modifier
-                                        }
-                                    ).clip(photoClipShape)
-                                ) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(photo.uriString)
-                                            .crossfade(true)
-                                            .memoryCacheKey(photo.uriString)
-                                            .build(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                                        ),
-                                        modifier = Modifier.fillMaxSize().then(
-                                            if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
-                                        )
-                                    )
-
-                                    if (isSelected) {
-                                        val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(wallpaperTint.copy(alpha = 0.28f))
-                                        )
-                                    }
-
-                                    SelectedPhotoIndicator(
-                                        isSelected = isSelected,
-                                        selectionMode = selectionMode,
-                                        count = viewModel.selectedPhotoIds.indexOf(photo.id) + 1,
-                                        modifier = Modifier.align(Alignment.Center)
-                                    )
-                                }
-                            }
-
-                            val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (isDark) Color.White else Color.Black
-                            val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
-
-                            if (photo.rating > 0) {
-                                Surface(
-                                    color = iconContainerColor.copy(alpha = 0.9f),
-                                    shape = CircleShape,
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .padding(8.dp)
-                                        .size(28.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_star_rating),
-                                            contentDescription = null,
-                                            tint = iconColor,
-                                            modifier = Modifier.fillMaxSize().padding(4.dp)
-                                        )
-                                        Text(
-                                            text = photo.rating.toString(),
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
-                                            color = iconContainerColor,
-                                            modifier = Modifier.padding(top = 1.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (photo.isFavorite && showFavoriteIcon) {
-                                Surface(
-                                    color = iconContainerColor.copy(alpha = 0.9f),
-                                    shape = CircleShape,
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(8.dp)
-                                        .size(28.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.Favorite,
-                                            contentDescription = "Favorite",
-                                            tint = iconColor,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (!photo.name.isNullOrBlank()) {
-                                ExpandableCardPillIcon(
-                                    icon = Icons.AutoMirrored.Filled.Label,
-                                    text = photo.name,
-                                    contentDescription = "Photo name",
-                                    iconColor = iconColor,
-                                    containerColor = iconContainerColor,
-                                    modifier = Modifier.align(Alignment.BottomStart),
-                                    defaultExpanded = viewModel.expandPhotoNameIcon,
-                                    key = "${photo.id}_name"
-                                )
-                            }
-
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                             if (photo.snippets.isEmpty()) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_text_snippet_off),
@@ -1759,22 +1622,20 @@ fun PhotoCardListItem(
                             )
                         }
 
-                        if (!photo.collections.contains("Eatlist")) {
-                            val formattedDate = remember(photo.date) {
-                                SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
-                            }
-                            ExpandableCardPillIcon(
-                                icon = Icons.Default.CalendarMonth,
-                                text = formattedDate,
-                                contentDescription = "Photo date",
-                                iconColor = iconColor,
-                                containerColor = iconContainerColor,
-                                modifier = Modifier.align(Alignment.BottomEnd),
-                                alignEnd = true,
-                                defaultExpanded = viewModel.expandDayAndDateIcon,
-                                key = "${photo.id}_date"
-                            )
+                        val formattedDate = remember(photo.date) {
+                            SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
                         }
+                        ExpandableCardPillIcon(
+                            icon = Icons.Default.CalendarMonth,
+                            text = formattedDate,
+                            contentDescription = "Photo date",
+                            iconColor = iconColor,
+                            containerColor = iconContainerColor,
+                            modifier = Modifier.align(Alignment.BottomEnd),
+                            alignEnd = true,
+                            defaultExpanded = viewModel.expandDayAndDateIcon,
+                            key = "${photo.id}_date"
+                        )
                     }
                 }
 

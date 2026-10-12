@@ -760,22 +760,19 @@ fun LibraryScreen(
                                                                // Calculate target width for spring animation & press compression accommodating wide font
                                                                val showLabel = viewModel.showCollectionName && isSelected
                                                                val textExtra = if (showLabel) (tabName.length * 10f).dp else 0.dp
-                                                               val baseSelectedWidth = if (showLabel) (88.dp + textExtra).coerceAtLeast(136.dp) else 64.dp
-                                                               val baseUnselectedWidth = 64.dp
+                                                               val baseSelectedWidth = if (showLabel) (88.dp + textExtra).coerceAtLeast(136.dp) else 76.dp
+                                                               val baseUnselectedWidth = 56.dp
 
                                                                val targetWidth = when {
-                                                                   isSelected && isPressed -> if (showLabel) baseSelectedWidth - 18.dp else 52.dp
+                                                                   isSelected && isPressed -> if (showLabel) baseSelectedWidth - 8.dp else 84.dp
                                                                    isSelected -> baseSelectedWidth
-                                                                   isPressed -> 52.dp
+                                                                   isPressed -> 64.dp
                                                                    else -> baseUnselectedWidth
                                                                }
 
                                                                val animatedWidth by animateDpAsState(
                                                                    targetValue = targetWidth,
-                                                                   animationSpec = androidx.compose.animation.core.spring(
-                                                                       dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
-                                                                       stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                                                   ),
+                                                                   animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
                                                                    label = "tabWidth_$tabName"
                                                                )
                                                                 val shapes = when {

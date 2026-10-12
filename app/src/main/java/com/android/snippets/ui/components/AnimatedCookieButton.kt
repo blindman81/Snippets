@@ -271,7 +271,7 @@ private fun AnimatedCookieButtonImpl(
     LaunchedEffect(isHolding) {
         if (isHolding) {
             isHoldCompleted = false
-            val stepSpec = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 250f)
+            val stepSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 200f, visibilityThreshold = 0.02f)
             val totalSteps = CookieHoldMorphs.size
             for (step in 1..totalSteps) {
                 morphProgress.animateTo(

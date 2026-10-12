@@ -64,7 +64,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
     // 2. Most photographed location
     val mostPhotographedLocationEntry = remember(photos, context) {
-        photos.filter { !it.collections.contains("Eatlist") }.mapNotNull { photo ->
+        photos.mapNotNull { photo ->
             val loc = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)?.trim()
             if (!loc.isNullOrEmpty()) loc else null
         }.groupingBy { it }.eachCount().maxByOrNull { it.value }
@@ -313,15 +313,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     position = CardPosition.Middle
                 )
 
-                // 4b. Food eaten card
-                val foodEatenCount = viewModel.foodEatenCount
-                InsightCard(
-                    icon = ImageVector.vectorResource(id = R.drawable.ic_eatlist),
-                    title = "Food eaten",
-                    value = "$foodEatenCount ${if (foodEatenCount == 1) "item" else "items"}",
-                    subtitle = "Items marked as eaten and deleted",
-                    position = CardPosition.Middle
-                )
+
 
                 // 6. Average snippets card
                 InsightCard(
@@ -459,7 +451,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
             )
 
             val (topLocations, locationMaxCount) = remember(photos, context) {
-                val counts = photos.filter { !it.collections.contains("Eatlist") }.mapNotNull { photo ->
+                val counts = photos.mapNotNull { photo ->
                     val loc = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)?.trim()
                     if (!loc.isNullOrEmpty()) loc else null
                 }.groupingBy { it }.eachCount()

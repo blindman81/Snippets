@@ -371,7 +371,6 @@ fun DetailScreen(
                                         }
                                     }
                                 },
-                                onRemoveEatlist = { showDeleteModal = true },
                                 onEditLink = { showLinkModal = true }
                             )
                         } else {
@@ -411,7 +410,6 @@ fun DetailScreen(
                                         }
                                     }
                                 },
-                                onRemoveEatlist = { showDeleteModal = true },
                                 onEditLink = { showLinkModal = true },
                                 onEditSnippets = { showCurrentSnippetsModal = true }
                             )
@@ -459,10 +457,8 @@ fun DetailScreen(
 
 
     if (showDeleteModal) {
-        val isEatlist = photo.collections.contains("Eatlist") || viewModel.libraryCurrentTab == "Eatlist"
         DeleteConfirmationModal(
             hasPublicPhotos = photo.isPublic,
-            isEatlist = isEatlist,
             onDismiss = { showDeleteModal = false },
             onConfirm = { unpublish -> 
                 showDeleteModal = false
@@ -511,7 +507,6 @@ fun DetailScreen(
 fun DeleteConfirmationModal(
     count: Int = 1,
     hasPublicPhotos: Boolean = false,
-    isEatlist: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (Boolean) -> Unit
 ) {
@@ -531,11 +526,7 @@ fun DeleteConfirmationModal(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = if (isEatlist) {
-                        if (count > 1) "Are you sure you want to delete these photos?" else "Are you sure you want to delete this photo?"
-                    } else {
-                        if (count > 1) "Deleting these photos also removes the snippets you created for them." else "Deleting this photo also removes the snippets you created for this photo."
-                    },
+                    text = if (count > 1) "Deleting these photos also removes the snippets you created for them." else "Deleting this photo also removes the snippets you created for this photo.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -651,48 +642,12 @@ fun EmptyDetailContent(
     onBgAlphaChange: (Float) -> Unit = {},
     pageOffset: Float = 0f,
     onOpenLink: (String) -> Unit = {},
-    onEditLink: () -> Unit = {},
-    onRemoveEatlist: () -> Unit = {}
+    onEditLink: () -> Unit = {}
 ) {
-    val isEatlist = photo.collections.contains("Eatlist") || (viewModel != null && viewModel.libraryCurrentTab == "Eatlist")
     SwipeToDismissContainer(
         onDismiss = onDismissRequest,
         onUiAlphaChange = onUiAlphaChange,
-        onBgAlphaChange = onBgAlphaChange,
-        overlayContent = { _, uiAlphaProvider ->
-            if (isEatlist) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .then(
-                                if (animatedVisibilityScope != null) {
-                                    with(animatedVisibilityScope) {
-                                        val motionScheme = MaterialTheme.motionScheme
-                                        Modifier.animateEnterExit(
-                                            enter = fadeIn(animationSpec = motionScheme.fastEffectsSpec()) + slideInVertically(animationSpec = motionScheme.fastSpatialSpec()) { it / 2 },
-                                            exit = fadeOut(animationSpec = motionScheme.fastEffectsSpec()) + slideOutVertically(animationSpec = motionScheme.fastSpatialSpec()) { it / 2 }
-                                        )
-                                    }
-                                } else Modifier
-                            )
-                            .graphicsLayer { alpha = uiAlphaProvider() }
-                            .padding(bottom = 36.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        EatlistSingleListCardContainer(
-                            photo = photo,
-                            onOpenLink = onOpenLink,
-                            onEditLink = onEditLink,
-                            onRemoveEatlist = onRemoveEatlist,
-                            onAddEatlistToLibrary = { viewModel?.addEatlistPhotoToLibrary(photo.id) }
-                        )
-                    }
-                }
-            }
-        }
+        onBgAlphaChange = onBgAlphaChange
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DetailPhotoFrame(
@@ -728,10 +683,8 @@ fun SnippetsDetailContent(
     pageOffset: Float = 0f,
     onOpenLink: (String) -> Unit = {},
     onEditLink: () -> Unit = {},
-    onRemoveEatlist: () -> Unit = {},
     onEditSnippets: () -> Unit = {}
 ) {
-    val isEatlist = photo.collections.contains("Eatlist") || viewModel.libraryCurrentTab == "Eatlist"
     SwipeToDismissContainer(
         onDismiss = onDismissRequest,
         onUiAlphaChange = onUiAlphaChange,
@@ -765,7 +718,7 @@ fun SnippetsDetailContent(
                     val containerInteractionSource = remember { MutableInteractionSource() }
                     val isContainerPressed by containerInteractionSource.collectIsPressedAsState()
                     val containerCornerRadius by animateDpAsState(
-                        targetValue = if (isContainerPressed) 100.dp else 24.dp,
+                        targetValue = if (isContainerPressed) 20.dp else 16.dp,
                         label = "snippetContainerRadius"
                     )
 
@@ -850,16 +803,6 @@ fun SnippetsDetailContent(
                                 }
                             }
                         }
-                    }
-
-                    if (isEatlist) {
-                        EatlistSingleListCardContainer(
-                            photo = photo,
-                            onOpenLink = onOpenLink,
-                            onEditLink = onEditLink,
-                            onRemoveEatlist = onRemoveEatlist,
-                            onAddEatlistToLibrary = { viewModel.addEatlistPhotoToLibrary(photo.id) }
-                        )
                     }
                 }
             }

@@ -1085,10 +1085,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
 
-    fun addPhoto(uri: Uri, isFavorite: Boolean = false) {
+    fun addPhoto(uri: Uri, isFavorite: Boolean = false, locationLink: String? = null) {
         isAddingPhotos = true
         val targetSnippet = pendingSnippetToApply
-        val targetLocation = pendingLocationToApply
+        val targetLocation = locationLink ?: pendingLocationToApply
         val targetRating = pendingRatingToApply
         val shouldOpenDialog = pendingAddSnippetOnImport
         // Reset immediately
@@ -1217,6 +1217,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 }
             }
         }
+    }
+
+    fun addPhotoToLibrary(uri: Uri, locationLink: String? = null) {
+        addPhoto(uri = uri, locationLink = locationLink)
     }
 
     fun addPhotoToCollection(uri: Uri, collectionName: String, locationLink: String? = null) {

@@ -332,7 +332,7 @@ fun TemplatesScreen(viewModel: SnippetsViewModel) {
                                         }
                                         
                                         val photosCount = viewModel.photos.count { 
-                                            !it.collections.contains("Eatlist") && (it.locationLink == location || it.locationName == location)
+                                            it.locationLink == location || it.locationName == location
                                         }
                                         
                                         SettingsCardItem(
