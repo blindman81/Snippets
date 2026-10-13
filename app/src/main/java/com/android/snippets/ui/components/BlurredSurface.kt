@@ -270,7 +270,7 @@ fun BlurredModalBottomSheet(
             enter = slideInVertically(
                 initialOffsetY = { it },
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    dampingRatio = Spring.DampingRatioNoBouncy,
                     stiffness = Spring.StiffnessMediumLow
                 )
             ),
