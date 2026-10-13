@@ -220,10 +220,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var showCollectionName by mutableStateOf(false)
         private set
-    var showEatlist by mutableStateOf(true)
-        private set
-    var foodEatenCount by mutableStateOf(0)
-        private set
     var autoBackupSchedule by mutableStateOf("Disabled")
         private set
     var showFilterSheet by mutableStateOf(false)
@@ -479,19 +475,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         
     fun getPhotoSortTypeFor(tabName: String): PhotoSortType {
         if (tabName == "Library") return _photoSortType.value
-        val savedType = _collectionPhotoSortTypes.value[tabName] ?: PhotoSortType.DateNewest
-        if (tabName == "Eatlist") {
-            if (savedType != PhotoSortType.DateNewest && savedType != PhotoSortType.DateOldest) {
-                return PhotoSortType.DateNewest
-            }
-        }
-        return savedType
+        return _collectionPhotoSortTypes.value[tabName] ?: PhotoSortType.DateNewest
     }
 
     fun setPhotoSortTypeFor(tabName: String, sortType: PhotoSortType) {
-        if (tabName == "Eatlist" && sortType != PhotoSortType.DateNewest && sortType != PhotoSortType.DateOldest) {
-            return
-        }
         if (tabName == "Library") {
             _photoSortType.value = sortType
         } else {
@@ -769,8 +756,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
         showCollectionName = prefs.getBoolean("show_collection_name", false)
-        showEatlist = prefs.getBoolean("show_eatlist", true)
-        foodEatenCount = prefs.getInt("food_eaten_count", 0)
         autoBackupSchedule = prefs.getString("auto_backup_schedule", "Disabled") ?: "Disabled"
         scheduleAutoBackup()
 
@@ -824,12 +809,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         var changed = false
         val scheduledNotifications = mutableListOf<Pair<String, Long>>()
         val updatedPhotos = photos.map { photo ->
-            val isEatlistPhotoWithMemory = photo.collections.contains("Eatlist") && (photo.surfacedTime != 0L || photo.isViewed || photo.lastViewedTime != 0L)
-            if (shouldResurfaceMemory(photo, now) || isEatlistPhotoWithMemory) {
+            if (shouldResurfaceMemory(photo, now)) {
                 changed = true
-                if (isEatlistPhotoWithMemory) {
-                    cancelMemoryNotification(photo.id)
-                }
                 photo.copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
             } else photo
         }.toMutableList()
@@ -845,7 +826,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val needed = limit - activeCountToday
             val expiredCandidates = updatedPhotos.filter { photo ->
                 photo.isLibraryUpload &&
-                !photo.collections.contains("Eatlist") &&
                 photo.snippets.isNotEmpty() &&
                 photo.snippetsAddedTime != 0L &&
                 photo.surfacedTime != 0L &&
@@ -868,7 +848,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         val queuedCandidates = updatedPhotos.filter { photo ->
             photo.isLibraryUpload &&
-            !photo.collections.contains("Eatlist") &&
             photo.snippets.isNotEmpty() &&
             photo.snippetsAddedTime != 0L &&
             (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
@@ -1037,7 +1016,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun shouldResurfaceMemory(photo: Photo, now: Long): Boolean {
-        if (!photo.isLibraryUpload || photo.snippets.isEmpty() || photo.snippetsAddedTime == 0L || photo.collections.contains("Eatlist")) {
+        if (!photo.isLibraryUpload || photo.snippets.isEmpty() || photo.snippetsAddedTime == 0L) {
             return false
         }
         if (photo.surfacedTime != 0L && photo.surfacedTime > now) {
@@ -1917,18 +1896,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
         savePhotos()
     }
-
-    fun incrementFoodEatenCount(amount: Int = 1) {
-        if (amount <= 0) return
-        foodEatenCount += amount
-        prefs.edit().putInt("food_eaten_count", foodEatenCount).apply()
-    }
-
     fun deletePhoto(photoId: String, unpublish: Boolean = true) {
         val deletedPhoto = photos.find { it.id == photoId }
-        if (deletedPhoto?.collections?.contains("Eatlist") == true) {
-            incrementFoodEatenCount(1)
-        }
         deletedPhoto?.let { deletePhotoFile(it.uriString) }
         photos = photos.filter { it.id != photoId }
         savePhotos()
@@ -1945,19 +1914,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 }
             }
         }
-    }
-
-    fun addEatlistPhotoToLibrary(photoId: String) {
-        val targetPhoto = photos.find { it.id == photoId } ?: return
-        if (!targetPhoto.collections.contains("Eatlist")) return
-        photos = photos.map { photo ->
-            if (photo.id == photoId) {
-                photo.copy(collections = photo.collections - "Eatlist")
-            } else photo
-        }
-        savePhotos()
-        showSnackbar(message = "Added to library")
-        closeDetail()
     }
 
     // --- Bulk Actions ---
@@ -1982,10 +1938,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteSelectedPhotos(unpublish: Boolean = true) {
         isBusy = true
-        val eatlistCount = photos.filter { selectedPhotoIds.contains(it.id) && it.collections.contains("Eatlist") }.size
-        if (eatlistCount > 0) {
-            incrementFoodEatenCount(eatlistCount)
-        }
         photos.filter { selectedPhotoIds.contains(it.id) }.forEach { photo ->
             deletePhotoFile(photo.uriString)
         }
@@ -2231,11 +2183,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit().putBoolean("show_collection_name", show).apply()
     }
 
-    fun updateShowEatlist(show: Boolean) {
-        showEatlist = show
-        prefs.edit().putBoolean("show_eatlist", show).apply()
-    }
-
 
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
@@ -2365,9 +2312,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val c = Calendar.getInstance().apply { timeInMillis = photo.date }
             val matchesYear = c.get(Calendar.YEAR) == year
             val matchesMonth = month == null || c.get(Calendar.MONTH) == month
-            val isEatlist = photo.collections.contains("Eatlist")
             
-            val matchesPeriod = matchesYear && matchesMonth && !isEatlist
+            val matchesPeriod = matchesYear && matchesMonth
             if (matchesPeriod) {
                 if (month == null) {
                     photo.isFavorite || photo.rating >= 3
@@ -2516,7 +2462,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun openMemoryForPhoto(photoId: String) {
         val targetPhoto = photos.find { it.id == photoId } ?: return
-        if (targetPhoto.collections.contains("Eatlist")) return
         val index = curatedMemories.indexOfFirst { it.id == photoId }
         if (index != -1) {
             openMemory(index)
@@ -2570,7 +2515,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         photos.filter { photo ->
             photo.isLibraryUpload &&
-            !photo.collections.contains("Eatlist") &&
             photo.snippets.isNotEmpty() &&
             photo.snippetsAddedTime != 0L &&
             (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
@@ -2855,12 +2799,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val sort = if (separateCollectionSort && currentCollection != null) {
             getPhotoSortTypeFor(currentCollection)
         } else {
-            val globalSort = getPhotoSortTypeFor("Library")
-            if (currentCollection == "Eatlist" && globalSort != PhotoSortType.DateNewest && globalSort != PhotoSortType.DateOldest) {
-                PhotoSortType.DateNewest
-            } else {
-                globalSort
-            }
+            getPhotoSortTypeFor("Library")
         }
         
         groupPhotosByDate(source, mode, sort)
@@ -2879,7 +2818,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun getCollectionIcon(collectionName: String): Any {
-        if (collectionName == "Eatlist") return com.ln.android.snippets.R.drawable.ic_eatlist
         if (collectionName == "Favorites") return Icons.Default.Favorite
         val iconName = collectionIcons[collectionName] ?: return Icons.Default.Folder
         

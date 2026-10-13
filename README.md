@@ -8,8 +8,6 @@ A beautiful Material 3 Expressive app to write upto 10 letters of snippets to yo
 
 Relive your moments with memories that cycles photos every day.
 
-Add food to the optional eatlist tab.
-
 Rate food you eat upto 5 stars.
 
 Created with Antigravity, Codex, and Stitch (only in the early development stage).

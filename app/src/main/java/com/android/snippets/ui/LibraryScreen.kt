@@ -158,8 +158,7 @@ fun LibraryScreen(
         }
     }
     
-    var showFoodRandomizerBottomSheet by remember { mutableStateOf(false) }
-    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet || showFoodRandomizerBottomSheet
+    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet
     val allowMemorySpin = !isAnyPopupActive
     val curated = viewModel.curatedMemories
     
@@ -167,15 +166,10 @@ fun LibraryScreen(
     var renamingCollection by remember { mutableStateOf<String?>(null) }
     var deletingCollection by remember { mutableStateOf<String?>(null) }
     var draggedCollection by remember { mutableStateOf<String?>(null) }
-    var photoToDeleteFromEatlist by remember { mutableStateOf<Photo?>(null) }
     val dragOffsetAnim = remember { androidx.compose.animation.core.Animatable(0f) }
     
-    val pageTabs = remember(viewModel.userCollections, viewModel.showEatlist) {
-        if (viewModel.showEatlist) {
-            listOf("Eatlist", "Library", "Favorites") + viewModel.userCollections
-        } else {
-            listOf("Library", "Favorites") + viewModel.userCollections
-        }
+    val pageTabs = remember(viewModel.userCollections) {
+        listOf("Library", "Favorites") + viewModel.userCollections
     }
     
     val initialPage = remember(pageTabs) { pageTabs.indexOf(viewModel.libraryCurrentTab).coerceAtLeast(0) }
@@ -200,9 +194,8 @@ fun LibraryScreen(
     val filteredFlatPhotos = remember(flatPhotosRaw, currentTab, currentTabSort) {
         val filtered = flatPhotosRaw.filter { photo ->
             when (currentTab) {
-                                "Library" -> !photo.collections.contains("Eatlist")
+                "Library" -> true
                 "Favorites" -> photo.isFavorite
-                "Eatlist" -> photo.collections.contains("Eatlist")
                 else -> photo.collections.contains(currentTab)
             }
         }
@@ -369,9 +362,8 @@ fun LibraryScreen(
                         val pageFilteredPhotos = remember(flatPhotosRaw, tabForPage, tabSortType) {
                             val filtered = flatPhotosRaw.filter { photo ->
                                 when (tabForPage) {
-                                    "Library" -> !photo.collections.contains("Eatlist")
+                                    "Library" -> true
                                     "Favorites" -> photo.isFavorite
-                                    "Eatlist" -> photo.collections.contains("Eatlist")
                                     else -> photo.collections.contains(tabForPage)
                                 }
                             }
@@ -387,7 +379,6 @@ fun LibraryScreen(
                             ) {
                                 when (tabForPage) {
                                     "Favorites" -> EmptyFavoritesState()
-                                    "Eatlist"   -> EmptyEatlistState()
                                     "Library"   -> EmptyLibraryState()
                                     else        -> EmptyCollectionState()
                                 }
@@ -654,10 +645,9 @@ fun LibraryScreen(
                                                   val iconOrEmoji = when (tabName) {
                                                       "Library" -> Icons.Default.PhotoLibrary
                                                       "Favorites" -> Icons.Default.Favorite
-                                                      "Eatlist" -> com.ln.android.snippets.R.drawable.ic_eatlist
                                                       else -> viewModel.getCollectionIcon(tabName)
                                                   }
-                                                  val isSystem = tabName == "Library" || tabName == "Favorites" || tabName == "Eatlist"
+                                                  val isSystem = tabName == "Library" || tabName == "Favorites"
                                                   val customIndex = viewModel.userCollections.indexOf(tabName)
 
                                                   customItem(
@@ -1191,22 +1181,6 @@ fun LibraryScreen(
                     )
                 }
 
-                AnimatedVisibility(
-                    visible = currentTab == "Eatlist" && !viewModel.isSelectionMode && !isSearchOpen,
-                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                    exit = fadeOut() + scaleOut(targetScale = 0.8f),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .safeDrawingPadding()
-                        .padding(end = 20.dp, bottom = 128.dp)
-                        .offset(y = toolbarOffset)
-                ) {
-                    FoodRandomizerFab(
-                        onClick = {
-                            showFoodRandomizerBottomSheet = true
-                        }
-                    )
-                }
 
             if (longPressedCollection != null) {
                 BlurredModalBottomSheet(
@@ -1260,7 +1234,7 @@ fun LibraryScreen(
                             )
                         }
 
-                        val isSystemCollection = longPressedCollection == "Library" || longPressedCollection == "Favorites" || longPressedCollection == "Eatlist"
+                        val isSystemCollection = longPressedCollection == "Library" || longPressedCollection == "Favorites"
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Row(
@@ -1395,8 +1369,7 @@ fun LibraryScreen(
                                 }
                             }
 
-                            if (longPressedCollection != "Eatlist") {
-                                androidx.compose.material3.ButtonGroup(
+                            androidx.compose.material3.ButtonGroup(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 16.dp, vertical = 4.dp),
@@ -1460,7 +1433,6 @@ fun LibraryScreen(
                                         )
                                     }
                                 }
-                            }
 
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1652,42 +1624,6 @@ fun LibraryScreen(
                         }
                     )
                 }
-
-                photoToDeleteFromEatlist?.let { photo ->
-                    BlurredAlertDialog(
-                        onDismissRequest = { photoToDeleteFromEatlist = null },
-                        title = { Text("Mark as eaten and delete") },
-                        text = { Text("Are you sure you want to mark this item as eaten and delete it from Eatlist?") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    viewModel.deletePhoto(photo.id)
-                                    photoToDeleteFromEatlist = null
-                                }
-                            ) {
-                                Text("Mark as eaten", color = MaterialTheme.colorScheme.primary)
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { photoToDeleteFromEatlist = null }) {
-                                Text("Cancel")
-                            }
-                        }
-                    )
-                }
-
-                FoodRandomizerBottomSheet(
-                    show = showFoodRandomizerBottomSheet,
-                    onDismissRequest = { showFoodRandomizerBottomSheet = false },
-                    eatlistPhotos = remember(flatPhotosRaw) { flatPhotosRaw.filter { it.collections.contains("Eatlist") } },
-                    onSelectPhoto = { photo ->
-                        if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                            viewModel.activePhotoId = photo.id
-                        } else {
-                            viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
-                        }
-                    }
-                )
             }
         }
     }
