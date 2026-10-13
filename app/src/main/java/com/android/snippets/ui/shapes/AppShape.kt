@@ -84,29 +84,30 @@ val CookieHoldMorphs: List<Morph> by lazy {
     (0 until polygons.size - 1).map { Morph(polygons[it].normalized(), polygons[it + 1].normalized()) }
 }
 
-private val CookieHoldScaleFactor: Float by lazy {
-    var scaleFactor = 1f
-    val bounds = FloatArray(4)
-    val maxBounds = FloatArray(4)
-    CookieHoldMorphPolygons.forEach { polygon ->
-        polygon.calculateBounds(bounds)
-        polygon.calculateMaxBounds(maxBounds)
-        val w = bounds[2] - bounds[0]
-        val h = bounds[3] - bounds[1]
-        val maxW = maxBounds[2] - maxBounds[0]
-        val maxH = maxBounds[3] - maxBounds[1]
-        val scaleX = if (maxW > 0f) w / maxW else 1f
-        val scaleY = if (maxH > 0f) h / maxH else 1f
-        scaleFactor = minOf(scaleFactor, maxOf(scaleX, scaleY))
-    }
-    scaleFactor
+private val ReferenceShapeBounds: android.graphics.RectF by lazy {
+    val path = CookieHoldMorphPolygons[0].normalized().toPath()
+    val bounds = android.graphics.RectF()
+    path.computeBounds(bounds, true)
+    bounds
 }
 
 class MorphSequenceShape(
     val morphs: List<Morph>,
-    val progress: Float,
+    val morphIndex: Int,
+    val fraction: Float,
     val rotationPerMorph: Float = 90f
 ) : Shape {
+    constructor(
+        morphs: List<Morph>,
+        progress: Float,
+        rotationPerMorph: Float = 90f
+    ) : this(
+        morphs = morphs,
+        morphIndex = progress.toInt().coerceIn(0, (morphs.size - 1).coerceAtLeast(0)),
+        fraction = progress - progress.toInt(),
+        rotationPerMorph = rotationPerMorph
+    )
+
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
@@ -115,35 +116,41 @@ class MorphSequenceShape(
         if (morphs.isEmpty()) {
             return Outline.Rectangle(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
         }
-        val total = morphs.size
-        val normalized = ((progress % total) + total) % total
-        val index = normalized.toInt().coerceIn(0, total - 1)
-        val rawFraction = normalized - index
-        val morphFraction = rawFraction.coerceIn(0f, 1f)
+        val safeIndex = morphIndex.coerceIn(0, morphs.size - 1)
+        val morph = morphs[safeIndex]
+        val morphFraction = fraction.coerceIn(0f, 1f)
 
         // 1. Morph path at current step fraction
-        val androidPath = morphs[index].toPath(morphFraction)
+        val androidPath = morph.toPath(morphFraction)
 
-        // 2. Rotate clockwise by progress * rotationPerMorph
-        val rotationDegrees = progress * rotationPerMorph
+        // 2. Center at local origin before rotation to rotate cleanly around its center
+        val pathBounds = android.graphics.RectF()
+        androidPath.computeBounds(pathBounds, true)
+        val pathCenterX = pathBounds.centerX()
+        val pathCenterY = pathBounds.centerY()
+
+        // 3. Rotate clockwise by (safeIndex + morphFraction) * rotationPerMorph
+        val rotationDegrees = (safeIndex + morphFraction) * rotationPerMorph
         val rotateMatrix = android.graphics.Matrix()
+        rotateMatrix.postTranslate(-pathCenterX, -pathCenterY)
         rotateMatrix.postRotate(rotationDegrees)
         androidPath.transform(rotateMatrix)
 
-        // 3. Dynamic scale pulse following Material 3 Expressive LoadingIndicator:
-        // Morph squash during transition + bounce overshoot pulse at completion of each shape step
-        val morphSquash = 1f - kotlin.math.sin(morphFraction * Math.PI.toFloat()) * 0.08f
-        val bouncePulse = if (rawFraction > 1f) (rawFraction - 1f) * 0.85f else 0f
-        val pulseFactor = morphSquash + bouncePulse
+        // 4. Dynamic scale pulse following Material 3 Expressive LoadingIndicator:
+        // Morph squash during transition + bounce overshoot pulse at arrival of each shape
+        val squash = 1f - kotlin.math.sin(morphFraction * Math.PI.toFloat()) * 0.08f
+        val pulse = if (fraction > 1f) (fraction - 1f) * 0.85f else 0f
+        val pulseFactor = squash + pulse
 
-        val baseScale = (minOf(size.width, size.height) / 2f) * CookieHoldScaleFactor * 0.95f
+        val refMaxDim = maxOf(ReferenceShapeBounds.width(), ReferenceShapeBounds.height()).coerceAtLeast(0.001f)
+        val baseScale = (minOf(size.width, size.height) / refMaxDim) * 0.94f
         val finalScale = baseScale * pulseFactor
 
         val scaleMatrix = android.graphics.Matrix()
         scaleMatrix.postScale(finalScale, finalScale)
         androidPath.transform(scaleMatrix)
 
-        // 4. Center inside available size: align center with container center (M3 processPath logic)
+        // 5. Center inside available size
         val bounds = android.graphics.RectF()
         androidPath.computeBounds(bounds, true)
         androidPath.offset(size.width / 2f - bounds.centerX(), size.height / 2f - bounds.centerY())

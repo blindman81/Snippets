@@ -135,7 +135,8 @@ private fun AnimatedCookieButtonImpl(
     val rotation = remember { Animatable(0f) }
     val animScaleX = remember { Animatable(1f) }
     val animScaleY = remember { Animatable(1f) }
-    val morphProgress = remember { Animatable(0f) }
+    var morphStepIndex by remember { mutableIntStateOf(0) }
+    val stepProgress = remember { Animatable(0f) }
 
     val isActive = (isHolding && !isHoldCompleted) || isTapped
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
@@ -152,8 +153,12 @@ private fun AnimatedCookieButtonImpl(
         label = "cookie_button_content_color"
     )
 
-    val currentShape = if ((isHolding && !isHoldCompleted) || morphProgress.value > 0.001f) {
-        MorphSequenceShape(CookieHoldMorphs, morphProgress.value)
+    val currentShape = if ((isHolding && !isHoldCompleted) || stepProgress.value > 0.001f || morphStepIndex > 0) {
+        MorphSequenceShape(
+            morphs = CookieHoldMorphs,
+            morphIndex = morphStepIndex,
+            fraction = stepProgress.value
+        )
     } else {
         shape
     }
@@ -264,51 +269,44 @@ private fun AnimatedCookieButtonImpl(
 
 
     // Shape morphing while holding:
-    // Follows the official M3 Expressive shape morph implementation:
-    // Morphs smoothly between shapes with 90 degree clockwise right-turn per shape.
-    // When the last 9-sided cookie shape is reached, trigger the return animation that happens
+    // Follows the official M3 Expressive LoadingIndicator shape morph implementation:
+    // Morphs smoothly between shapes with 90 degree clockwise right-turn per shape,
+    // pulsing outward on arrival with spring overshoot bounce and haptic tick.
+    // When the last 9-sided cookie shape is reached, triggers the return animation that happens
     // when you hold off the button, returning to scale 1.0f with BouncySpring and resting on the last shape.
     LaunchedEffect(isHolding) {
         if (isHolding) {
             isHoldCompleted = false
-            val stepSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 200f, visibilityThreshold = 0.02f)
+            morphStepIndex = 0
+            stepProgress.snapTo(0f)
+            // Small debounce to ensure an intentional hold rather than an immediate tap
+            kotlinx.coroutines.delay(120L)
+            if (!isHolding) return@LaunchedEffect
+
+            val stepSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 200f, visibilityThreshold = 0.005f)
             val totalSteps = CookieHoldMorphs.size
-            for (step in 1..totalSteps) {
-                morphProgress.animateTo(
-                    targetValue = step.toFloat(),
+            for (step in 0 until totalSteps) {
+                morphStepIndex = step
+                stepProgress.snapTo(0f)
+                if (hapticOnHold) {
+                    view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
+                }
+                stepProgress.animateTo(
+                    targetValue = 1f,
                     animationSpec = stepSpec
                 )
-                if (step < totalSteps) {
-                    kotlinx.coroutines.delay(160L)
+                if (step < totalSteps - 1) {
+                    kotlinx.coroutines.delay(180L)
                 }
             }
-            // Last 9-sided cookie reached!
-            // Snap morph progress cleanly to 0 so currentShape seamlessly rests on CookieShape (9-sided cookie)
-            morphProgress.snapTo(0f)
-            // Trigger the animation that happens when you hold off the button
-            // (animates button scale back to 1.0f with BouncySpring, returns colors, goes back to place with last shape)
+            // All steps reached! Last 9-sided cookie completed!
+            stepProgress.snapTo(0f)
+            morphStepIndex = 0
+            // Trigger return animation that happens when holding off the button
             isHoldCompleted = true
         } else {
-            if (morphProgress.value > 0f) {
-                morphProgress.animateTo(
-                    targetValue = 0f,
-                    animationSpec = Motion.BouncySpring
-                )
-            }
-        }
-    }
-
-    // Haptic feedback precisely when the shape morphs to another shape
-    var lastHapticStep by remember { mutableStateOf(-1) }
-    LaunchedEffect(isHolding, morphProgress.value) {
-        if (isHolding && hapticOnHold) {
-            val currentStep = morphProgress.value.toInt()
-            if (currentStep != lastHapticStep) {
-                lastHapticStep = currentStep
-                view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
-            }
-        } else if (!isHolding) {
-            lastHapticStep = -1
+            stepProgress.snapTo(0f)
+            morphStepIndex = 0
         }
     }
 

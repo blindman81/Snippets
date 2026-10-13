@@ -3,6 +3,8 @@ package com.android.snippets.ui.components
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -27,6 +29,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -212,26 +215,36 @@ fun BlurredModalBottomSheet(
     hazeState: HazeState? = LocalHazeState.current,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    BackHandler(onBack = onDismissRequest)
-
     val coroutineScope = rememberCoroutineScope()
     var isDismissing by remember { mutableStateOf(false) }
+
+    val visibleState = remember {
+        MutableTransitionState(false).apply {
+            targetState = true
+        }
+    }
+
+    val scrimAlpha = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        scrimAlpha.animateTo(1f, animationSpec = tween(durationMillis = 250))
+    }
 
     fun triggerDismiss() {
         if (!isDismissing) {
             isDismissing = true
+            visibleState.targetState = false
             coroutineScope.launch {
-                delay(220)
+                scrimAlpha.animateTo(0f, animationSpec = tween(durationMillis = 220))
+            }
+            coroutineScope.launch {
+                delay(240)
                 onDismissRequest()
             }
         }
     }
 
-    val scrimAlpha by animateFloatAsState(
-        targetValue = if (isDismissing) 0f else 1f,
-        animationSpec = tween(durationMillis = 200),
-        label = "sheet_scrim_alpha"
-    )
+    BackHandler(enabled = !isDismissing, onBack = { triggerDismiss() })
 
     Box(
         modifier = Modifier
@@ -242,7 +255,7 @@ fun BlurredModalBottomSheet(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { this.alpha = scrimAlpha }
+                .graphicsLayer { this.alpha = scrimAlpha.value }
                 .background(scrimColor)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -253,7 +266,7 @@ fun BlurredModalBottomSheet(
 
         // Sheet content
         AnimatedVisibility(
-            visible = !isDismissing,
+            visibleState = visibleState,
             enter = slideInVertically(
                 initialOffsetY = { it },
                 animationSpec = spring(
