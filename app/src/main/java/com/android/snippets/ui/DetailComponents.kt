@@ -22,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyRow
@@ -639,7 +640,13 @@ fun AddSnippetsModal(
     var selectedStyle by remember { mutableStateOf(com.android.snippets.viewmodel.SnippetStyle.Default) }
 
     var selectedIndex by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    val options = listOf("Text", "Color", "Style")
+    val tabs = remember {
+        listOf(
+            Icons.Default.TextSnippet to "Text Snippet",
+            Icons.Default.Colorize to "Colorize",
+            Icons.Default.Style to "Style"
+        )
+    }
     
     val snippetColorsPalette = remember {
         listOf(
@@ -687,17 +694,32 @@ fun AddSnippetsModal(
                 )
 
                 ButtonGroup(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    modifier = Modifier.padding(bottom = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                     overflowIndicator = {}
                 ) {
-                    options.forEachIndexed { index, label ->
+                    tabs.forEachIndexed { index, (icon, description) ->
                         val isFirst = index == 0
-                        val isLast = index == options.size - 1
+                        val isLast = index == tabs.size - 1
                         val isSelected = selectedIndex == index
 
                         customItem(
                             buttonGroupContent = {
+                                val interactionSource = remember { MutableInteractionSource() }
+                                val isPressed by interactionSource.collectIsPressedAsState()
+
+                                val targetWidth = when {
+                                    isSelected && isPressed -> 58.dp
+                                    isSelected -> 64.dp
+                                    isPressed -> 46.dp
+                                    else -> 52.dp
+                                }
+                                val animatedWidth by animateDpAsState(
+                                    targetValue = targetWidth,
+                                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+                                    label = "tab_width_$index"
+                                )
+
                                 val shapes = when {
                                     isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                                     isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
@@ -711,7 +733,9 @@ fun AddSnippetsModal(
                                     shape = currentShape,
                                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
                                     alpha = if (isSelected) 1f else 0.65f,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier
+                                        .width(animatedWidth)
+                                        .height(40.dp)
                                 ) {
                                     ToggleButton(
                                         checked = isSelected,
@@ -719,8 +743,10 @@ fun AddSnippetsModal(
                                             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                             selectedIndex = index
                                         },
-                                        modifier = Modifier.fillMaxWidth(),
+                                        interactionSource = interactionSource,
+                                        modifier = Modifier.fillMaxSize(),
                                         shapes = shapes,
+                                        contentPadding = PaddingValues(0.dp),
                                         colors = ToggleButtonDefaults.toggleButtonColors(
                                             checkedContainerColor = Color.Transparent,
                                             checkedContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -728,22 +754,24 @@ fun AddSnippetsModal(
                                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                         )
                                     ) {
-                                        Text(
-                                            text = label,
-                                            style = if (index == selectedIndex) {
-                                                MaterialTheme.typography.labelLarge.copy(
-                                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                                                )
-                                            } else {
-                                                MaterialTheme.typography.labelLarge
-                                            }
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = description,
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
                                 }
                             },
                             menuContent = {
                                 DropdownMenuItem(
-                                    text = { Text(label) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    text = { Text(description) },
                                     onClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         selectedIndex = index

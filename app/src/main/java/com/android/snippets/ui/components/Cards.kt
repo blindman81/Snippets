@@ -1483,7 +1483,6 @@ fun PhotoCardListItem(
                             }
                         }
                     }
-                }
             } else {
                 val photoWeight = 1f
 

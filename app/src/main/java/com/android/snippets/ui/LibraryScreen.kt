@@ -505,9 +505,6 @@ fun LibraryScreen(
                                                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                                                    if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
                                                                },
-                                                               onEatlistCheckClick = {
-                                                                   photoToDeleteFromEatlist = photo
-                                                               },
                                                                sharedTransitionScope = sharedTransitionScope,
                                                                animatedVisibilityScope = animatedVisibilityScope,
                                                                modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
@@ -548,9 +545,6 @@ fun LibraryScreen(
                                                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                                                    if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
                                                                },
-                                                               onEatlistCheckClick = {
-                                                                   photoToDeleteFromEatlist = photo
-                                                               },
                                                                shape = RoundedCornerShape(12.dp),
                                                                sharedTransitionScope = sharedTransitionScope,
                                                                animatedVisibilityScope = animatedVisibilityScope,
@@ -586,9 +580,6 @@ fun LibraryScreen(
                                                                onLongClick = {
                                                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                                                    if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                               },
-                                                               onEatlistCheckClick = {
-                                                                   photoToDeleteFromEatlist = photo
                                                                },
                                                                fillCard = false,
                                                                viewModel = viewModel,
@@ -1058,7 +1049,7 @@ fun LibraryScreen(
                                     )
                                 }
 
-                                 // More Options (Middle)
+                                 // Manage (Middle)
                                  Column(
                                      horizontalAlignment = Alignment.CenterHorizontally,
                                      verticalArrangement = Arrangement.Center
@@ -1069,8 +1060,8 @@ fun LibraryScreen(
                                              val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
                                              longPressedCollection = activeTab
                                          },
-                                         icon = Icons.Default.MoreHoriz,
-                                         contentDescription = "Options",
+                                         icon = ImageVector.vectorResource(id = R.drawable.ic_folder_managed),
+                                         contentDescription = "Manage",
                                          isSpinning = !isAnyPopupActive,
                                          size = 48.dp,
                                          containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -1078,7 +1069,7 @@ fun LibraryScreen(
                                      )
                                      Spacer(modifier = Modifier.height(4.dp))
                                      Text(
-                                         text = "More",
+                                         text = "Manage",
                                          style = MaterialTheme.typography.labelSmall,
                                          color = MaterialTheme.colorScheme.onSurfaceVariant
                                      )
