@@ -120,33 +120,27 @@ class MorphSequenceShape(
         // 1. Morph path at current step fraction (following default LoadingIndicator toPath with spring overshoot)
         val androidPath = morph.toPath(morphFraction)
 
-        // 2. Center at local origin before rotation to rotate cleanly around its center
+        // 2. Measure unrotated path bounds to get the true center of the shape
         val pathBounds = android.graphics.RectF()
         androidPath.computeBounds(pathBounds, true)
         val pathCenterX = pathBounds.centerX()
         val pathCenterY = pathBounds.centerY()
 
-        // 3. Rotate clockwise (following default LoadingIndicator rotation)
-        val rotateMatrix = android.graphics.Matrix()
-        rotateMatrix.postTranslate(-pathCenterX, -pathCenterY)
-        rotateMatrix.postRotate(rotation)
-        androidPath.transform(rotateMatrix)
-
-        // 4. Smooth scale interpolated between shapes, ensuring Oval never clips while Cookie9Sided remains 100% full size.
-        // Scale is decoupled from rotation angle to eliminate any pulsating/squashing artifacts during turns.
+        // 3. Smooth scale interpolated between shapes, ensuring Oval never clips while Cookie9Sided fills 100%
         val step = safeIndex.coerceIn(0, PolygonDiameters.size - 2)
         val frac = fraction.coerceIn(0f, 1f)
         val targetDim = PolygonDiameters[step] * (1f - frac) + PolygonDiameters[step + 1] * frac
-        val scale = (minOf(size.width, size.height) / targetDim) * 0.98f
+        val scale = (minOf(size.width, size.height) / targetDim) * 0.96f
 
-        val scaleMatrix = android.graphics.Matrix()
-        scaleMatrix.postScale(scale, scale)
-        androidPath.transform(scaleMatrix)
-
-        // 5. Center inside available size
-        val bounds = android.graphics.RectF()
-        androidPath.computeBounds(bounds, true)
-        androidPath.offset(size.width / 2f - bounds.centerX(), size.height / 2f - bounds.centerY())
+        // 4. Translate center of shape to origin (0, 0), scale, rotate around center, then translate to container center.
+        // This ensures the shape rotates purely around its geometric center (no eccentric orbiting around the icon)
+        // and never touches or clips outside the bounding box.
+        val matrix = android.graphics.Matrix()
+        matrix.postTranslate(-pathCenterX, -pathCenterY)
+        matrix.postScale(scale, scale)
+        matrix.postRotate(rotation)
+        matrix.postTranslate(size.width / 2f, size.height / 2f)
+        androidPath.transform(matrix)
 
         return Outline.Generic(androidPath.asComposePath())
     }
