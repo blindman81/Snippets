@@ -274,20 +274,15 @@ private fun AnimatedCookieButtonImpl(
         }
     }
 
-    // Hold scale expansion: grows to 1.3x while holding, and springs back to 1f when released OR when the last shape is reached
-    val holdSpringSpec = remember {
-        spring<Float>(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        )
-    }
+    // Hold scale expansion: grows to 1.45x so morphing shapes are clearly visible outside the finger,
+    // and springs back to 1f with BouncySpring when released OR when the last shape is reached
     LaunchedEffect(isHolding, isHoldCompleted) {
         if (isHolding && !isHoldCompleted) {
-            launch { animScaleX.animateTo(1.3f, animationSpec = holdSpringSpec) }
-            launch { animScaleY.animateTo(1.3f, animationSpec = holdSpringSpec) }
+            launch { animScaleX.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
+            launch { animScaleY.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
         } else if (!isTapped) {
-            launch { animScaleX.animateTo(1f, animationSpec = holdSpringSpec) }
-            launch { animScaleY.animateTo(1f, animationSpec = holdSpringSpec) }
+            launch { animScaleX.animateTo(1f, animationSpec = Motion.BouncySpring) }
+            launch { animScaleY.animateTo(1f, animationSpec = Motion.BouncySpring) }
         }
     }
 
@@ -364,7 +359,7 @@ private fun AnimatedCookieButtonImpl(
             isHoldCompleted = true
 
             scope.launch {
-                settleRotation.animateTo(targetRot, animationSpec = holdSpringSpec)
+                settleRotation.animateTo(targetRot, animationSpec = Motion.BouncySpring)
                 isSettling = false
             }
         } else {

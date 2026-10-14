@@ -84,12 +84,11 @@ val CookieHoldMorphs: List<Morph> by lazy {
     (0 until polygons.size - 1).map { Morph(polygons[it].normalized(), polygons[it + 1].normalized()) }
 }
 
-private val MaxShapeRotatedDiameter: Float by lazy {
-    val bounds = FloatArray(4)
-    CookieHoldMorphPolygons.maxOf { polygon ->
-        polygon.normalized().calculateMaxBounds(bounds)
-        bounds[2] - bounds[0]
-    }.coerceAtLeast(0.001f)
+private val ReferenceCookieBounds: android.graphics.RectF by lazy {
+    val path = CookieHoldMorphPolygons[0].normalized().toPath()
+    val bounds = android.graphics.RectF()
+    path.computeBounds(bounds, true)
+    bounds
 }
 
 class MorphSequenceShape(
@@ -136,14 +135,22 @@ class MorphSequenceShape(
         rotateMatrix.postRotate(rotation)
         androidPath.transform(rotateMatrix)
 
-        // 4. Uniform constant scale to fit container cleanly at any rotation without clipping edges
-        val scale = (minOf(size.width, size.height) / MaxShapeRotatedDiameter) * 0.92f
+        // 4. Measure rotated path bounds
+        val rotatedBounds = android.graphics.RectF()
+        androidPath.computeBounds(rotatedBounds, true)
+
+        // 5. Scale to fill container cleanly matching normal CookieShape 100% size,
+        // while ensuring elongated shapes like Oval never get cut off at any rotation angle
+        val maxRotatedDim = maxOf(rotatedBounds.width(), rotatedBounds.height())
+        val refDim = maxOf(ReferenceCookieBounds.width(), ReferenceCookieBounds.height()).coerceAtLeast(0.001f)
+        val targetDim = maxOf(refDim, maxRotatedDim)
+        val scale = (minOf(size.width, size.height) / targetDim) * 0.98f
 
         val scaleMatrix = android.graphics.Matrix()
         scaleMatrix.postScale(scale, scale)
         androidPath.transform(scaleMatrix)
 
-        // 5. Center inside available size
+        // 6. Center inside available size
         val bounds = android.graphics.RectF()
         androidPath.computeBounds(bounds, true)
         androidPath.offset(size.width / 2f - bounds.centerX(), size.height / 2f - bounds.centerY())
