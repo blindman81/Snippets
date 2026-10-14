@@ -1958,51 +1958,23 @@ private fun ViewOptionItem(
             modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            this.rotationZ = rotation.value
-                            this.scaleX = scaleX.value
-                            this.scaleY = scaleY.value
-                        }
-                        .clip(shape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            } else {
-                BlurredSurface(
-                    shape = shape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    alpha = 0.65f,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            this.rotationZ = rotation.value
-                            this.scaleX = scaleX.value
-                            this.scaleY = scaleY.value
-                        }
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Background surface blurred
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        this.rotationZ = rotation.value
+                        this.scaleX = scaleX.value
+                        this.scaleY = scaleY.value
                     }
-                }
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+                    .clip(shape)
+                    .background(containerColor)
+            )
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(24.dp)
+            )
         }
         
         RadioButton(
