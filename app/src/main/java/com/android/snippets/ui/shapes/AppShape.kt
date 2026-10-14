@@ -95,7 +95,7 @@ class MorphSequenceShape(
     val morphs: List<Morph>,
     val morphIndex: Int,
     val fraction: Float,
-    val rotation: Float = (morphIndex + fraction.coerceIn(0f, 1f)) * 90f
+    val rotation: Float = (morphIndex + fraction) * 90f
 ) : Shape {
     constructor(
         morphs: List<Morph>,
@@ -118,9 +118,9 @@ class MorphSequenceShape(
         }
         val safeIndex = morphIndex.coerceIn(0, morphs.size - 1)
         val morph = morphs[safeIndex]
-        val morphFraction = fraction.coerceIn(0f, 1f)
+        val morphFraction = fraction.coerceIn(-0.2f, 1.3f)
 
-        // 1. Morph path at current step fraction (following default LoadingIndicator toPath)
+        // 1. Morph path at current step fraction (following default LoadingIndicator toPath with spring overshoot)
         val androidPath = morph.toPath(morphFraction)
 
         // 2. Center at local origin before rotation to rotate cleanly around its center

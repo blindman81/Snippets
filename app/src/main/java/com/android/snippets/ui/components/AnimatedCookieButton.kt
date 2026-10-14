@@ -4,6 +4,7 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -138,6 +139,9 @@ private fun AnimatedCookieButtonImpl(
     var morphStepIndex by remember { mutableIntStateOf(0) }
     var morphRotationAngle by remember { mutableFloatStateOf(0f) }
     val stepProgress = remember { Animatable(0f) }
+    val globalRotation = remember { Animatable(0f) }
+    val settleRotation = remember { Animatable(0f) }
+    var isSettling by remember { mutableStateOf(false) }
 
     val isActive = (isHolding && !isHoldCompleted) || isTapped
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
@@ -154,12 +158,24 @@ private fun AnimatedCookieButtonImpl(
         label = "cookie_button_content_color"
     )
 
-    val currentShape = if ((isHolding && !isHoldCompleted) || stepProgress.value > 0.001f || morphStepIndex > 0) {
+    val isMorphActive = (isHolding && !isHoldCompleted) || isSettling
+    val currentShape = if (isMorphActive) {
+        val safeIndex = if (isSettling && isHoldCompleted) {
+            CookieHoldMorphs.size - 1
+        } else {
+            morphStepIndex
+        }
+        val safeFraction = if (isSettling && isHoldCompleted) 1f else stepProgress.value
+        val totalRotation = if (isSettling) {
+            settleRotation.value
+        } else {
+            morphRotationAngle + (stepProgress.value * 90f) + globalRotation.value
+        }
         MorphSequenceShape(
             morphs = CookieHoldMorphs,
-            morphIndex = morphStepIndex,
-            fraction = stepProgress.value,
-            rotation = morphRotationAngle + stepProgress.value * 90f
+            morphIndex = safeIndex,
+            fraction = safeFraction,
+            rotation = totalRotation
         )
     } else {
         shape
@@ -278,52 +294,87 @@ private fun AnimatedCookieButtonImpl(
 
     // Shape morphing while holding:
     // Follows the official M3 Expressive LoadingIndicator shape morph implementation:
-    // Uses the default LoadingIndicator spring spec (dampingRatio = 0.6f, stiffness = 200f, visibilityThreshold = 0.1f)
-    // with 90 degree clockwise right-turn per shape.
+    // Uses the LoadingIndicator spring spec (dampingRatio = 0.6f, stiffness = 200f, visibilityThreshold = 0.01f),
+    // continuous global rotation (tween(4666, LinearEasing), RepeatMode.Restart),
+    // and 650ms morph interval (MorphIntervalMillis = 650L) with 90 degree clockwise right-turn per shape.
     // When the last 9-sided cookie shape is reached, triggers the return animation that happens
-    // when you hold off the button, returning to scale 1.0f and resting on the last shape.
+    // when you hold off the button, returning to scale 1.0f with holdSpringSpec and resting on the last shape.
     LaunchedEffect(isHolding) {
         if (isHolding) {
             isHoldCompleted = false
+            isSettling = false
             morphStepIndex = 0
             morphRotationAngle = 0f
             stepProgress.snapTo(0f)
+            globalRotation.snapTo(0f)
+
             // Small debounce to ensure an intentional hold rather than an immediate tap
             kotlinx.coroutines.delay(120L)
             if (!isHolding) return@LaunchedEffect
 
+            // Continuous global rotation from LoadingIndicator (4666ms per 360°)
+            val globalRotationJob = launch {
+                globalRotation.animateTo(
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(4666, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    )
+                )
+            }
+
             val morphAnimationSpec = spring<Float>(
                 dampingRatio = 0.6f,
                 stiffness = 200f,
-                visibilityThreshold = 0.1f
+                visibilityThreshold = 0.01f
             )
             val totalSteps = CookieHoldMorphs.size
+
             for (step in 0 until totalSteps) {
                 morphStepIndex = step
                 stepProgress.snapTo(0f)
                 if (hapticOnHold) {
                     view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK)
                 }
-                stepProgress.animateTo(
-                    targetValue = 1f,
-                    animationSpec = morphAnimationSpec
-                )
-                morphRotationAngle += 90f
-                stepProgress.snapTo(0f)
-                if (step < totalSteps - 1) {
-                    kotlinx.coroutines.delay(250L)
+
+                val deferred = async {
+                    val result = stepProgress.animateTo(
+                        targetValue = 1f,
+                        animationSpec = morphAnimationSpec
+                    )
+                    if (result.endReason == AnimationEndReason.Finished && step < totalSteps - 1) {
+                        morphStepIndex = step + 1
+                        stepProgress.snapTo(0f)
+                        morphRotationAngle = (morphRotationAngle + 90f) % 360f
+                    }
                 }
+                kotlinx.coroutines.delay(650L)
+                deferred.await()
             }
+
             // All steps reached! Last 9-sided cookie completed!
-            morphStepIndex = 0
-            morphRotationAngle = 0f
-            stepProgress.snapTo(0f)
-            // Trigger return animation that happens when holding off the button
+            globalRotationJob.cancel()
+
+            // Trigger return animation that happens when holding off the button:
+            // "when the last 9 sided cookie is reached, use the animation that happens when you hold off the button. make the button go back to its place with the last shape"
+            val currentRot = morphRotationAngle + (stepProgress.value * 90f) + globalRotation.value
+            val targetRot = kotlin.math.round(currentRot / 360f) * 360f
+            settleRotation.snapTo(currentRot)
+            isSettling = true
             isHoldCompleted = true
+
+            scope.launch {
+                settleRotation.animateTo(targetRot, animationSpec = holdSpringSpec)
+                isSettling = false
+            }
         } else {
-            stepProgress.snapTo(0f)
-            morphStepIndex = 0
-            morphRotationAngle = 0f
+            if (!isHoldCompleted) {
+                isSettling = false
+                stepProgress.snapTo(0f)
+                morphStepIndex = 0
+                morphRotationAngle = 0f
+                globalRotation.snapTo(0f)
+            }
         }
     }
 
