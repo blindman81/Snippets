@@ -27,6 +27,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.*
 import androidx.compose.foundation.shape.CircleShape
@@ -619,21 +620,21 @@ fun LibraryScreen(
                                  // Tab Bar stuck at the top of the surface background
                                  Box(
                                      modifier = Modifier
-                                         .align(Alignment.TopCenter)
+                                         .align(Alignment.TopStart)
                                          .fillMaxWidth()
                                          .padding(top = statusBarTop + 8.dp)
                                          .graphicsLayer {
                                              translationY = tabBarOffset.toPx()
                                              alpha = tabBarAlpha
                                          },
-                                     contentAlignment = Alignment.Center
+                                     contentAlignment = Alignment.CenterStart
                                  ) {
                                      Row(
                                          modifier = Modifier
                                              .wrapContentWidth()
                                              .horizontalScroll(tabRowScrollState)
                                              .padding(horizontal = 16.dp),
-                                         horizontalArrangement = Arrangement.Center,
+                                         horizontalArrangement = Arrangement.Start,
                                          verticalAlignment = Alignment.CenterVertically
                                      ) {
                                          androidx.compose.material3.ButtonGroup(
@@ -981,6 +982,13 @@ fun LibraryScreen(
                                 .fillMaxWidth()
                                 .height(100.dp)
                         ) {
+                            val isDarkTheme = when (viewModel.themePreference) {
+                                com.android.snippets.viewmodel.ThemePreference.LIGHT -> false
+                                com.android.snippets.viewmodel.ThemePreference.DARK -> true
+                                com.android.snippets.viewmodel.ThemePreference.SYSTEM -> isSystemInDarkTheme()
+                            }
+                            val toolbarLabelColor = if (isDarkTheme) Color.White else Color.Black
+
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1008,7 +1016,7 @@ fun LibraryScreen(
                                     Text(
                                         text = "Menu",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = toolbarLabelColor
                                     )
                                 }
 
@@ -1035,7 +1043,7 @@ fun LibraryScreen(
                                     Text(
                                         text = "Search",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = toolbarLabelColor
                                     )
                                 }
 
@@ -1061,7 +1069,7 @@ fun LibraryScreen(
                                      Text(
                                          text = "Manage",
                                          style = MaterialTheme.typography.labelSmall,
-                                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                                         color = toolbarLabelColor
                                      )
                                  }
 
@@ -1101,7 +1109,7 @@ fun LibraryScreen(
                                     Text(
                                         text = "History",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = toolbarLabelColor
                                     )
                                 }
 
@@ -1128,7 +1136,7 @@ fun LibraryScreen(
                                     Text(
                                         text = "Filter",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = toolbarLabelColor
                                     )
                                 }
                             }
