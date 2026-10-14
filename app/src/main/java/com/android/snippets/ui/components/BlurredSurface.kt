@@ -264,26 +264,25 @@ fun BlurredModalBottomSheet(
                 )
         )
 
+        val motionScheme = MaterialTheme.motionScheme
+
         // Sheet content
         AnimatedVisibility(
             visibleState = visibleState,
             enter = slideInVertically(
                 initialOffsetY = { it },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+                animationSpec = motionScheme.defaultSpatialSpec()
             ),
             exit = slideOutVertically(
                 targetOffsetY = { it },
-                animationSpec = tween(durationMillis = 220, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                animationSpec = motionScheme.fastSpatialSpec()
             ),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             var dragOffsetY by remember { mutableFloatStateOf(0f) }
             val animatedDragOffsetY by animateFloatAsState(
                 targetValue = dragOffsetY,
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                animationSpec = motionScheme.defaultSpatialSpec(),
                 label = "sheet_drag_offset"
             )
 
