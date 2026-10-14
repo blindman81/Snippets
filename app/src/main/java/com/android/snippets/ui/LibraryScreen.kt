@@ -1,5 +1,7 @@
 package com.android.snippets.ui
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.boundsInParent
 
@@ -1195,14 +1197,7 @@ fun LibraryScreen(
             if (longPressedCollection != null) {
                 BlurredModalBottomSheet(
                     onDismissRequest = { longPressedCollection = null },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    modifier = Modifier.animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        alignment = Alignment.TopCenter
-                    )
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ) {
                     Motion.ExpressiveSheetContent {
                         val colName = longPressedCollection ?: ""
@@ -1213,6 +1208,9 @@ fun LibraryScreen(
                         }
                         val isSystemCollection = longPressedCollection == "Library" || longPressedCollection == "Favorites"
                         val managePagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
+                        val density = androidx.compose.ui.platform.LocalDensity.current
+                        var page0Height by remember { mutableStateOf<androidx.compose.ui.unit.Dp?>(null) }
+                        var page1Height by remember { mutableStateOf<androidx.compose.ui.unit.Dp?>(null) }
 
                         Column(
                             modifier = Modifier
@@ -1310,7 +1308,18 @@ fun LibraryScreen(
 
                             HorizontalPager(
                                 state = managePagerState,
-                                modifier = Modifier.fillMaxWidth(),
+                                beyondViewportPageCount = 1,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (page0Height != null && page1Height != null) {
+                                            val progress = (managePagerState.currentPage + managePagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+                                            val currentHeight = lerp(page0Height!!, page1Height!!, progress)
+                                            Modifier.height(currentHeight)
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
                                 verticalAlignment = Alignment.Top
                             ) { page ->
                                 if (page == 0) {
@@ -1319,6 +1328,11 @@ fun LibraryScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .verticalScroll(rememberScrollState())
+                                            .onSizeChanged { size ->
+                                                if (size.height > 0) {
+                                                    with(density) { page0Height = size.height.toDp() }
+                                                }
+                                            }
                                             .padding(top = 16.dp, bottom = 16.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
@@ -1529,6 +1543,11 @@ fun LibraryScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .verticalScroll(rememberScrollState())
+                                            .onSizeChanged { size ->
+                                                if (size.height > 0) {
+                                                    with(density) { page1Height = size.height.toDp() }
+                                                }
+                                            }
                                             .padding(top = 16.dp, bottom = 16.dp)
                                     ) {
                                         Row(
