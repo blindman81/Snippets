@@ -60,17 +60,16 @@ class RoundedPolygonShape(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val CookieHoldMorphPolygons: List<RoundedPolygon> by lazy {
-    val alignedPentagon = MaterialShapes.Pentagon.transformed { x, y ->
-        androidx.graphics.shapes.TransformResult(y, -x)
-    }
+    // Exact shapes and sequence matching LoadingIndicatorDefaults.IndeterminateIndicatorPolygons,
+    // starting at Cookie9Sided and completing a cycle back to Cookie9Sided:
     listOf(
         MaterialShapes.Cookie9Sided,
-        alignedPentagon,
+        MaterialShapes.Pentagon,
         MaterialShapes.Pill,
-        MaterialShapes.SoftBurst,
+        MaterialShapes.Sunny,
         MaterialShapes.Cookie4Sided,
         MaterialShapes.Oval,
-        MaterialShapes.VerySunny,
+        MaterialShapes.SoftBurst,
         MaterialShapes.Cookie9Sided
     )
 }

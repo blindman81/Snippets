@@ -319,7 +319,7 @@ private fun AnimatedCookieButtonImpl(
             val morphAnimationSpec = spring<Float>(
                 dampingRatio = 0.6f,
                 stiffness = 200f,
-                visibilityThreshold = 0.01f
+                visibilityThreshold = 0.1f
             )
             val totalSteps = CookieHoldMorphs.size
 
