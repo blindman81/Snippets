@@ -727,39 +727,30 @@ fun AddSnippetsModal(
                                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
 
-                                val currentShape = if (isSelected) shapes.checkedShape else shapes.shape
-
-                                BlurredSurface(
-                                    shape = currentShape,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                    alpha = if (isSelected) 1f else 0.65f,
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        selectedIndex = index
+                                    },
+                                    interactionSource = interactionSource,
                                     modifier = Modifier
                                         .width(animatedWidth)
-                                        .height(40.dp)
+                                        .height(40.dp),
+                                    shapes = shapes,
+                                    contentPadding = PaddingValues(0.dp),
+                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
                                 ) {
-                                    ToggleButton(
-                                        checked = isSelected,
-                                        onCheckedChange = {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                            selectedIndex = index
-                                        },
-                                        interactionSource = interactionSource,
-                                        modifier = Modifier.fillMaxSize(),
-                                        shapes = shapes,
-                                        contentPadding = PaddingValues(0.dp),
-                                        colors = ToggleButtonDefaults.toggleButtonColors(
-                                            checkedContainerColor = Color.Transparent,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                            containerColor = Color.Transparent,
-                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                        )
-                                    ) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = description,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = description,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             },
                             menuContent = {

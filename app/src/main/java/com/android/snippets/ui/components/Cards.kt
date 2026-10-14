@@ -1233,16 +1233,12 @@ private fun ExpandableCardPillIcon(
 
     Surface(
         color = containerColor.copy(alpha = 0.9f),
-        shape = CircleShape,
+        shape = RoundedCornerShape(14.dp),
         modifier = modifier
             .padding(8.dp)
             .height(28.dp)
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            )
+            .widthIn(min = 28.dp)
+            .clip(RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -1272,14 +1268,27 @@ private fun ExpandableCardPillIcon(
             val textBox = @Composable {
                 AnimatedVisibility(
                     visible = isExpanded,
-                    enter = fadeIn() + expandHorizontally(expandFrom = if (alignEnd) Alignment.End else Alignment.Start),
-                    exit = fadeOut() + shrinkHorizontally(shrinkTowards = if (alignEnd) Alignment.End else Alignment.Start)
+                    enter = fadeIn(animationSpec = tween(durationMillis = 150)) + expandHorizontally(
+                        expandFrom = if (alignEnd) Alignment.End else Alignment.Start,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
+                    exit = fadeOut(animationSpec = tween(durationMillis = 100)) + shrinkHorizontally(
+                        shrinkTowards = if (alignEnd) Alignment.End else Alignment.Start,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
                 ) {
                     Text(
                         text = text,
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
                         color = iconColor,
                         maxLines = 1,
+                        softWrap = false,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .padding(

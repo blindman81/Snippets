@@ -205,35 +205,22 @@ private fun ButtonGroupScope.menuItem(
     customItem(
         buttonGroupContent = {
             val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val cornerRadius by animateDpAsState(
-                targetValue = if (isPressed) 12.dp else 24.dp,
-                label = "menu_item_shape"
-            )
-            val currentShape = RoundedCornerShape(cornerRadius)
-
-            BlurredSurface(
-                shape = currentShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                alpha = 0.65f,
+            Button(
+                onClick = onClick,
+                interactionSource = interactionSource,
                 modifier = Modifier
                     .weight(weight)
-                    .height(48.dp)
+                    .height(48.dp),
+                shapes = ButtonDefaults.shapes(
+                    shape = CircleShape,
+                    pressedShape = RoundedCornerShape(12.dp)
+                ),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
-                Button(
-                    onClick = onClick,
-                    interactionSource = interactionSource,
-                    modifier = Modifier.fillMaxSize(),
-                    shapes = ButtonDefaults.shapes(
-                        shape = CircleShape,
-                        pressedShape = RoundedCornerShape(12.dp)
-                    ),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    contentPadding = PaddingValues(horizontal = 4.dp)
-                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
@@ -250,7 +237,6 @@ private fun ButtonGroupScope.menuItem(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                    }
                 }
             }
         },

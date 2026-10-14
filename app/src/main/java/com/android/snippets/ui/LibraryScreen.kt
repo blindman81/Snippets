@@ -1857,45 +1857,37 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
             }
 
             val shapes = if (checked) baseShapes.copy(pressedShape = baseShapes.checkedShape) else baseShapes
-            val currentShape = if (checked) shapes.checkedShape else shapes.shape
 
-            BlurredSurface(
-                shape = currentShape,
-                color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                alpha = if (checked) 1f else 0.65f,
+            ToggleButton(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                interactionSource = interactionSource,
+                shapes = shapes,
                 modifier = Modifier
                     .weight(animatedWeight)
-                    .height(40.dp)
+                    .height(40.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                colors = ToggleButtonDefaults.toggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             ) {
-                ToggleButton(
-                    checked = checked,
-                    onCheckedChange = onCheckedChange,
-                    interactionSource = interactionSource,
-                    shapes = shapes,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    colors = ToggleButtonDefaults.toggleButtonColors(
-                        checkedContainerColor = Color.Transparent,
-                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    icon()
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(
-                        text = label,
-                        style = if (checked) {
-                            MaterialTheme.typography.labelLarge.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                            )
-                        } else {
-                            MaterialTheme.typography.labelLarge
-                        },
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
-                }
+                icon()
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text(
+                    text = label,
+                    style = if (checked) {
+                        MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                        )
+                    } else {
+                        MaterialTheme.typography.labelLarge
+                    },
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
             }
         },
         menuContent = { state ->
