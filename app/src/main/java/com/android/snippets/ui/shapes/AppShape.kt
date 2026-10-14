@@ -84,11 +84,12 @@ val CookieHoldMorphs: List<Morph> by lazy {
     (0 until polygons.size - 1).map { Morph(polygons[it].normalized(), polygons[it + 1].normalized()) }
 }
 
-private val ReferenceShapeBounds: android.graphics.RectF by lazy {
-    val path = CookieHoldMorphPolygons[0].normalized().toPath()
-    val bounds = android.graphics.RectF()
-    path.computeBounds(bounds, true)
-    bounds
+private val MaxShapeRotatedDiameter: Float by lazy {
+    val bounds = FloatArray(4)
+    CookieHoldMorphPolygons.maxOf { polygon ->
+        polygon.normalized().calculateMaxBounds(bounds)
+        bounds[2] - bounds[0]
+    }.coerceAtLeast(0.001f)
 }
 
 class MorphSequenceShape(
@@ -135,9 +136,8 @@ class MorphSequenceShape(
         rotateMatrix.postRotate(rotation)
         androidPath.transform(rotateMatrix)
 
-        // 4. Uniform constant scale to fit container cleanly without artificial squash or bounce
-        val refMaxDim = maxOf(ReferenceShapeBounds.width(), ReferenceShapeBounds.height()).coerceAtLeast(0.001f)
-        val scale = (minOf(size.width, size.height) / refMaxDim) * 0.94f
+        // 4. Uniform constant scale to fit container cleanly at any rotation without clipping edges
+        val scale = (minOf(size.width, size.height) / MaxShapeRotatedDiameter) * 0.92f
 
         val scaleMatrix = android.graphics.Matrix()
         scaleMatrix.postScale(scale, scale)
