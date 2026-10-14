@@ -36,7 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, PhotosCarousel, Stats, Templates, MonthlyRecap, YearlyRecap }
+enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, PhotosCarousel, Stats, MonthlyRecap, YearlyRecap }
 enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, MostStarred, LeastStarred }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
@@ -428,7 +428,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var showBulkAddToCollectionDialog by mutableStateOf(false)
     var showBulkDeleteModal by mutableStateOf(false)
     var showBulkEditSnippetsDialog by mutableStateOf(false)
-    var showExpressiveSnippetTemplatesSheet by mutableStateOf(false)
     var pendingAddSnippetOnImport by mutableStateOf(false)
     var pendingOpenAddSnippetDialog by mutableStateOf(false)
     var pendingSnippetToApply by mutableStateOf<String?>(null)
@@ -2290,8 +2289,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             Screen.Memory,
             Screen.Settings,
             Screen.About,
-            Screen.Stats,
-            Screen.Templates -> navigateLibrary()
+            Screen.Stats -> navigateLibrary()
             Screen.SelectIcon,
             Screen.PhotosCarousel,
             Screen.MonthlyRecap,
@@ -2400,13 +2398,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 }
             }
         }
-    }
-
-    fun navigateTemplates() {
-        searchQuery = ""
-        previousScreen = currentScreen
-        currentScreen = Screen.Templates
-        activePhotoId = null
     }
 
     fun navigateLibrary() {

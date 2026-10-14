@@ -116,49 +116,7 @@ fun MenuBottomSheet(
                             )
                         }
 
-                        // Row 1: Stats, Select, Templates
-                        ButtonGroup(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            overflowIndicator = {}
-                        ) {
-                            menuItem(
-                                icon = { Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                                label = "Stats",
-                                weight = 0.9f,
-                                onClick = {
-                                    onDismissRequest()
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.navigateStats()
-                                }
-                            )
-
-                            menuItem(
-                                icon = { Icon(SelectIcon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
-                                label = "Select",
-                                weight = 0.9f,
-                                onClick = {
-                                    onDismissRequest()
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.forceSelectionMode = true
-                                }
-                            )
-
-                            menuItem(
-                                icon = { Icon(Icons.Default.TextSnippet, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                                label = "Templates",
-                                weight = 1.2f,
-                                onClick = {
-                                    onDismissRequest()
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.navigateTemplates()
-                                }
-                            )
-                        }
-
-                        // Row 2: New Collection, Settings, About
+                        // Row 1: New Collection, Select
                         ButtonGroup(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -169,7 +127,7 @@ fun MenuBottomSheet(
                             menuItem(
                                 icon = { Icon(painterResource(id = com.ln.android.snippets.R.drawable.ic_create_new_folder), contentDescription = null, modifier = Modifier.size(18.dp)) },
                                 label = "New Collection",
-                                weight = 1.45f,
+                                weight = 1.25f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -178,9 +136,40 @@ fun MenuBottomSheet(
                             )
 
                             menuItem(
+                                icon = { Icon(SelectIcon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                label = "Select",
+                                weight = 0.95f,
+                                onClick = {
+                                    onDismissRequest()
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    viewModel.forceSelectionMode = true
+                                }
+                            )
+                        }
+
+                        // Row 2: Stats, Settings, About
+                        ButtonGroup(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            overflowIndicator = {}
+                        ) {
+                            menuItem(
+                                icon = { Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                label = "Stats",
+                                weight = 0.95f,
+                                onClick = {
+                                    onDismissRequest()
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    viewModel.navigateStats()
+                                }
+                            )
+
+                            menuItem(
                                 icon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp)) },
                                 label = "Settings",
-                                weight = 0.95f,
+                                weight = 1.1f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -191,7 +180,7 @@ fun MenuBottomSheet(
                             menuItem(
                                 icon = { Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(18.dp)) },
                                 label = "About",
-                                weight = 0.65f,
+                                weight = 0.95f,
                                 onClick = {
                                     onDismissRequest()
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)

@@ -153,7 +153,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             val backScreen = if (isGestureActive) {
                 when (viewModel.currentScreen) {
                     Screen.Library -> null
-                    Screen.Memory, Screen.Settings, Screen.About, Screen.Stats, Screen.Templates -> Screen.Library
+                    Screen.Memory, Screen.Settings, Screen.About, Screen.Stats -> Screen.Library
                     Screen.SelectIcon, Screen.MonthlyRecap, Screen.YearlyRecap -> viewModel.previousScreen
                     Screen.PhotosCarousel -> Screen.Settings
                     Screen.Detail -> viewModel.detailReturnScreen
@@ -204,7 +204,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
 
                         Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
                         Screen.Stats -> StatsScreen(viewModel)
-                        Screen.Templates -> TemplatesScreen(viewModel)
                         Screen.MonthlyRecap, Screen.YearlyRecap -> MonthlyRecapScreen(viewModel = viewModel)
                         else -> Box(Modifier.fillMaxSize())
                     }

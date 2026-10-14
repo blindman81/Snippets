@@ -191,7 +191,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                                 viewModel.updateThemePreference(option)
                             }
                         },
-                        icon = { Icon(themeIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
+                        icon = { Icon(themeIcons[index], null, modifier = Modifier.size(18.dp)) },
                         label = themeLabels[index],
                         isFirst = isFirst,
                         isLast = isLast
@@ -529,22 +529,6 @@ private fun ButtonGroupScope.themeToggleableItem(
     customItem(
         buttonGroupContent = {
             val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-
-            val targetWeight = when {
-                checked && isPressed -> 0.85f
-                checked -> 1.15f
-                isPressed -> 0.75f
-                else -> 1.0f
-            }
-            val animatedWeight by animateFloatAsState(
-                targetValue = targetWeight,
-                animationSpec = androidx.compose.animation.core.spring(
-                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
-                    stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                ),
-                label = "settings_weight_$label"
-            )
 
             val shapes = when {
                 isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
@@ -557,8 +541,11 @@ private fun ButtonGroupScope.themeToggleableItem(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 interactionSource = interactionSource,
-                modifier = Modifier.weight(animatedWeight),
+                modifier = Modifier
+                    .weight(weight)
+                    .height(40.dp),
                 shapes = shapes,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 colors = ToggleButtonDefaults.toggleButtonColors(
                     checkedContainerColor = MaterialTheme.colorScheme.primary,
                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
