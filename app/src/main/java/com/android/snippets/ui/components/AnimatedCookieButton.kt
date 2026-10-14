@@ -136,6 +136,7 @@ private fun AnimatedCookieButtonImpl(
     val animScaleX = remember { Animatable(1f) }
     val animScaleY = remember { Animatable(1f) }
     var morphStepIndex by remember { mutableIntStateOf(0) }
+    var morphRotationAngle by remember { mutableFloatStateOf(0f) }
     val stepProgress = remember { Animatable(0f) }
 
     val isActive = (isHolding && !isHoldCompleted) || isTapped
@@ -157,7 +158,8 @@ private fun AnimatedCookieButtonImpl(
         MorphSequenceShape(
             morphs = CookieHoldMorphs,
             morphIndex = morphStepIndex,
-            fraction = stepProgress.value
+            fraction = stepProgress.value,
+            rotation = morphRotationAngle + stepProgress.value * 90f
         )
     } else {
         shape
@@ -257,33 +259,44 @@ private fun AnimatedCookieButtonImpl(
     }
 
     // Hold scale expansion: grows to 1.3x while holding, and springs back to 1f when released OR when the last shape is reached
+    val holdSpringSpec = remember {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        )
+    }
     LaunchedEffect(isHolding, isHoldCompleted) {
         if (isHolding && !isHoldCompleted) {
-            launch { animScaleX.animateTo(1.3f, animationSpec = Motion.BouncySpring) }
-            launch { animScaleY.animateTo(1.3f, animationSpec = Motion.BouncySpring) }
+            launch { animScaleX.animateTo(1.3f, animationSpec = holdSpringSpec) }
+            launch { animScaleY.animateTo(1.3f, animationSpec = holdSpringSpec) }
         } else if (!isTapped) {
-            launch { animScaleX.animateTo(1f, animationSpec = Motion.BouncySpring) }
-            launch { animScaleY.animateTo(1f, animationSpec = Motion.BouncySpring) }
+            launch { animScaleX.animateTo(1f, animationSpec = holdSpringSpec) }
+            launch { animScaleY.animateTo(1f, animationSpec = holdSpringSpec) }
         }
     }
 
 
     // Shape morphing while holding:
     // Follows the official M3 Expressive LoadingIndicator shape morph implementation:
-    // Morphs smoothly between shapes with 90 degree clockwise right-turn per shape,
-    // pulsing outward on arrival with spring overshoot bounce and haptic tick.
+    // Uses the default LoadingIndicator spring spec (dampingRatio = 0.6f, stiffness = 200f, visibilityThreshold = 0.1f)
+    // with 90 degree clockwise right-turn per shape.
     // When the last 9-sided cookie shape is reached, triggers the return animation that happens
-    // when you hold off the button, returning to scale 1.0f with BouncySpring and resting on the last shape.
+    // when you hold off the button, returning to scale 1.0f and resting on the last shape.
     LaunchedEffect(isHolding) {
         if (isHolding) {
             isHoldCompleted = false
             morphStepIndex = 0
+            morphRotationAngle = 0f
             stepProgress.snapTo(0f)
             // Small debounce to ensure an intentional hold rather than an immediate tap
             kotlinx.coroutines.delay(120L)
             if (!isHolding) return@LaunchedEffect
 
-            val stepSpec = spring<Float>(dampingRatio = 0.6f, stiffness = 200f, visibilityThreshold = 0.005f)
+            val morphAnimationSpec = spring<Float>(
+                dampingRatio = 0.6f,
+                stiffness = 200f,
+                visibilityThreshold = 0.1f
+            )
             val totalSteps = CookieHoldMorphs.size
             for (step in 0 until totalSteps) {
                 morphStepIndex = step
@@ -293,20 +306,24 @@ private fun AnimatedCookieButtonImpl(
                 }
                 stepProgress.animateTo(
                     targetValue = 1f,
-                    animationSpec = stepSpec
+                    animationSpec = morphAnimationSpec
                 )
+                morphRotationAngle += 90f
+                stepProgress.snapTo(0f)
                 if (step < totalSteps - 1) {
-                    kotlinx.coroutines.delay(180L)
+                    kotlinx.coroutines.delay(250L)
                 }
             }
             // All steps reached! Last 9-sided cookie completed!
-            stepProgress.snapTo(0f)
             morphStepIndex = 0
+            morphRotationAngle = 0f
+            stepProgress.snapTo(0f)
             // Trigger return animation that happens when holding off the button
             isHoldCompleted = true
         } else {
             stepProgress.snapTo(0f)
             morphStepIndex = 0
+            morphRotationAngle = 0f
         }
     }
 

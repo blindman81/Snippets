@@ -95,7 +95,7 @@ class MorphSequenceShape(
     val morphs: List<Morph>,
     val morphIndex: Int,
     val fraction: Float,
-    val rotationPerMorph: Float = 90f
+    val rotation: Float = (morphIndex + fraction.coerceIn(0f, 1f)) * 90f
 ) : Shape {
     constructor(
         morphs: List<Morph>,
@@ -105,7 +105,7 @@ class MorphSequenceShape(
         morphs = morphs,
         morphIndex = progress.toInt().coerceIn(0, (morphs.size - 1).coerceAtLeast(0)),
         fraction = progress - progress.toInt(),
-        rotationPerMorph = rotationPerMorph
+        rotation = progress * rotationPerMorph
     )
 
     override fun createOutline(
@@ -120,7 +120,7 @@ class MorphSequenceShape(
         val morph = morphs[safeIndex]
         val morphFraction = fraction.coerceIn(0f, 1f)
 
-        // 1. Morph path at current step fraction
+        // 1. Morph path at current step fraction (following default LoadingIndicator toPath)
         val androidPath = morph.toPath(morphFraction)
 
         // 2. Center at local origin before rotation to rotate cleanly around its center
@@ -129,25 +129,18 @@ class MorphSequenceShape(
         val pathCenterX = pathBounds.centerX()
         val pathCenterY = pathBounds.centerY()
 
-        // 3. Rotate clockwise by (safeIndex + morphFraction) * rotationPerMorph
-        val rotationDegrees = (safeIndex + morphFraction) * rotationPerMorph
+        // 3. Rotate clockwise (following default LoadingIndicator rotation)
         val rotateMatrix = android.graphics.Matrix()
         rotateMatrix.postTranslate(-pathCenterX, -pathCenterY)
-        rotateMatrix.postRotate(rotationDegrees)
+        rotateMatrix.postRotate(rotation)
         androidPath.transform(rotateMatrix)
 
-        // 4. Dynamic scale pulse following Material 3 Expressive LoadingIndicator:
-        // Morph squash during transition + bounce overshoot pulse at arrival of each shape
-        val squash = 1f - kotlin.math.sin(morphFraction * Math.PI.toFloat()) * 0.08f
-        val pulse = if (fraction > 1f) (fraction - 1f) * 0.85f else 0f
-        val pulseFactor = squash + pulse
-
+        // 4. Uniform constant scale to fit container cleanly without artificial squash or bounce
         val refMaxDim = maxOf(ReferenceShapeBounds.width(), ReferenceShapeBounds.height()).coerceAtLeast(0.001f)
-        val baseScale = (minOf(size.width, size.height) / refMaxDim) * 0.94f
-        val finalScale = baseScale * pulseFactor
+        val scale = (minOf(size.width, size.height) / refMaxDim) * 0.94f
 
         val scaleMatrix = android.graphics.Matrix()
-        scaleMatrix.postScale(finalScale, finalScale)
+        scaleMatrix.postScale(scale, scale)
         androidPath.transform(scaleMatrix)
 
         // 5. Center inside available size
