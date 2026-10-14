@@ -297,19 +297,14 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
         } else null,
         shape = RoundedCornerShape(8.dp),
         colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
             selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
         ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = isSelected,
-            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-            selectedBorderColor = Color.Transparent
-        )
+        border = null
     )
 }
 

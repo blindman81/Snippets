@@ -60,11 +60,8 @@ class RoundedPolygonShape(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val CookieHoldMorphPolygons: List<RoundedPolygon> by lazy {
-    val pentagonMatrix = android.graphics.Matrix().apply { postRotate(270f) }
     val alignedPentagon = MaterialShapes.Pentagon.transformed { x, y ->
-        val pts = floatArrayOf(x, y)
-        pentagonMatrix.mapPoints(pts)
-        androidx.graphics.shapes.TransformResult(pts[0], pts[1])
+        androidx.graphics.shapes.TransformResult(y, -x)
     }
     listOf(
         MaterialShapes.Cookie9Sided,
@@ -84,11 +81,12 @@ val CookieHoldMorphs: List<Morph> by lazy {
     (0 until polygons.size - 1).map { Morph(polygons[it].normalized(), polygons[it + 1].normalized()) }
 }
 
-private val ReferenceCookieBounds: android.graphics.RectF by lazy {
-    val path = CookieHoldMorphPolygons[0].normalized().toPath()
-    val bounds = android.graphics.RectF()
-    path.computeBounds(bounds, true)
-    bounds
+private val PolygonDiameters: List<Float> by lazy {
+    val bounds = FloatArray(4)
+    CookieHoldMorphPolygons.map { polygon ->
+        polygon.normalized().calculateMaxBounds(bounds)
+        (bounds[2] - bounds[0]).coerceAtLeast(0.001f)
+    }
 }
 
 class MorphSequenceShape(
@@ -103,9 +101,20 @@ class MorphSequenceShape(
         rotationPerMorph: Float = 90f
     ) : this(
         morphs = morphs,
-        morphIndex = progress.toInt().coerceIn(0, (morphs.size - 1).coerceAtLeast(0)),
-        fraction = progress - progress.toInt(),
+        morphIndex = if (progress >= morphs.size) (morphs.size - 1).coerceAtLeast(0) else progress.toInt().coerceIn(0, (morphs.size - 1).coerceAtLeast(0)),
+        fraction = if (progress >= morphs.size) 1f else (progress - progress.toInt()).coerceIn(0f, 1f),
         rotation = progress * rotationPerMorph
+    )
+
+    constructor(
+        morphs: List<Morph>,
+        progress: Float,
+        rotation: Float
+    ) : this(
+        morphs = morphs,
+        morphIndex = if (progress >= morphs.size) (morphs.size - 1).coerceAtLeast(0) else progress.toInt().coerceIn(0, (morphs.size - 1).coerceAtLeast(0)),
+        fraction = if (progress >= morphs.size) 1f else (progress - progress.toInt()).coerceIn(0f, 1f),
+        rotation = rotation
     )
 
     override fun createOutline(
@@ -135,22 +144,18 @@ class MorphSequenceShape(
         rotateMatrix.postRotate(rotation)
         androidPath.transform(rotateMatrix)
 
-        // 4. Measure rotated path bounds
-        val rotatedBounds = android.graphics.RectF()
-        androidPath.computeBounds(rotatedBounds, true)
-
-        // 5. Scale to fill container cleanly matching normal CookieShape 100% size,
-        // while ensuring elongated shapes like Oval never get cut off at any rotation angle
-        val maxRotatedDim = maxOf(rotatedBounds.width(), rotatedBounds.height())
-        val refDim = maxOf(ReferenceCookieBounds.width(), ReferenceCookieBounds.height()).coerceAtLeast(0.001f)
-        val targetDim = maxOf(refDim, maxRotatedDim)
+        // 4. Smooth scale interpolated between shapes, ensuring Oval never clips while Cookie9Sided remains 100% full size.
+        // Scale is decoupled from rotation angle to eliminate any pulsating/squashing artifacts during turns.
+        val step = safeIndex.coerceIn(0, PolygonDiameters.size - 2)
+        val frac = fraction.coerceIn(0f, 1f)
+        val targetDim = PolygonDiameters[step] * (1f - frac) + PolygonDiameters[step + 1] * frac
         val scale = (minOf(size.width, size.height) / targetDim) * 0.98f
 
         val scaleMatrix = android.graphics.Matrix()
         scaleMatrix.postScale(scale, scale)
         androidPath.transform(scaleMatrix)
 
-        // 6. Center inside available size
+        // 5. Center inside available size
         val bounds = android.graphics.RectF()
         androidPath.computeBounds(bounds, true)
         androidPath.offset(size.width / 2f - bounds.centerX(), size.height / 2f - bounds.centerY())

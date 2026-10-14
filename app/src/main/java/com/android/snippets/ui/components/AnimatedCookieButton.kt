@@ -137,7 +137,6 @@ private fun AnimatedCookieButtonImpl(
     val animScaleX = remember { Animatable(1f) }
     val animScaleY = remember { Animatable(1f) }
     var morphStepIndex by remember { mutableIntStateOf(0) }
-    var morphRotationAngle by remember { mutableFloatStateOf(0f) }
     val stepProgress = remember { Animatable(0f) }
     val globalRotation = remember { Animatable(0f) }
     val settleRotation = remember { Animatable(0f) }
@@ -169,7 +168,7 @@ private fun AnimatedCookieButtonImpl(
         val totalRotation = if (isSettling) {
             settleRotation.value
         } else {
-            morphRotationAngle + (stepProgress.value * 90f) + globalRotation.value
+            (morphStepIndex * 90f) + (stepProgress.value * 90f) + globalRotation.value
         }
         MorphSequenceShape(
             morphs = CookieHoldMorphs,
@@ -299,7 +298,6 @@ private fun AnimatedCookieButtonImpl(
             isHoldCompleted = false
             isSettling = false
             morphStepIndex = 0
-            morphRotationAngle = 0f
             stepProgress.snapTo(0f)
             globalRotation.snapTo(0f)
 
@@ -333,15 +331,10 @@ private fun AnimatedCookieButtonImpl(
                 }
 
                 val deferred = async {
-                    val result = stepProgress.animateTo(
+                    stepProgress.animateTo(
                         targetValue = 1f,
                         animationSpec = morphAnimationSpec
                     )
-                    if (result.endReason == AnimationEndReason.Finished && step < totalSteps - 1) {
-                        morphStepIndex = step + 1
-                        stepProgress.snapTo(0f)
-                        morphRotationAngle = (morphRotationAngle + 90f) % 360f
-                    }
                 }
                 kotlinx.coroutines.delay(650L)
                 deferred.await()
@@ -352,7 +345,7 @@ private fun AnimatedCookieButtonImpl(
 
             // Trigger return animation that happens when holding off the button:
             // "when the last 9 sided cookie is reached, use the animation that happens when you hold off the button. make the button go back to its place with the last shape"
-            val currentRot = morphRotationAngle + (stepProgress.value * 90f) + globalRotation.value
+            val currentRot = (morphStepIndex * 90f) + (stepProgress.value * 90f) + globalRotation.value
             val targetRot = kotlin.math.round(currentRot / 360f) * 360f
             settleRotation.snapTo(currentRot)
             isSettling = true
@@ -367,7 +360,6 @@ private fun AnimatedCookieButtonImpl(
                 isSettling = false
                 stepProgress.snapTo(0f)
                 morphStepIndex = 0
-                morphRotationAngle = 0f
                 globalRotation.snapTo(0f)
             }
         }

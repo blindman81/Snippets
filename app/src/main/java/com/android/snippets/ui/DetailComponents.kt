@@ -866,13 +866,10 @@ fun AddSnippetsModal(
                                                             label = { Text(suggestion, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                                                             shape = SuggestionChipDefaults.shape,
                                                             colors = SuggestionChipDefaults.suggestionChipColors(
-                                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f),
+                                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                                                 labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                                                             ),
-                                                            border = SuggestionChipDefaults.suggestionChipBorder(
-                                                                enabled = true,
-                                                                borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                                            )
+                                                            border = null
                                                         )
                                                     }
                                                 }
