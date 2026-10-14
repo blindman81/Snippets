@@ -98,18 +98,7 @@ class MorphSequenceShape(
     constructor(
         morphs: List<Morph>,
         progress: Float,
-        rotationPerMorph: Float = 90f
-    ) : this(
-        morphs = morphs,
-        morphIndex = if (progress >= morphs.size) (morphs.size - 1).coerceAtLeast(0) else progress.toInt().coerceIn(0, (morphs.size - 1).coerceAtLeast(0)),
-        fraction = if (progress >= morphs.size) 1f else (progress - progress.toInt()).coerceIn(0f, 1f),
-        rotation = progress * rotationPerMorph
-    )
-
-    constructor(
-        morphs: List<Morph>,
-        progress: Float,
-        rotation: Float
+        rotation: Float = progress * 90f
     ) : this(
         morphs = morphs,
         morphIndex = if (progress >= morphs.size) (morphs.size - 1).coerceAtLeast(0) else progress.toInt().coerceIn(0, (morphs.size - 1).coerceAtLeast(0)),
