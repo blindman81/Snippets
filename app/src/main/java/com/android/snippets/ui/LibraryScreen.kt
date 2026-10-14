@@ -100,11 +100,8 @@ import androidx.compose.ui.text.input.ImeAction
 import com.android.snippets.viewmodel.SnippetsViewModel
 import android.view.HapticFeedbackConstants
 import kotlinx.coroutines.launch
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -750,7 +747,7 @@ fun LibraryScreen(
                                                                val baseUnselectedWidth = 56.dp
 
                                                                val targetWidth = when {
-                                                                   isSelected && isPressed -> if (showLabel) baseSelectedWidth - 8.dp else 84.dp
+                                                                   isSelected && isPressed -> if (showLabel) baseSelectedWidth + 8.dp else 84.dp
                                                                    isSelected -> baseSelectedWidth
                                                                    isPressed -> 64.dp
                                                                    else -> baseUnselectedWidth
@@ -761,12 +758,13 @@ fun LibraryScreen(
                                                                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
                                                                    label = "tabWidth_$tabName"
                                                                )
-                                                                val shapes = when {
+                                                                val baseShapes = when {
                                                                     allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
                                                                     tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
                                                                     tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes()
                                                                     else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
                                                                 }
+                                                                val shapes = if (isSelected) baseShapes.copy(pressedShape = baseShapes.checkedShape) else baseShapes
                                                                 ToggleButton(
                                                                     checked = isSelected,
                                                                     onCheckedChange = { checked ->
@@ -1197,7 +1195,14 @@ fun LibraryScreen(
             if (longPressedCollection != null) {
                 BlurredModalBottomSheet(
                     onDismissRequest = { longPressedCollection = null },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier.animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        alignment = Alignment.TopCenter
+                    )
                 ) {
                     Motion.ExpressiveSheetContent {
                         val colName = longPressedCollection ?: ""
@@ -1247,58 +1252,58 @@ fun LibraryScreen(
                                 )
                             }
 
-                            PrimaryTabRow(
-                                selectedTabIndex = managePagerState.currentPage,
-                                containerColor = Color.Transparent,
-                                contentColor = MaterialTheme.colorScheme.primary,
-                                divider = {},
-                                indicator = {
-                                    TabRowDefaults.PrimaryIndicator(
-                                        modifier = Modifier.tabIndicatorOffset(
-                                            selectedTabIndex = managePagerState.currentPage,
-                                            matchContentSize = true
-                                        ),
-                                        width = androidx.compose.ui.unit.Dp.Unspecified,
-                                        shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
-                                    )
-                                },
+                            // Spring physics M3 pagination dots
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
+                                    .padding(top = 4.dp, bottom = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val tabs = listOf(
-                                    "Actions" to Icons.Default.TouchApp,
-                                    "View & Sort" to Icons.Default.Tune
-                                )
-                                tabs.forEachIndexed { index, (label, icon) ->
-                                    val isSelected = managePagerState.currentPage == index
-                                    Tab(
-                                        selected = isSelected,
-                                        onClick = {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                            scope.launch {
-                                                managePagerState.animateScrollToPage(index)
-                                            }
+                                repeat(2) { index ->
+                                    val isSelected = (if (managePagerState.isScrollInProgress) managePagerState.targetPage else managePagerState.currentPage) == index
+                                    val animatedWidth by animateDpAsState(
+                                        targetValue = if (isSelected) 32.dp else 10.dp,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        ),
+                                        label = "manage_dot_width_$index"
+                                    )
+                                    val animatedColor by animateColorAsState(
+                                        targetValue = if (isSelected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.secondaryContainer
                                         },
-                                        text = {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                Text(
-                                                    text = label,
-                                                    style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized.copy(
-                                                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                                                    ) else MaterialTheme.typography.titleMedium.copy(
-                                                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
-                                                    ),
-                                                    fontWeight = FontWeight.Bold
-                                                )
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        ),
+                                        label = "manage_dot_color_$index"
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(horizontal = 4.dp, vertical = 6.dp)
+                                            .height(10.dp)
+                                            .width(animatedWidth)
+                                            .clip(CircleShape)
+                                            .background(animatedColor)
+                                            .clickable {
+                                                if (!isSelected) {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                    scope.launch {
+                                                        managePagerState.animateScrollToPage(
+                                                            page = index,
+                                                            animationSpec = spring(
+                                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                                stiffness = Spring.StiffnessLow
+                                                            )
+                                                        )
+                                                    }
+                                                }
                                             }
-                                        },
-                                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -1355,11 +1360,17 @@ fun LibraryScreen(
                                                     containerColor = MaterialTheme.colorScheme.primary,
                                                     contentColor = MaterialTheme.colorScheme.onPrimary
                                                 ),
-                                                contentPadding = PaddingValues(16.dp)
+                                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
                                             ) {
-                                                Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text("Add photos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.Start
+                                                ) {
+                                                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
+                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                    Text("Add photos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                }
                                             }
 
                                             if (longPressedCollection != "Library") {
@@ -1378,11 +1389,17 @@ fun LibraryScreen(
                                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                                     ),
-                                                    contentPadding = PaddingValues(16.dp)
+                                                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Remove, contentDescription = null)
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text("Remove photos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.Start
+                                                    ) {
+                                                        Icon(Icons.Default.Remove, contentDescription = null)
+                                                        Spacer(modifier = Modifier.width(12.dp))
+                                                        Text("Remove photos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                                    }
                                                 }
                                             }
 
@@ -1408,14 +1425,15 @@ fun LibraryScreen(
                                                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                                         ),
-                                                        contentPadding = PaddingValues(vertical = 14.dp, horizontal = 4.dp)
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp)
                                                     ) {
-                                                        Column(
-                                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                                            verticalArrangement = Arrangement.Center
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.Center
                                                         ) {
                                                             Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Spacer(modifier = Modifier.width(8.dp))
                                                             Text(
                                                                 text = "Edit name",
                                                                 style = MaterialTheme.typography.labelMedium.copy(
@@ -1444,14 +1462,15 @@ fun LibraryScreen(
                                                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                                         ),
-                                                        contentPadding = PaddingValues(vertical = 14.dp, horizontal = 4.dp)
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp)
                                                     ) {
-                                                        Column(
-                                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                                            verticalArrangement = Arrangement.Center
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.Center
                                                         ) {
                                                             Icon(Icons.Default.AddReaction, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Spacer(modifier = Modifier.width(8.dp))
                                                             Text(
                                                                 text = "Add emoji",
                                                                 style = MaterialTheme.typography.labelMedium.copy(
@@ -1480,14 +1499,15 @@ fun LibraryScreen(
                                                             containerColor = MaterialTheme.colorScheme.errorContainer,
                                                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                                                         ),
-                                                        contentPadding = PaddingValues(vertical = 14.dp, horizontal = 4.dp)
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp)
                                                     ) {
-                                                        Column(
-                                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                                            verticalArrangement = Arrangement.Center
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.Center
                                                         ) {
                                                             Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                            Spacer(modifier = Modifier.height(4.dp))
+                                                            Spacer(modifier = Modifier.width(8.dp))
                                                             Text(
                                                                 text = "Delete",
                                                                 style = MaterialTheme.typography.labelMedium.copy(
@@ -1633,7 +1653,7 @@ fun LibraryScreen(
                                                             }
                                                         }
                                                     },
-                                                    icon = { Icon(dateIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
+                                                    icon = { Icon(dateIcons[index], null, modifier = Modifier.size(18.dp)) },
                                                     label = dateLabels[index],
                                                     isFirst = index == 0,
                                                     isLast = index == dateOptions.size - 1
@@ -1666,7 +1686,7 @@ fun LibraryScreen(
                                                             }
                                                         }
                                                     },
-                                                    icon = { Icon(snippetIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
+                                                    icon = { Icon(snippetIcons[index], null, modifier = Modifier.size(18.dp)) },
                                                     label = snippetLabels[index],
                                                     isFirst = index == 0,
                                                     isLast = index == snippetOptions.size - 1
@@ -1698,7 +1718,7 @@ fun LibraryScreen(
                                                             }
                                                         }
                                                     },
-                                                    icon = { Icon(painterResource(id = R.drawable.ic_star_rating), null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
+                                                    icon = { Icon(painterResource(id = R.drawable.ic_star_rating), null, modifier = Modifier.size(18.dp)) },
                                                     label = starLabels[index],
                                                     isFirst = index == 0,
                                                     isLast = index == starOptions.size - 1
@@ -1784,7 +1804,7 @@ fun LibraryScreen(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
-    weight: Float,
+    weight: Float = 1f,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     icon: @Composable () -> Unit,
@@ -1795,44 +1815,68 @@ private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
     customItem(
         buttonGroupContent = {
             val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
 
-            val shapes = when {
+            val targetWeight = when {
+                checked && isPressed -> 1.30f
+                checked -> 1.20f
+                isPressed -> 1.10f
+                else -> 1.0f
+            }
+
+            val animatedWeight by animateFloatAsState(
+                targetValue = targetWeight,
+                animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+                label = "sortWeight_$label"
+            )
+
+            val baseShapes = when {
                 isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                 isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                 isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
             }
 
-            ToggleButton(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                interactionSource = interactionSource,
-                shapes = shapes,
+            val shapes = if (checked) baseShapes.copy(pressedShape = baseShapes.checkedShape) else baseShapes
+            val currentShape = if (checked) shapes.checkedShape else shapes.shape
+
+            BlurredSurface(
+                shape = currentShape,
+                color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                alpha = if (checked) 1f else 0.65f,
                 modifier = Modifier
-                    .weight(weight)
-                    .height(40.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                colors = ToggleButtonDefaults.toggleButtonColors(
-                    checkedContainerColor = MaterialTheme.colorScheme.primary,
-                    checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    .weight(animatedWeight)
+                    .height(40.dp)
             ) {
-                icon()
-                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text(
-                    text = label,
-                    style = if (checked) {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                        )
-                    } else {
-                        MaterialTheme.typography.labelLarge
-                    },
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
+                ToggleButton(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    interactionSource = interactionSource,
+                    shapes = shapes,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    colors = ToggleButtonDefaults.toggleButtonColors(
+                        checkedContainerColor = Color.Transparent,
+                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    icon()
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(
+                        text = label,
+                        style = if (checked) {
+                            MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                            )
+                        } else {
+                            MaterialTheme.typography.labelLarge
+                        },
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
             }
         },
         menuContent = { state ->
