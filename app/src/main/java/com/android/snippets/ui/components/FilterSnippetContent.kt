@@ -19,7 +19,7 @@ import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.SentimentSatisfied
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.TextSnippet
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
 
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Style
@@ -73,8 +73,15 @@ fun FilterSnippetContent(
         val map = mutableMapOf<String, Long>()
         viewModel.photos.flatMap { it.snippets }.distinct().forEach { snippet ->
             val time = viewModel.getSnippetFirstSeenTime(snippet)
-            if (time != null) {
+            if (time != null && time > 0L) {
                 map[snippet] = time
+            } else {
+                val earliestPhotoTime = viewModel.photos.filter { it.snippets.contains(snippet) }.minOfOrNull {
+                    if (it.snippetsAddedTime > 0L) it.snippetsAddedTime else it.date
+                }
+                if (earliestPhotoTime != null) {
+                    map[snippet] = earliestPhotoTime
+                }
             }
         }
         map
@@ -85,9 +92,9 @@ fun FilterSnippetContent(
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .verticalScroll(effectiveScrollState)
-            .padding(16.dp)
+            .padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
         when (selectedTabIndex) {
             0 -> {
@@ -103,7 +110,9 @@ fun FilterSnippetContent(
                     sortedKeys.forEach { char ->
                         Text(
                             text = char.toString(),
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
+                            ),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
@@ -132,7 +141,9 @@ fun FilterSnippetContent(
                     sortedKeys.forEach { key ->
                         Text(
                             text = key.uppercase(),
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
+                            ),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
@@ -147,88 +158,52 @@ fun FilterSnippetContent(
                             }
                         }
                     }
-                } else if (viewModel.snippetSortType == SnippetSortType.Color) {
-                    val grouped = allSnippets.groupBy { snippet -> viewModel.getSnippetColor(snippet) ?: Int.MIN_VALUE }
+                } else if (viewModel.snippetSortType == SnippetSortType.Year) {
+                    val grouped = allSnippets.groupBy { snippet ->
+                        val time = snippetCreationDates[snippet] ?: 0L
+                        yearFormat.format(java.util.Date(time))
+                    }
                     val sortedKeys = if (viewModel.isSortAscending) {
-                        grouped.keys.sorted()
+                        grouped.keys.sortedBy { yearFormat.parse(it)?.time ?: 0L }
                     } else {
-                        grouped.keys.sortedDescending()
+                        grouped.keys.sortedByDescending { yearFormat.parse(it)?.time ?: 0L }
                     }
 
-                    sortedKeys.forEach { colorInt ->
-                        val swatchColor = if (colorInt == Int.MIN_VALUE) MaterialTheme.colorScheme.outlineVariant else Color(colorInt)
-                        val label = if (colorInt == Int.MIN_VALUE) {
-                            "UNCOLORED"
-                        } else {
-                            String.format("#%06X", 0xFFFFFF and colorInt)
-                        }
-
-                        Row(
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Surface(
-                                modifier = Modifier.size(16.dp),
-                                shape = CircleShape,
-                                color = swatchColor
-                            ) {}
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                    sortedKeys.forEach { key ->
+                        Text(
+                            text = key,
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                        )
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            grouped[colorInt]?.forEach { snippet ->
-                                SnippetFilterChip(viewModel, snippet, view)
-                            }
-                        }
-                    }
-                } else if (viewModel.snippetSortType == SnippetSortType.Style) {
-                    val grouped = allSnippets.groupBy { snippet -> viewModel.getSnippetStyle(snippet) }
-                    val sortedKeys = if (viewModel.isSortAscending) {
-                        grouped.keys.sortedBy { it.name }
-                    } else {
-                        grouped.keys.sortedByDescending { it.name }
-                    }
-
-                    sortedKeys.forEach { style ->
-                        Row(
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = "S",
-                                style = getSnippetTextStyle(style, MaterialTheme.typography.titleSmall),
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = styleHeaderLabel(style),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            grouped[style]?.forEach { snippet ->
+                            grouped[key]?.forEach { snippet ->
                                 SnippetFilterChip(viewModel, snippet, view)
                             }
                         }
                     }
                 } else {
-                    // Default / Other sorts
-                    val displaySnippets = viewModel.allUniqueSnippets.filter { it in allSnippets }
+                    // Default / Other sorts (New, Old, Favorites, Emoji, Emoticons)
+                    val displaySnippets = remember(allSnippets, viewModel.snippetSortType, snippetCreationDates, viewModel.photos) {
+                        when (viewModel.snippetSortType) {
+                            SnippetSortType.New -> allSnippets.sortedByDescending { snippetCreationDates[it] ?: 0L }
+                            SnippetSortType.Old -> allSnippets.sortedBy { snippetCreationDates[it] ?: 0L }
+                            SnippetSortType.Favorites -> {
+                                val favSnippets = viewModel.photos.filter { it.isFavorite }.flatMap { it.snippets }.toSet()
+                                allSnippets.filter { it in favSnippets }.sorted()
+                            }
+                            SnippetSortType.Emoji -> allSnippets.filter { viewModel.containsEmoji(it) }.sorted()
+                            SnippetSortType.Emoticons -> allSnippets.filter { viewModel.containsEmoticon(it) }.sorted()
+                            else -> allSnippets.sortedByDescending { snippetCreationDates[it] ?: 0L }
+                        }
+                    }
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -239,7 +214,7 @@ fun FilterSnippetContent(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(100.dp))
+                Spacer(modifier = Modifier.height(48.dp))
             }
 
             1 -> {
@@ -247,8 +222,7 @@ fun FilterSnippetContent(
                 val snippetTypes = listOf(
                     SnippetSortType.New, SnippetSortType.Old, SnippetSortType.AZ,
                     SnippetSortType.Month, SnippetSortType.Year, SnippetSortType.Favorites,
-                    SnippetSortType.Emoji, SnippetSortType.Emoticons, SnippetSortType.Color,
-                    SnippetSortType.Style
+                    SnippetSortType.Emoji, SnippetSortType.Emoticons
                 )
 
                 Column(
@@ -275,7 +249,6 @@ fun FilterSnippetContent(
 @Composable
 private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, view: android.view.View) {
     val isSelected = viewModel.selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
-    val snippetStyle = viewModel.getSnippetStyle(snippet)
     FilterChip(
         selected = isSelected,
         onClick = {
@@ -285,9 +258,9 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
         label = {
             Text(
                 snippet,
-                style = getSnippetTextStyle(snippetStyle, MaterialTheme.typography.labelLarge).let {
-                    if (isSelected) it.copy(fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide) else it
-                },
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontFamily = if (isSelected) com.android.snippets.ui.theme.GoogleSansFlexWide else com.android.snippets.ui.theme.GoogleSansFlexRound
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -308,21 +281,6 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
     )
 }
 
-private fun styleHeaderLabel(style: SnippetStyle): String = when (style) {
-    SnippetStyle.Default -> "DEFAULT"
-    SnippetStyle.Thin -> "THIN"
-    SnippetStyle.Cursive -> "CURSIVE"
-    SnippetStyle.Mono -> "MONO"
-    SnippetStyle.Serif -> "SERIF"
-    SnippetStyle.Spaced -> "SPACED"
-    SnippetStyle.Bold -> "BOLD"
-    SnippetStyle.FlexHeavy -> "FLEX HEAVY"
-    SnippetStyle.FlexWide -> "FLEX WIDE"
-    SnippetStyle.FlexSlant -> "FLEX SLANTED"
-    SnippetStyle.FlexGrade -> "FLEX GRADE"
-    SnippetStyle.Flex -> "FLEX"
-}
-
 @Composable
 private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, view: android.view.View, position: CardPosition) {
     val isSelected = viewModel.snippetSortType == type
@@ -336,8 +294,6 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
         SnippetSortType.Favorites -> "Favorites"
         SnippetSortType.Emoji -> "Sort by emoji"
         SnippetSortType.Emoticons -> "Sort by emoticons"
-        SnippetSortType.Color -> "Sort by color"
-        SnippetSortType.Style -> "Sort by font style"
         else -> ""
     }
 
@@ -358,8 +314,6 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
             }
         }.build()
         SnippetSortType.Favorites -> Icons.Default.Favorite
-        SnippetSortType.Color -> Icons.Default.Palette
-        SnippetSortType.Style -> Icons.Default.Style
         SnippetSortType.AZ -> ImageVector.Builder(
             name = "AZSort",
             defaultWidth = 24.dp,
@@ -393,9 +347,9 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
                 if (viewModel.isSortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward
             } else Icons.Default.Style // Placeholder for sort
         }
-        SnippetSortType.New -> Icons.Default.TextSnippet
-        SnippetSortType.Old -> Icons.Default.TextSnippet
-        else -> Icons.Default.Image
+        SnippetSortType.New -> Icons.AutoMirrored.Filled.TextSnippet
+        SnippetSortType.Old -> Icons.AutoMirrored.Filled.TextSnippet
+        else -> Icons.AutoMirrored.Filled.TextSnippet
     }
 
     SettingsCardItem(
@@ -409,7 +363,7 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
         } else null,
         onClick = {
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-            if (viewModel.snippetSortType == type && (type == SnippetSortType.AZ || type == SnippetSortType.Month || type == SnippetSortType.Year || type == SnippetSortType.Color || type == SnippetSortType.Style)) {
+            if (viewModel.snippetSortType == type && (type == SnippetSortType.AZ || type == SnippetSortType.Month || type == SnippetSortType.Year)) {
                 viewModel.isSortAscending = !viewModel.isSortAscending
             } else {
                 viewModel.snippetSortType = type
