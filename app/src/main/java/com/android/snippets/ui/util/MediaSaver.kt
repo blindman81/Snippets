@@ -21,6 +21,9 @@ import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.Dispatchers
 import com.android.snippets.ui.shapes.CookiePolygon
 import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.theme.getPastelSnippetColorInt
+import com.android.snippets.ui.theme.getSnippetBackgroundColorInt
+import com.android.snippets.ui.theme.getSnippetTextColorInt
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -173,14 +176,13 @@ object MediaSaver {
         // 1. Draw Background (Fallback solid color first, then blurred photo if loaded)
         canvas.drawColor(bgColor)
         
-        if (photoBitmap != null) {
-            val blurredBackground = createBlurredBackground(photoBitmap, width, height)
+        val blurredBackground = if (photoBitmap != null) {
+            val bg = createBlurredBackground(photoBitmap, width, height)
             val blurPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 isFilterBitmap = true
                 isDither = true
             }
-            canvas.drawBitmap(blurredBackground, 0f, 0f, blurPaint)
-            blurredBackground.recycle()
+            canvas.drawBitmap(bg, 0f, 0f, blurPaint)
             
             // Draw Dim/Tint Overlay (always dark overlay)
             val dimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -188,7 +190,8 @@ object MediaSaver {
                 alpha = (255 * 0.5f).toInt()
             }
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
-        }
+            bg
+        } else null
         
         // 2. Draw Photo in the selected Shape
         val cx = width / 2f
@@ -248,26 +251,16 @@ object MediaSaver {
         }
         canvas.drawPath(photoPath, borderPaint)
 
-        // 3. Draw Date & Location Header
+        // 3. Draw Header: Label & Photo Name (Left) | Calendar & Date/Time (Center) | Location on & Location (Right)
         val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
         val timeFormat = if (is24Hour) "HH:mm" else "h:mm a"
         val datePattern = if (showTime) "EEE, d MMM • $timeFormat" else "EEE, d MMM"
         val dateString = SimpleDateFormat(datePattern, Locale.getDefault()).format(Date(photo.date)).uppercase()
         val locationText = overrideLocationText ?: LocationUtils.getLocationFromExif(context, photo)
-        val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            alpha = 230
-            textSize = 34f
-            typeface = getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                letterSpacing = 0.15f
-            }
-        }
+        val photoName = photo.name?.takeIf { it.isNotBlank() }
 
-        // Adjust Y positions if there is a rating to make space above the day, date and time
         val hasRating = photo.rating > 0
-        val dateY = if (hasRating) 220f else 200f
-        val pillTop = if (hasRating) 182f else 162f
+        val headerCenterY = if (hasRating) 220f else 180f
 
         if (hasRating) {
             val scaleFactor = width / 360f
@@ -299,60 +292,131 @@ object MediaSaver {
             }
         }
 
-        if (locationText.isNullOrBlank()) {
-            datePaint.textAlign = Paint.Align.CENTER
-            canvas.drawText(dateString, width / 2f, dateY, datePaint)
-        } else {
-            datePaint.textAlign = Paint.Align.LEFT
-            val dateWidth = datePaint.measureText(dateString)
+        val paddingX = 48f
+        val pillH = 52f
+        val pillRadius = pillH / 2f
 
-            val locTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            alpha = (255 * 0.25f).toInt()
+            style = Paint.Style.FILL
+        }
+        val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            alpha = (255 * 0.4f).toInt()
+            style = Paint.Style.STROKE
+            strokeWidth = 2.5f
+        }
+
+        // --- Center: Calendar month icon and day, date month and time in pill ---
+        val datePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            alpha = 240
+            textSize = 26f
+            typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        val calIconSize = 28f
+        val calItemSpacing = 10f
+        val calHorizontalPadding = 20f
+        val dateTextWidth = datePaint.measureText(dateString)
+        val centerPillW = calHorizontalPadding * 2 + calIconSize + calItemSpacing + dateTextWidth
+        val centerPillLeft = (width - centerPillW) / 2f
+        val centerPillTop = headerCenterY - (pillH / 2f)
+        val centerPillRect = RectF(centerPillLeft, centerPillTop, centerPillLeft + centerPillW, centerPillTop + pillH)
+
+        canvas.drawRoundRect(centerPillRect, pillRadius, pillRadius, pillBgPaint)
+        canvas.drawRoundRect(centerPillRect, pillRadius, pillRadius, pillBorderPaint)
+
+        val calDrawable = androidx.core.content.res.ResourcesCompat.getDrawable(context.resources, R.drawable.ic_calendar_month, null)
+        val calIconX = centerPillLeft + calHorizontalPadding
+        val calIconY = headerCenterY - (calIconSize / 2f)
+        if (calDrawable != null) {
+            calDrawable.setBounds(calIconX.toInt(), calIconY.toInt(), (calIconX + calIconSize).toInt(), (calIconY + calIconSize).toInt())
+            val tinted = calDrawable.mutate()
+            androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
+            tinted.draw(canvas)
+        }
+        val dateTextY = headerCenterY - ((datePaint.descent() + datePaint.ascent()) / 2f)
+        datePaint.textAlign = Paint.Align.LEFT
+        canvas.drawText(dateString, calIconX + calIconSize + calItemSpacing, dateTextY, datePaint)
+
+        // --- Left: Label icon and Photo name ---
+        if (!photoName.isNullOrBlank()) {
+            val namePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
                 alpha = 240
                 textSize = 26f
                 typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             }
-            val locTextWidth = locTextPaint.measureText(locationText)
+            val labelIconSize = 28f
+            val itemSpacing = 10f
+            val horizontalPadding = 20f
 
-            val pillW = locTextWidth + 64f
-            val pillH = 48f
-            val spacing = 24f
-            val totalHeaderWidth = dateWidth + spacing + pillW
-            val startX = (width - totalHeaderWidth) / 2f
+            val maxLeftPillWidth = (centerPillLeft - paddingX - 16f).coerceAtLeast(100f)
+            val maxTextWidth = (maxLeftPillWidth - horizontalPadding * 2 - labelIconSize - itemSpacing).coerceAtLeast(10f)
+            val ellipsizedName = android.text.TextUtils.ellipsize(photoName, namePaint, maxTextWidth, android.text.TextUtils.TruncateAt.END).toString()
+            val textWidth = namePaint.measureText(ellipsizedName)
 
-            canvas.drawText(dateString, startX, dateY, datePaint)
+            val pillW = horizontalPadding * 2 + labelIconSize + itemSpacing + textWidth
+            val pillLeft = paddingX
+            val pillTop = headerCenterY - (pillH / 2f)
+            val pillRect = RectF(pillLeft, pillTop, pillLeft + pillW, pillTop + pillH)
 
-            val pillLeft = startX + dateWidth + spacing
-            val pillRight = pillLeft + pillW
-            val pillBottom = pillTop + pillH
-            val pillRect = RectF(pillLeft, pillTop, pillRight, pillBottom)
-            val pillRadius = pillH / 2f
-
-            val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                alpha = (255 * 0.25f).toInt()
-                style = Paint.Style.FILL
-            }
-            val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                alpha = (255 * 0.4f).toInt()
-                style = Paint.Style.STROKE
-                strokeWidth = 3f
-            }
             canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBgPaint)
             canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBorderPaint)
 
-            val dotX = pillLeft + 24f
-            val dotY = pillRect.centerY()
-            val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                style = Paint.Style.FILL
+            val labelDrawable = androidx.core.content.res.ResourcesCompat.getDrawable(context.resources, R.drawable.ic_label, null)
+            val iconX = pillLeft + horizontalPadding
+            val iconY = headerCenterY - (labelIconSize / 2f)
+            if (labelDrawable != null) {
+                labelDrawable.setBounds(iconX.toInt(), iconY.toInt(), (iconX + labelIconSize).toInt(), (iconY + labelIconSize).toInt())
+                val tinted = labelDrawable.mutate()
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
+                tinted.draw(canvas)
             }
-            canvas.drawCircle(dotX, dotY, 5f, dotPaint)
+            val textY = headerCenterY - ((namePaint.descent() + namePaint.ascent()) / 2f)
+            namePaint.textAlign = Paint.Align.LEFT
+            canvas.drawText(ellipsizedName, iconX + labelIconSize + itemSpacing, textY, namePaint)
+        }
 
-            val textCenterX = pillLeft + 44f + (locTextWidth / 2f)
-            locTextPaint.textAlign = Paint.Align.CENTER
-            canvas.drawText(locationText, textCenterX, pillRect.centerY() + 9f, locTextPaint)
+        // --- Right: Location on icon to show location ---
+        if (!locationText.isNullOrBlank()) {
+            val locTextPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                alpha = 240
+                textSize = 26f
+                typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            }
+            val locIconSize = 28f
+            val itemSpacing = 10f
+            val horizontalPadding = 20f
+
+            val maxRightPillWidth = (width - paddingX - (centerPillLeft + centerPillW + 16f)).coerceAtLeast(100f)
+            val maxTextWidth = (maxRightPillWidth - horizontalPadding * 2 - locIconSize - itemSpacing).coerceAtLeast(10f)
+            val ellipsizedLoc = android.text.TextUtils.ellipsize(locationText, locTextPaint, maxTextWidth, android.text.TextUtils.TruncateAt.END).toString()
+            val textWidth = locTextPaint.measureText(ellipsizedLoc)
+
+            val pillW = horizontalPadding * 2 + locIconSize + itemSpacing + textWidth
+            val pillRight = width - paddingX
+            val pillLeft = pillRight - pillW
+            val pillTop = headerCenterY - (pillH / 2f)
+            val pillRect = RectF(pillLeft, pillTop, pillRight, pillTop + pillH)
+
+            canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBgPaint)
+            canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBorderPaint)
+
+            val locDrawable = androidx.core.content.res.ResourcesCompat.getDrawable(context.resources, R.drawable.ic_location_on, null)
+            val iconX = pillLeft + horizontalPadding
+            val iconY = headerCenterY - (locIconSize / 2f)
+            if (locDrawable != null) {
+                locDrawable.setBounds(iconX.toInt(), iconY.toInt(), (iconX + locIconSize).toInt(), (iconY + locIconSize).toInt())
+                val tinted = locDrawable.mutate()
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
+                tinted.draw(canvas)
+            }
+            val textY = headerCenterY - ((locTextPaint.descent() + locTextPaint.ascent()) / 2f)
+            locTextPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText(ellipsizedLoc, iconX + locIconSize + itemSpacing, textY, locTextPaint)
         }
 
         // 4. Draw Snippets (Synchronized with ExpressiveShareSheet logic)
@@ -375,60 +439,13 @@ object MediaSaver {
         var currentRowHeight = 0f
         
         snippets.forEachIndexed { index, text ->
-            val forcedColor = snippetColors[text.trim()]
-            val baseColor = if (forcedColor != null) {
-                forcedColor
-            } else {
-                val stableRandom = Random(text.hashCode().toLong())
-                val colorStrategy = (index + stableRandom.nextInt(10)) % 3
-                when (colorStrategy) {
-                    0 -> { // Fallback Theme
-                        Color.parseColor(if (isDark) "#D0BCFF" else "#6750A4")
-                    }
-                    1 -> { // System Theme Mix
-                        val themes = if (isDark) intArrayOf(
-                            Color.parseColor("#D0BCFF"),
-                            Color.parseColor("#CCC2DC"),
-                            Color.parseColor("#EFB8C8")
-                        ) else intArrayOf(
-                            Color.parseColor("#6750A4"),
-                            Color.parseColor("#625b71"),
-                            Color.parseColor("#7D5260")
-                        )
-                        themes[stableRandom.nextInt(themes.size)]
-                    }
-                    else -> { // Vivid Pop
-                        val vivids = if (isDark) intArrayOf(
-                            Color.parseColor("#FF8A65"), Color.parseColor("#F06292"), 
-                            Color.parseColor("#BA68C8"), Color.parseColor("#4DD0E1")
-                        ) else intArrayOf(
-                            Color.parseColor("#D84315"), Color.parseColor("#C2185B"), 
-                            Color.parseColor("#7B1FA2"), Color.parseColor("#0097A7")
-                        )
-                        vivids[stableRandom.nextInt(vivids.size)]
-                    }
-                }
-            }
-
-            // Contrast check for Bitmap drawing
-            val colorInt = baseColor.let { c ->
-                val r = Color.red(c) / 255f
-                val g = Color.green(c) / 255f
-                val b = Color.blue(c) / 255f
-                val lum = 0.299f * r + 0.587f * g + 0.114f * b
-                if (isDark && lum < 0.3f) {
-                    Color.rgb((r + 0.4f).coerceAtMost(1f), (g + 0.4f).coerceAtMost(1f), (b + 0.4f).coerceAtMost(1f))
-                } else if (!isDark && lum > 0.7f) {
-                    Color.rgb((r - 0.4f).coerceAtLeast(0f), (g - 0.4f).coerceAtLeast(0f), (b - 0.4f).coerceAtLeast(0f))
-                } else c
-            }
-
             val trimmedText = text.trim()
-            val stableRandom = Random(trimmedText.hashCode())
+            val colorInt = getSnippetBackgroundColorInt(context, isDark)
+            val stableRandom = Random(trimmedText.hashCode().toLong())
             val personality = stableRandom.nextInt(0, 5)
             val isFilled = true
             
-            val rotation = stableRandom.nextInt(-15, 15).toFloat()
+            val rotation = (stableRandom.nextFloat() * 16f - 8f)
             
             val total = snippets.size
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getCloudScalingFactor(total)
@@ -541,7 +558,7 @@ object MediaSaver {
                 
                 canvas.save()
                 canvas.rotate(pill.rot, x, y)
-                textPaint.color = pill.color
+                textPaint.color = getSnippetTextColorInt(context, isDark)
                 textPaint.textSize = pill.textSize * fitScale
                 textPaint.typeface = pill.typeface
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
@@ -558,18 +575,12 @@ object MediaSaver {
                     offset(x - (scaledW / 2f), y - (scaledH / 2f))
                 }
                 
-                if (pill.isFilled) {
-                    pillPaint.style = Paint.Style.FILL
-                    pillPaint.color = pill.color
-                    pillPaint.alpha = (255 * 0.25f).toInt()
-                    canvas.drawPath(pillPath, pillPaint)
-                } else {
-                    pillPaint.style = Paint.Style.STROKE
-                    pillPaint.strokeWidth = 1.5f * fitScale * scaleFactor
-                    pillPaint.color = pill.color
-                    pillPaint.alpha = (255 * 0.40f).toInt()
-                    canvas.drawPath(pillPath, pillPaint)
-                }
+                // Frosted haze blur in pill container (matching MemoryScreen primaryContainer)
+                pillPaint.style = Paint.Style.FILL
+                pillPaint.color = pill.color
+                pillPaint.alpha = if (blurredBackground != null) (255 * 0.70f).toInt() else 255
+                canvas.drawPath(pillPath, pillPaint)
+
                 val currentBounds = Rect()
                 textPaint.getTextBounds(pill.text, 0, pill.text.length, currentBounds)
                 val textY = y - currentBounds.exactCenterY()
@@ -581,6 +592,8 @@ object MediaSaver {
             currentY += rowHeight + scaledSpacingY
         }
         
+        blurredBackground?.recycle()
+
         return bitmap
     }
 
@@ -604,7 +617,7 @@ object MediaSaver {
         val srcHeight = src.height.toFloat()
         val scaleX = targetWidth / srcWidth
         val scaleY = targetHeight / srcHeight
-        val scale = maxOf(scaleX, scaleY)
+        val scale = maxOf(scaleX, scaleY) * 1.08f
         val scaledW = (srcWidth * scale).toInt().coerceAtLeast(1)
         val scaledH = (srcHeight * scale).toInt().coerceAtLeast(1)
         
@@ -615,19 +628,54 @@ object MediaSaver {
         matrix.postTranslate((targetWidth - scaledW) * 0.5f, (targetHeight - scaledH) * 0.5f)
         canvas.drawBitmap(src, matrix, null)
         
-        // Downsample to 8% for smooth interpolation
-        val tinyW = (targetWidth * 0.08f).toInt().coerceAtLeast(8)
-        val tinyH = (targetHeight * 0.08f).toInt().coerceAtLeast(8)
-        val tiny = Bitmap.createScaledBitmap(cropped, tinyW, tinyH, true)
-        
-        // Apply box blur on the tiny image to make it silky smooth
-        val blurredTiny = boxBlur(tiny, 4)
-        
-        val blurred = Bitmap.createScaledBitmap(blurredTiny, targetWidth, targetHeight, true)
+        // Downsample to 20% for silky smooth performance and high fidelity
+        val blurW = (targetWidth * 0.20f).toInt().coerceAtLeast(16)
+        val blurH = (targetHeight * 0.20f).toInt().coerceAtLeast(16)
+        val downscaled = Bitmap.createScaledBitmap(cropped, blurW, blurH, true)
         cropped.recycle()
-        tiny.recycle()
-        blurredTiny.recycle()
-        return blurred
+        
+        // Multi-pass Gaussian blur:
+        // Lighter blur for the top (matching startRadius = 4.dp in MemoryScreen)
+        val lightBlurred = gaussianBlur(downscaled, 4, 3)
+        // Deeper blur for the bottom (matching endRadius = 24.dp in MemoryScreen)
+        val deepBlurred = gaussianBlur(downscaled, 14, 3)
+        downscaled.recycle()
+        
+        // Composite vertical progressive gradient blur matching MemoryScreen's BlurRadiusSpec.verticalGradient
+        val composite = Bitmap.createBitmap(blurW, blurH, Bitmap.Config.ARGB_8888)
+        val compCanvas = Canvas(composite)
+        compCanvas.drawBitmap(lightBlurred, 0f, 0f, null)
+        
+        val gradientPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f, 0f, 0f, blurH.toFloat(),
+                Color.TRANSPARENT, Color.BLACK,
+                Shader.TileMode.CLAMP
+            )
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+        }
+        val deepCanvas = Canvas(deepBlurred)
+        deepCanvas.drawRect(0f, 0f, blurW.toFloat(), blurH.toFloat(), gradientPaint)
+        
+        compCanvas.drawBitmap(deepBlurred, 0f, 0f, null)
+        lightBlurred.recycle()
+        deepBlurred.recycle()
+        
+        val blurredFull = Bitmap.createScaledBitmap(composite, targetWidth, targetHeight, true)
+        composite.recycle()
+        return blurredFull
+    }
+
+    private fun gaussianBlur(src: Bitmap, range: Int, passes: Int = 3): Bitmap {
+        var current = src
+        var isFirst = true
+        repeat(passes) {
+            val next = boxBlur(current, range)
+            if (!isFirst) current.recycle()
+            isFirst = false
+            current = next
+        }
+        return current
     }
 
     private fun boxBlur(src: Bitmap, range: Int): Bitmap {
