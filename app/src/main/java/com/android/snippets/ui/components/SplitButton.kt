@@ -84,22 +84,10 @@ fun SplitButton(
                         onDismissRequest = { expanded = false },
                         shape = RoundedCornerShape(12.dp),
                         offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
-                        containerColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shadowElevation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 0.dp else 6.dp
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shadowElevation = 6.dp
                     ) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            BlurredSurface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                shadowElevation = 6.dp,
-                                blurStartRadius = 4.dp,
-                                blurEndRadius = 24.dp
-                            ) {
-                                Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                                    dropdownContent { expanded = false }
-                                }
-                            }
-                        } else {
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
                             dropdownContent { expanded = false }
                         }
                     }
