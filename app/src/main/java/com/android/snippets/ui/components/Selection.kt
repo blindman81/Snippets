@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -39,7 +40,8 @@ fun PremiumSwitch(
     enabled: Boolean = true
 ) {
     val activeColor = MaterialTheme.colorScheme.primary
-    val inactiveColor = MaterialTheme.colorScheme.outlineVariant
+    val inactiveColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f)
+    val shape = LocalAppShape.current
     
     val rotation by animateFloatAsState(
         targetValue = if (checked) 360f else 0f,
@@ -51,7 +53,7 @@ fun PremiumSwitch(
         modifier = modifier
             .size(40.dp)
             .graphicsLayer { rotationZ = rotation }
-            .clip(LocalAppShape.current)
+            .clip(shape)
             .background(
                 if (checked) {
                     if (enabled) activeColor else activeColor.copy(alpha = 0.38f)
