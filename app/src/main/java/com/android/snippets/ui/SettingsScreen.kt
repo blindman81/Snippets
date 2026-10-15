@@ -12,16 +12,29 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.FormatColorFill
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Info
 
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
@@ -41,6 +54,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.animateFloatAsState
 import com.android.snippets.ui.theme.GoogleSansFlexWide
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.components.LoadingIndicator
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.ui.graphics.RectangleShape
@@ -78,6 +92,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 
+private data class PillInfo(
+    val text: String,
+    val icon: @Composable () -> Unit,
+    val id: Long = System.currentTimeMillis()
+)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(viewModel: SnippetsViewModel) {
@@ -112,392 +132,459 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
     var showThemeDialog by remember { mutableStateOf(false) }
     var showCanvasDialog by remember { mutableStateOf(false) }
     var showAutoBackupDialog by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    var showTimePicker by remember { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
-        topBar = {
-            LargeMainTopBar(
-                title = "Settings",
-                onNavigationClick = { 
-                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    viewModel.navigateLibrary()
-                },
-                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-                isSpinning = !(showThemeDialog || showCanvasDialog),
-                scrollBehavior = scrollBehavior
+    var activeInfo by remember { mutableStateOf<PillInfo?>(null) }
+    var displayedInfo by remember { mutableStateOf<PillInfo?>(null) }
+    var infoJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+    fun showButtonInfo(name: String, icon: @Composable () -> Unit) {
+        infoJob?.cancel()
+        val info = PillInfo(name, icon, System.currentTimeMillis())
+        displayedInfo = info
+        activeInfo = info
+        infoJob = scope.launch {
+            kotlinx.coroutines.delay(3500)
+            activeInfo = null
+        }
+    }
+
+    fun showButtonInfo(name: String, iconVector: androidx.compose.ui.graphics.vector.ImageVector) {
+        showButtonInfo(name) {
+            Icon(
+                imageVector = iconVector,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
         }
-    ) { padding ->
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            shape = RectangleShape,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp
-        ) {
+    }
+
+    fun showButtonInfo(name: String, iconRes: Int) {
+        showButtonInfo(name) {
+            Icon(
+                painter = androidx.compose.ui.res.painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+
+    val hazeState = LocalHazeState.current ?: rememberHazeState()
+
+    CompositionLocalProvider(
+        LocalHazeState provides hazeState
+    ) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.surface,
+            topBar = {
+                LargeMainTopBar(
+                    title = "Settings",
+                    onNavigationClick = { 
+                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                        viewModel.navigateLibrary()
+                    },
+                    navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                    isSpinning = !(showThemeDialog || showCanvasDialog)
+                )
+            }
+        ) { padding ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = hazeState),
+                shape = RectangleShape,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(bottom = padding.calculateBottomPadding())
-                    .animateContentSize(spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)),
+                    .padding(bottom = padding.calculateBottomPadding()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
 
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ShapedSectionHeader(icon = SettingsSectionIcon())
-                Text(
-                    text = "Palette",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                Spacer(modifier = Modifier.height(16.dp))
 
-
-            val themeOptions = listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK)
-            val themeLabels = listOf("System", "Light", "Dark")
-            val themeIcons = listOf(AndroidIcon(), Icons.Default.LightMode, Icons.Default.DarkMode)
-
-            ButtonGroup(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                overflowIndicator = {}
-            ) {
-                themeOptions.forEachIndexed { index, option ->
-                    val isSelected = viewModel.themePreference == option
-                    val isFirst = index == 0
-                    val isLast = index == themeOptions.size - 1
-                    themeToggleableItem(
-                        weight = 1f,
-                        checked = isSelected,
-                        onCheckedChange = {
-                            if (!isSelected) {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                viewModel.updateThemePreference(option)
-                            }
-                        },
-                        icon = { Icon(themeIcons[index], null, modifier = Modifier.size(if (isSelected) 24.dp else 18.dp)) },
-                        label = themeLabels[index],
-                        isFirst = isFirst,
-                        isLast = isLast
+                // Interface Section Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ShapedSectionHeader(icon = MobileSectionIcon())
+                    Text(
+                        text = "Interface",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-            }
 
-            SettingsCardItem(
-                icon = Icons.Default.FormatColorFill,
-                title = "Dynamic Colors",
-                onClick = { 
-                    view.performHapticFeedback(if (!viewModel.useDynamicColors) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                    viewModel.updateDynamicColors(!viewModel.useDynamicColors) 
-                },
-                position = CardPosition.Single,
-                trailingContent = {
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    PremiumSwitch(
-                        checked = viewModel.useDynamicColors,
-                        onCheckedChange = { 
-                            viewModel.updateDynamicColors(it) 
+                val themeOptions = listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK)
+                val themeLabels = listOf("System", "Light", "Dark")
+                val themeIcons = listOf(AndroidIcon(), Icons.Default.LightMode, Icons.Default.DarkMode)
+
+                val selectedThemeIndex = themeOptions.indexOf(viewModel.themePreference).coerceAtLeast(0)
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(
+                            topStart = 12.dp,
+                            topEnd = 12.dp,
+                            bottomStart = 4.dp,
+                            bottomEnd = 4.dp
+                        ),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.wrapContentWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(6.dp)) {
+                            CookieButtonGroup(
+                                selectedIndex = selectedThemeIndex,
+                                onSelect = { index ->
+                                    val option = themeOptions[index]
+                                    if (viewModel.themePreference != option) {
+                                        viewModel.updateThemePreference(option)
+                                    }
+                                },
+                                onItemClick = { index ->
+                                    showButtonInfo(themeLabels[index], themeIcons[index])
+                                },
+                                icons = themeIcons,
+                                contentDescriptions = themeLabels,
+                                tooltips = themeLabels,
+                                columns = 1,
+                                cookieSize = 72.dp,
+                                iconSize = 28.dp,
+                                overlap = 0.dp,
+                                horizontalAlignment = Alignment.Start
+                            )
+                        }
+                    }
+                }
+
+                val motionModeIcon = MotionModeIcon()
+
+                val interfaceItems = listOf(
+                    cookieButtonItem(
+                        icon = Icons.Default.FormatColorFill,
+                        contentDescription = "Dynamic colors",
+                        tooltip = "Dynamic colors",
+                        isSelected = viewModel.useDynamicColors,
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Dynamic colors", Icons.Default.FormatColorFill)
+                            viewModel.updateDynamicColors(!viewModel.useDynamicColors)
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = Icons.Default.Schedule,
+                        contentDescription = "Show time in memories and saved photos",
+                        tooltip = "Show time in memories and saved photos",
+                        isSelected = viewModel.showTimeInMemories,
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Show time in memories and saved photos", Icons.Default.Schedule)
+                            viewModel.updateShowTimeInMemories(!viewModel.showTimeInMemories)
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = Icons.AutoMirrored.Filled.Label,
+                        contentDescription = "Expand photo name",
+                        tooltip = "Expand photo name",
+                        isSelected = viewModel.expandPhotoNameIcon,
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Expand photo name", Icons.AutoMirrored.Filled.Label)
+                            viewModel.updateExpandPhotoNameIcon(!viewModel.expandPhotoNameIcon)
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = Icons.Default.CalendarMonth,
+                        contentDescription = "Expand day and date",
+                        tooltip = "Expand day and date",
+                        isSelected = viewModel.expandDayAndDateIcon,
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Expand day and date", Icons.Default.CalendarMonth)
+                            viewModel.updateExpandDayAndDateIcon(!viewModel.expandDayAndDateIcon)
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = motionModeIcon,
+                        contentDescription = "Motion sensor for button rotation",
+                        tooltip = "Motion sensor for button rotation",
+                        isSelected = viewModel.motionSensorForButtonRotation,
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Motion sensor for button rotation", motionModeIcon)
+                            viewModel.updateMotionSensorForButtonRotation(!viewModel.motionSensorForButtonRotation)
                         }
                     )
-                }
-            )
-
-
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ShapedSectionHeader(icon = NotificationSectionIcon())
-                Text(
-                    text = "Notifications",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
                 )
-            }
 
-
-            var showTimePicker by remember { mutableStateOf(false) }
-            val context = LocalContext.current
-            val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
-
-            val reminderTimeStr = if (viewModel.notificationReminderEnabled) {
-                val isPm = viewModel.notificationReminderHour >= 12
-                val displayHour = when {
-                    viewModel.notificationReminderHour == 0 -> 12
-                    viewModel.notificationReminderHour > 12 -> viewModel.notificationReminderHour - 12
-                    else -> viewModel.notificationReminderHour
-                }
-                String.format("Daily at %02d:%02d %s", displayHour, viewModel.notificationReminderMinute, if (isPm) "PM" else "AM")
-            } else {
-                "Disabled"
-            }
-
-            SettingsCardItem(
-                icon = com.ln.android.snippets.R.drawable.ic_daily_reminder,
-                title = "Memory notification scheduling",
-                subtitle = reminderTimeStr,
-                onClick = { 
-                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    showTimePicker = true
-                },
-                position = CardPosition.Single,
-                trailingContent = {
-                    PremiumSwitch(
-                        checked = viewModel.notificationReminderEnabled,
-                        onCheckedChange = { checked ->
-                            view.performHapticFeedback(if (checked) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                            if (checked) {
-                                viewModel.updateNotificationReminder(
-                                    enabled = true,
-                                    hour = viewModel.notificationReminderHour,
-                                    minute = viewModel.notificationReminderMinute
-                                )
-                                showTimePicker = true
-                            } else {
-                                viewModel.updateNotificationReminder(
-                                    enabled = false,
-                                    hour = viewModel.notificationReminderHour,
-                                    minute = viewModel.notificationReminderMinute
-                                )
-                            }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(
+                            topStart = 4.dp,
+                            topEnd = 4.dp,
+                            bottomStart = 12.dp,
+                            bottomEnd = 12.dp
+                        ),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.wrapContentWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(6.dp)) {
+                            CookieButtonGroup(
+                                items = interfaceItems,
+                                columns = 1,
+                                cookieSize = 72.dp,
+                                overlap = 0.dp,
+                                horizontalAlignment = Alignment.Start,
+                                wiggleNeighborOnToggleOn = true
+                            )
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Actions Section Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ShapedSectionHeader(icon = MoreSectionIcon())
+                    Text(
+                        text = "Actions",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-            )
 
-            val timePickerState = rememberTimePickerState(
-                initialHour = viewModel.notificationReminderHour,
-                initialMinute = viewModel.notificationReminderMinute,
-                is24Hour = is24Hour
-            )
+                Spacer(modifier = Modifier.height(16.dp))
 
-            if (showTimePicker) {
-                AdvancedTimePickerDialog(
-                    title = "Set reminder time",
-                    onDismiss = { showTimePicker = false },
-                    onConfirm = {
-                        showTimePicker = false
-                        viewModel.updateNotificationReminder(
-                            enabled = true,
-                            hour = timePickerState.hour,
-                            minute = timePickerState.minute
+                val backupIcon = BackupSectionIcon()
+                val importIcon = ImportSectionIcon()
+
+                val actionItems = listOf(
+                    cookieButtonItem(
+                        icon = com.ln.android.snippets.R.drawable.ic_daily_reminder,
+                        contentDescription = "Schedule memory notifications",
+                        tooltip = "Schedule memory notifications",
+                        isSelected = viewModel.notificationReminderEnabled,
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Schedule memory notifications", com.ln.android.snippets.R.drawable.ic_daily_reminder)
+                            showTimePicker = true
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = backupIcon,
+                        contentDescription = "Export",
+                        tooltip = "Export",
+                        isSelected = false,
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Export", backupIcon)
+                            exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.json")
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = importIcon,
+                        contentDescription = "Import",
+                        tooltip = "Import",
+                        isSelected = false,
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Import", importIcon)
+                            importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*"))
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = Icons.Default.CloudSync,
+                        contentDescription = "Auto backup",
+                        tooltip = "Auto backup",
+                        isSelected = viewModel.autoBackupSchedule != "Disabled",
+                        iconSize = 28.dp,
+                        onClick = {
+                            showButtonInfo("Auto backup", Icons.Default.CloudSync)
+                            showAutoBackupDialog = true
+                        }
+                    )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.wrapContentWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(6.dp)) {
+                            CookieButtonGroup(
+                                items = actionItems,
+                                columns = 1,
+                                cookieSize = 72.dp,
+                                overlap = 0.dp,
+                                horizontalAlignment = Alignment.Start,
+                                enableWiggle = false
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                AnimatedVisibility(
+                    visible = activeInfo != null,
+                    enter = slideInVertically(
+                        initialOffsetY = { -it },
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
                         )
-                    },
-                    content = { TimePicker(state = timePickerState) }
-                )
-            }
-
-
-
-
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ShapedSectionHeader(icon = CollectionsSectionIcon())
-                Text(
-                    text = "Collections",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-
-            SettingsCardItem(
-                icon = Icons.AutoMirrored.Filled.Label,
-                title = "Show collection name",
-                onClick = { 
-                    view.performHapticFeedback(if (!viewModel.showCollectionName) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                    viewModel.updateShowCollectionName(!viewModel.showCollectionName) 
-                },
-                position = CardPosition.Single,
-                trailingContent = {
-                    PremiumSwitch(
-                        checked = viewModel.showCollectionName,
-                        onCheckedChange = { 
-                            viewModel.updateShowCollectionName(it) 
+                    ) + expandVertically(
+                        expandFrom = Alignment.Top,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) + fadeIn(animationSpec = tween(200)),
+                    exit = slideOutVertically(
+                        targetOffsetY = { -it },
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) + shrinkVertically(
+                        shrinkTowards = Alignment.Top,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) + fadeOut(animationSpec = tween(200))
+                ) {
+                    displayedInfo?.let { currentInfo ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .height(36.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                currentInfo.icon()
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = currentInfo.text,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Medium,
+                                        fontFamily = GoogleSansFlexWide
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
-                    )
+                    }
                 }
-            )
- 
-             Spacer(modifier = Modifier.height(16.dp))
 
-             Row(
-                 modifier = Modifier
-                     .fillMaxWidth()
-                     .padding(horizontal = 20.dp, vertical = 8.dp),
-                 verticalAlignment = Alignment.CenterVertically,
-                 horizontalArrangement = Arrangement.spacedBy(12.dp)
-             ) {
-                 ShapedSectionHeader(icon = BackupSectionIcon())
-                 Text(
-                     text = "Backup",
-                     style = MaterialTheme.typography.titleMedium,
-                     color = MaterialTheme.colorScheme.onSurface,
-                     fontWeight = FontWeight.Bold
-                 )
+
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+
+     if (showAutoBackupDialog) {
+         AutoBackupScheduleDialog(
+             currentSchedule = viewModel.autoBackupSchedule,
+             onDismiss = { showAutoBackupDialog = false },
+             onConfirm = { selected ->
+                 viewModel.updateAutoBackupSchedule(selected)
+                 showAutoBackupDialog = false
              }
-
-             SettingsCardItem(
-                 icon = BackupSectionIcon(),
-                 title = "Export",
-                 subtitle = "Save snippets, collections, and settings to a JSON file",
-                 onClick = {
-                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                     exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.json")
-                 },
-                 position = CardPosition.First
-             )
-
-             SettingsCardItem(
-                 icon = ImportSectionIcon(),
-                 title = "Import",
-                 subtitle = "Restore snippets, collections, and settings from a JSON file",
-                 onClick = {
-                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                     importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*"))
-                 },
-                 position = CardPosition.Middle
-             )
-
-             val autoBackupSubtitle = when (viewModel.autoBackupSchedule) {
-                 "Daily" -> "Back up automatically every day"
-                 "Weekly" -> "Back up automatically every Sunday"
-                 "Monthly" -> "Back up automatically on 1st of month"
-                 else -> "Automatic backups are turned off"
-             }
-             SettingsCardItem(
-                 icon = BackupSectionIcon(),
-                 title = "Auto Backup",
-                 subtitle = autoBackupSubtitle,
-                 onClick = {
-                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                     showAutoBackupDialog = true
-                 },
-                 position = CardPosition.Last
-             )
-
-             Spacer(modifier = Modifier.height(16.dp))
-
-             Row(
-                 modifier = Modifier
-                     .fillMaxWidth()
-                     .padding(horizontal = 20.dp, vertical = 8.dp),
-                 verticalAlignment = Alignment.CenterVertically,
-                 horizontalArrangement = Arrangement.spacedBy(12.dp)
-             ) {
-                 ShapedSectionHeader(icon = MoreSectionIcon())
-                 Text(
-                     text = "More",
-                     style = MaterialTheme.typography.titleMedium,
-                     color = MaterialTheme.colorScheme.onSurface,
-                     fontWeight = FontWeight.Bold
-                 )
-             }
-
-
-             SettingsCardItem(
-                 icon = Icons.Default.Schedule,
-                 title = "Show time in memories and saved photos",
-                 onClick = {
-                     view.performHapticFeedback(if (!viewModel.showTimeInMemories) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                     viewModel.updateShowTimeInMemories(!viewModel.showTimeInMemories)
-                 },
-                 position = CardPosition.First,
-                 trailingContent = {
-                     PremiumSwitch(
-                         checked = viewModel.showTimeInMemories,
-                         onCheckedChange = {
-                             viewModel.updateShowTimeInMemories(it)
-                         }
-                     )
-                 }
-             )
-
-             SettingsCardItem(
-                 icon = Icons.AutoMirrored.Filled.Label,
-                 title = "Expand photo name icon",
-                 onClick = {
-                     view.performHapticFeedback(if (!viewModel.expandPhotoNameIcon) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                     viewModel.updateExpandPhotoNameIcon(!viewModel.expandPhotoNameIcon)
-                 },
-                 position = CardPosition.Middle,
-                 trailingContent = {
-                     PremiumSwitch(
-                         checked = viewModel.expandPhotoNameIcon,
-                         onCheckedChange = {
-                             viewModel.updateExpandPhotoNameIcon(it)
-                         }
-                     )
-                 }
-             )
-
-             SettingsCardItem(
-                 icon = Icons.Default.CalendarMonth,
-                 title = "Expand day and date icon",
-                 onClick = {
-                     view.performHapticFeedback(if (!viewModel.expandDayAndDateIcon) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.REJECT)
-                     viewModel.updateExpandDayAndDateIcon(!viewModel.expandDayAndDateIcon)
-                 },
-                 position = CardPosition.Last,
-                 trailingContent = {
-                     PremiumSwitch(
-                         checked = viewModel.expandDayAndDateIcon,
-                         onCheckedChange = {
-                             viewModel.updateExpandDayAndDateIcon(it)
-                         }
-                     )
-                 }
-             )
-
-             Spacer(modifier = Modifier.height(16.dp))
-             
-             Spacer(modifier = Modifier.height(32.dp))
-         }
+         )
      }
- }
 
- if (showAutoBackupDialog) {
-     AutoBackupScheduleDialog(
-         currentSchedule = viewModel.autoBackupSchedule,
-         onDismiss = { showAutoBackupDialog = false },
-         onConfirm = { selected ->
-             viewModel.updateAutoBackupSchedule(selected)
-             showAutoBackupDialog = false
-         }
-     )
- }
+     if (showTimePicker) {
+         val context = LocalContext.current
+         val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
+         val timePickerState = rememberTimePickerState(
+             initialHour = viewModel.notificationReminderHour,
+             initialMinute = viewModel.notificationReminderMinute,
+             is24Hour = is24Hour
+         )
+         var reminderEnabled by remember(showTimePicker) { mutableStateOf(viewModel.notificationReminderEnabled) }
+
+         AdvancedTimePickerDialog(
+             title = "Select time",
+             onDismiss = { showTimePicker = false },
+             onConfirm = {
+                 showTimePicker = false
+                 viewModel.updateNotificationReminder(
+                     enabled = reminderEnabled,
+                     hour = timePickerState.hour,
+                     minute = timePickerState.minute
+                 )
+             },
+             toggle = {
+                 Row(
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .padding(top = 16.dp, start = 4.dp, end = 4.dp),
+                     verticalAlignment = Alignment.CenterVertically,
+                     horizontalArrangement = Arrangement.SpaceBetween
+                 ) {
+                     Text(
+                         text = "Enable reminder",
+                         style = MaterialTheme.typography.bodyMedium.copy(
+                             fontFamily = GoogleSansFlexRound,
+                             fontWeight = FontWeight.Bold
+                         ),
+                         color = MaterialTheme.colorScheme.onSurface
+                     )
+                     PremiumSwitch(
+                         checked = reminderEnabled,
+                         onCheckedChange = { reminderEnabled = it }
+                     )
+                 }
+             },
+             content = { CustomTimePicker(state = timePickerState) }
+         )
+     }
+    }
 }
 
 @Composable
@@ -616,53 +703,36 @@ private fun ButtonGroupScope.themeToggleableItem(
 
 @Composable
 fun AdvancedTimePickerDialog(
-    title: String = "Select Time",
+    title: String = "Select time",
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     toggle: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    Dialog(
+    BlurredAlertDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 6.dp,
-            modifier = Modifier
-                .width(IntrinsicSize.Min)
-                .height(IntrinsicSize.Min)
-                .background(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.surface
+        onConfirm = onConfirm,
+        shape = MaterialTheme.shapes.extraLarge,
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = GoogleSansFlexRound
                 ),
-        ) {
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 20.dp),
-                    text = title,
-                    style = MaterialTheme.typography.labelMedium
-                )
                 content()
-                Row(
-                    modifier = Modifier
-                        .height(40.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    toggle()
-                    Spacer(modifier = Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    TextButton(onClick = onConfirm) { Text("OK") }
-                }
+                toggle()
             }
         }
-    }
+    )
 }
 
 @Composable
@@ -677,10 +747,14 @@ fun AutoBackupScheduleDialog(
 
     BlurredAlertDialog(
         onDismissRequest = onDismiss,
+        onConfirm = { onConfirm(selectedSchedule) },
         title = {
             Text(
-                text = "Auto Backup Schedule",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                text = "Auto backup",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
         text = {
@@ -714,20 +788,6 @@ fun AutoBackupScheduleDialog(
                         )
                     }
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(selectedSchedule) }
-            ) {
-                Text("Confirm")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss
-            ) {
-                Text("Cancel")
             }
         },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = true)
