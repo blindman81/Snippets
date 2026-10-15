@@ -103,7 +103,7 @@ private fun RecapCardList(
                 else -> CardPosition.Middle
             }
 
-            PhotoCardListItem(
+            PhotoCard(
                 photo = photo,
                 position = CardPosition.Single,
                 viewModel = viewModel,

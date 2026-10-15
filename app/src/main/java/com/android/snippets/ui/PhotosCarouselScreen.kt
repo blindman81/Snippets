@@ -158,12 +158,12 @@ fun PhotosCarouselScreen(viewModel: SnippetsViewModel) {
                 }
 
                 // Collections
-                collections.forEachIndexed { index, collectionName ->
-                    val isSelected = viewModel.showCarouselsIn.contains(collectionName)
+                collections.forEachIndexed { index, collection ->
+                    val isSelected = viewModel.showCarouselsIn.contains(collection)
                     DynamicCardContainer(
                         onClick = { 
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.toggleCarouselVisibility(collectionName)
+                            viewModel.toggleCarouselVisibility(collection)
                         },
                         position = if (index == collections.size - 1) CardPosition.Last else CardPosition.Middle
                     ) {
@@ -172,13 +172,13 @@ fun PhotosCarouselScreen(viewModel: SnippetsViewModel) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             CollectionIcon(
-                                icon = viewModel.getCollectionIcon(collectionName),
+                                icon = viewModel.getCollectionIcon(collection),
                                 modifier = Modifier.size(32.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = collectionName,
+                                text = collection,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,

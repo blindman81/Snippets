@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.android.snippets.viewmodel.SnippetsViewModel
 import kotlinx.coroutines.launch
 
@@ -51,6 +53,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
     }
     val view = LocalView.current
     val scope = rememberCoroutineScope()
+    val hazeState = LocalHazeState.current ?: rememberHazeState()
     var showMenu by remember { mutableStateOf(false) }
     var showLicenses by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
@@ -64,66 +67,71 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
         }
     }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(nestedScrollConnection),
-        topBar = {
-            MainTopBar(
-                title = "About",
-                onNavigationClick = { 
-                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    viewModel.navigateLibrary() 
-                },
-                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-                isSpinning = !(showMenu || showLicenses),
-                isScrolled = isScrolled,
-                leftAlignTitle = true,
-                actions = {
-                    Box {
-                        AnimatedCookieButton(
-                            onClick = { showMenu = true },
-                            icon = Icons.Default.MoreVert,
-                            contentDescription = "More",
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            isSpinning = !(showMenu || showLicenses)
-                        )
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                            shape = RoundedCornerShape(12.dp),
-                            offset = DpOffset(x = (-16).dp, y = 8.dp),
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Open source licenses", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    showMenu = false
-                                    showLicenses = true
-                                }
+    CompositionLocalProvider(
+        LocalHazeState provides hazeState
+    ) {
+        Scaffold(
+            modifier = Modifier.nestedScroll(nestedScrollConnection),
+            topBar = {
+                MainTopBar(
+                    title = "About",
+                    onNavigationClick = { 
+                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                        viewModel.navigateLibrary() 
+                    },
+                    navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                    isSpinning = !(showMenu || showLicenses),
+                    isScrolled = isScrolled,
+                    leftAlignTitle = true,
+                    actions = {
+                        Box {
+                            AnimatedCookieButton(
+                                onClick = { showMenu = true },
+                                icon = Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                isSpinning = !(showMenu || showLicenses)
                             )
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                shape = RoundedCornerShape(12.dp),
+                                offset = DpOffset(x = (-16).dp, y = 8.dp),
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Open source licenses", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        showMenu = false
+                                        showLicenses = true
+                                    }
+                                )
+                            }
                         }
                     }
-                }
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { padding ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = padding.calculateTopPadding()),
-            shape = RectangleShape,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp
-        ) {
-            if (showLicenses) {
-                LicenseDialog(onDismiss = { showLicenses = false })
-            }
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.TopCenter
+                )
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { padding ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding()),
+                shape = RectangleShape,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp
             ) {
+                if (showLicenses) {
+                    LicenseDialog(onDismiss = { showLicenses = false })
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeSource(state = hazeState),
+                    contentAlignment = Alignment.TopCenter
+                ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -246,21 +254,18 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
     }
 }
 }
+}
 
 @Composable
 fun LicenseDialog(onDismiss: () -> Unit) {
     BlurredAlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        },
         title = {
             Text(
                 "Open source licenses",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {

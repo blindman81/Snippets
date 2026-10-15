@@ -41,7 +41,7 @@ import com.android.snippets.viewmodel.SnippetsViewModel
 import android.view.HapticFeedbackConstants
 
 @Composable
-fun SelectIconScreen(viewModel: SnippetsViewModel) {
+fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
     AppPredictiveBackHandler {
         viewModel.currentScreen = viewModel.previousScreen
 
@@ -156,8 +156,8 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                     tonalElevation = 8.dp
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(28.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AnimatedCookieButton(
@@ -175,17 +175,24 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                             onClick = {
                                 if (selectedEmoji.isNotBlank()) {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.editingCollectionIcon?.let { collectionName ->
-                                        viewModel.updateCollectionIcon(collectionName, selectedEmoji)
+                                    val collection = viewModel.editingCollectionIcon
+                                    if (collection != null) {
+                                        viewModel.updateCollectionIcon(collection, selectedEmoji)
+                                        viewModel.currentScreen = viewModel.previousScreen
+                                    } else {
+                                        val newName = selectedEmoji.trim()
+                                        viewModel.createCollection(newName, openAfterCreate = true)
+                                        viewModel.updateCollectionIcon(newName, selectedEmoji)
+                                        viewModel.libraryCurrentTab = newName
+                                        viewModel.navigateLibrary()
                                     }
-                                    viewModel.currentScreen = viewModel.previousScreen
-
                                 }
                             },
                             icon = Icons.Default.Check,
                             contentDescription = "Confirm",
                             tooltip = "Done",
                             size = 56.dp,
+                            enabled = selectedEmoji.isNotBlank(),
                             containerColor = if (selectedEmoji.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = if (selectedEmoji.isNotBlank()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
@@ -262,6 +269,7 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Hidden TextField to trigger keyboard
+                @Suppress("DEPRECATION")
                 BasicTextField(
                     value = selectedEmoji,
                     onValueChange = { input ->
@@ -282,11 +290,17 @@ fun SelectIconScreen(viewModel: SnippetsViewModel) {
                     keyboardActions = KeyboardActions(
                         onDone = {
                             if (selectedEmoji.isNotBlank()) {
-                                viewModel.editingCollectionIcon?.let { collectionName ->
-                                    viewModel.updateCollectionIcon(collectionName, selectedEmoji)
+                                val collection = viewModel.editingCollectionIcon
+                                if (collection != null) {
+                                    viewModel.updateCollectionIcon(collection, selectedEmoji)
+                                    viewModel.currentScreen = viewModel.previousScreen
+                                } else {
+                                    val newName = selectedEmoji.trim()
+                                    viewModel.createCollection(newName, openAfterCreate = true)
+                                    viewModel.updateCollectionIcon(newName, selectedEmoji)
+                                    viewModel.libraryCurrentTab = newName
+                                    viewModel.navigateLibrary()
                                 }
-                                viewModel.currentScreen = viewModel.previousScreen
-
                             }
                         }
                     )
