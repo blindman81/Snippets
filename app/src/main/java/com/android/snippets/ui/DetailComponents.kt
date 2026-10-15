@@ -2,6 +2,7 @@ package com.android.snippets.ui
 import com.ln.android.snippets.R
 import androidx.compose.ui.res.painterResource
 import com.android.snippets.ui.components.*
+import com.android.snippets.ui.theme.*
 import dev.chrisbanes.haze.HazeDefaults
 import com.android.snippets.ui.util.Motion
 import androidx.compose.material3.ButtonGroup
@@ -39,8 +40,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import com.android.snippets.model.Photo
+import com.android.snippets.ui.util.LocationUtils
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +79,8 @@ import androidx.graphics.shapes.toPath
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.android.snippets.ui.shapes.CookieShape
+import com.android.snippets.ui.shapes.Cookie9Shape
+import androidx.compose.ui.graphics.luminance
 
 // --- SHARED ARTISTIC COMPONENTS ---
 
@@ -83,7 +96,7 @@ fun DetailTopBar(
     showAddButton: Boolean = true,
     onAdd: () -> Unit,
     onDownload: () -> Unit,
-    onEdit: () -> Unit,
+    onSnippets: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
     onRate: () -> Unit,
@@ -92,6 +105,9 @@ fun DetailTopBar(
     hasLocationLink: Boolean = false,
     onAddLinkClick: () -> Unit = {},
     onNamePhotoClick: () -> Unit = {},
+    isInfoExpanded: Boolean = false,
+    onToggleInfoExpand: () -> Unit = {},
+    onOpenLink: (String) -> Unit = {},
     animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope? = null
 ) {
     val view = LocalView.current
@@ -116,11 +132,14 @@ fun DetailTopBar(
                         }
                     } else Modifier
                 )
-                .padding(start = 16.dp, end = 24.dp, top = 16.dp, bottom = 20.dp),
+                .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(top = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 AnimatedCookieButton(
                     onClick = onBack,
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
@@ -130,17 +149,36 @@ fun DetailTopBar(
                     isSpinning = isSpinning,
                     hapticOnHold = true,
                     shape = CookieShape,
-                    size = 56.dp
+                    size = 48.dp
                 )
             }
 
-            if (showAddButton) SplitButton(
-                primaryIcon = Icons.Default.Add,
-                contentDescription = "Add snippets",
-                onPrimaryClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    onAdd()
-                },
+            Spacer(modifier = Modifier.width(8.dp))
+
+            DetailPhotoInfoSection(
+                photo = photo,
+                isExpanded = isInfoExpanded,
+                onToggleExpand = onToggleInfoExpand,
+                onOpenLink = onOpenLink,
+                onRateClick = onRate,
+                onEditLinkClick = onAddLinkClick,
+                onNameClick = onNamePhotoClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 4.dp)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            if (showAddButton) {
+                Box(modifier = Modifier.padding(top = 2.dp)) {
+                    SplitButton(
+                        primaryIcon = Icons.Default.Add,
+                        contentDescription = "Add snippets",
+                        onPrimaryClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onAdd()
+                        },
                 dropdownContent = { closeMenu ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         // Group 1: Download, Share, Favorite
@@ -163,7 +201,7 @@ fun DetailTopBar(
                             onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onToggleFavorite(); closeMenu() }
                         )
 
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        HorizontalDivider()
 
                         // Name photo
                         DropdownMenuItem(
@@ -174,26 +212,28 @@ fun DetailTopBar(
 
                         // Group 2: Location link
                         DropdownMenuItem(
-                            text = { Text(if (hasLocationLink) "Edit location link" else "Link a place") },
+                            text = { Text(if (hasLocationLink) "Edit location link" else "Link to a place") },
                             leadingIcon = { Icon(Icons.Default.Place, null) },
                             onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onAddLinkClick(); closeMenu() }
                         )
 
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                        // Group 3: Edit & Delete
-                        if (hasSnippets) {
-                            DropdownMenuItem(
-                                text = { Text("Edit snippets") },
-                                leadingIcon = { Icon(Icons.Default.Edit, null) },
-                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onEdit(); closeMenu() }
-                            )
-                        }
                         DropdownMenuItem(
-                            text = { Text("Rate") },
+                            text = { Text("Rate photo") },
                             leadingIcon = { Icon(painterResource(id = R.drawable.ic_star_rating), null) },
                             onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onRate(); closeMenu() }
                         )
+
+                        if (hasSnippets) {
+                            DropdownMenuItem(
+                                text = { Text("Snippets") },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.TextSnippet, null) },
+                                onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onSnippets(); closeMenu() }
+                            )
+                        }
+
+                        HorizontalDivider()
+
+                        // Group 3: Delete
                         DropdownMenuItem(
                             text = { Text("Delete") },
                             leadingIcon = { Icon(Icons.Default.Delete, null) },
@@ -203,6 +243,8 @@ fun DetailTopBar(
                 }
             )
         }
+    }
+}
     }
 }
 
@@ -307,72 +349,14 @@ fun CloudSnippetItem(
     val colorStrategy = (index + stableRandom.nextInt(0, 10)) % 3
     val rotation = if (isSegmented) 0f else stableRandom.nextInt(-5, 5).toFloat()
 
-    // Contrast-aware Snippet Color
-    val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
-    val baseSnippetColor = if (forcedColor != null) {
-        Color(forcedColor)
-    } else {
-        when (colorStrategy) {
-            0 -> { // 1. Photo Derived
-                if (photoColors.isNotEmpty()) Color(photoColors[stableRandom.nextInt(photoColors.size)])
-                else MaterialTheme.colorScheme.primary
-            }
-            1 -> { // 2. System Themed
-                val themeColors = listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.secondary,
-                    MaterialTheme.colorScheme.tertiary,
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                themeColors[stableRandom.nextInt(themeColors.size)]
-            }
-            else -> { // 3. Vivid Pop
-                val vividColors = if (isDark) listOf(
-                    Color(0xFFFF8A65), // Light Deep Orange
-                    Color(0xFFF06292), // Light Pink
-                    Color(0xFFBA68C8), // Light Purple
-                    Color(0xFF4DD0E1), // Light Cyan
-                    Color(0xFF81C784), // Light Green
-                    Color(0xFFFFD54F)  // Light Amber
-                ) else listOf(
-                    Color(0xFFD84315), // Dark Deep Orange
-                    Color(0xFFC2185B), // Dark Pink
-                    Color(0xFF7B1FA2), // Dark Purple
-                    Color(0xFF0097A7), // Dark Cyan
-                    Color(0xFF388E3C), // Dark Green
-                    Color(0xFFFFA000)  // Dark Amber
-                )
-                vividColors[stableRandom.nextInt(vividColors.size)]
-            }
-        }
-    }
-
-    // Ensure it's not too close to black/white clashing with the theme
-    val snippetColor = remember(baseSnippetColor, isDark) {
-        val lum = baseSnippetColor.let { 0.299f * it.red + 0.587f * it.green + 0.114f * it.blue }
-        if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-        else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
-        else baseSnippetColor
-    }
+    // Contrast-aware Primary Wallpaper Tinted Snippet Color
+    val snippetColor = rememberSnippetBackgroundColor()
+    val snippetTextColor = rememberSnippetTextColor()
 
     // Streamlined style logic: All snippets are fill colored
     val isFilled = true
 
-    val containerColor = if (isSegmented) {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    } else if (isFilled) {
-        snippetColor.copy(alpha = 0.25f)
-    } else {
-        Color.Transparent
-    }
-    
-    val borderColor = if (isSegmented) {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-    } else if (!isFilled) {
-        snippetColor.copy(alpha = 0.40f)
-    } else {
-        null
-    }
+    val containerColor = snippetColor
 
     val itemShape = remember(index, totalCount, isSegmented) {
         if (isSegmented) {
@@ -395,7 +379,7 @@ fun CloudSnippetItem(
             modifier = if (isSegmented) Modifier.height(44.dp) else Modifier,
             color = containerColor,
             shape = itemShape,
-            border = if (borderColor != null) BorderStroke(1.dp, borderColor) else null,
+            border = null,
             shadowElevation = 0.dp
         ) {
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getGridScalingFactor(totalCount)
@@ -413,7 +397,7 @@ fun CloudSnippetItem(
                             MaterialTheme.typography.titleMedium, 
                             isCloud = true
                         ),
-                        color = snippetColor
+                        color = snippetTextColor
                     )
                 }
             } else {
@@ -425,7 +409,7 @@ fun CloudSnippetItem(
                                 text = text, 
                                 modifier = Modifier.padding(horizontal = (24 * scalingFactor).dp, vertical = (12 * scalingFactor).dp), 
                                 style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.headlineMedium, isCloud = true).copy(fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scalingFactor).sp),
-                                color = snippetColor,
+                                color = snippetTextColor,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -434,7 +418,7 @@ fun CloudSnippetItem(
                                 text = text, 
                                 modifier = Modifier.padding(horizontal = (18 * scalingFactor).dp, vertical = (9 * scalingFactor).dp), 
                                 style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.titleLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.titleLarge.fontSize.value * scalingFactor).sp),
-                                color = snippetColor,
+                                color = snippetTextColor,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -443,7 +427,7 @@ fun CloudSnippetItem(
                                 text = text, 
                                 modifier = Modifier.padding(horizontal = (12 * scalingFactor).dp, vertical = (6 * scalingFactor).dp), 
                                 style = getSnippetTextStyle(forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default, MaterialTheme.typography.labelLarge, isCloud = true).copy(fontSize = (MaterialTheme.typography.labelLarge.fontSize.value * scalingFactor).sp),
-                                color = snippetColor,
+                                color = snippetTextColor,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
@@ -490,7 +474,7 @@ fun HeaderActionButton(icon: androidx.compose.ui.graphics.vector.ImageVector, co
 // --- ACTIVE STATE WRITING HUB ---
 
 @Composable
-fun CurrentSnippetsModal(
+fun SnippetsModal(
     photo: com.android.snippets.model.Photo,
     onRemove: (String) -> Unit,
     onClose: () -> Unit,
@@ -498,130 +482,138 @@ fun CurrentSnippetsModal(
 ) {
     var localSnippets by remember(photo.snippets) { mutableStateOf(photo.snippets) }
     val view = LocalView.current
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    onClose()
-                })
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-        )
 
-        var animateScale by remember { mutableStateOf(0.92f) }
-        LaunchedEffect(Unit) {
-            animateScale = 1.0f
-        }
-        val scaleFactor by animateFloatAsState(
-            targetValue = animateScale,
-            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-            label = "card_scale"
-        )
-
-        BlurredSurface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.background,
-            modifier = Modifier
-                .fillMaxWidth(0.94f)
-                .padding(16.dp)
-                .widthIn(max = 400.dp)
-                .graphicsLayer {
-                    scaleX = scaleFactor
-                    scaleY = scaleFactor
-                }
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { /* Stop click propagation to the tappable background overlay */ },
-            shadowElevation = 16.dp
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // Header
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Edit Snippets", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    AnimatedCookieButton(
-                         onClick = onClose,
-                         icon = Icons.Default.Close,
-                         contentDescription = "Close",
-                         tooltip = "Close",
-                         size = 40.dp,
-                         containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+    BlurredAlertDialog(
+        onDismissRequest = onClose,
+        onConfirm = onClose,
+        title = {
+            Text(
+                "Snippets",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
+            if (localSnippets.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No snippets yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                
-                // Content
-                Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                    if (localSnippets.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                            Text("No snippets yet", style = MaterialTheme.typography.bodyMedium, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-                        }
-                    } else {
-                        @OptIn(ExperimentalLayoutApi::class)
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            localSnippets.forEach { snippet ->
-                                val forcedColor = viewModel.getSnippetColor(snippet)
-                                val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
-                                
-                                val snippetColor = if (forcedColor != null) {
-                                    val baseColor = Color(forcedColor)
-                                    // Basic contrast awareness
-                                    val lum = 0.299f * baseColor.red + 0.587f * baseColor.green + 0.114f * baseColor.blue
-                                    if (isDark && lum < 0.3f) baseColor.copy(red = (baseColor.red + 0.4f).coerceAtMost(1f), green = (baseColor.green + 0.4f).coerceAtMost(1f), blue = (baseColor.blue + 0.4f).coerceAtMost(1f))
-                                    else if (!isDark && lum > 0.7f) baseColor.copy(red = (baseColor.red - 0.4f).coerceAtLeast(0f), green = (baseColor.green - 0.4f).coerceAtLeast(0f), blue = (baseColor.blue - 0.4f).coerceAtLeast(0f))
-                                    else baseColor
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                }
-
-                                val bgColor = snippetColor.copy(alpha = 0.12f)
-                                val textColor = snippetColor
-                                val borderColor = snippetColor.copy(alpha = 0.3f)
-                                
-                                Surface(shape = CircleShape, color = bgColor, border = BorderStroke(1.dp, borderColor)) {
-                                    Row(modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(snippet, style = getSnippetTextStyle(viewModel.getSnippetStyle(snippet), MaterialTheme.typography.bodyMedium), fontWeight = FontWeight.Normal, color = textColor)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        IconButton(onClick = { 
-                                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                                            onRemove(snippet)
-                                            localSnippets = localSnippets - snippet 
-                                        }, modifier = Modifier.size(24.dp)) {
-                                            Icon(Icons.Default.Close, null, tint = textColor, modifier = Modifier.size(16.dp))
-                                        }
-                                    }
+            } else {
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    localSnippets.forEach { snippet ->
+                        val forcedStyle = viewModel.getSnippetStyle(snippet)
+                        val snippetColor = rememberSnippetBackgroundColor()
+                        val bgColor = snippetColor
+                        val textColor = rememberSnippetTextColor()
+                        
+                        Surface(shape = CircleShape, color = bgColor, border = null) {
+                            Row(modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = snippet, 
+                                    style = getSnippetTextStyle(
+                                        forcedStyle, 
+                                        MaterialTheme.typography.titleMedium, 
+                                        isCloud = true
+                                    ), 
+                                    color = textColor
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                IconButton(onClick = { 
+                                    view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                                    onRemove(snippet)
+                                    localSnippets = localSnippets - snippet 
+                                }, modifier = Modifier.size(24.dp)) {
+                                    Icon(Icons.Default.Close, null, tint = textColor, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
                     }
                 }
-                
-                // Footer
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    onClick = {
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        onClose()
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp).height(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) { Text("Done", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) }
-                }
             }
+        }
+    )
+}
+ 
+@Composable
+private fun SpinningCookieButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 60.dp,
+    shape: androidx.compose.ui.graphics.Shape = Cookie9Shape,
+    containerColor: Color,
+    border: BorderStroke? = null,
+    keepContentUpright: Boolean = true,
+    content: @Composable BoxScope.() -> Unit = {}
+) {
+    val view = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
+    val rotation = remember { Animatable(0f) }
+    val scale = remember { Animatable(1f) }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(60.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                coroutineScope.launch {
+                    val scaleJob = launch {
+                        scale.animateTo(0.85f, Motion.PressSpring)
+                        scale.animateTo(1f, Motion.BouncySpring)
+                    }
+                    val rotJob = launch {
+                        rotation.animateTo(rotation.value + 360f, Motion.BouncySpring)
+                    }
+                    scaleJob.join()
+                    rotJob.join()
+                }
+                onClick()
+            }
+    ) {
+        Surface(
+            modifier = Modifier
+                .size(size)
+                .graphicsLayer {
+                    rotationZ = rotation.value
+                    scaleX = scale.value
+                    scaleY = scale.value
+                },
+            shape = shape,
+            color = containerColor,
+            border = border
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (keepContentUpright) {
+                            Modifier.graphicsLayer {
+                                rotationZ = -rotation.value
+                            }
+                        } else Modifier
+                    ),
+                contentAlignment = Alignment.Center,
+                content = content
+            )
         }
     }
 }
@@ -630,40 +622,12 @@ fun CurrentSnippetsModal(
 @Composable
 fun AddSnippetsModal(
     photo: com.android.snippets.model.Photo,
-    onAdd: (String, Int, com.android.snippets.viewmodel.SnippetStyle) -> Unit,
+    onAdd: (String) -> Unit,
     onClose: () -> Unit,
     viewModel: com.android.snippets.viewmodel.SnippetsViewModel
 ) {
     val view = LocalView.current
     var text by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf<Int?>(null) }
-    var selectedStyle by remember { mutableStateOf(com.android.snippets.viewmodel.SnippetStyle.Default) }
-
-    var selectedIndex by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    val tabs = remember {
-        listOf(
-            Icons.Default.TextSnippet to "Text Snippet",
-            Icons.Default.Colorize to "Colorize",
-            Icons.Default.Style to "Style"
-        )
-    }
-    
-    val snippetColorsPalette = remember {
-        listOf(
-            0xFFEF5350.toInt(), // Red
-            0xFFEC407A.toInt(), // Pink
-            0xFFAB47BC.toInt(), // Purple
-            0xFF42A5F5.toInt(), // Blue
-            0xFF26A69A.toInt(), // Teal
-            0xFF66BB6A.toInt(), // Green
-            0xFFFFEE58.toInt(), // Yellow
-            0xFFFFA726.toInt(), // Orange
-            0xFF8D6E63.toInt(), // Brown
-            0xFF78909C.toInt(), // Slate
-            0xFFD4E157.toInt()  // Lime
-        )
-    }
-
     val localSnippetsCount = photo.snippets.size
 
     BlurredModalBottomSheet(
@@ -676,352 +640,132 @@ fun AddSnippetsModal(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.Start
             ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Add a Snippet",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                ButtonGroup(
-                    modifier = Modifier.padding(bottom = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                    overflowIndicator = {}
-                ) {
-                    tabs.forEachIndexed { index, (icon, description) ->
-                        val isFirst = index == 0
-                        val isLast = index == tabs.size - 1
-                        val isSelected = selectedIndex == index
-
-                        customItem(
-                            buttonGroupContent = {
-                                val interactionSource = remember { MutableInteractionSource() }
-                                val isPressed by interactionSource.collectIsPressedAsState()
-
-                                val targetWidth = when {
-                                    isSelected && isPressed -> 58.dp
-                                    isSelected -> 64.dp
-                                    isPressed -> 46.dp
-                                    else -> 52.dp
-                                }
-                                val animatedWidth by animateDpAsState(
-                                    targetValue = targetWidth,
-                                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-                                    label = "tab_width_$index"
-                                )
-
-                                val shapes = when {
-                                    isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                }
-
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                        selectedIndex = index
-                                    },
-                                    interactionSource = interactionSource,
-                                    modifier = Modifier
-                                        .width(animatedWidth)
-                                        .height(40.dp),
-                                    shapes = shapes,
-                                    contentPadding = PaddingValues(0.dp),
-                                    colors = ToggleButtonDefaults.toggleButtonColors(
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                ) {
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = description,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            menuContent = {
-                                DropdownMenuItem(
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    },
-                                    text = { Text(description) },
-                                    onClick = {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                        selectedIndex = index
-                                    }
-                                )
-                            }
-                        )
-                    }
-                }
-
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.Start
                 ) {
-                    val motionScheme = MaterialTheme.motionScheme
-                    androidx.compose.animation.AnimatedContent(
-                        targetState = selectedIndex,
-                        transitionSpec = {
-                            fadeIn(animationSpec = motionScheme.defaultEffectsSpec()) togetherWith
-                            fadeOut(animationSpec = motionScheme.fastEffectsSpec()) using
-                            SizeTransform(clip = false)
-                        },
-                        label = "StepTransition"
-                    ) { step ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            when (step) {
-                                0 -> { // Text
-                                    OutlinedTextField(
-                                        value = text,
-                                        onValueChange = { if (it.length <= 15) text = it },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                                        label = { Text("New Snippet", style = MaterialTheme.typography.labelMedium) },
-                                        placeholder = { Text("Type here...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
-                                        singleLine = true,
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                                            cursorColor = MaterialTheme.colorScheme.primary
-                                        ),
-                                        supportingText = {
-                                            Text(
-                                                text = "${text.length}/15",
-                                                modifier = Modifier.fillMaxWidth(),
-                                                textAlign = TextAlign.End,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = if (text.length >= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        },
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                        keyboardActions = KeyboardActions(
-                                            onDone = {
-                                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                            }
-                                        )
-                                    )
+                    Text(
+                        text = "Add a Snippet",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                    )
 
-                                    // Suggestions Menu
-                                    val suggestions = remember(text, viewModel.allUniqueSnippets) {
-                                        if (text.isEmpty()) {
-                                            viewModel.allUniqueSnippets.take(9)
-                                        } else {
-                                            viewModel.allUniqueSnippets.filter { 
-                                                it.contains(text, ignoreCase = true) && !it.equals(text, ignoreCase = true)
-                                            }.take(9)
-                                        }
-                                    }
-                                    
-                                    AnimatedVisibility(
-                                        visible = suggestions.isNotEmpty(),
-                                        enter = fadeIn() + expandVertically(),
-                                        exit = fadeOut() + shrinkVertically()
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            suggestions.chunked(3).take(3).forEach { rowItems ->
-                                                Row(
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    rowItems.forEach { suggestion ->
-                                                        SuggestionChip(
-                                                            onClick = { 
-                                                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                                text = suggestion 
-                                                            },
-                                                            label = { Text(suggestion, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
-                                                            shape = SuggestionChipDefaults.shape,
-                                                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                                            ),
-                                                            border = null
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = text,
+                            onValueChange = { if (it.length <= 15) text = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            label = { Text("New Snippet", style = MaterialTheme.typography.labelMedium) },
+                            placeholder = { Text("Type here...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 }
-                                1 -> { // Color Step
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Fixed(4),
-                                        modifier = Modifier.fillMaxWidth().height(260.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                                        contentPadding = PaddingValues(8.dp),
-                                        userScrollEnabled = true
-                                    ) {
-                                        item {
-                                            val isRandomSelected = selectedColor == -1
-                                            Box(
-                                                contentAlignment = Alignment.Center,
-                                                modifier = Modifier
-                                                    .size(60.dp)
-                                                    .clickable(
-                                                        interactionSource = remember { MutableInteractionSource() },
-                                                        indication = null
-                                                    ) {
-                                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                        selectedColor = if (isRandomSelected) null else -1
-                                                    }
-                                            ) {
-                                                Surface(
-                                                    modifier = Modifier.size(60.dp).aspectRatio(1f),
-                                                    shape = CircleShape,
-                                                    color = if (isRandomSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceContainerLowest,
-                                                    border = if (isRandomSelected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
-                                                ) {
-                                                    Box(contentAlignment = Alignment.Center) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Shuffle,
-                                                            contentDescription = "Shuffle",
-                                                            modifier = Modifier.size(28.dp),
-                                                            tint = if (isRandomSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        items(snippetColorsPalette) { colorInt ->
-                                            val isSelected = selectedColor == colorInt
-                                            val color = Color(colorInt)
-                                            Box(
-                                                contentAlignment = Alignment.Center,
-                                                modifier = Modifier
-                                                    .size(60.dp)
-                                                    .clickable(
-                                                        interactionSource = remember { MutableInteractionSource() },
-                                                        indication = null
-                                                    ) {
-                                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                        selectedColor = if (isSelected) null else colorInt
-                                                    }
-                                            ) {
-                                                Surface(
-                                                    modifier = Modifier.size(if (isSelected) 60.dp else 52.dp).aspectRatio(1f),
-                                                    shape = CircleShape,
-                                                    color = color,
-                                                    border = if (isSelected) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
-                                                ) {}
-                                            }
-                                        }
-                                    }
-                                }
-                                2 -> { // Style Step
-                                    @OptIn(ExperimentalLayoutApi::class)
-                                    FlowRow(
-                                        modifier = Modifier.fillMaxWidth().heightIn(max = 290.dp),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                                        maxItemsInEachRow = 4
-                                    ) {
-                                        com.android.snippets.viewmodel.SnippetStyle.values().forEach { style ->
-                                            val isSelected = selectedStyle == style
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                modifier = Modifier.padding(horizontal = 8.dp)
-                                            ) {
-                                                Box(
-                                                    contentAlignment = Alignment.Center,
-                                                    modifier = Modifier
-                                                        .size(60.dp)
-                                                        .clickable(
-                                                            interactionSource = remember { MutableInteractionSource() },
-                                                            indication = null
-                                                        ) {
-                                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                            selectedStyle = style
-                                                        }
-                                                ) {
-                                                    Surface(
-                                                        modifier = Modifier.size(60.dp),
-                                                        shape = CircleShape,
-                                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLowest,
-                                                        border = if (isSelected) null else BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant)
-                                                    ) {
-                                                        Box(contentAlignment = Alignment.Center) {
-                                                            Text(
-                                                                text = "S",
-                                                                style = getSnippetTextStyle(style, MaterialTheme.typography.titleLarge),
-                                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                                Text(
-                                                    text = style.name,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(top = 4.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                            )
+                        )
+                        Text(
+                            text = "${text.length}/15",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (text.length >= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 10.dp, end = 16.dp)
+                        )
+                    }
+
+                    // Suggestions Menu
+                    val suggestions = remember(text, viewModel.allUniqueSnippets) {
+                        if (text.isEmpty()) {
+                            viewModel.allUniqueSnippets.take(9)
+                        } else {
+                            viewModel.allUniqueSnippets.filter { 
+                                it.contains(text, ignoreCase = true) && !it.equals(text, ignoreCase = true)
+                            }.take(9)
+                        }
+                    }
+                    
+                    AnimatedVisibility(
+                        visible = suggestions.isNotEmpty(),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            suggestions.forEach { suggestion ->
+                                SuggestionChip(
+                                    onClick = { 
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        text = suggestion 
+                                    },
+                                    label = { Text(suggestion, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                                    shape = SuggestionChipDefaults.shape,
+                                    colors = SuggestionChipDefaults.suggestionChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    border = null
+                                )
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    val finalColor = if (selectedColor == null || selectedColor == -1) snippetColorsPalette.random() else selectedColor!!
-                    onAdd(text.trim(), finalColor, selectedStyle)
-                    onClose()
-                },
-                enabled = text.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-                shapes = ButtonDefaults.shapes(
-                    shape = CircleShape,
-                    pressedShape = RoundedCornerShape(12.dp)
-                ),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                ),
-                contentPadding = PaddingValues(16.dp)
-            ) {
-                Text(
-                    text = "Add Snippet ($localSnippetsCount/6)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Button(
+                    onClick = {
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        onAdd(text.trim())
+                        onClose()
+                    },
+                    enabled = text.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shapes = ButtonDefaults.shapes(
+                        shape = CircleShape,
+                        pressedShape = RoundedCornerShape(12.dp)
+                    ),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    ),
+                    contentPadding = PaddingValues(16.dp)
+                ) {
+                    Text(
+                        text = "Add Snippet ($localSnippetsCount/6)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
-}
 }
 
 
@@ -1188,5 +932,237 @@ fun CanvasOptionCard(
         }
     }
 }
+
+@Composable
+fun DetailPhotoInfoSection(
+    photo: Photo,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onOpenLink: (String) -> Unit,
+    onRateClick: () -> Unit,
+    onEditLinkClick: () -> Unit,
+    onNameClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val hasCustomName = !photo.name.isNullOrBlank()
+
+    val dateTimeText = remember(photo.date) {
+        val d = Date(photo.date)
+        val day = SimpleDateFormat("EEE", Locale.getDefault()).format(d)
+        val dayNum = SimpleDateFormat("d", Locale.getDefault()).format(d)
+        val month = SimpleDateFormat("MMM", Locale.getDefault()).format(d)
+        val time = android.text.format.DateFormat.getTimeFormat(context).format(d)
+        "$day, $dayNum $month, $time"
+    }
+
+    val dateTimeRatingText = remember(dateTimeText, photo.rating) {
+        if (photo.rating > 0) "$dateTimeText. ${photo.rating}/5" else dateTimeText
+    }
+
+    // If no photo name was given, show day, date and rating in the header
+    val headerTitle = if (hasCustomName) photo.name!! else dateTimeRatingText
+
+    val locationName = remember(photo.locationName, photo.locationLink, photo.id) {
+        LocationUtils.getLocationFromExif(context, photo)
+    }
+
+    data class InfoSubItem(
+        val id: String,
+        val title: String,
+        val subtitle: String? = null,
+        val onClick: (() -> Unit)? = null
+    )
+
+    val expandedItems = remember(photo.id, photo.date, photo.rating, locationName, photo.locationLink, dateTimeRatingText, hasCustomName) {
+        val list = mutableListOf<InfoSubItem>()
+
+        if (hasCustomName) {
+            // Day, date and month, time. 2/5
+            list.add(
+                InfoSubItem(
+                    id = "date_rating",
+                    title = dateTimeRatingText,
+                    subtitle = null,
+                    onClick = onRateClick
+                )
+            )
+        }
+
+        // Location of the photo (skip if not entered, no subtext)
+        if (!locationName.isNullOrBlank()) {
+            val hasLink = !photo.locationLink.isNullOrBlank()
+            list.add(
+                InfoSubItem(
+                    id = "location",
+                    title = locationName,
+                    subtitle = null,
+                    onClick = {
+                        if (hasLink) {
+                            onOpenLink(photo.locationLink!!)
+                        } else {
+                            onEditLinkClick()
+                        }
+                    }
+                )
+            )
+        }
+
+        list
+    }
+
+    val rotationAngle by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "expandCollapseRotation"
+    )
+
+    val headerTopRadius by animateDpAsState(targetValue = 12.dp, label = "headerTopRadius")
+    val headerBottomRadius by animateDpAsState(
+        targetValue = if (isExpanded && expandedItems.isNotEmpty()) 2.dp else 12.dp,
+        label = "headerBottomRadius"
+    )
+    val headerShape = RoundedCornerShape(
+        topStart = headerTopRadius,
+        topEnd = headerTopRadius,
+        bottomStart = headerBottomRadius,
+        bottomEnd = headerBottomRadius
+    )
+
+    Column(
+        modifier = modifier
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+    ) {
+        // 1) Info material icon symbol: Photo name - expand / collapse button
+        Surface(
+            shape = headerShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(headerShape)
+                .clickable(onClick = onToggleExpand)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Photo info",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Text(
+                    text = headerTitle,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(
+                    onClick = onToggleExpand,
+                    modifier = Modifier.size(26.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ExpandMore,
+                        contentDescription = if (isExpanded) "Collapse" else "Expand",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .rotate(rotationAngle)
+                    )
+                }
+            }
+        }
+
+        // Sub-items with visible 2dp segmented gaps
+        AnimatedVisibility(
+            visible = isExpanded && expandedItems.isNotEmpty(),
+            enter = expandVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ) + fadeIn(
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+            ),
+            exit = shrinkVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ) + fadeOut(
+                animationSpec = spring(stiffness = Spring.StiffnessMedium)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                expandedItems.forEachIndexed { index, item ->
+                    val isFirst = index == 0
+                    val isLast = index == expandedItems.lastIndex
+                    val itemShape = when {
+                        isFirst && isLast -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
+                        isFirst -> RoundedCornerShape(2.dp)
+                        isLast -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
+                        else -> RoundedCornerShape(2.dp)
+                    }
+
+                    Surface(
+                        shape = itemShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(itemShape)
+                            .then(
+                                if (item.onClick != null) {
+                                    Modifier.clickable(onClick = item.onClick)
+                                } else Modifier
+                            )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = item.title,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 
