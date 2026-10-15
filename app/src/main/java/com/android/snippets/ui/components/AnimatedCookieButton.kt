@@ -9,9 +9,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,6 +138,7 @@ private fun AnimatedCookieButtonImpl(
     val rotation = remember { Animatable(0f) }
     val animScaleX = remember { Animatable(1f) }
     val animScaleY = remember { Animatable(1f) }
+    val animIconScale = remember { Animatable(1f) }
     var morphStepIndex by remember { mutableIntStateOf(0) }
     val stepProgress = remember { Animatable(0f) }
     val globalRotation = remember { Animatable(0f) }
@@ -148,14 +151,17 @@ private fun AnimatedCookieButtonImpl(
 
     val animatedContainerColor by animateColorAsState(
         targetValue = targetContainer,
-        animationSpec = tween(150),
+        animationSpec = tween(durationMillis = 200),
         label = "cookie_button_container_color"
     )
     val animatedContentColor by animateColorAsState(
         targetValue = targetContent,
-        animationSpec = tween(150),
+        animationSpec = tween(durationMillis = 200),
         label = "cookie_button_content_color"
     )
+
+    val isPrimary = (targetContainer == MaterialTheme.colorScheme.primary) || (containerColor == MaterialTheme.colorScheme.primary)
+    val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = enabled && isPrimary)
 
     val isMorphActive = (isHolding && !isHoldCompleted) || isSettling
     val currentShape = if (isMorphActive) {
@@ -180,6 +186,8 @@ private fun AnimatedCookieButtonImpl(
         shape
     }
 
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentIsSpinning by rememberUpdatedState(isSpinning)
     val scope = rememberCoroutineScope()
     var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
@@ -188,13 +196,13 @@ private fun AnimatedCookieButtonImpl(
             modifier = modifier
                 .size(size)
                 .graphicsLayer {
-                    rotationZ = rotation.value
+                    rotationZ = rotation.value + tiltAngle
                     scaleX = animScaleX.value
                     scaleY = animScaleY.value
                 }
                 .clip(currentShape)
                 .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
-                .pointerInput(enabled, isSpinning) {
+                .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
                     detectTapGestures(
                         onPress = {
@@ -212,51 +220,36 @@ private fun AnimatedCookieButtonImpl(
                             // Absorbs long-press gesture so releasing does not fire tap
                         },
                         onTap = {
-                            // Do not trigger action if the user was holding/long-pressing
                             if (System.currentTimeMillis() - pressStartTime >= 300L) return@detectTapGestures
-                            if (spinJob?.isActive == true) return@detectTapGestures
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            if (isSpinning) {
-                                spinJob = scope.launch {
-                                    isTapped = true
-                                    val scaleJobX = launch {
-                                        animScaleX.animateTo(0.84f, Motion.PressSpring)
-                                        animScaleX.animateTo(1f, Motion.BouncySpring)
-                                    }
-                                    val scaleJobY = launch {
-                                        animScaleY.animateTo(0.84f, Motion.PressSpring)
-                                        animScaleY.animateTo(1f, Motion.BouncySpring)
-                                    }
-                                    val anim = launch {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            val shouldSpin = currentIsSpinning
+                            spinJob?.cancel()
+                            spinJob = scope.launch {
+                                isTapped = true
+                                val scaleJobX = launch {
+                                    animScaleX.animateTo(0.84f, Motion.PressSpring)
+                                    animScaleX.animateTo(1f, Motion.BouncySpring)
+                                }
+                                val scaleJobY = launch {
+                                    animScaleY.animateTo(0.84f, Motion.PressSpring)
+                                    animScaleY.animateTo(1f, Motion.BouncySpring)
+                                }
+                                val rotJob = if (shouldSpin) {
+                                    launch {
                                         rotation.animateTo(
                                             targetValue = rotation.value + 360f,
                                             animationSpec = Motion.BouncySpring
                                         )
                                     }
-                                    kotlinx.coroutines.delay(180)
-                                    onClick()
-                                    anim.join()
-                                    scaleJobX.join()
-                                    scaleJobY.join()
-                                    isTapped = false
-                                }
-                            } else {
-                                isTapped = true
-                                scope.launch {
-                                    val scaleJobX = launch {
-                                        animScaleX.animateTo(0.84f, Motion.PressSpring)
-                                        animScaleX.animateTo(1f, Motion.BouncySpring)
-                                    }
-                                    val scaleJobY = launch {
-                                        animScaleY.animateTo(0.84f, Motion.PressSpring)
-                                        animScaleY.animateTo(1f, Motion.BouncySpring)
-                                    }
-                                    kotlinx.coroutines.delay(120)
-                                    scaleJobX.join()
-                                    scaleJobY.join()
-                                    isTapped = false
-                                }
-                                onClick()
+                                } else null
+
+                                kotlinx.coroutines.delay(180L)
+                                currentOnClick()
+
+                                rotJob?.join()
+                                scaleJobX.join()
+                                scaleJobY.join()
+                                isTapped = false
                             }
                         }
                     )
@@ -266,7 +259,9 @@ private fun AnimatedCookieButtonImpl(
             val iconModifier = Modifier
                 .size(iconSize)
                 .graphicsLayer { 
-                    rotationZ = -rotation.value
+                    rotationZ = -(rotation.value + tiltAngle)
+                    scaleX = animIconScale.value
+                    scaleY = animIconScale.value
                 }
             val tint = if (enabled) animatedContentColor else animatedContentColor.copy(alpha = 0.38f)
             iconContent(iconModifier, tint)
@@ -274,14 +269,21 @@ private fun AnimatedCookieButtonImpl(
     }
 
     // Hold scale expansion: grows to 1.45x so morphing shapes are clearly visible outside the finger,
+    // while icon shrinks to small size (0.5x) so morphing shapes are prominent,
     // and springs back to 1f with BouncySpring when released OR when the last shape is reached
     LaunchedEffect(isHolding, isHoldCompleted) {
         if (isHolding && !isHoldCompleted) {
+            kotlinx.coroutines.delay(150L)
+            if (!isHolding || isHoldCompleted) return@LaunchedEffect
             launch { animScaleX.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
             launch { animScaleY.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
-        } else if (!isTapped) {
-            launch { animScaleX.animateTo(1f, animationSpec = Motion.BouncySpring) }
-            launch { animScaleY.animateTo(1f, animationSpec = Motion.BouncySpring) }
+            launch { animIconScale.animateTo(0.5f, animationSpec = Motion.BouncySpring) }
+        } else {
+            launch { animIconScale.animateTo(1f, animationSpec = Motion.BouncySpring) }
+            if (!isTapped) {
+                launch { animScaleX.animateTo(1f, animationSpec = Motion.BouncySpring) }
+                launch { animScaleY.animateTo(1f, animationSpec = Motion.BouncySpring) }
+            }
         }
     }
 
@@ -377,7 +379,7 @@ private fun AnimatedCookieButtonImpl(
 
     if (tooltip != null) {
         TooltipBox(
-            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
             tooltip = {
                 PlainTooltip(
                     containerColor = MaterialTheme.colorScheme.inverseSurface,
