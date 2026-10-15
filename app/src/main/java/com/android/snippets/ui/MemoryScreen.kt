@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.android.snippets.ui.shapes.CookieShape
@@ -30,10 +31,17 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -55,6 +63,7 @@ import androidx.core.view.WindowCompat
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import com.android.snippets.ui.util.rotateWithBounds
+import com.android.snippets.ui.theme.*
 import androidx.compose.ui.res.painterResource
 import com.android.snippets.viewmodel.Screen
 import com.ln.android.snippets.R
@@ -139,11 +148,13 @@ fun MemoryScreen(
 
     // State for long-press hold detection to freeze spin & pause timer
     var isPressed by remember { mutableStateOf(false) }
+    val isScrolling = pagerState.isScrollInProgress || abs(pagerState.currentPageOffsetFraction) > 0.005f
+    val shouldAnimateSpin = !isPressed && !isScrolling
 
     var rotationAngle by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(isPressed) {
-        if (!isPressed) {
+    LaunchedEffect(shouldAnimateSpin) {
+        if (shouldAnimateSpin) {
             var lastTime = withFrameNanos { it }
             while (true) {
                 withFrameNanos { frameTime ->
@@ -163,16 +174,16 @@ fun MemoryScreen(
     var wavePhase by remember { mutableFloatStateOf(0f) }
 
     // Story Progress Timer and Auto-Advance Loop bound to settledPage to prevent mid-animation cancellation
-    LaunchedEffect(pagerState.settledPage, isPressed) {
+    LaunchedEffect(pagerState.settledPage, isPressed, isScrolling) {
         val activeSettled = pagerState.settledPage
-        if (activeSettled >= 1 && activeSettled <= photoList.size) {
+        if (activeSettled >= 1 && activeSettled <= photoList.size && !isScrolling) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             currentMemoryProgress = 0f
 
             var lastTime = 0L
             while (currentMemoryProgress < 1f) {
                 withFrameNanos { frameTime ->
-                    if (!isPressed) {
+                    if (!isPressed && !isScrolling) {
                         if (lastTime != 0L) {
                             val deltaNano = frameTime - lastTime
                             val deltaSec = (deltaNano / 1_000_000_000f).coerceAtMost(0.05f)
@@ -200,6 +211,7 @@ fun MemoryScreen(
     ) {
         HorizontalPager(
             state = pagerState,
+            pageSpacing = 2.dp,
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { clip = true }
@@ -221,6 +233,8 @@ fun MemoryScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .clipToBounds()
+                    .graphicsLayer { clip = true }
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onPress = { offset ->
@@ -245,36 +259,50 @@ fun MemoryScreen(
                         )
                     }
             ) {
-                // Blurred background photo
-                AsyncImage(
-                    model = photo.uriString,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                Modifier.blur(
-                                    BlurRadiusSpec.verticalGradient(
-                                        startRadius = 4.dp,
-                                        endRadius = 24.dp
-                                    ),
-                                    edgeTreatment = BlurredEdgeTreatment.Unbounded
-                                )
-                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                Modifier.blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                            } else {
-                                Modifier
-                            }
-                        )
-                )
+                val pageHazeState = remember { dev.chrisbanes.haze.HazeState() }
 
-                // Dim/Tint overlay
+                // Blurred background photo with hazeSource
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.5f))
-                )
+                        .clipToBounds()
+                        .graphicsLayer { clip = true }
+                        .hazeSource(state = pageHazeState)
+                ) {
+                    AsyncImage(
+                        model = photo.uriString,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = 1.08f
+                                scaleY = 1.08f
+                            }
+                            .then(
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    Modifier.blur(
+                                        BlurRadiusSpec.verticalGradient(
+                                            startRadius = 4.dp,
+                                            endRadius = 24.dp
+                                        ),
+                                        edgeTreatment = BlurredEdgeTreatment.Rectangle
+                                    )
+                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                    Modifier.blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Rectangle)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                    )
+
+                    // Dim/Tint overlay
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.5f))
+                    )
+                }
 
                 Column(
                     modifier = Modifier
@@ -286,6 +314,9 @@ fun MemoryScreen(
                     // Spacer to clear the status bar / date header (progress bar + rating icon + date row ≈ 100dp)
                     Spacer(modifier = Modifier.height(140.dp))
 
+                    val isCurrent = pageIndex == pagerState.currentPage && !isScrolling
+                    val pageRotation = if (isCurrent) rotationAngle else 0f
+
                     Card(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
@@ -293,13 +324,13 @@ fun MemoryScreen(
                         },
                         shape = CookieShape,
                         border = BorderStroke(4.dp, Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 24.dp)
                             .aspectRatio(1f)
                             .graphicsLayer {
-                                rotationZ = rotationAngle
+                                rotationZ = pageRotation
                             }
                             .then(
                                 if (photo.id == transitionTargetId && viewModel.currentScreen != Screen.Detail && sharedTransitionScope != null && animatedVisibilityScope != null) {
@@ -338,7 +369,7 @@ fun MemoryScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    rotationZ = -rotationAngle
+                                    rotationZ = -pageRotation
                                     scaleX = 1.25f
                                     scaleY = 1.25f
                                 }
@@ -371,7 +402,8 @@ fun MemoryScreen(
                                     forcedColor = viewModel.getSnippetColor(snippet),
                                     forcedStyle = viewModel.getSnippetStyle(snippet),
                                     screenWidth = cloudWidth,
-                                    screenHeight = cloudHeight
+                                    screenHeight = cloudHeight,
+                                    hazeState = pageHazeState
                                 )
                             }
                         }
@@ -430,10 +462,11 @@ fun MemoryScreen(
                 }
             }
 
-            // Date & Location Header Text
+            // Header Row: Label icon & Photo Name (Left) | Calendar icon & Date/Time (Center) | Location icon & Location (Right)
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val dateString = if (photo != null) {
@@ -445,43 +478,110 @@ fun MemoryScreen(
                 val locationText = if (photo != null) {
                     com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
                 } else null
+                val photoName = photo?.name?.takeIf { it.isNotBlank() }
 
-                Text(
-                    text = dateString.uppercase(),
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = Color.White
-                )
-
-                if (!locationText.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                        color = Color.White.copy(alpha = 0.25f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
-                        modifier = Modifier.height(22.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                // Left: Label icon and Photo name
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (photoName != null) {
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            color = Color.White.copy(alpha = 0.25f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                            modifier = Modifier.height(24.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = locationText,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = Color.White
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Label,
+                                    contentDescription = "Photo name",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = photoName,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Center: Calendar month icon and day, date month and time in pill
+                Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                    color = Color.White.copy(alpha = 0.25f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                    modifier = Modifier.height(24.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "Date",
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            text = dateString.uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // Right: Location on icon to show location
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    if (!locationText.isNullOrBlank()) {
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            color = Color.White.copy(alpha = 0.25f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                            modifier = Modifier.height(24.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = "Location",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = locationText,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
@@ -602,14 +702,14 @@ fun FloatingSnippet(
     forcedColor: Int? = null,
     forcedStyle: com.android.snippets.viewmodel.SnippetStyle? = null,
     screenWidth: androidx.compose.ui.unit.Dp,
-    screenHeight: androidx.compose.ui.unit.Dp
+    screenHeight: androidx.compose.ui.unit.Dp,
+    hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     // 1. Unified Scaling/Style Logic
     val scalingFactor = com.android.snippets.ui.util.DistributionMath.getCloudScalingFactor(total)
 
     val stableRandom = remember(text) { Random(text.hashCode().toLong()) }
     val personality = stableRandom.nextInt(0, 5)
-    val isFilled = true
 
     val baseFontSize = when(personality) {
         0, 1 -> 24 // Large
@@ -658,56 +758,54 @@ fun FloatingSnippet(
         isCloud = true
     )
 
-    val colorStrategy = (index + stableRandom.nextInt(0, 10)) % 3
-    val colorInt = if (forcedColor != null) {
-        forcedColor
-    } else {
-        when (colorStrategy) {
-            0 -> if (photoColors.isNotEmpty()) photoColors[stableRandom.nextInt(photoColors.size)] else MaterialTheme.colorScheme.primary.toArgb()
-            1 -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary)[stableRandom.nextInt(3)].toArgb()
-            else -> listOf(Color(0xFFFF5722), Color(0xFFE91E63), Color(0xFF9C27B0), Color(0xFF00BCD4))[stableRandom.nextInt(4)].toArgb()
-        }
-    }
-    val snippetColor = Color(colorInt)
+    val snippetColor = rememberSnippetBackgroundColor()
     val rotation = (stableRandom.nextFloat() * 16 - 8)
 
-    val containerColor = if (isFilled) snippetColor.copy(alpha = 0.25f) else Color.Transparent
-    val borderColor = if (!isFilled) snippetColor.copy(alpha = 0.40f) else null
+    val hazeStyle = remember(snippetColor) {
+        dev.chrisbanes.haze.HazeStyle(
+            tint = dev.chrisbanes.haze.HazeTint(snippetColor.copy(alpha = 0.50f)),
+            blurRadius = 24.dp,
+            noiseFactor = dev.chrisbanes.haze.HazeDefaults.noiseFactor
+        )
+    }
 
     Box(modifier = Modifier.rotateWithBounds(rotation)) {
-        Surface(
-            color = containerColor,
-            contentColor = snippetColor,
-            shape = androidx.compose.foundation.shape.CircleShape,
-            border = if (borderColor != null) BorderStroke(1.5.dp, borderColor) else null,
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .widthIn(max = maxSnippetWidth)
                 .sizeIn(minWidth = 1.dp, minHeight = 1.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = text,
-                    style = textStyle.copy(
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    ),
-                    color = snippetColor,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.padding(
-                        horizontal = (when (personality) {
-                            0, 1 -> 24
-                            2, 3 -> 18
-                            else -> 12
-                        } * finalScaling.coerceAtMost(1.5f)).dp,
-                        vertical = (when (personality) {
-                            0, 1 -> 12
-                            2, 3 -> 9
-                            else -> 6
-                        } * finalScaling.coerceAtMost(1.5f)).dp
-                    )
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .then(
+                    if (hazeState != null) {
+                        Modifier.hazeEffect(
+                            state = hazeState,
+                            style = hazeStyle
+                        )
+                    } else Modifier
                 )
-            }
+                .background(snippetColor.copy(alpha = 0.50f))
+        ) {
+            Text(
+                text = text,
+                style = textStyle.copy(
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                ),
+                color = rememberSnippetTextColor(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(
+                    horizontal = (when (personality) {
+                        0, 1 -> 24
+                        2, 3 -> 18
+                        else -> 12
+                    } * finalScaling.coerceAtMost(1.5f)).dp,
+                    vertical = (when (personality) {
+                        0, 1 -> 12
+                        2, 3 -> 9
+                        else -> 6
+                    } * finalScaling.coerceAtMost(1.5f)).dp
+                )
+            )
         }
     }
 }
