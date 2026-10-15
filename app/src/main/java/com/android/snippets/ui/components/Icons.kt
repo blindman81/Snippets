@@ -357,7 +357,7 @@ fun CollectionIcon(
             
             if (animMode == "icon button") {
                 when (icon) {
-                    AppShape.COOKIE_9_SIDED, AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
+                    AppShape.COOKIE_9_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
                         rotationZ = infiniteTransition.animateFloat(
                             initialValue = 0f,
                             targetValue = 360f,
@@ -384,7 +384,7 @@ fun CollectionIcon(
                 }
             } else {
                 when (icon) {
-                    AppShape.COOKIE_9_SIDED, AppShape.COOKIE_12_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
+                    AppShape.COOKIE_9_SIDED, AppShape.VERY_SUNNY, AppShape.PILL, AppShape.OVAL -> {
                         rotationZ = infiniteTransition.animateFloat(
                             initialValue = 0f,
                             targetValue = 360f,
@@ -960,6 +960,45 @@ fun MoreSectionIcon(): ImageVector {
 }
 
 @Composable
+fun MobileSectionIcon(): ImageVector {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return remember(primaryColor) {
+        ImageVector.Builder(
+            name = "MobileSectionIcon",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 960f,
+            viewportHeight = 960f
+        ).apply {
+            group(translationY = 960f) {
+                path(fill = SolidColor(primaryColor)) {
+                    moveTo(240f, -80f)
+                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
+                    reflectiveQuadTo(160f, -160f)
+                    verticalLineToRelative(-640f)
+                    quadToRelative(0f, -33f, 23.5f, -56.5f)
+                    reflectiveQuadTo(240f, -880f)
+                    horizontalLineToRelative(480f)
+                    quadToRelative(33f, 0f, 56.5f, 23.5f)
+                    reflectiveQuadTo(800f, -800f)
+                    verticalLineToRelative(640f)
+                    quadToRelative(0f, 33f, -23.5f, 56.5f)
+                    reflectiveQuadTo(720f, -80f)
+                    horizontalLineTo(240f)
+                    close()
+                    moveTo(240f, -200f)
+                    horizontalLineToRelative(480f)
+                    verticalLineToRelative(-560f)
+                    horizontalLineTo(240f)
+                    verticalLineToRelative(560f)
+                    close()
+                }
+            }
+        }.build()
+    }
+}
+
+@Composable
 fun NotificationSectionIcon(): ImageVector {
     val primaryColor = MaterialTheme.colorScheme.primary
     return remember(primaryColor) {
@@ -1299,75 +1338,6 @@ fun SortIcon(
 }
 
 @Composable
-fun ViewListIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = LocalContentColor.current
-): ImageVector {
-    return remember(tint) {
-        ImageVector.Builder(
-            name = "ViewListIcon",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 960f,
-            viewportHeight = 960f
-        ).apply {
-            group(translationY = 960f) {
-                path(fill = SolidColor(tint)) {
-                    moveTo(200f, -520f)
-                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
-                    reflectiveQuadTo(120f, -600f)
-                    verticalLineToRelative(-160f)
-                    quadToRelative(0f, -33f, 23.5f, -56.5f)
-                    reflectiveQuadTo(200f, -840f)
-                    horizontalLineToRelative(560f)
-                    quadToRelative(33f, 0f, 56.5f, 23.5f)
-                    reflectiveQuadTo(840f, -760f)
-                    verticalLineToRelative(160f)
-                    quadToRelative(0f, 33f, -23.5f, 56.5f)
-                    reflectiveQuadTo(760f, -520f)
-                    horizontalLineTo(200f)
-                    close()
-                    moveTo(200f, -600f)
-                    horizontalLineToRelative(560f)
-                    verticalLineToRelative(-160f)
-                    horizontalLineTo(200f)
-                    verticalLineToRelative(160f)
-                    close()
-                    moveTo(200f, -120f)
-                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
-                    reflectiveQuadTo(120f, -200f)
-                    verticalLineToRelative(-160f)
-                    quadToRelative(0f, -33f, 23.5f, -56.5f)
-                    reflectiveQuadTo(200f, -440f)
-                    horizontalLineToRelative(560f)
-                    quadToRelative(33f, 0f, 56.5f, 23.5f)
-                    reflectiveQuadTo(840f, -360f)
-                    verticalLineToRelative(160f)
-                    quadToRelative(0f, 33f, -23.5f, 56.5f)
-                    reflectiveQuadTo(760f, -120f)
-                    horizontalLineTo(200f)
-                    close()
-                    moveTo(200f, -200f)
-                    horizontalLineToRelative(560f)
-                    verticalLineToRelative(-160f)
-                    horizontalLineTo(200f)
-                    verticalLineToRelative(160f)
-                    close()
-                    moveTo(200f, -760f)
-                    verticalLineToRelative(160f)
-                    verticalLineToRelative(-160f)
-                    close()
-                    moveTo(200f, -360f)
-                    verticalLineToRelative(160f)
-                    verticalLineToRelative(-160f)
-                    close()
-                }
-            }
-        }.build()
-    }
-}
-
-@Composable
 fun ViewGrid2Icon(
     modifier: Modifier = Modifier,
     tint: Color = LocalContentColor.current
@@ -1490,84 +1460,6 @@ fun ViewGrid3Icon(
 }
 
 @Composable
-fun FormatListBulletedIcon(
-    modifier: Modifier = Modifier,
-    tint: Color = LocalContentColor.current
-): ImageVector {
-    return remember(tint) {
-        ImageVector.Builder(
-            name = "FormatListBulletedIcon",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 960f,
-            viewportHeight = 960f
-        ).apply {
-            group(translationY = 960f) {
-                path(fill = SolidColor(tint)) {
-                    // Lines
-                    moveTo(280f, -600f)
-                    verticalLineToRelative(-80f)
-                    horizontalLineToRelative(560f)
-                    verticalLineToRelative(80f)
-                    horizontalLineTo(280f)
-                    close()
-
-                    moveTo(280f, -440f)
-                    verticalLineToRelative(-80f)
-                    horizontalLineToRelative(560f)
-                    verticalLineToRelative(80f)
-                    horizontalLineTo(280f)
-                    close()
-
-                    moveTo(280f, -280f)
-                    verticalLineToRelative(-80f)
-                    horizontalLineToRelative(560f)
-                    verticalLineToRelative(80f)
-                    horizontalLineTo(280f)
-                    close()
-
-                    // Bullet 1
-                    moveTo(160f, -600f)
-                    quadToRelative(-17f, 0f, -28.5f, -11.5f)
-                    reflectiveQuadTo(120f, -640f)
-                    quadToRelative(0f, -17f, 11.5f, -28.5f)
-                    reflectiveQuadTo(160f, -680f)
-                    quadToRelative(17f, 0f, 28.5f, 11.5f)
-                    reflectiveQuadTo(200f, -640f)
-                    quadToRelative(0f, 17f, -11.5f, 28.5f)
-                    reflectiveQuadTo(160f, -600f)
-                    close()
-
-                    // Bullet 2
-                    moveTo(160f, -440f)
-                    quadToRelative(-17f, 0f, -28.5f, -11.5f)
-                    reflectiveQuadTo(120f, -480f)
-                    quadToRelative(0f, -17f, 11.5f, -28.5f)
-                    reflectiveQuadTo(160f, -520f)
-                    quadToRelative(17f, 0f, 28.5f, 11.5f)
-                    reflectiveQuadTo(200f, -480f)
-                    quadToRelative(0f, 17f, -11.5f, 28.5f)
-                    reflectiveQuadTo(160f, -440f)
-                    close()
-
-                    // Bullet 3
-                    moveTo(160f, -280f)
-                    quadToRelative(-17f, 0f, -28.5f, -11.5f)
-                    reflectiveQuadTo(120f, -320f)
-                    quadToRelative(0f, -17f, 11.5f, -28.5f)
-                    reflectiveQuadTo(160f, -360f)
-                    quadToRelative(17f, 0f, 28.5f, 11.5f)
-                    reflectiveQuadTo(200f, -320f)
-                    quadToRelative(0f, 17f, -11.5f, 28.5f)
-                    reflectiveQuadTo(160f, -280f)
-                    close()
-                }
-            }
-        }.build()
-    }
-}
-
-@Composable
 fun ViewAgendaCustomIcon(
     modifier: Modifier = Modifier,
     tint: Color = LocalContentColor.current
@@ -1622,7 +1514,135 @@ fun TextSnippetOffIcon(
     }
 }
 
+@Composable
+fun MarqueeSelectIcon(): ImageVector {
+    val color = MaterialTheme.colorScheme.onSurface
+    return ImageVector.Builder(
+        name = "MarqueeSelect",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).path(
+        fill = SolidColor(color),
+        pathFillType = PathFillType.NonZero
+    ) {
+        moveTo(200f, 760f)
+        verticalLineToRelative(80f)
+        quadToRelative(-33f, 0f, -56.5f, -23.5f)
+        reflectiveQuadTo(120f, 760f)
+        horizontalLineToRelative(80f)
+        close()
+        moveToRelative(-80f, -80f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -160f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -160f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(80f, -160f)
+        horizontalLineToRelative(-80f)
+        quadToRelative(0f, -33f, 23.5f, -56.5f)
+        reflectiveQuadTo(200f, 120f)
+        verticalLineToRelative(80f)
+        close()
+        moveToRelative(80f, 640f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -640f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(160f, 640f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -640f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(160f, 640f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -640f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(160f, 560f)
+        horizontalLineToRelative(80f)
+        quadToRelative(0f, 33f, -23.5f, 56.5f)
+        reflectiveQuadTo(760f, 840f)
+        verticalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -80f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -160f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -160f)
+        verticalLineToRelative(-80f)
+        horizontalLineToRelative(80f)
+        verticalLineToRelative(80f)
+        horizontalLineToRelative(-80f)
+        close()
+        moveToRelative(0f, -160f)
+        verticalLineToRelative(-80f)
+        quadToRelative(33f, 0f, 56.5f, 23.5f)
+        reflectiveQuadTo(840f, 200f)
+        horizontalLineToRelative(-80f)
+        close()
+    }.build()
+}
 
+val MotionModeIconVector: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "MotionMode",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString("M200-766v572q-17-17-32-36t-28-39v-422q13-20 28-39t32-36Zm160-96v764q-21-7-41-15.5T280-133v-694q19-11 39-19.5t41-15.5Zm280 749v-734q106 47 173 145t67 222q0 124-67 222T640-113ZM480-80q-10 0-20-.5T440-82v-796q10-1 20-1.5t20-.5q20 0 40 2t40 6v784q-20 4-40 6t-40 2Z").toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
 
-
+@Composable
+fun MotionModeIcon(): ImageVector = MotionModeIconVector
 
