@@ -12,6 +12,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.basicMarquee
@@ -81,6 +83,10 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -405,6 +411,123 @@ fun MemoryMoreButton(
     }
 }
 
+@Composable
+fun SnippetsMasonryRow(
+    snippets: List<String>,
+    isSelected: Boolean,
+    viewModel: SnippetsViewModel?,
+    modifier: Modifier = Modifier
+) {
+    if (snippets.isEmpty()) return
+
+    val candidates = remember(snippets) { snippets.take(2) }
+    val spacingPx = with(LocalDensity.current) { 4.dp.roundToPx() }
+
+    SubcomposeLayout(
+        modifier = modifier
+    ) { constraints ->
+        val maxW = if (constraints.hasBoundedWidth) constraints.maxWidth else Int.MAX_VALUE
+        if (candidates.isEmpty() || maxW <= 0) {
+            return@SubcomposeLayout layout(0, 0) {}
+        }
+
+        // Measure candidate 0 (first snippet)
+        val measurables0 = subcompose("snippet_0") {
+            SnippetMasonryChip(
+                snippet = candidates[0],
+                isSelected = isSelected,
+                viewModel = viewModel
+            )
+        }
+        val p0 = measurables0.firstOrNull()?.measure(Constraints(maxWidth = maxW))
+        if (p0 == null) {
+            return@SubcomposeLayout layout(0, 0) {}
+        }
+
+        var showSecond = false
+        var p1: Placeable? = null
+
+        if (candidates.size > 1) {
+            val remainingW = maxW - p0.width - spacingPx
+            if (remainingW > 0) {
+                val measurables1 = subcompose("snippet_1") {
+                    SnippetMasonryChip(
+                        snippet = candidates[1],
+                        isSelected = isSelected,
+                        viewModel = viewModel
+                    )
+                }
+                // Measure candidate 1 at unconstrained width to get its natural size
+                val unconstrainedP1 = measurables1.firstOrNull()?.measure(Constraints())
+                if (unconstrainedP1 != null && unconstrainedP1.width <= remainingW) {
+                    showSecond = true
+                    p1 = unconstrainedP1
+                }
+            }
+        }
+
+        val totalW = if (showSecond && p1 != null) {
+            p0.width + spacingPx + p1.width
+        } else {
+            p0.width
+        }
+        val totalH = if (showSecond && p1 != null) {
+            maxOf(p0.height, p1.height)
+        } else {
+            p0.height
+        }
+
+        val layoutWidth = if (constraints.hasBoundedWidth) {
+            totalW.coerceIn(constraints.minWidth, constraints.maxWidth)
+        } else {
+            totalW
+        }
+
+        layout(layoutWidth, totalH) {
+            p0.placeRelative(0, (totalH - p0.height) / 2)
+            if (showSecond && p1 != null) {
+                p1.placeRelative(p0.width + spacingPx, (totalH - p1.height) / 2)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SnippetMasonryChip(
+    snippet: String,
+    isSelected: Boolean,
+    viewModel: SnippetsViewModel?,
+    modifier: Modifier = Modifier
+) {
+    val forcedStyle = viewModel?.getSnippetStyle(snippet)
+    val snippetColor = rememberSnippetBackgroundColor()
+
+    Surface(
+        shape = CircleShape,
+        color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor,
+        border = null,
+        modifier = modifier.wrapContentWidth(align = Alignment.Start)
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = snippet,
+                style = getSnippetTextStyle(
+                    forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                    MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                    isCloud = true
+                ),
+                color = rememberSnippetTextColor(),
+                maxLines = 1,
+                softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Clip
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun PhotoMasonryItem(
@@ -432,7 +555,7 @@ fun PhotoMasonryItem(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val topPhotoCornerAnimated by animateDpAsState(
-        targetValue = if (isPressed) 24.dp else 16.dp,
+        targetValue = if (isPressed) 24.dp else 12.dp,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "photoMasonryTopPhotoCorner"
     )
@@ -509,11 +632,11 @@ fun PhotoMasonryItem(
         val showBottomSection = !fillCard && hasPhoto
 
         if (!showBottomSection) {
-            val finalShape = if (isPressed) RoundedCornerShape(24.dp) else RoundedCornerShape(16.dp)
+            val finalShape = if (isPressed) RoundedCornerShape(24.dp) else RoundedCornerShape(12.dp)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = finalShape,
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 shadowElevation = if (isSelected) 6.dp else 2.dp,
                 border = null
             ) {
@@ -528,10 +651,7 @@ fun PhotoMasonryItem(
                                             rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                                             animatedVisibilityScope = animatedVisibilityScope,
                                             boundsTransform = { _, _ ->
-                                                spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessMediumLow
-                                                )
+                                                tween(durationMillis = 380, easing = LinearOutSlowInEasing)
                                             },
                                             resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                                 contentScale = ContentScale.Crop,
@@ -682,7 +802,7 @@ fun PhotoMasonryItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(10.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.TopStart
                     ) {
                         if (photo.snippets.isEmpty()) {
                             Icon(
@@ -692,50 +812,11 @@ fun PhotoMasonryItem(
                                 modifier = Modifier.size(24.dp)
                             )
                         } else {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.Center,
-                                verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                photo.snippets.forEach { snippet ->
-                                    val forcedColor = viewModel?.getSnippetColor(snippet)
-                                    val forcedStyle = viewModel?.getSnippetStyle(snippet)
-
-                                    val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                                    val snippetColor = remember(baseSnippetColor, isDark) {
-                                        val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
-                                        if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-                                        else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
-                                        else baseSnippetColor
-                                    }
-
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
-                                        border = BorderStroke(1.dp, snippetColor.copy(alpha = if (isSelected) 0.60f else 0.30f)),
-                                        modifier = Modifier
-                                            .wrapContentWidth()
-                                            .padding(2.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                            contentAlignment = Alignment.CenterStart
-                                        ) {
-                                            Text(
-                                                text = snippet,
-                                                style = getSnippetTextStyle(
-                                                    forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                                    MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
-                                                    isCloud = true
-                                                ),
-                                                color = snippetColor,
-                                                maxLines = 1,
-                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                            SnippetsMasonryRow(
+                                snippets = photo.snippets,
+                                isSelected = isSelected,
+                                viewModel = viewModel
+                            )
                         }
                     }
                 }
@@ -744,7 +825,7 @@ fun PhotoMasonryItem(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = photoShape,
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 shadowElevation = if (isSelected) 6.dp else 2.dp,
                 border = null
             ) {
@@ -758,10 +839,7 @@ fun PhotoMasonryItem(
                                         rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                                         animatedVisibilityScope = animatedVisibilityScope,
                                         boundsTransform = { _, _ ->
-                                            spring(
-                                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
+                                            tween(durationMillis = 380, easing = LinearOutSlowInEasing)
                                         },
                                         resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                             contentScale = ContentScale.Crop,
@@ -787,33 +865,36 @@ fun PhotoMasonryItem(
                         } ?: Modifier.fillMaxWidth().wrapContentHeight()
                     }
 
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(photo.uriString)
+                            .crossfade(true)
+                            .memoryCacheKey(photo.uriString)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = if (isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
+                        alignment = Alignment { size, space, _ ->
+                            val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
+                                (space.width - size.width).coerceAtMost(0),
+                                (space.width - size.width).coerceAtLeast(0)
+                            )
+                            val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
+                                (space.height - size.height).coerceAtMost(0),
+                                (space.height - size.height).coerceAtLeast(0)
+                            )
+                            androidx.compose.ui.unit.IntOffset(x, y)
+                        },
+                        modifier = aspectModifier.then(
+                            if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
+                        )
+                    )
+
                     if (isSelected) {
+                        val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
                         Box(
                             modifier = aspectModifier
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                        )
-                    } else {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(photo.uriString)
-                                .crossfade(true)
-                                .memoryCacheKey(photo.uriString)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = if (isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
-                            colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
-                            alignment = Alignment { size, space, _ ->
-                                val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
-                                    (space.width - size.width).coerceAtMost(0),
-                                    (space.width - size.width).coerceAtLeast(0)
-                                )
-                                val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
-                                    (space.height - size.height).coerceAtMost(0),
-                                    (space.height - size.height).coerceAtLeast(0)
-                                )
-                                androidx.compose.ui.unit.IntOffset(x, y)
-                            },
-                            modifier = aspectModifier
+                                .background(wallpaperTint.copy(alpha = 0.28f))
                         )
                     }
 
@@ -830,23 +911,23 @@ fun PhotoMasonryItem(
 
             Surface(
                 modifier = Modifier
-                    .wrapContentWidth()
+                    .wrapContentWidth(align = Alignment.Start)
                     .align(Alignment.Start),
                 shape = bottomCardShape,
-                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 shadowElevation = 0.dp,
                 border = null
             ) {
                 Box(
                     modifier = Modifier
-                        .wrapContentWidth()
-                        .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+                        .wrapContentWidth(align = Alignment.Start)
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     if (photo.snippets.isEmpty()) {
                         Box(
-                            modifier = Modifier.wrapContentWidth(),
-                            contentAlignment = Alignment.Center
+                            modifier = Modifier.wrapContentWidth(align = Alignment.Start),
+                            contentAlignment = Alignment.CenterStart
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_text_snippet_off),
@@ -856,48 +937,11 @@ fun PhotoMasonryItem(
                             )
                         }
                     } else {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.wrapContentWidth()
-                        ) {
-                            photo.snippets.forEach { snippet ->
-                                val forcedColor = viewModel?.getSnippetColor(snippet)
-                                val forcedStyle = viewModel?.getSnippetStyle(snippet)
-
-                                val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                                val snippetColor = remember(baseSnippetColor, isDark) {
-                                    val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
-                                    if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-                                    else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
-                                    else baseSnippetColor
-                                }
-
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
-                                    border = BorderStroke(1.dp, snippetColor.copy(alpha = if (isSelected) 0.60f else 0.30f)),
-                                    modifier = Modifier.wrapContentWidth()
-                                ) {
-                                    Box(
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        contentAlignment = Alignment.CenterStart
-                                    ) {
-                                        Text(
-                                            text = snippet,
-                                            style = getSnippetTextStyle(
-                                                forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                                MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
-                                                isCloud = true
-                                            ),
-                                            color = snippetColor,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        SnippetsMasonryRow(
+                            snippets = photo.snippets,
+                            isSelected = isSelected,
+                            viewModel = viewModel
+                        )
                     }
                 }
             }
@@ -905,316 +949,88 @@ fun PhotoMasonryItem(
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun PhotoListItem(
-    photo: Photo, 
-    position: CardPosition = CardPosition.Single,
+fun TwoColumnCard(
+    photo: Photo,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
+    matchingSnippetsCount: Int = 0,
+    isMostSnippets: Boolean = false,
+    isLeastSnippets: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     showFavoriteIcon: Boolean = true,
+    fillCard: Boolean = false,
+    grayOutIfViewed: Boolean = false,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
     tab: String? = null,
+    viewModel: SnippetsViewModel? = null
+) {
+    PhotoMasonryItem(
+        photo = photo,
+        isSelected = isSelected,
+        selectionMode = selectionMode,
+        matchingSnippetsCount = matchingSnippetsCount,
+        isMostSnippets = isMostSnippets,
+        isLeastSnippets = isLeastSnippets,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier,
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
+        showFavoriteIcon = showFavoriteIcon,
+        fillCard = fillCard,
+        grayOutIfViewed = grayOutIfViewed,
+        shape = shape,
+        tab = tab,
+        viewModel = viewModel
+    )
+}
+
+@Composable
+fun ThreeColumnCard(
+    photo: Photo,
+    isSelected: Boolean = false,
+    selectionMode: Boolean = false,
+    matchingSnippetsCount: Int = 0,
     isMostSnippets: Boolean = false,
     isLeastSnippets: Boolean = false,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    showFavoriteIcon: Boolean = true,
+    fillCard: Boolean = false,
     grayOutIfViewed: Boolean = false,
-    viewModel: SnippetsViewModel
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
+    tab: String? = null,
+    viewModel: SnippetsViewModel? = null
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val topCornerTarget = if (isPressed || isSelected) 24.dp else {
-        when (position) {
-            CardPosition.Single, CardPosition.First -> 16.dp
-            else -> 4.dp
-        }
-    }
-    val bottomCornerTarget = if (isPressed || isSelected) 24.dp else {
-        when (position) {
-            CardPosition.Single, CardPosition.Last -> 16.dp
-            else -> 4.dp
-        }
-    }
-
-    val topCornerAnimated by animateDpAsState(
-        targetValue = topCornerTarget,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "photoListItemTopCorner"
+    PhotoMasonryItem(
+        photo = photo,
+        isSelected = isSelected,
+        selectionMode = selectionMode,
+        matchingSnippetsCount = matchingSnippetsCount,
+        isMostSnippets = isMostSnippets,
+        isLeastSnippets = isLeastSnippets,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier,
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
+        showFavoriteIcon = showFavoriteIcon,
+        fillCard = fillCard,
+        grayOutIfViewed = grayOutIfViewed,
+        shape = shape,
+        tab = tab,
+        viewModel = viewModel
     )
-    val bottomCornerAnimated by animateDpAsState(
-        targetValue = bottomCornerTarget,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "photoListItemBottomCorner"
-    )
-
-    val cardShape = RoundedCornerShape(
-        topStart = topCornerAnimated,
-        topEnd = topCornerAnimated,
-        bottomStart = bottomCornerAnimated,
-        bottomEnd = bottomCornerAnimated
-    )
-    val finalShape = cardShape
-    val photoShape = RoundedCornerShape(12.dp)
-
-    val saturation by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 600),
-        label = "saturation"
-    )
-    val animatedAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (grayOutIfViewed && photo.isViewed) 0.8f else 1f,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 600),
-        label = "alpha"
-    )
-    val animatedScale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isSelected) 0.95f else 1f,
-        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 400f),
-        label = "scale"
-    )
-    val selectionBlurRadius by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (isSelected) 18.dp else 0.dp,
-        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 400f),
-        label = "photoSelectionBlur"
-    )
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = animatedScale
-                scaleY = animatedScale
-            }
-            .alpha(animatedAlpha)
-            .clip(cardShape)
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        shape = cardShape,
-        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 1.dp),
-        border = null
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .padding(vertical = 2.dp, horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .then(
-                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                            with(sharedTransitionScope) {
-                                Modifier.sharedBounds(
-                                    rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    boundsTransform = { _, _ ->
-                                        androidx.compose.animation.core.spring(
-                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                        )
-                                    },
-                                    resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
-                                        contentScale = ContentScale.Crop,
-                                        alignment = Alignment.Center
-                                    ),
-                                    clipInOverlayDuringTransition = OverlayClip(photoShape)
-                                )
-                            }
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .clip(photoShape)
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(photo.uriString)
-                        .crossfade(true)
-                        .memoryCacheKey(photo.uriString)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                        androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                    ),
-                    modifier = Modifier.fillMaxSize().then(
-                        if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
-                    )
-                )
-
-                if (isSelected) {
-                    val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(wallpaperTint.copy(alpha = 0.28f))
-                    )
-                }
-
-                SelectedPhotoIndicator(
-                    isSelected = isSelected,
-                    selectionMode = selectionMode,
-                    count = viewModel.selectedPhotoIds.indexOf(photo.id) + 1,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-
-                if ((isMostSnippets || isLeastSnippets) && !isSelected) {
-                    val badgeContainerColor = if (isMostSnippets) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
-                    val badgeContentColor = if (isMostSnippets) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary
-                    Surface(
-                        color = badgeContainerColor.copy(alpha = 0.9f),
-                        shape = CookieShape,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(2.dp)
-                            .size(20.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = photo.snippets.size.toString(),
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.ExtraBold),
-                                color = badgeContentColor
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .align(Alignment.CenterVertically)
-            ) {
-                if (photo.snippets.isEmpty()) {
-                    Surface(
-                        shape = CookieShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_text_snippet_off),
-                                contentDescription = "No snippets",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                } else {
-                    val topSnippets = photo.snippets.take(2)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.Start),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        topSnippets.forEach { snippet ->
-                            val forcedColor = viewModel.getSnippetColor(snippet)
-                            val forcedStyle = viewModel.getSnippetStyle(snippet)
-
-                            val isDark = !MaterialTheme.colorScheme.surface.let { it.red + it.green + it.blue > 1.5f }
-                            val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                            val snippetColor = remember(baseSnippetColor, isDark) {
-                                val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
-                                if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-                                else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
-                                else baseSnippetColor
-                            }
-
-                            Surface(
-                                onClick = { onClick() },
-                                shape = CircleShape,
-                                color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
-                                border = BorderStroke(1.dp, snippetColor.copy(alpha = if (isSelected) 0.60f else 0.30f)),
-                                modifier = Modifier.weight(1f, fill = false)
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.CenterStart,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = snippet,
-                                        style = getSnippetTextStyle(
-                                            forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-                                            MaterialTheme.typography.labelLarge,
-                                            isCloud = true
-                                        ),
-                                        color = snippetColor,
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon)) {
-                val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
-                val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
-
-                Spacer(modifier = Modifier.width(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (photo.rating > 0) {
-                        Surface(
-                            color = iconContainerColor.copy(alpha = 0.9f),
-                            shape = CookieShape,
-                            modifier = Modifier.size(26.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_star_rating),
-                                    contentDescription = null,
-                                    tint = iconColor,
-                                    modifier = Modifier.fillMaxSize().padding(3.dp)
-                                )
-                                Text(
-                                    text = photo.rating.toString(),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.ExtraBold),
-                                    color = iconContainerColor,
-                                    modifier = Modifier.padding(top = 0.5.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    if (photo.isFavorite && showFavoriteIcon) {
-                        Surface(
-                            color = iconContainerColor.copy(alpha = 0.9f),
-                            shape = CookieShape,
-                            modifier = Modifier.size(26.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Favorite,
-                                    contentDescription = "Favorite",
-                                    tint = iconColor,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
+
 
 @Composable
 private fun ExpandableCardPillIcon(
@@ -1313,9 +1129,9 @@ private fun ExpandableCardPillIcon(
 
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun PhotoCardListItem(
+fun PhotoCard(
     photo: Photo,
-    position: CardPosition,
+    position: CardPosition = CardPosition.Single,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
     onClick: () -> Unit,
@@ -1349,12 +1165,12 @@ fun PhotoCardListItem(
 
     val view = LocalView.current
 
-    val photoShape = when (position) {
-        CardPosition.Single -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-        CardPosition.First -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-        CardPosition.Middle -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-        CardPosition.Last -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
-    }
+    val photoShape = RoundedCornerShape(
+        topStart = 12.dp,
+        topEnd = 12.dp,
+        bottomStart = 4.dp,
+        bottomEnd = 4.dp
+    )
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -1378,7 +1194,7 @@ fun PhotoCardListItem(
     val finalShape = if (isPressed) {
         RoundedCornerShape(24.dp)
     } else {
-        RoundedCornerShape(16.dp)
+        RoundedCornerShape(12.dp)
     }
     val blockColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
@@ -1428,7 +1244,7 @@ fun PhotoCardListItem(
                         .fillMaxWidth()
                         .weight(1f),
                     shape = finalShape,
-                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else blockColor,
+                    color = blockColor,
                     shadowElevation = if (isSelected) 4.dp else 1.dp
                 ) {
                     Box(
@@ -1451,21 +1267,13 @@ fun PhotoCardListItem(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     photo.snippets.forEach { snippet ->
-                                        val forcedColor = viewModel.getSnippetColor(snippet)
                                         val forcedStyle = viewModel.getSnippetStyle(snippet)
-
-                                        val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                                        val snippetColor = remember(baseSnippetColor, isDark) {
-                                            val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
-                                            if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-                                            else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
-                                            else baseSnippetColor
-                                        }
+                                        val snippetColor = rememberSnippetBackgroundColor()
 
                                         Surface(
                                             shape = CircleShape,
-                                            color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
-                                            border = BorderStroke(1.dp, snippetColor.copy(alpha = if (isSelected) 0.60f else 0.30f)),
+                                            color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor,
+                                            border = null,
                                             modifier = Modifier
                                                 .wrapContentWidth()
                                                 .padding(4.dp)
@@ -1481,9 +1289,10 @@ fun PhotoCardListItem(
                                                         MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                                         isCloud = true
                                                     ),
-                                                    color = snippetColor,
+                                                    color = rememberSnippetTextColor(),
                                                     maxLines = 1,
-                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                    softWrap = false,
+                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Clip
                                                 )
                                             }
                                         }
@@ -1500,7 +1309,7 @@ fun PhotoCardListItem(
                         .fillMaxWidth()
                         .weight(photoWeight),
                     shape = photoShape,
-                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else blockColor,
+                    color = blockColor,
                     shadowElevation = if (isSelected) 4.dp else 1.dp
                 ) {
                     Box(
@@ -1520,7 +1329,7 @@ fun PhotoCardListItem(
                                                 rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                                                 animatedVisibilityScope = animatedVisibilityScope,
                                                 boundsTransform = { _, _ ->
-                                                    spring()
+                                                    tween(durationMillis = 380, easing = LinearOutSlowInEasing)
                                                 },
                                                 resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                                     contentScale = ContentScale.Crop,
@@ -1656,7 +1465,7 @@ fun PhotoCardListItem(
                         .wrapContentWidth()
                         .then(bottomCardModifier),
                     shape = bottomCardShape,
-                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else blockColor,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     shadowElevation = 0.dp
                 ) {
                     Box(
@@ -1684,21 +1493,13 @@ fun PhotoCardListItem(
                                 modifier = Modifier.wrapContentWidth()
                             ) {
                                 photo.snippets.forEach { snippet ->
-                                    val forcedColor = viewModel.getSnippetColor(snippet)
                                     val forcedStyle = viewModel.getSnippetStyle(snippet)
-
-                                    val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                                    val snippetColor = remember(baseSnippetColor, isDark) {
-                                        val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
-                                        if (isDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-                                        else if (!isDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
-                                        else baseSnippetColor
-                                    }
+                                    val snippetColor = rememberSnippetBackgroundColor()
 
                                     Surface(
                                         shape = CircleShape,
-                                        color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor.copy(alpha = 0.18f),
-                                        border = BorderStroke(1.dp, snippetColor.copy(alpha = if (isSelected) 0.60f else 0.30f)),
+                                        color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor,
+                                        border = null,
                                         modifier = Modifier.wrapContentWidth()
                                     ) {
                                         Box(
@@ -1712,9 +1513,10 @@ fun PhotoCardListItem(
                                                     MaterialTheme.typography.labelLarge,
                                                     isCloud = true
                                                 ),
-                                                color = snippetColor,
+                                                color = rememberSnippetTextColor(),
                                                 maxLines = 1,
-                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                softWrap = false,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Clip
                                             )
                                         }
                                     }
@@ -1726,7 +1528,13 @@ fun PhotoCardListItem(
             }
         }
     }
-} // closes PhotoCardListItem
+} // closes PhotoCard
+
+enum class ViewItem(val columns: Int) {
+    PhotoCard(1),
+    TwoColumnCard(2),
+    ThreeColumnCard(3)
+}
 
 enum class CardPosition {
     Single, First, Middle, Last

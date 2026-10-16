@@ -4,6 +4,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.luminance
 
 
 
@@ -51,9 +52,17 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import com.android.snippets.ui.components.LoadingIndicator
 import com.android.snippets.ui.components.BlurredSurface
 import com.android.snippets.ui.components.BlurredAlertDialog
+import com.android.snippets.ui.components.AnimatedCookieButton
+import com.android.snippets.ui.shapes.CookieShape
+import com.android.snippets.ui.theme.*
 import dev.chrisbanes.haze.hazeSource
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -66,12 +75,17 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
+import android.content.Context
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
@@ -141,9 +155,9 @@ fun DetailScreen(
                 }
                 "Favorites" -> viewModel.filteredFavoritesPhotos.values.flatten()
                 else -> {
-                    val collectionName = viewModel.libraryCurrentTab
-                    val filtered = viewModel.filteredPhotos.filter { it.collections.contains(collectionName) }
-                    viewModel.sortPhotos(filtered, viewModel.getPhotoSortTypeFor(collectionName))
+                    val collection = viewModel.libraryCurrentTab
+                    val filtered = viewModel.filteredPhotos.filter { it.collections.contains(collection) }
+                    viewModel.sortPhotos(filtered, viewModel.getPhotoSortTypeFor(collection))
                 }
             }
         }
@@ -234,12 +248,15 @@ fun DetailScreen(
         }
     }
 
-    var showCurrentSnippetsModal by remember { mutableStateOf(false) }
+    var showSnippetsModal by remember { mutableStateOf(false) }
     var showAddModal by remember { mutableStateOf(false) }
     var showDeleteModal by remember { mutableStateOf(false) }
     var showRateModal by remember { mutableStateOf(false) }
     var showLinkModal by remember { mutableStateOf(false) }
     var showNameModal by remember { mutableStateOf(false) }
+
+    val currentPhoto = photos.getOrNull(pagerState.currentPage) ?: photo
+    var isInfoExpanded by remember(currentPhoto.id) { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.pendingOpenAddSnippetDialog, photo.id) {
         if (viewModel.pendingOpenAddSnippetDialog && viewModel.activePhotoId == photo.id) {
@@ -249,7 +266,7 @@ fun DetailScreen(
     }
 
     val context = LocalContext.current
-    val isAnyPopupActive = showCurrentSnippetsModal || showAddModal || showDeleteModal || showRateModal || showLinkModal || showNameModal
+    val isAnyPopupActive = showSnippetsModal || showAddModal || showDeleteModal || showRateModal || showLinkModal || showNameModal
     
     val scrollStates = remember { mutableStateMapOf<Int, Boolean>() }
     val isScrolled = scrollStates[pagerState.currentPage] ?: false
@@ -257,10 +274,11 @@ fun DetailScreen(
 
 
     val focusManager = LocalFocusManager.current
-    val hazeState = com.android.snippets.ui.components.LocalHazeState.current ?: dev.chrisbanes.haze.rememberHazeState()
+    val hazeState = dev.chrisbanes.haze.rememberHazeState()
 
     androidx.compose.runtime.CompositionLocalProvider(
-        com.android.snippets.ui.components.LocalHazeState provides hazeState
+        com.android.snippets.ui.components.LocalHazeState provides hazeState,
+        com.android.snippets.ui.util.LocalTiltActive provides (com.android.snippets.ui.util.LocalTiltActive.current && !isAnyPopupActive)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
@@ -281,9 +299,10 @@ fun DetailScreen(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Box(modifier = Modifier.graphicsLayer { alpha = sharedUiAlpha.floatValue }) {
-                    val hasSnippetsCurrent = photo.snippets.isNotEmpty()
+                    val hasSnippetsCurrent = currentPhoto.snippets.isNotEmpty()
+                    val isDarkCard = MaterialTheme.colorScheme.surface.luminance() < 0.5f
                     DetailTopBar(
-                        photo = photo,
+                        photo = currentPhoto,
                         viewModel = viewModel,
                         onBack = { viewModel.closeDetail() },
                         isSpinning = !isAnyPopupActive,
@@ -293,22 +312,41 @@ fun DetailScreen(
                         showAddButton = true,
                         onAdd = { showAddModal = true },
                         onDownload = { 
-                            viewModel.downloadPhotoCard(context, photo, true, android.graphics.Color.BLACK) 
+                            viewModel.downloadPhotoCard(context, currentPhoto, isDarkCard, if (isDarkCard) android.graphics.Color.BLACK else android.graphics.Color.WHITE) 
                         },
-                        onEdit = { showCurrentSnippetsModal = true },
-                        onShare = { viewModel.sharePhotoCard(context, photo, true, android.graphics.Color.BLACK) },
+                        onSnippets = { showSnippetsModal = true },
+                        onShare = { viewModel.sharePhotoCard(context, currentPhoto, isDarkCard, if (isDarkCard) android.graphics.Color.BLACK else android.graphics.Color.WHITE) },
                         onDelete = { showDeleteModal = true },
                         onRate = { showRateModal = true },
-                        isFavorite = photo.isFavorite,
-                        onToggleFavorite = { viewModel.toggleFavorite(photo.id) },
-                        hasLocationLink = !photo.locationLink.isNullOrBlank(),
+                        isFavorite = currentPhoto.isFavorite,
+                        onToggleFavorite = { viewModel.toggleFavorite(currentPhoto.id) },
+                        hasLocationLink = !currentPhoto.locationLink.isNullOrBlank(),
                         onAddLinkClick = { showLinkModal = true },
                         onNamePhotoClick = { showNameModal = true },
+                        isInfoExpanded = isInfoExpanded,
+                        onToggleInfoExpand = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            isInfoExpanded = !isInfoExpanded
+                        },
+                        onOpenLink = { url ->
+                            try {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                try {
+                                    val formatted = if (!url.startsWith("http://") && !url.startsWith("https://")) "https://$url" else url
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(formatted))
+                                    context.startActivity(intent)
+                                } catch (e2: Exception) {
+                                    e2.printStackTrace()
+                                }
+                            }
+                        },
                         animatedVisibilityScope = animatedVisibilityScope
                     )
                 }
             }
-        ) { paddingValues ->
+        ) { _ ->
             Box(
                 modifier = Modifier.fillMaxSize()
                     .pointerInput(Unit) {
@@ -350,10 +388,13 @@ fun DetailScreen(
                                 dismissProgress = dismissProgress,
                                 dismissOffsetY = dismissOffsetY,
                                 onDismissOffsetYChange = { dismissOffsetY = it },
-                                onDismissRequest = { viewModel.closeDetail() },
+                                onDismissRequest = { 
+                                    viewModel.closeDetail() 
+                                },
                                 onScrollChanged = { scrolled -> scrollStates[page] = scrolled },
                                 onRegisterScrollToTop = { action -> scrollToTopActions[page] = action },
                                 viewModel = viewModel,
+                                windowSizeClass = windowSizeClass,
                                 onUiAlphaChange = { if (pagerState.currentPage == page) sharedUiAlpha.floatValue = it },
                                 onBgAlphaChange = { if (pagerState.currentPage == page) sharedBgAlpha.floatValue = it },
                                 pageOffset = pageOffset,
@@ -389,10 +430,13 @@ fun DetailScreen(
                                 dismissProgress = dismissProgress,
                                 dismissOffsetY = dismissOffsetY,
                                 onDismissOffsetYChange = { dismissOffsetY = it },
-                                onDismissRequest = { viewModel.closeDetail() },
+                                onDismissRequest = { 
+                                    viewModel.closeDetail() 
+                                },
                                 onScrollChanged = { scrollStates[page] = it },
                                 onRegisterScrollToTop = { scrollToTopActions[page] = it },
                                 viewModel = viewModel,
+                                windowSizeClass = windowSizeClass,
                                 onUiAlphaChange = { if (pagerState.currentPage == page) sharedUiAlpha.floatValue = it },
                                 onBgAlphaChange = { if (pagerState.currentPage == page) sharedBgAlpha.floatValue = it },
                                 pageOffset = pageOffset,
@@ -411,30 +455,21 @@ fun DetailScreen(
                                     }
                                 },
                                 onEditLink = { showLinkModal = true },
-                                onEditSnippets = { showCurrentSnippetsModal = true }
+                                onSnippets = { showSnippetsModal = true }
                             )
                         }
                     }
-                    }
                 }
-
-
             }
         }
+    }
 
-        // Smoothly animated glassmorphic modal overlays outside the Scaffold, inside the root Box!
-        AnimatedVisibility(
-            visible = showCurrentSnippetsModal,
-            modifier = Modifier.fillMaxSize(),
-            enter = fadeIn(animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec()),
-            exit = fadeOut(animationSpec = MaterialTheme.motionScheme.fastEffectsSpec())
-        ) {
-            CurrentSnippetsModal(
+        if (showSnippetsModal) {
+            SnippetsModal(
                 photo = photo,
                 onRemove = { viewModel.removeSnippet(photo.id, it) },
-                onClose = { showCurrentSnippetsModal = false },
-                viewModel = viewModel,
-
+                onClose = { showSnippetsModal = false },
+                viewModel = viewModel
             )
         }
 
@@ -446,10 +481,9 @@ fun DetailScreen(
         ) {
             AddSnippetsModal(
                 photo = photo,
-                onAdd = { name, color, style -> viewModel.updateSnippets(photo.id, name, color, style) },
+                onAdd = { name -> viewModel.updateSnippets(photo.id, name) },
                 onClose = { showAddModal = false },
                 viewModel = viewModel,
-
             )
         }
     }
@@ -519,7 +553,8 @@ fun DeleteConfirmationModal(
                 text = if (count > 1) "Delete $count photos?" else "Delete photo?",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.5).sp
+                    letterSpacing = (-0.5).sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -547,32 +582,92 @@ fun DeleteConfirmationModal(
                 }
             }
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                    onConfirm(unpublish)
-                },
-                modifier = Modifier.height(40.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
-            ) {
-                Text("Delete", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    view.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_END)
-                    onDismiss()
-                },
-                modifier = Modifier.height(40.dp),
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
-            ) {
-                Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            }
+        onConfirm = {
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+            onConfirm(unpublish)
         }
     )
 }
+data class DetailDismissConfig(
+    val targetWidthPx: Float,
+    val targetHeightPx: Float,
+    val targetScale: Float = 1f,
+    val targetShape: (progress: Float) -> Shape
+)
+
+@Composable
+fun rememberDetailDismissConfig(
+    photo: com.android.snippets.model.Photo,
+    viewModel: SnippetsViewModel?,
+    windowSizeClass: WindowSizeClass?
+): DetailDismissConfig {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val cardPaddingPx = with(density) { 12.dp.toPx() }
+    val photoCardHeightPx = with(density) { 262.dp.toPx() }
+    val targetCardWidthPx = screenWidthPx - (cardPaddingPx * 2f)
+
+    return remember(photo.id, photo.aspectRatio, viewModel?.detailReturnScreen, viewModel?.customGridColumns, windowSizeClass, screenWidthPx) {
+        val isMemory = viewModel?.detailReturnScreen == Screen.Memory
+        val rawColumns = viewModel?.customGridColumns?.coerceIn(-1, 3)
+        val currentGridColumns = if (rawColumns == 1) -1 else (rawColumns ?: when (windowSizeClass?.widthSizeClass) {
+            WindowWidthSizeClass.Expanded -> 3
+            WindowWidthSizeClass.Medium -> 3
+            else -> -1
+        })
+
+        val (targetW, targetH, targetScale) = when {
+            isMemory -> {
+                val size = screenWidthPx - with(density) { 48.dp.toPx() }
+                Triple(size, size, 0.72f)
+            }
+            currentGridColumns == 3 -> {
+                val colW = (screenWidthPx - with(density) { (12.dp * 2 + 8.dp * 2).toPx() }) / 3f
+                val colH = photo.aspectRatio?.let { colW / it } ?: (colW * 1.33f)
+                Triple(colW, colH, 0.33f)
+            }
+            currentGridColumns == 2 -> {
+                val colW = (screenWidthPx - with(density) { (12.dp * 2 + 8.dp).toPx() }) / 2f
+                val colH = photo.aspectRatio?.let { colW / it } ?: (colW * 1.33f)
+                Triple(colW, colH, 0.48f)
+            }
+            else -> {
+                Triple(targetCardWidthPx, photoCardHeightPx, 1.0f)
+            }
+        }
+
+        val targetShape: (Float) -> Shape = { progress ->
+            val p = progress.coerceIn(0f, 1f)
+            when {
+                p <= 0f -> RectangleShape
+                isMemory -> {
+                    if (p < 0.2f) {
+                        RoundedCornerShape((32f * (p / 0.2f)).dp)
+                    } else {
+                        CookieShape
+                    }
+                }
+                else -> {
+                    RoundedCornerShape(
+                        topStart = (12f * p).dp,
+                        topEnd = (12f * p).dp,
+                        bottomStart = (4f * p).dp,
+                        bottomEnd = (4f * p).dp
+                    )
+                }
+            }
+        }
+
+        DetailDismissConfig(
+            targetWidthPx = targetW,
+            targetHeightPx = targetH,
+            targetScale = targetScale,
+            targetShape = targetShape
+        )
+    }
+}
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun DetailPhotoFrame(
@@ -582,27 +677,84 @@ private fun DetailPhotoFrame(
     animatedVisibilityScope: AnimatedVisibilityScope?,
     isTransitionTarget: Boolean,
     modifier: Modifier = Modifier,
-    showLoading: Boolean = false
+    showLoading: Boolean = false,
+    shapeProvider: (() -> Shape)? = null,
+    progressProvider: (() -> Float)? = null,
+    dismissConfig: DetailDismissConfig? = null
 ) {
+    var imageRatio by remember(photo.id) { mutableStateOf(photo.aspectRatio) }
+
+    val morphModifier = if (dismissConfig != null && progressProvider != null) {
+        Modifier.layout { measurable, constraints ->
+            val ratio = imageRatio ?: photo.aspectRatio
+            val maxW = constraints.maxWidth.toFloat()
+            val maxH = constraints.maxHeight.toFloat()
+            val fullW = maxW
+            val fullH = if (ratio != null && ratio > 0f) {
+                (maxW / ratio).coerceAtMost(maxH)
+            } else {
+                maxH
+            }
+
+            val p = progressProvider().coerceIn(0f, 1f)
+            val targetW = dismissConfig.targetWidthPx.coerceAtMost(maxW)
+            val targetH = dismissConfig.targetHeightPx.coerceAtMost(maxH)
+
+            val currentW = (fullW - (fullW - targetW) * p).roundToInt()
+            val currentH = (fullH - (fullH - targetH) * p).roundToInt()
+
+            val placeable = measurable.measure(Constraints.fixed(currentW, currentH))
+            layout(currentW, currentH) {
+                placeable.placeRelative(0, 0)
+            }
+        }
+    } else {
+        (imageRatio ?: photo.aspectRatio)?.let { Modifier.aspectRatio(it) } ?: modifier
+    }
+
     Card(
         shape = RectangleShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = modifier.then(
-            if (isTransitionTarget && sharedTransitionScope != null && animatedVisibilityScope != null) {
-                with(sharedTransitionScope) {
-                    Modifier.sharedBounds(
-                        rememberSharedContentState(key = sharedKey),
-                        animatedVisibilityScope = animatedVisibilityScope,
-                        boundsTransform = { _, _ ->
-                            tween(durationMillis = 380, easing = FastOutSlowInEasing)
-                        },
-                        resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Fit)
-                    )
+        modifier = Modifier
+            .then(morphModifier)
+            .then(
+                if (shapeProvider != null) {
+                    Modifier.graphicsLayer {
+                        val currentShape = shapeProvider()
+                        shape = currentShape
+                        clip = currentShape != RectangleShape
+                    }
+                } else {
+                    Modifier
                 }
-            } else {
-                Modifier
-            }
-        ),
+            )
+            .then(
+                if (isTransitionTarget && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                    with(sharedTransitionScope) {
+                        Modifier.sharedBounds(
+                            rememberSharedContentState(key = sharedKey),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ ->
+                                tween(durationMillis = 380, easing = LinearOutSlowInEasing)
+                            },
+                            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
+                                contentScale = ContentScale.Crop,
+                                alignment = Alignment.Center
+                            ),
+                            clipInOverlayDuringTransition = OverlayClip(
+                                RoundedCornerShape(
+                                    topStart = 12.dp,
+                                    topEnd = 12.dp,
+                                    bottomStart = 4.dp,
+                                    bottomEnd = 4.dp
+                                )
+                            )
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            ),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(
@@ -617,7 +769,16 @@ private fun DetailPhotoFrame(
                     .placeholderMemoryCacheKey(photo.uriString)
                     .build(),
                 contentDescription = null,
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
+                onSuccess = { state ->
+                    if (imageRatio == null) {
+                        val w = state.result.drawable.intrinsicWidth
+                        val h = state.result.drawable.intrinsicHeight
+                        if (w > 0 && h > 0) {
+                            imageRatio = w.toFloat() / h.toFloat()
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -638,17 +799,22 @@ fun EmptyDetailContent(
     onScrollChanged: (Boolean) -> Unit = {},
     onRegisterScrollToTop: (() -> Unit) -> Unit = {},
     viewModel: SnippetsViewModel? = null,
+    windowSizeClass: WindowSizeClass? = null,
     onUiAlphaChange: (Float) -> Unit = {},
     onBgAlphaChange: (Float) -> Unit = {},
     pageOffset: Float = 0f,
     onOpenLink: (String) -> Unit = {},
     onEditLink: () -> Unit = {}
 ) {
+    val dismissConfig = rememberDetailDismissConfig(photo, viewModel, windowSizeClass)
+
     SwipeToDismissContainer(
         onDismiss = onDismissRequest,
+        targetScale = dismissConfig.targetScale,
+        shapeProvider = dismissConfig.targetShape,
         onUiAlphaChange = onUiAlphaChange,
         onBgAlphaChange = onBgAlphaChange
-    ) {
+    ) { currentShapeProvider, progressProvider ->
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DetailPhotoFrame(
                 photo = photo,
@@ -656,7 +822,10 @@ fun EmptyDetailContent(
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
                 isTransitionTarget = isTransitionTarget,
-                modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize()
+                modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize(),
+                shapeProvider = currentShapeProvider,
+                progressProvider = progressProvider,
+                dismissConfig = dismissConfig
             )
         }
     }
@@ -678,15 +847,20 @@ fun SnippetsDetailContent(
     onScrollChanged: (Boolean) -> Unit = {},
     onRegisterScrollToTop: (() -> Unit) -> Unit = {},
     viewModel: SnippetsViewModel,
+    windowSizeClass: WindowSizeClass? = null,
     onUiAlphaChange: (Float) -> Unit = {},
     onBgAlphaChange: (Float) -> Unit = {},
     pageOffset: Float = 0f,
     onOpenLink: (String) -> Unit = {},
     onEditLink: () -> Unit = {},
-    onEditSnippets: () -> Unit = {}
+    onSnippets: () -> Unit = {}
 ) {
+    val dismissConfig = rememberDetailDismissConfig(photo, viewModel, windowSizeClass)
+
     SwipeToDismissContainer(
         onDismiss = onDismissRequest,
+        targetScale = dismissConfig.targetScale,
+        shapeProvider = dismissConfig.targetShape,
         onUiAlphaChange = onUiAlphaChange,
         onBgAlphaChange = onBgAlphaChange,
         overlayContent = { _, uiAlphaProvider ->
@@ -708,7 +882,7 @@ fun SnippetsDetailContent(
                             } else Modifier
                         )
                         .graphicsLayer { alpha = uiAlphaProvider() }
-                        .padding(bottom = 36.dp),
+                        .padding(bottom = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -718,34 +892,24 @@ fun SnippetsDetailContent(
                     val containerInteractionSource = remember { MutableInteractionSource() }
                     val isContainerPressed by containerInteractionSource.collectIsPressedAsState()
                     val containerCornerRadius by animateDpAsState(
-                        targetValue = if (isContainerPressed) 20.dp else 16.dp,
+                        targetValue = if (isContainerPressed) 20.dp else 12.dp,
                         label = "snippetContainerRadius"
                     )
 
                     val snippetRenderer: @Composable (String) -> Unit = { snippet ->
-                        val forcedColor = viewModel.getSnippetColor(snippet)
                         val forcedStyle = viewModel.getSnippetStyle(snippet)
-
-                        val bg = MaterialTheme.colorScheme.surfaceContainerHighest
-                        val isBgDark = (0.299f * bg.red + 0.587f * bg.green + 0.114f * bg.blue) < 0.5f
-                        val baseSnippetColor = if (forcedColor != null) Color(forcedColor) else MaterialTheme.colorScheme.primary
-                        val snippetColor = remember(baseSnippetColor, isBgDark) {
-                            val lum = 0.299f * baseSnippetColor.red + 0.587f * baseSnippetColor.green + 0.114f * baseSnippetColor.blue
-                            if (isBgDark && lum < 0.3f) baseSnippetColor.copy(red = (baseSnippetColor.red + 0.4f).coerceAtMost(1f), green = (baseSnippetColor.green + 0.4f).coerceAtMost(1f), blue = (baseSnippetColor.blue + 0.4f).coerceAtMost(1f))
-                            else if (!isBgDark && lum > 0.7f) baseSnippetColor.copy(red = (baseSnippetColor.red - 0.4f).coerceAtLeast(0f), green = (baseSnippetColor.green - 0.4f).coerceAtLeast(0f), blue = (baseSnippetColor.blue - 0.4f).coerceAtLeast(0f))
-                            else baseSnippetColor
-                        }
+                        val snippetColor = rememberSnippetBackgroundColor()
 
                         val view = LocalView.current
 
                         Surface(
                             onClick = {
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                onEditSnippets()
+                                onSnippets()
                             },
                             shape = CircleShape,
-                            color = snippetColor.copy(alpha = 0.18f),
-                            border = BorderStroke(1.dp, snippetColor.copy(alpha = 0.30f)),
+                            color = snippetColor,
+                            border = null,
                             modifier = Modifier.height(40.dp)
                         ) {
                             Box(
@@ -759,7 +923,7 @@ fun SnippetsDetailContent(
                                         MaterialTheme.typography.titleMedium,
                                         isCloud = true
                                     ),
-                                    color = snippetColor,
+                                    color = rememberSnippetTextColor(),
                                     maxLines = 1
                                 )
                             }
@@ -807,7 +971,7 @@ fun SnippetsDetailContent(
                 }
             }
         }
-    ) {
+    ) { currentShapeProvider, progressProvider ->
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DetailPhotoFrame(
                 photo = photo,
@@ -815,7 +979,10 @@ fun SnippetsDetailContent(
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
                 isTransitionTarget = isTransitionTarget,
-                modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize()
+                modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize(),
+                shapeProvider = currentShapeProvider,
+                progressProvider = progressProvider,
+                dismissConfig = dismissConfig
             )
         }
     }
@@ -851,25 +1018,26 @@ fun RateFoodDialog(
         )
     }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BlurredSurface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            shadowElevation = 6.dp,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 360.dp)
-        ) {
+    BlurredAlertDialog(
+        onDismissRequest = onDismiss,
+        onConfirm = {
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+            onConfirm(rating)
+        },
+        title = {
+            Text(
+                text = "Rate photo",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        },
+        text = {
             Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Rate your experience",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.align(Alignment.Start)
-                )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
@@ -892,32 +1060,48 @@ fun RateFoodDialog(
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
+                    // Cookie 9-sided container for the star
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(96.dp)
-                            .graphicsLayer {
-                                scaleX = scale.value
-                                scaleY = scale.value
+                            .size(140.dp)
+                            .clip(CookieShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                                if (rating < 5) rating++
                             }
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_star_rating),
-                            contentDescription = "Star icon",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        Text(
-                            text = rating.toString(),
-                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(68.dp)
+                                .graphicsLayer {
+                                    scaleX = scale.value
+                                    scaleY = scale.value
+                                }
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_star_rating),
+                                contentDescription = "Star icon",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Text(
+                                text = rating.toString(),
+                                style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp, fontWeight = FontWeight.ExtraBold),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     IconButton(
                         onClick = {
@@ -934,37 +1118,9 @@ fun RateFoodDialog(
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        onClick = {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_END)
-                            onDismiss()
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
-                    ) {
-                        Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                            onConfirm(rating)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
-                    ) {
-                        Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                }
             }
         }
-    }
+    )
 }
 
 @Composable
@@ -975,6 +1131,8 @@ fun LocationLinkModal(
     onSave: (String, String?) -> Unit
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
     var linkValue by remember { mutableStateOf(initialLink ?: "") }
     val resolvedNames = remember { mutableStateMapOf<String, String>() }
     val coroutineScope = rememberCoroutineScope()
@@ -1086,18 +1244,28 @@ fun LocationLinkModal(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BlurredSurface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 400.dp)
-        ) {
-            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = "Link to a place",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+    BlurredAlertDialog(
+        onDismissRequest = onDismiss,
+        onConfirm = {
+            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            val name = resolvedNames[linkValue] ?: LocationUtils.extractPlaceNameFromLink(linkValue) ?: LocationUtils.cleanLocationName(linkValue)
+            val finalName = if (name.startsWith("http")) null else LocationUtils.cleanLocationName(name)
+            onSave(linkValue, finalName)
+        },
+        title = {
+            Text(
+                text = "Link to a place",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Text(
                     text = "Paste a Google Maps or location link below.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -1109,6 +1277,26 @@ fun LocationLinkModal(
                     onValueChange = { linkValue = it },
                     placeholder = { Text("https://maps.app.goo.gl/...") },
                     singleLine = true,
+                    leadingIcon = {
+                        IconButton(onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            coroutineScope.launch {
+                                val clipEntry = clipboard.getClipEntry()
+                                val textToPaste = clipEntry?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+                                    ?: run {
+                                        val sysClipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                        sysClipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+                                    }
+                                if (!textToPaste.isNullOrBlank()) {
+                                    val urlRegex = Regex("""https?://\S+""")
+                                    val extractedUrl = urlRegex.find(textToPaste)?.value
+                                    linkValue = extractedUrl ?: textToPaste.trim()
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+                        }
+                    },
                     trailingIcon = if (linkValue.isNotEmpty()) {
                         {
                             IconButton(onClick = {
@@ -1168,37 +1356,9 @@ fun LocationLinkModal(
                         }
                     }
                 }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            onDismiss()
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
-                    ) {
-                        Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            val name = resolvedNames[linkValue] ?: LocationUtils.extractPlaceNameFromLink(linkValue) ?: LocationUtils.cleanLocationName(linkValue)
-                            val finalName = if (name.startsWith("http")) null else LocationUtils.cleanLocationName(name)
-                            onSave(linkValue, finalName)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
-                    ) {
-                        Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                }
             }
         }
-    }
+    )
 }
 
 @Composable
@@ -1208,21 +1368,28 @@ fun NamePhotoModal(
     onSave: (String?) -> Unit
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     var nameValue by remember { mutableStateOf(initialName ?: "") }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        BlurredSurface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).widthIn(max = 400.dp)
-        ) {
-            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = "Name photo",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+    BlurredAlertDialog(
+        onDismissRequest = onDismiss,
+        onConfirm = {
+            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            onSave(nameValue.trim().takeIf { it.isNotBlank() })
+        },
+        title = {
+            Text(
+                text = "Name photo",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-
+            )
+        },
+        text = {
+            Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = nameValue,
                     onValueChange = {
@@ -1232,66 +1399,62 @@ fun NamePhotoModal(
                     },
                     placeholder = { Text("Photo name") },
                     singleLine = true,
-                    supportingText = {
-                        Text(
-                            text = "${nameValue.length}/25",
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.End,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    leadingIcon = {
+                        IconButton(onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            coroutineScope.launch {
+                                val clipEntry = clipboard.getClipEntry()
+                                val textToPaste = clipEntry?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+                                    ?: run {
+                                        val sysClipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                        sysClipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+                                    }
+                                if (!textToPaste.isNullOrBlank()) {
+                                    nameValue = textToPaste.trim().replace("\n", " ").replace("\r", "").take(25)
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+                        }
                     },
                     trailingIcon = if (nameValue.isNotEmpty()) {
                         {
-                            IconButton(onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                nameValue = ""
-                            }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            IconButton(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    nameValue = ""
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp))
                             }
                         }
                     } else null,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            onDismiss()
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
-                    ) {
-                        Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onSave(nameValue.trim().takeIf { it.isNotBlank() })
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
-                    ) {
-                        Text("Save", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    }
-                }
+                Text(
+                    text = "${nameValue.length}/25",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (nameValue.length >= 25) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = if (nameValue.isNotEmpty()) 36.dp else 12.dp)
+                )
             }
         }
-    }
+    )
 }
 
 @Composable
 fun SwipeToDismissContainer(
     onDismiss: () -> Unit,
+    targetScale: Float = 0.65f,
+    shapeProvider: (progress: Float) -> Shape = { RectangleShape },
     onUiAlphaChange: (Float) -> Unit = {},
     onBgAlphaChange: (Float) -> Unit = {},
     overlayContent: @Composable (bgAlphaProvider: () -> Float, uiAlphaProvider: () -> Float) -> Unit = { _, _ -> },
-    content: @Composable () -> Unit
+    content: @Composable (shapeProvider: () -> Shape, progressProvider: () -> Float) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     
@@ -1301,17 +1464,17 @@ fun SwipeToDismissContainer(
 
     // Define how far the user needs to drag to trigger the dismissal
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val dismissThreshold = with(density) { 40.dp.toPx() }
-    val maxDrag = with(density) { 100.dp.toPx() }
-    val flingVelocityThreshold = with(density) { 200.dp.toPx() }
+    val dismissThreshold = with(density) { 90.dp.toPx() }
+    val maxDrag = with(density) { 180.dp.toPx() }
+    val flingVelocityThreshold = with(density) { 400.dp.toPx() }
 
     val velocityTracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
 
     LaunchedEffect(offsetY) {
         androidx.compose.runtime.snapshotFlow { offsetY.value }.collect { y ->
             val progress = (kotlin.math.abs(y) / maxDrag).coerceIn(0f, 1f)
-            val uiAlpha = (1f - (progress * 5f)).coerceIn(0f, 1f)
-            val bgAlpha = 1f - progress
+            val uiAlpha = (1f - (progress * 4f)).coerceIn(0f, 1f)
+            val bgAlpha = (1f - progress).coerceIn(0f, 1f)
             onUiAlphaChange(uiAlpha)
             onBgAlphaChange(bgAlpha)
         }
@@ -1319,17 +1482,31 @@ fun SwipeToDismissContainer(
 
     val bgAlphaProvider = {
         val progress = (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
-        1f - progress
+        (1f - progress).coerceIn(0f, 1f)
     }
     
     val uiAlphaProvider = {
         val progress = (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
-        (1f - (progress * 5f)).coerceIn(0f, 1f)
+        (1f - (progress * 4f)).coerceIn(0f, 1f)
+    }
+
+    val quickResizeDistance = with(density) { 50.dp.toPx() }
+    val resizeProgressProvider = {
+        val raw = (kotlin.math.abs(offsetY.value) / quickResizeDistance).coerceIn(0f, 1f)
+        androidx.compose.animation.core.FastOutSlowInEasing.transform(raw)
+    }
+
+    val dragProgressProvider = {
+        (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
     }
 
     val scaleProvider = {
-        val progress = (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
-        1f - (0.15f * progress)
+        val progress = resizeProgressProvider()
+        1f - ((1f - targetScale) * progress)
+    }
+
+    val currentShapeProvider = {
+        shapeProvider(resizeProgressProvider())
     }
 
     Box(
@@ -1347,37 +1524,29 @@ fun SwipeToDismissContainer(
                     onDragEnd = {
                         val velocityY = velocityTracker.calculateVelocity().y
                         val speedY = abs(velocityY)
-                        coroutineScope.launch {
-                            // If the user dragged past the threshold or flicked quickly, trigger the back navigation!
-                            if (abs(offsetY.value) > dismissThreshold || speedY > flingVelocityThreshold) {
-                                onDismiss()
-                            } else {
+                        // If the user dragged past the threshold or flicked quickly, trigger back navigation immediately!
+                        if (abs(offsetY.value) > dismissThreshold || speedY > flingVelocityThreshold) {
+                            onDismiss()
+                        } else {
+                            coroutineScope.launch {
                                 // Otherwise, smoothly spring the image back to the center
-                                launch {
-                                    offsetX.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = androidx.compose.animation.core.spring(
-                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                        )
-                                    )
-                                }
-                                launch {
-                                    offsetY.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = androidx.compose.animation.core.spring(
-                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                        )
-                                    )
-                                }
+                                val springSpec = androidx.compose.animation.core.spring<Float>(
+                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                    stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                )
+                                launch { offsetX.animateTo(0f, springSpec) }
+                                launch { offsetY.animateTo(0f, springSpec) }
                             }
                         }
                     },
                     onDragCancel = {
                         coroutineScope.launch {
-                            launch { offsetX.animateTo(0f) }
-                            launch { offsetY.animateTo(0f) }
+                            val springSpec = androidx.compose.animation.core.spring<Float>(
+                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                            )
+                            launch { offsetX.animateTo(0f, springSpec) }
+                            launch { offsetY.animateTo(0f, springSpec) }
                         }
                     },
                     onVerticalDrag = { change, dragAmountY ->
@@ -1405,13 +1574,8 @@ fun SwipeToDismissContainer(
             modifier = Modifier
                 .fillMaxSize()
                 .offset { androidx.compose.ui.unit.IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
-                .graphicsLayer {
-                    val currentScale = scaleProvider()
-                    scaleX = currentScale
-                    scaleY = currentScale
-                }
         ) {
-            content()
+            content(currentShapeProvider, resizeProgressProvider)
         }
     }
 }
