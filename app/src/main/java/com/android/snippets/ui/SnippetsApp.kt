@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
-import com.android.snippets.ui.components.BulkEditSnippetsDialog
 import com.android.snippets.ui.components.BlurredModalBottomSheet
 import com.android.snippets.ui.components.BlurredAlertDialog
 import com.android.snippets.ui.components.LocalHazeState
@@ -40,6 +39,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import com.android.snippets.ui.util.Motion
+import com.android.snippets.ui.util.LocalTiltActive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +95,9 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         if (isNavigatingBackFromGesture) {
             isNavigatingBackFromGesture = false
         }
+        if (viewModel.isSwipeDismissing) {
+            viewModel.isSwipeDismissing = false
+        }
     }
 
     LaunchedEffect(viewModel.snackbarMessage) {
@@ -148,19 +151,15 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                 label = "screen_transition"
             )
             
-            val isDetailTransitioning = transition.currentState == Screen.Detail || transition.targetState == Screen.Detail
-
             val backScreen = if (isGestureActive) {
                 when (viewModel.currentScreen) {
                     Screen.Library -> null
                     Screen.Memory, Screen.Settings, Screen.About, Screen.Stats -> Screen.Library
-                    Screen.SelectIcon, Screen.MonthlyRecap, Screen.YearlyRecap -> viewModel.previousScreen
+                    Screen.EmojiPicker, Screen.MonthlyRecap, Screen.YearlyRecap -> viewModel.previousScreen
                     Screen.PhotosCarousel -> Screen.Settings
                     Screen.Detail -> viewModel.detailReturnScreen
                     else -> null
                 }
-            } else if (isDetailTransitioning) {
-                viewModel.detailReturnScreen ?: Screen.Library
             } else {
                 null
             }
@@ -168,44 +167,45 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             @Composable
             fun RenderScreenContent(
                 screen: Screen,
-                animatedVisibilityScope: AnimatedVisibilityScope?,
-                isDetailTransitioning: Boolean = false
+                animatedVisibilityScope: AnimatedVisibilityScope?
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    when (screen) {
-                        Screen.Library -> {
-                            LibraryScreen(
-                                viewModel = viewModel,
-                                windowSizeClass = windowSizeClass,
-                                sharedTransitionScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                isDetailTransitioning = isDetailTransitioning,
-                                onAddPhotos = { tab ->
-                                    when (tab) {
-                                        "Library" -> {
-                                            viewModel.pendingFavoriteIntent = false
-                                            pendingCollectionForPicker = null
-                                            photoPickerLauncher.launch("image/*")
+                val isScreenActive = (viewModel.currentScreen == screen)
+                CompositionLocalProvider(LocalTiltActive provides isScreenActive) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        when (screen) {
+                            Screen.Library -> {
+                                LibraryScreen(
+                                    viewModel = viewModel,
+                                    windowSizeClass = windowSizeClass,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    onAddPhotos = { tab ->
+                                        when (tab) {
+                                            "Library" -> {
+                                                viewModel.pendingFavoriteIntent = false
+                                                pendingCollectionForPicker = null
+                                                photoPickerLauncher.launch("image/*")
+                                            }
+                                            "Favorites" -> viewModel.startCollectionAssignment("Favorites")
+                                            else -> viewModel.startCollectionAssignment(tab)
                                         }
-                                        "Favorites" -> viewModel.startCollectionAssignment("Favorites")
-                                        else -> viewModel.startCollectionAssignment(tab)
                                     }
-                                }
+                                )
+                            }
+                            Screen.Memory -> MemoryScreen(
+                                viewModel = viewModel,
+                                sharedTransitionScope = this@SharedTransitionLayout,
+                                animatedVisibilityScope = animatedVisibilityScope
                             )
-                        }
-                        Screen.Memory -> MemoryScreen(
-                            viewModel = viewModel,
-                            sharedTransitionScope = this@SharedTransitionLayout,
-                            animatedVisibilityScope = animatedVisibilityScope
-                        )
-                        Screen.About -> AboutScreen(viewModel)
-                        Screen.Settings -> SettingsScreen(viewModel)
-                        Screen.SelectIcon -> SelectIconScreen(viewModel)
+                            Screen.About -> AboutScreen(viewModel)
+                            Screen.Settings -> SettingsScreen(viewModel)
+                            Screen.EmojiPicker -> EmojiPickerScreen(viewModel)
 
-                        Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
-                        Screen.Stats -> StatsScreen(viewModel)
-                        Screen.MonthlyRecap, Screen.YearlyRecap -> MonthlyRecapScreen(viewModel = viewModel)
-                        else -> Box(Modifier.fillMaxSize())
+                            Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
+                            Screen.Stats -> StatsScreen(viewModel)
+                            Screen.MonthlyRecap, Screen.YearlyRecap -> MonthlyRecapScreen(viewModel = viewModel)
+                            else -> Box(Modifier.fillMaxSize())
+                        }
                     }
                 }
             }
@@ -224,7 +224,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             }
                         }
                 ) {
-                    RenderScreenContent(backScreen, null, isDetailTransitioning)
+                    RenderScreenContent(backScreen, null)
                 }
             }
 
@@ -253,9 +253,9 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             fadeIn(tween(0)) togetherWith fadeOut(tween(0))
                         } else {
                             if (targetState == Screen.Detail) {
-                                fadeIn(tween(300)) togetherWith fadeOut(tween(0))
+                                fadeIn(tween(350, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(200, easing = FastOutSlowInEasing))
                             } else if (initialState == Screen.Detail) {
-                                fadeIn(tween(0, delayMillis = 300)) togetherWith fadeOut(tween(300))
+                                fadeIn(tween(380, easing = LinearOutSlowInEasing)) togetherWith fadeOut(tween(380, easing = LinearOutSlowInEasing))
                             } else {
                                 Motion.screenTransition(initialState, targetState, motionScheme)
                             }
@@ -263,15 +263,18 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     },
                     modifier = Modifier.fillMaxSize()
                 ) { screen ->
-                    if (screen == Screen.Detail) {
-                        DetailScreen(
-                            viewModel = viewModel,
-                            windowSizeClass = windowSizeClass,
-                            sharedTransitionScope = this@SharedTransitionLayout,
-                            animatedVisibilityScope = this
-                        )
-                    } else {
-                        RenderScreenContent(screen, this)
+                    val isScreenActive = (viewModel.currentScreen == screen)
+                    CompositionLocalProvider(LocalTiltActive provides isScreenActive) {
+                        if (screen == Screen.Detail) {
+                            DetailScreen(
+                                viewModel = viewModel,
+                                windowSizeClass = windowSizeClass,
+                                sharedTransitionScope = this@SharedTransitionLayout,
+                                animatedVisibilityScope = this
+                            )
+                        } else {
+                            RenderScreenContent(screen, this)
+                        }
                     }
                 }
             }
@@ -284,16 +287,12 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp),
                 snackbar = { snackbarData ->
-                    val dismissState = rememberSwipeToDismissBoxState(
-                        confirmValueChange = { value ->
-                            if (value != SwipeToDismissBoxValue.Settled) {
-                                snackbarData.dismiss()
-                                  true
-                            } else {
-                                false
-                            }
+                    val dismissState = rememberSwipeToDismissBoxState()
+                    LaunchedEffect(dismissState.currentValue) {
+                        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+                            snackbarData.dismiss()
                         }
-                    )
+                    }
                     SwipeToDismissBox(
                         state = dismissState,
                         backgroundContent = {},
@@ -333,8 +332,10 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     }
 
     if (viewModel.showFilterSheet) {
+        val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         BlurredModalBottomSheet(
             onDismissRequest = { viewModel.closeFilter() },
+            sheetState = filterSheetState,
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Motion.ExpressiveSheetContent {
@@ -348,44 +349,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         }
     }
 
-    if (viewModel.showCreateDialog) {
-        var newCollectionName by remember { mutableStateOf("") }
-        BlurredAlertDialog(
-            onDismissRequest = { viewModel.showCreateDialog = false },
-            title = { Text("Create collection") },
-            text = {
-                OutlinedTextField(
-                    value = newCollectionName,
-                    onValueChange = { newCollectionName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp)
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (newCollectionName.isNotBlank()) {
-                        viewModel.createCollection(newCollectionName.trim(), openAfterCreate = false)
-                    }
-                    viewModel.showCreateDialog = false
-                }) {
-                    Text("Create")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.showCreateDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 
-        if (viewModel.showBulkEditSnippetsDialog) {
-            BulkEditSnippetsDialog(
-                viewModel = viewModel,
-                onDismiss = { viewModel.showBulkEditSnippetsDialog = false }
-            )
-        }
         }
         }
     }
