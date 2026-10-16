@@ -36,7 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Detail, Memory, Settings, About, SelectIcon, Filter, PhotosCarousel, Stats, MonthlyRecap, YearlyRecap }
+enum class Screen { Library, Detail, Memory, Settings, About, EmojiPicker, Filter, PhotosCarousel, Stats, MonthlyRecap, YearlyRecap }
 enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, MostStarred, LeastStarred }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
@@ -83,6 +83,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var currentScreen by mutableStateOf(Screen.Library)
     var previousScreen by mutableStateOf(Screen.Library)
         private set
+    var isSwipeDismissing by mutableStateOf(false)
 
     
     var libraryCurrentTab by mutableStateOf("Library")
@@ -214,11 +215,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var expandDayAndDateIcon by mutableStateOf(false)
         private set
+    var motionSensorForButtonRotation by mutableStateOf(true)
+        private set
 
 
     var customGridColumns by mutableStateOf<Int?>(null)
-        private set
-    var showCollectionName by mutableStateOf(false)
         private set
     var autoBackupSchedule by mutableStateOf("Disabled")
         private set
@@ -244,10 +245,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     
     private val collectionIconsFile = File(application.filesDir, "collection_icons_v2.json")
     
-    fun navigateSelectIcon(collectionName: String) {
-        editingCollectionIcon = collectionName
+    fun navigateEmojiPicker(collection: String? = null) {
+        editingCollectionIcon = collection
         previousScreen = currentScreen
-        currentScreen = Screen.SelectIcon
+        currentScreen = Screen.EmojiPicker
     }
 
 
@@ -262,8 +263,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
     
-    fun updateCollectionIcon(collectionName: String, iconOrEmoji: String) {
-        collectionIcons = collectionIcons + (collectionName to iconOrEmoji)
+    fun updateCollectionIcon(collection: String, iconOrEmoji: String) {
+        collectionIcons = collectionIcons + (collection to iconOrEmoji)
         saveCollectionIcons()
     }
     
@@ -350,31 +351,31 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         return categoryCounts[name] ?: 0
     }
 
-    fun startCollectionAssignment(collectionName: String) {
-        pendingCollectionAssignment = collectionName
+    fun startCollectionAssignment(collection: String) {
+        pendingCollectionAssignment = collection
         selectedPhotoIds = emptySet()
         currentScreen = Screen.Library
     }
 
-    fun startCollectionRemoval(collectionName: String) {
-        pendingCollectionRemoval = collectionName
+    fun startCollectionRemoval(collection: String) {
+        pendingCollectionRemoval = collection
         selectedPhotoIds = emptySet()
         currentScreen = Screen.Library
     }
 
 
     fun confirmCollectionAssignment() {
-        val collectionName = pendingCollectionAssignment ?: return
+        val collection = pendingCollectionAssignment ?: return
         if (selectedPhotoIds.isNotEmpty()) {
             val now = System.currentTimeMillis()
             photos = photos.map { photo ->
                 if (selectedPhotoIds.contains(photo.id)) {
-                    if (collectionName == "Favorites") {
+                    if (collection == "Favorites") {
                         photo.copy(isFavorite = true)
                     } else {
-                        if (!photo.collections.contains(collectionName)) {
+                        if (!photo.collections.contains(collection)) {
                             photo.copy(
-                                collections = photo.collections + collectionName,
+                                collections = photo.collections + collection,
                                 snippetsAddedTime = if (photo.snippetsAddedTime == 0L) now else photo.snippetsAddedTime
                             )
                         } else photo
@@ -383,12 +384,12 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             }
             savePhotos()
             
-            if (collectionName != "Favorites") {
+            if (collection != "Favorites") {
                 showSnackbar(
-                    message = "Added to $collectionName",
+                    message = "Added to collection",
                     actionLabel = "View",
                     onAction = {
-                        libraryCurrentTab = collectionName
+                        libraryCurrentTab = collection
                         navigateLibrary()
                     }
                 )
@@ -396,38 +397,37 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
         pendingCollectionAssignment = null
         selectedPhotoIds = emptySet()
-        libraryCurrentTab = collectionName
+        libraryCurrentTab = collection
         navigateLibrary()
     }
 
     fun confirmCollectionRemoval() {
-        val collectionName = pendingCollectionRemoval ?: return
+        val collection = pendingCollectionRemoval ?: return
         if (selectedPhotoIds.isNotEmpty()) {
             photos = photos.map { photo ->
                 if (selectedPhotoIds.contains(photo.id)) {
-                    if (collectionName == "Favorites") {
+                    if (collection == "Favorites") {
                         photo.copy(isFavorite = false)
                     } else {
-                        photo.copy(collections = photo.collections - collectionName)
+                        photo.copy(collections = photo.collections - collection)
                     }
                 } else photo
             }
             savePhotos()
             
-            if (collectionName != "Favorites") {
-                showSnackbar(message = "Removed from $collectionName")
+            if (collection != "Favorites") {
+                showSnackbar(message = "Removed from collection")
             }
         }
         pendingCollectionRemoval = null
         selectedPhotoIds = emptySet()
-        libraryCurrentTab = collectionName
+        libraryCurrentTab = collection
         navigateLibrary()
     }
 
 
     var showBulkAddToCollectionDialog by mutableStateOf(false)
     var showBulkDeleteModal by mutableStateOf(false)
-    var showBulkEditSnippetsDialog by mutableStateOf(false)
     var pendingAddSnippetOnImport by mutableStateOf(false)
     var pendingOpenAddSnippetDialog by mutableStateOf(false)
     var pendingSnippetToApply by mutableStateOf<String?>(null)
@@ -601,7 +601,21 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 if (snippetColorsFile.exists()) {
                     val json = snippetColorsFile.readText()
                     val type = object : TypeToken<Map<String, Int>>() {}.type
-                    gson.fromJson<Map<String, Int>>(json, type) ?: emptyMap()
+                    val rawColors: Map<String, Int> = gson.fromJson(json, type) ?: emptyMap()
+                    var changed = false
+                    val migrated = rawColors.mapValues { (name, color) ->
+                        val pastel = com.android.snippets.ui.theme.toPastelSnippetColorInt(name, color)
+                        if (pastel != color) changed = true
+                        pastel
+                    }
+                    if (changed) {
+                        try {
+                            snippetColorsFile.writeText(gson.toJson(migrated))
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                    migrated
                 } else emptyMap()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -752,9 +766,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
         expandPhotoNameIcon = prefs.getBoolean("expand_photo_name_icon", false)
         expandDayAndDateIcon = prefs.getBoolean("expand_day_and_date_icon", false)
+        motionSensorForButtonRotation = prefs.getBoolean("motion_sensor_button_rotation", true)
+        com.android.snippets.ui.util.CookieTiltController.isGloballyEnabled = motionSensorForButtonRotation
 
 
-        showCollectionName = prefs.getBoolean("show_collection_name", false)
         autoBackupSchedule = prefs.getString("auto_backup_schedule", "Disabled") ?: "Disabled"
         scheduleAutoBackup()
 
@@ -764,8 +779,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         notificationReminderHour = prefs.getInt("notification_reminder_hour", 9)
         notificationReminderMinute = prefs.getInt("notification_reminder_minute", 0)
 
-        val savedGridCols = prefs.getInt("custom_grid_columns", -1)
-        customGridColumns = if (savedGridCols != -1) savedGridCols else null
+        val savedGridCols = prefs.getInt("custom_grid_columns", -999)
+        customGridColumns = if (savedGridCols != -999) {
+            if (savedGridCols == -1 || savedGridCols == 0) 1 else savedGridCols.coerceIn(1, 3)
+        } else null
     }
 
     private fun savePhotos(): kotlinx.coroutines.Job {
@@ -1104,7 +1121,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                             val trimmed = targetSnippet.trim()
                             if (duplicate.snippets.size < 6 && !duplicate.snippets.contains(trimmed)) {
                                 val now = System.currentTimeMillis()
-                                updateSnippetColor(trimmed, android.graphics.Color.WHITE)
+                                updateSnippetColor(trimmed, com.android.snippets.ui.theme.toPastelSnippetColorInt(trimmed, null))
                                 val isFirstSeen = !snippetFirstSeenTimes.containsKey(trimmed)
                                 if (isFirstSeen) {
                                     snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
@@ -1155,7 +1172,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
                 if (!targetSnippet.isNullOrBlank()) {
                     val trimmed = targetSnippet.trim()
-                    updateSnippetColor(trimmed, android.graphics.Color.WHITE)
+                    updateSnippetColor(trimmed, com.android.snippets.ui.theme.toPastelSnippetColorInt(trimmed, null))
                     val isFirstSeen = !snippetFirstSeenTimes.containsKey(trimmed)
                     if (isFirstSeen) {
                         snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
@@ -1201,7 +1218,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         addPhoto(uri = uri, locationLink = locationLink)
     }
 
-    fun addPhotoToCollection(uri: Uri, collectionName: String, locationLink: String? = null) {
+    fun addPhotoToCollection(uri: Uri, collection: String, locationLink: String? = null) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val captureDate = extractCaptureDate(uri)
             
@@ -1213,8 +1230,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     var updatedPhoto = duplicate
-                    if (!duplicate.collections.contains(collectionName)) {
-                        updatedPhoto = updatedPhoto.copy(collections = duplicate.collections + collectionName)
+                    if (!duplicate.collections.contains(collection)) {
+                        updatedPhoto = updatedPhoto.copy(collections = duplicate.collections + collection)
                     }
                     if (!locationLink.isNullOrBlank() && updatedPhoto.locationLink.isNullOrBlank()) {
                         updatedPhoto = updatedPhoto.copy(locationLink = locationLink)
@@ -1244,7 +1261,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 uriString = internalUri,
                 date = captureDate,
                 snippets = emptyList(),
-                collections = listOf(collectionName),
+                collections = listOf(collection),
                 isLibraryUpload = true,
                 widthPx = widthPx,
                 heightPx = heightPx,
@@ -1757,7 +1774,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun updateSnippets(photoId: String, text: String, color: Int, style: SnippetStyle) {
+    fun updateSnippets(photoId: String, text: String, color: Int? = null, style: SnippetStyle? = null) {
         val targetPhoto = photos.find { it.id == photoId }
         if (targetPhoto != null && targetPhoto.snippets.size >= 6) {
             android.widget.Toast.makeText(getApplication(), "Maximum 6 snippets per photo", android.widget.Toast.LENGTH_SHORT).show()
@@ -1767,9 +1784,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val trimmedText = text.trim()
         if (trimmedText.isBlank()) return
 
-        // Update color and style first
-        updateSnippetColor(trimmedText, color)
-        updateSnippetStyle(trimmedText, style)
+        // Update color and style if provided
+        if (color != null) {
+            updateSnippetColor(trimmedText, color)
+        }
+        if (style != null) {
+            updateSnippetStyle(trimmedText, style)
+        }
 
         val newSnippets = listOf(trimmedText)
         val now = System.currentTimeMillis()
@@ -1947,15 +1968,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         isBusy = false
     }
 
-    fun toggleSelectedInCollection(collectionName: String) {
+    fun toggleSelectedInCollection(collection: String) {
         isBusy = true
         val now = System.currentTimeMillis()
         photos = photos.map { photo ->
             if (selectedPhotoIds.contains(photo.id)) {
-                val updatedCollections = if (photo.collections.contains(collectionName)) {
-                    photo.collections - collectionName
+                val updatedCollections = if (photo.collections.contains(collection)) {
+                    photo.collections - collection
                 } else {
-                    photo.collections + collectionName
+                    photo.collections + collection
                 }
                 photo.copy(
                     collections = updatedCollections,
@@ -2177,9 +2198,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit().putBoolean("expand_day_and_date_icon", expand).apply()
     }
 
-    fun updateShowCollectionName(show: Boolean) {
-        showCollectionName = show
-        prefs.edit().putBoolean("show_collection_name", show).apply()
+    fun updateMotionSensorForButtonRotation(enabled: Boolean) {
+        motionSensorForButtonRotation = enabled
+        com.android.snippets.ui.util.CookieTiltController.isGloballyEnabled = enabled
+        prefs.edit().putBoolean("motion_sensor_button_rotation", enabled).apply()
     }
 
 
@@ -2218,6 +2240,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             android.widget.Toast.makeText(context, "Preparing shared snippets...", android.widget.Toast.LENGTH_SHORT).show()
             val uris = mutableListOf<android.net.Uri>()
             
+            val isDarkTheme = when (themePreference) {
+                ThemePreference.LIGHT -> false
+                ThemePreference.DARK -> true
+                ThemePreference.SYSTEM -> (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
             selectedPhotoIds.forEach { photoId ->
                 val photo = photos.find { it.id == photoId }
                 if (photo != null) {
@@ -2227,8 +2254,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                         context = context,
                         photo = photo,
                         snippets = pureSnippets,
-                        isDark = true,
-                        bgColor = android.graphics.Color.BLACK,
+                        isDark = isDarkTheme,
+                        bgColor = if (isDarkTheme) android.graphics.Color.BLACK else android.graphics.Color.WHITE,
                         snippetColors = snippetColors,
                         snippetStyles = snippetStyles,
                         showTime = showTimeInMemories,
@@ -2269,6 +2296,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openDetail(id: String, tab: String? = null, overrideReturnScreen: Screen? = null) {
+        isSwipeDismissing = false
         if (currentScreen != Screen.Detail) {
             detailReturnScreen = overrideReturnScreen ?: currentScreen
             detailReturnTab = tab ?: libraryCurrentTab
@@ -2290,7 +2318,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             Screen.Settings,
             Screen.About,
             Screen.Stats -> navigateLibrary()
-            Screen.SelectIcon,
+            Screen.EmojiPicker,
             Screen.PhotosCarousel,
             Screen.MonthlyRecap,
             Screen.YearlyRecap -> {
@@ -2439,16 +2467,20 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun navigateCollections(focusCreate: Boolean = false) {
-        showCreateDialog = true
+        navigateEmojiPicker(null)
     }
 
 
-    fun openMemory(index: Int) {
-        if (curatedMemories.isEmpty()) return
-        activeMemoriesSnapshot = curatedMemories
+    fun openMemory(memories: List<Photo>, index: Int) {
+        if (memories.isEmpty()) return
+        activeMemoriesSnapshot = memories
         currentMemoryIndex = index.coerceIn(0, activeMemoriesSnapshot.size - 1)
         previousScreen = currentScreen
         currentScreen = Screen.Memory
+    }
+
+    fun openMemory(index: Int) {
+        openMemory(curatedMemories, index)
     }
 
     fun openMemoryForPhoto(photoId: String) {
@@ -2458,10 +2490,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             openMemory(index)
             return
         }
-        activeMemoriesSnapshot = listOf(targetPhoto) + curatedMemories
-        currentMemoryIndex = 0
-        previousScreen = currentScreen
-        currentScreen = Screen.Memory
+        val combined = (listOf(targetPhoto) + curatedMemories).sortedByDescending { it.date }
+        val newIndex = combined.indexOfFirst { it.id == photoId }.coerceAtLeast(0)
+        openMemory(combined, newIndex)
     }
 
     fun onMemoryViewed(index: Int) {
@@ -2522,6 +2553,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 if (it.isViewed) it.lastViewedTime else it.surfacedTime
             }
         ).take(if (notificationReminderEnabled) 5 else 15)
+        .sortedByDescending { it.date }
     }
 
 
@@ -2684,7 +2716,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         groupPhotosByDate(photos)
     }
 
-    private fun containsEmoji(s: String): Boolean {
+    fun containsEmoji(s: String): Boolean {
         var i = 0
         while (i < s.length) {
             val cp = s.codePointAt(i)
@@ -2694,7 +2726,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         return false
     }
 
-    private fun containsEmoticon(s: String): Boolean {
+    fun containsEmoticon(s: String): Boolean {
         val emoticons = listOf(
             ":)", ":(", ":D", ":P", ":O", ":-)", ":-(", ":-D", ":-P", ";)", ";D", 
             "^_^", ">_<", "o_o", "O_O", "-_-", "T_T", "8-)", "8)", ":3", "xD", "XD",
@@ -2707,8 +2739,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         photos.filter { it.isFavorite }.flatMap { it.snippets }.distinct()
     }
 
-    fun getCollectionUniqueSnippets(collectionName: String): List<String> {
-        return photos.filter { it.collections.contains(collectionName) }.flatMap { it.snippets }.distinct()
+    fun getCollectionUniqueSnippets(collection: String): List<String> {
+        return photos.filter { it.collections.contains(collection) }.flatMap { it.snippets }.distinct()
     }
 
     val allUniqueSnippets: List<String> by derivedStateOf {
@@ -2726,8 +2758,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
 
         when (snippetSortType) {
-            SnippetSortType.New, SnippetSortType.Month, SnippetSortType.Year -> filtered.sortedByDescending { snippetFirstSeenTimes[it] ?: 0L }
+            SnippetSortType.New -> filtered.sortedByDescending { snippetFirstSeenTimes[it] ?: 0L }
             SnippetSortType.Old -> filtered.sortedBy { snippetFirstSeenTimes[it] ?: 0L }
+            SnippetSortType.Month, SnippetSortType.Year -> if (isSortAscending) filtered.sortedBy { snippetFirstSeenTimes[it] ?: 0L } 
+                                                           else filtered.sortedByDescending { snippetFirstSeenTimes[it] ?: 0L }
             SnippetSortType.AZ -> if (isSortAscending) filtered.sortedWith(String.CASE_INSENSITIVE_ORDER) 
                                  else filtered.sortedWith(String.CASE_INSENSITIVE_ORDER.reversed())
             SnippetSortType.Color -> if (isSortAscending) filtered.sortedBy { snippetColors[it] ?: 0 } 
@@ -2808,9 +2842,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun getCollectionIcon(collectionName: String): Any {
-        if (collectionName == "Favorites") return Icons.Default.Favorite
-        val iconName = collectionIcons[collectionName] ?: return Icons.Default.Folder
+    fun getCollectionIcon(collection: String): Any {
+        if (collection == "Favorites") return Icons.Default.Favorite
+        val iconName = collectionIcons[collection] ?: return Icons.Default.Folder
         
         // If it's a single emoji or short string, return it as is
         if (iconName.length <= 4) return iconName
@@ -2878,7 +2912,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun getSnippetColor(name: String): Int? {
-        return snippetColors[name.trim()]
+        val trimmed = name.trim()
+        val color = snippetColors[trimmed] ?: return null
+        return com.android.snippets.ui.theme.toPastelSnippetColorInt(trimmed, color)
     }
 
     fun getSnippetFirstSeenTime(name: String): Long? {
@@ -2889,10 +2925,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val trimmed = name.trim()
         if (trimmed.isBlank()) return
         
-        snippetColors = if (color == null) {
+        val pastelColor = if (color != null) com.android.snippets.ui.theme.toPastelSnippetColorInt(trimmed, color) else null
+        snippetColors = if (pastelColor == null) {
             snippetColors - trimmed
         } else {
-            snippetColors + (trimmed to color)
+            snippetColors + (trimmed to pastelColor)
         }
         saveSnippetColors()
     }
@@ -2950,33 +2987,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
 
-    fun updateSnippets(photoId: String, name: String, color: Int? = null, style: SnippetStyle? = null) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty()) return
-        val now = System.currentTimeMillis()
-        
-        if (color != null) {
-            updateSnippetColor(trimmed, color)
-        }
-        if (style != null) {
-            updateSnippetStyle(trimmed, style)
-        }
 
-        if (!snippetFirstSeenTimes.containsKey(trimmed)) {
-            snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
-            saveSnippetFirstSeenTimes()
-        }
-        
-        photos = photos.map { photo ->
-            if (photo.id == photoId) {
-                if (photo.snippets.size < 6 && !photo.snippets.contains(trimmed)) {
-                    photo.copy(snippets = photo.snippets + trimmed, snippetsAddedTime = now, surfacedTime = 0L)
-                } else photo
-            } else photo
-        }
-        savePhotos()
-        reconcileSurfacedMemories()
-    }
 
     fun generateBackupJson(): String {
         val prettyGson = com.google.gson.GsonBuilder().setPrettyPrinting().create()
