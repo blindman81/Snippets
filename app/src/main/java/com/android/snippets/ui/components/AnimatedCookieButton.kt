@@ -45,7 +45,8 @@ fun AnimatedCookieButton(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -67,7 +68,8 @@ fun AnimatedCookieButton(
         spinOnEntry = spinOnEntry,
         enabled = enabled,
         hapticOnHold = hapticOnHold,
-        iconSize = iconSize
+        iconSize = iconSize,
+        badge = badge
     )
 }
 
@@ -87,7 +89,8 @@ fun AnimatedCookieButton(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -109,7 +112,8 @@ fun AnimatedCookieButton(
         spinOnEntry = spinOnEntry,
         enabled = enabled,
         hapticOnHold = hapticOnHold,
-        iconSize = iconSize
+        iconSize = iconSize,
+        badge = badge
     )
 }
 
@@ -128,9 +132,11 @@ private fun AnimatedCookieButtonImpl(
     spinOnEntry: Boolean = false,
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     val view = LocalView.current
+    var isHoldMorphing by remember { mutableStateOf(false) }
     var isHolding by remember { mutableStateOf(false) }
     var isHoldCompleted by remember { mutableStateOf(false) }
     var isTapped by remember { mutableStateOf(false) }
@@ -164,6 +170,19 @@ private fun AnimatedCookieButtonImpl(
     val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = enabled && isPrimary)
 
     val isMorphActive = (isHolding && !isHoldCompleted) || isSettling
+    val isMorphing = (isHoldMorphing && !isHoldCompleted) || isSettling
+
+    val badgeAlpha by animateFloatAsState(
+        targetValue = if (isMorphing) 0f else 1f,
+        animationSpec = tween(durationMillis = 180),
+        label = "cookie_badge_alpha"
+    )
+    val badgeScale by animateFloatAsState(
+        targetValue = if (isMorphing) 0f else 1f,
+        animationSpec = if (isMorphing) tween(durationMillis = 180) else Motion.BouncySpring,
+        label = "cookie_badge_scale"
+    )
+
     val currentShape = if (isMorphActive) {
         val safeIndex = if (isSettling && isHoldCompleted) {
             CookieHoldMorphs.size - 1
@@ -191,9 +210,9 @@ private fun AnimatedCookieButtonImpl(
     val scope = rememberCoroutineScope()
     var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-    val content = @Composable {
+    val buttonContent: @Composable (Modifier) -> Unit = { btnModifier ->
         Box(
-            modifier = modifier
+            modifier = btnModifier
                 .size(size)
                 .graphicsLayer {
                     rotationZ = rotation.value + tiltAngle
@@ -268,6 +287,32 @@ private fun AnimatedCookieButtonImpl(
         }
     }
 
+    val content = @Composable {
+        if (badge != null) {
+            Box(
+                modifier = modifier.size(size),
+                contentAlignment = Alignment.Center
+            ) {
+                buttonContent(Modifier)
+                if (badgeAlpha > 0.001f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = badgeAlpha
+                                scaleX = badgeScale
+                                scaleY = badgeScale
+                            }
+                    ) {
+                        badge()
+                    }
+                }
+            }
+        } else {
+            buttonContent(modifier)
+        }
+    }
+
     // Hold scale expansion: grows to 1.45x so morphing shapes are clearly visible outside the finger,
     // while icon shrinks to small size (0.5x) so morphing shapes are prominent,
     // and springs back to 1f with BouncySpring when released OR when the last shape is reached
@@ -275,10 +320,12 @@ private fun AnimatedCookieButtonImpl(
         if (isHolding && !isHoldCompleted) {
             kotlinx.coroutines.delay(150L)
             if (!isHolding || isHoldCompleted) return@LaunchedEffect
+            isHoldMorphing = true
             launch { animScaleX.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
             launch { animScaleY.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
             launch { animIconScale.animateTo(0.5f, animationSpec = Motion.BouncySpring) }
         } else {
+            isHoldMorphing = false
             launch { animIconScale.animateTo(1f, animationSpec = Motion.BouncySpring) }
             if (!isTapped) {
                 launch { animScaleX.animateTo(1f, animationSpec = Motion.BouncySpring) }
