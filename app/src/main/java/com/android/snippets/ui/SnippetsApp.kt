@@ -253,9 +253,9 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             fadeIn(tween(0)) togetherWith fadeOut(tween(0))
                         } else {
                             if (targetState == Screen.Detail) {
-                                fadeIn(tween(350, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(200, easing = FastOutSlowInEasing))
+                                fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(180, easing = FastOutSlowInEasing))
                             } else if (initialState == Screen.Detail) {
-                                fadeIn(tween(380, easing = LinearOutSlowInEasing)) togetherWith fadeOut(tween(380, easing = LinearOutSlowInEasing))
+                                fadeIn(tween(240, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(220, easing = FastOutLinearInEasing))
                             } else {
                                 Motion.screenTransition(initialState, targetState, motionScheme)
                             }

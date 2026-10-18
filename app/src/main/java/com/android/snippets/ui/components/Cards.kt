@@ -645,9 +645,7 @@ fun PhotoMasonryItem(
                                         Modifier.sharedBounds(
                                             rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                                             animatedVisibilityScope = animatedVisibilityScope,
-                                            boundsTransform = { _, _ ->
-                                                tween(durationMillis = 380, easing = LinearOutSlowInEasing)
-                                            },
+                                            boundsTransform = com.android.snippets.ui.util.Motion.SharedPhotoBoundsTransform,
                                             resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                                 contentScale = ContentScale.Crop,
                                                 alignment = Alignment.Center
@@ -828,9 +826,7 @@ fun PhotoMasonryItem(
                                     Modifier.sharedBounds(
                                         rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                                         animatedVisibilityScope = animatedVisibilityScope,
-                                        boundsTransform = { _, _ ->
-                                            tween(durationMillis = 380, easing = LinearOutSlowInEasing)
-                                        },
+                                        boundsTransform = com.android.snippets.ui.util.Motion.SharedPhotoBoundsTransform,
                                         resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                             contentScale = ContentScale.Crop,
                                             alignment = Alignment.Center
@@ -1301,7 +1297,7 @@ fun PhotoCard(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        androidx.compose.foundation.layout.BoxWithConstraints(
+                        Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
@@ -1313,9 +1309,7 @@ fun PhotoCard(
                                             Modifier.sharedBounds(
                                                 rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
                                                 animatedVisibilityScope = animatedVisibilityScope,
-                                                boundsTransform = { _, _ ->
-                                                    tween(durationMillis = 380, easing = LinearOutSlowInEasing)
-                                                },
+                                                boundsTransform = com.android.snippets.ui.util.Motion.SharedPhotoBoundsTransform,
                                                 resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                                     contentScale = ContentScale.Crop,
                                                     alignment = Alignment.Center
@@ -1332,8 +1326,9 @@ fun PhotoCard(
                                 val imageRequest = remember(photo.uriString) {
                                     ImageRequest.Builder(context)
                                         .data(photo.uriString)
-                                        .crossfade(true)
+                                        .crossfade(false)
                                         .memoryCacheKey(photo.uriString)
+                                        .placeholderMemoryCacheKey(photo.uriString)
                                         .build()
                                 }
 

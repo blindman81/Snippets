@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.util
+package com.android.snippets.ui.util
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.CubicBezierEasing
@@ -60,6 +60,11 @@ object Motion {
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMedium
     )
+
+    @OptIn(ExperimentalSharedTransitionApi::class)
+    val SharedPhotoBoundsTransform: BoundsTransform = BoundsTransform { _, _ ->
+        tween(durationMillis = 260, easing = FastOutSlowInEasing)
+    }
 
     fun wiggleSpec(direction: Float = 1f, amplitude: Float = 8f): KeyframesSpec<Float> = keyframes {
         durationMillis = 400

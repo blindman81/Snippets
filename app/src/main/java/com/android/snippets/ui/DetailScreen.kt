@@ -187,66 +187,6 @@ fun DetailScreen(
         viewModel.closeDetail()
     }
 
-    var dismissOffsetY by remember { mutableStateOf(0f) }
-    val dismissProgress = (dismissOffsetY / 600f).coerceIn(0f, 1f)
-
-    // Track whether the user started dragging from scroll-top position
-    var gestureStartedAtTop by remember { mutableStateOf(false) }
-
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // If we're in dismiss mode and user pulls back up, cancel dismiss
-                if (dismissOffsetY > 0 && available.y < 0) {
-                    val consumed = available.y.coerceAtLeast(-dismissOffsetY)
-                    dismissOffsetY += consumed
-                    if (dismissOffsetY <= 0f) {
-                        dismissOffsetY = 0f
-                        gestureStartedAtTop = false
-                    }
-                    return Offset(0f, consumed)
-                }
-                // Any upward scroll means we're not starting a dismiss gesture
-                if (available.y < 0) gestureStartedAtTop = false
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                // Ignore flings hitting the top boundary
-                if (source.toString() == "Fling" || source.toString() == "SideEffect") {
-                    return Offset.Zero
-                }
-
-                if (available.y > 0) {
-                    // Child couldn't consume downward drag — it's at the top
-                    if (dismissOffsetY == 0f) gestureStartedAtTop = true
-                    if (gestureStartedAtTop) {
-                        dismissOffsetY += available.y
-                        return Offset(0f, available.y)
-                    }
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                val shouldDismiss = gestureStartedAtTop && (available.y > 2000f || dismissOffsetY > 300f)
-                
-                if (shouldDismiss) {
-                    viewModel.closeDetail()
-                }
-                
-                // Always reset state after a fling attempt to avoid sticky states
-                dismissOffsetY = 0f
-                gestureStartedAtTop = false
-                
-                return if (shouldDismiss) available else Velocity.Zero
-            }
-        }
-    }
 
     var showSnippetsModal by remember { mutableStateOf(false) }
     var showAddModal by remember { mutableStateOf(false) }
@@ -385,9 +325,6 @@ fun DetailScreen(
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 isTransitionTarget = pagePhoto.id == transitionTargetId,
-                                dismissProgress = dismissProgress,
-                                dismissOffsetY = dismissOffsetY,
-                                onDismissOffsetYChange = { dismissOffsetY = it },
                                 onDismissRequest = { 
                                     viewModel.closeDetail() 
                                 },
@@ -427,9 +364,6 @@ fun DetailScreen(
                                 sharedTransitionScope = sharedTransitionScope,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 isTransitionTarget = pagePhoto.id == transitionTargetId,
-                                dismissProgress = dismissProgress,
-                                dismissOffsetY = dismissOffsetY,
-                                onDismissOffsetYChange = { dismissOffsetY = it },
                                 onDismissRequest = { 
                                     viewModel.closeDetail() 
                                 },
@@ -683,71 +617,43 @@ private fun DetailPhotoFrame(
     dismissConfig: DetailDismissConfig? = null
 ) {
     var imageRatio by remember(photo.id) { mutableStateOf(photo.aspectRatio) }
-
-    val morphModifier = if (dismissConfig != null && progressProvider != null) {
-        Modifier.layout { measurable, constraints ->
-            val ratio = imageRatio ?: photo.aspectRatio
-            val maxW = constraints.maxWidth.toFloat()
-            val maxH = constraints.maxHeight.toFloat()
-            val fullW = maxW
-            val fullH = if (ratio != null && ratio > 0f) {
-                (maxW / ratio).coerceAtMost(maxH)
-            } else {
-                maxH
-            }
-
-            val p = progressProvider().coerceIn(0f, 1f)
-            val targetW = dismissConfig.targetWidthPx.coerceAtMost(maxW)
-            val targetH = dismissConfig.targetHeightPx.coerceAtMost(maxH)
-
-            val currentW = (fullW - (fullW - targetW) * p).roundToInt()
-            val currentH = (fullH - (fullH - targetH) * p).roundToInt()
-
-            val placeable = measurable.measure(Constraints.fixed(currentW, currentH))
-            layout(currentW, currentH) {
-                placeable.placeRelative(0, 0)
-            }
-        }
-    } else {
-        (imageRatio ?: photo.aspectRatio)?.let { Modifier.aspectRatio(it) } ?: modifier
-    }
+    val photoModifier = (imageRatio ?: photo.aspectRatio)?.let { Modifier.aspectRatio(it) } ?: modifier
 
     Card(
         shape = RectangleShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
-            .then(morphModifier)
-            .then(
-                if (shapeProvider != null) {
-                    Modifier.graphicsLayer {
-                        val currentShape = shapeProvider()
-                        shape = currentShape
-                        clip = currentShape != RectangleShape
+            .then(photoModifier)
+            .graphicsLayer {
+                val p = progressProvider?.invoke() ?: 0f
+                if (p > 0f && dismissConfig != null) {
+                    val maxW = size.width
+                    val maxH = size.height
+                    if (maxW > 0f && maxH > 0f) {
+                        val targetW = dismissConfig.targetWidthPx.coerceAtMost(maxW)
+                        val targetH = dismissConfig.targetHeightPx.coerceAtMost(maxH)
+                        val targetScaleX = targetW / maxW
+                        val targetScaleY = targetH / maxH
+                        scaleX = 1f - (1f - targetScaleX) * p
+                        scaleY = 1f - (1f - targetScaleY) * p
                     }
-                } else {
-                    Modifier
                 }
-            )
+                if (shapeProvider != null) {
+                    val currentShape = shapeProvider()
+                    shape = currentShape
+                    clip = currentShape != RectangleShape
+                }
+            }
             .then(
                 if (isTransitionTarget && sharedTransitionScope != null && animatedVisibilityScope != null) {
                     with(sharedTransitionScope) {
                         Modifier.sharedBounds(
                             rememberSharedContentState(key = sharedKey),
                             animatedVisibilityScope = animatedVisibilityScope,
-                            boundsTransform = { _, _ ->
-                                tween(durationMillis = 380, easing = LinearOutSlowInEasing)
-                            },
+                            boundsTransform = com.android.snippets.ui.util.Motion.SharedPhotoBoundsTransform,
                             resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
                                 contentScale = ContentScale.Crop,
                                 alignment = Alignment.Center
-                            ),
-                            clipInOverlayDuringTransition = OverlayClip(
-                                RoundedCornerShape(
-                                    topStart = 12.dp,
-                                    topEnd = 12.dp,
-                                    bottomStart = 4.dp,
-                                    bottomEnd = 4.dp
-                                )
                             )
                         )
                     }
@@ -796,9 +702,6 @@ fun EmptyDetailContent(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     isTransitionTarget: Boolean = false,
-    dismissProgress: Float = 0f,
-    dismissOffsetY: Float = 0f,
-    onDismissOffsetYChange: (Float) -> Unit = {},
     onDismissRequest: () -> Unit = {},
     onScrollChanged: (Boolean) -> Unit = {},
     onRegisterScrollToTop: (() -> Unit) -> Unit = {},
@@ -844,9 +747,6 @@ fun SnippetsDetailContent(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     isTransitionTarget: Boolean = false,
-    dismissProgress: Float = 0f,
-    dismissOffsetY: Float = 0f,
-    onDismissOffsetYChange: (Float) -> Unit = {},
     onDismissRequest: () -> Unit = {},
     onScrollChanged: (Boolean) -> Unit = {},
     onRegisterScrollToTop: (() -> Unit) -> Unit = {},
@@ -1462,51 +1362,37 @@ fun SwipeToDismissContainer(
 ) {
     val coroutineScope = rememberCoroutineScope()
     
-    // Use Animatable so we can smoothly spring back if the swipe is canceled
-    val offsetX = remember { androidx.compose.animation.core.Animatable(0f) }
-    val offsetY = remember { androidx.compose.animation.core.Animatable(0f) }
+    var dragOffsetX by remember { mutableFloatStateOf(0f) }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val animOffsetX = remember { androidx.compose.animation.core.Animatable(0f) }
+    val animOffsetY = remember { androidx.compose.animation.core.Animatable(0f) }
+    var isSettling by remember { mutableStateOf(false) }
 
     // Define how far the user needs to drag to trigger the dismissal
     val density = androidx.compose.ui.platform.LocalDensity.current
     val dismissThreshold = with(density) { 90.dp.toPx() }
     val maxDrag = with(density) { 180.dp.toPx() }
     val flingVelocityThreshold = with(density) { 400.dp.toPx() }
+    val quickResizeDistance = with(density) { 50.dp.toPx() }
 
     val velocityTracker = remember { androidx.compose.ui.input.pointer.util.VelocityTracker() }
 
-    LaunchedEffect(offsetY) {
-        androidx.compose.runtime.snapshotFlow { offsetY.value }.collect { y ->
-            val progress = (kotlin.math.abs(y) / maxDrag).coerceIn(0f, 1f)
-            val uiAlpha = (1f - (progress * 4f)).coerceIn(0f, 1f)
-            val bgAlpha = (1f - progress).coerceIn(0f, 1f)
-            onUiAlphaChange(uiAlpha)
-            onBgAlphaChange(bgAlpha)
-        }
-    }
+    val currentOffsetY = { if (isSettling) animOffsetY.value else dragOffsetY }
+    val currentOffsetX = { if (isSettling) animOffsetX.value else dragOffsetX }
 
     val bgAlphaProvider = {
-        val progress = (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
+        val progress = (kotlin.math.abs(currentOffsetY()) / maxDrag).coerceIn(0f, 1f)
         (1f - progress).coerceIn(0f, 1f)
     }
     
     val uiAlphaProvider = {
-        val progress = (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
+        val progress = (kotlin.math.abs(currentOffsetY()) / maxDrag).coerceIn(0f, 1f)
         (1f - (progress * 4f)).coerceIn(0f, 1f)
     }
 
-    val quickResizeDistance = with(density) { 50.dp.toPx() }
     val resizeProgressProvider = {
-        val raw = (kotlin.math.abs(offsetY.value) / quickResizeDistance).coerceIn(0f, 1f)
+        val raw = (kotlin.math.abs(currentOffsetY()) / quickResizeDistance).coerceIn(0f, 1f)
         androidx.compose.animation.core.FastOutSlowInEasing.transform(raw)
-    }
-
-    val dragProgressProvider = {
-        (kotlin.math.abs(offsetY.value) / maxDrag).coerceIn(0f, 1f)
-    }
-
-    val scaleProvider = {
-        val progress = resizeProgressProvider()
-        1f - ((1f - targetScale) * progress)
     }
 
     val currentShapeProvider = {
@@ -1529,28 +1415,51 @@ fun SwipeToDismissContainer(
                         val velocityY = velocityTracker.calculateVelocity().y
                         val speedY = abs(velocityY)
                         // If the user dragged past the threshold or flicked quickly, trigger back navigation immediately!
-                        if (abs(offsetY.value) > dismissThreshold || speedY > flingVelocityThreshold) {
+                        if (abs(dragOffsetY) > dismissThreshold || speedY > flingVelocityThreshold) {
                             onDismiss()
                         } else {
                             coroutineScope.launch {
-                                // Otherwise, smoothly spring the image back to the center
+                                isSettling = true
+                                animOffsetX.snapTo(dragOffsetX)
+                                animOffsetY.snapTo(dragOffsetY)
                                 val springSpec = androidx.compose.animation.core.spring<Float>(
                                     dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
                                     stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
                                 )
-                                launch { offsetX.animateTo(0f, springSpec) }
-                                launch { offsetY.animateTo(0f, springSpec) }
+                                launch { animOffsetX.animateTo(0f, springSpec) }
+                                launch {
+                                    animOffsetY.animateTo(0f, springSpec) {
+                                        val p = (kotlin.math.abs(value) / maxDrag).coerceIn(0f, 1f)
+                                        onUiAlphaChange((1f - (p * 4f)).coerceIn(0f, 1f))
+                                        onBgAlphaChange((1f - p).coerceIn(0f, 1f))
+                                    }
+                                    dragOffsetX = 0f
+                                    dragOffsetY = 0f
+                                    isSettling = false
+                                }
                             }
                         }
                     },
                     onDragCancel = {
                         coroutineScope.launch {
+                            isSettling = true
+                            animOffsetX.snapTo(dragOffsetX)
+                            animOffsetY.snapTo(dragOffsetY)
                             val springSpec = androidx.compose.animation.core.spring<Float>(
                                 dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
                                 stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
                             )
-                            launch { offsetX.animateTo(0f, springSpec) }
-                            launch { offsetY.animateTo(0f, springSpec) }
+                            launch { animOffsetX.animateTo(0f, springSpec) }
+                            launch {
+                                animOffsetY.animateTo(0f, springSpec) {
+                                    val p = (kotlin.math.abs(value) / maxDrag).coerceIn(0f, 1f)
+                                    onUiAlphaChange((1f - (p * 4f)).coerceIn(0f, 1f))
+                                    onBgAlphaChange((1f - p).coerceIn(0f, 1f))
+                                }
+                                dragOffsetX = 0f
+                                dragOffsetY = 0f
+                                isSettling = false
+                            }
                         }
                     },
                     onVerticalDrag = { change, dragAmountY ->
@@ -1563,11 +1472,12 @@ fun SwipeToDismissContainer(
                         } else 0f
                         previousPosition = change.position
                         
-                        coroutineScope.launch {
-                            // Instantly snap the animatable to follow the finger in 2D space
-                            offsetX.snapTo(offsetX.value + dragAmountX)
-                            offsetY.snapTo(offsetY.value + dragAmountY)
-                        }
+                        dragOffsetX += dragAmountX
+                        dragOffsetY += dragAmountY
+                        
+                        val progress = (kotlin.math.abs(dragOffsetY) / maxDrag).coerceIn(0f, 1f)
+                        onUiAlphaChange((1f - (progress * 4f)).coerceIn(0f, 1f))
+                        onBgAlphaChange((1f - progress).coerceIn(0f, 1f))
                     }
                 )
             }
@@ -1577,7 +1487,10 @@ fun SwipeToDismissContainer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset { androidx.compose.ui.unit.IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
+                .graphicsLayer {
+                    translationX = currentOffsetX()
+                    translationY = currentOffsetY()
+                }
         ) {
             content(currentShapeProvider, resizeProgressProvider)
         }
