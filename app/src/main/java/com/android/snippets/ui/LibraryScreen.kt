@@ -235,7 +235,7 @@ fun LibraryScreen(
         }
     }
 
-    val toolbarOffset by animateDpAsState(
+    val cookieToolbarOffset by animateDpAsState(
         targetValue = if (viewModel.isSelectionMode || isFabVisible) 0.dp else 200.dp,
         animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         label = "toolbar_offset"
@@ -607,7 +607,7 @@ fun LibraryScreen(
                                          horizontalArrangement = Arrangement.Start,
                                          verticalAlignment = Alignment.CenterVertically
                                      ) {
-                                          val navTabItems = remember(allTabs, currentTab) {
+                                          val cookieNavBarItems = remember(allTabs, currentTab) {
                                               allTabs.mapIndexed { tabIndex, tabName ->
                                                   val isSelected = tabName == currentTab
                                                   val iconOrEmoji = when (tabName) {
@@ -652,7 +652,7 @@ fun LibraryScreen(
                                                       }
                                                   }
                                               },
-                                              items = navTabItems,
+                                              items = cookieNavBarItems,
                                               cookieSize = 48.dp,
                                               overlap = 0.dp,
                                               selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -666,8 +666,8 @@ fun LibraryScreen(
 
 
 
-                // Bottom Pill â€” morphs between normal controls and inline search bar
-                val isToolbarVisibleState = !viewModel.isSelectionMode && isFabVisible
+                // Cookie Toolbar - morphs between normal controls and inline search bar
+                val isCookieToolbarVisibleState = !viewModel.isSelectionMode && isFabVisible
 
                 val motionScheme = MaterialTheme.motionScheme
                 AnimatedContent(
@@ -680,7 +680,7 @@ fun LibraryScreen(
                         (fadeIn(motionScheme.defaultEffectsSpec()) + scaleIn(initialScale = 0.92f, animationSpec = motionScheme.defaultSpatialSpec()))
                             .togetherWith(fadeOut(motionScheme.fastEffectsSpec()) + scaleOut(targetScale = 0.92f, animationSpec = motionScheme.fastSpatialSpec()))
                     },
-                    label = "pill_mode",
+                    label = "cookie_toolbar_mode",
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .safeDrawingPadding()
@@ -688,9 +688,9 @@ fun LibraryScreen(
                         .widthIn(max = 500.dp)
                         .fillMaxWidth()
                         .graphicsLayer {
-                            translationY = toolbarOffset.toPx()
-                            scaleX = toolbarScale
-                            scaleY = toolbarScale
+                            translationY = cookieToolbarOffset.toPx()
+                            scaleX = cookieToolbarScale
+                            scaleY = cookieToolbarScale
                             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                         }
                 ) { searchMode ->
@@ -925,9 +925,9 @@ fun LibraryScreen(
                         .safeDrawingPadding()
                         .padding(bottom = 132.dp)
                         .graphicsLayer {
-                            translationY = toolbarOffset.toPx()
-                            scaleX = toolbarScale
-                            scaleY = toolbarScale
+                            translationY = cookieToolbarOffset.toPx()
+                            scaleX = cookieToolbarScale
+                            scaleY = cookieToolbarScale
                             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                         }
                 ) {

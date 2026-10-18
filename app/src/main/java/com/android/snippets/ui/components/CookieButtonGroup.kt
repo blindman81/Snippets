@@ -627,8 +627,47 @@ fun CookieButtonGroup(
 }
 
 /**
- * TabNavCookie alias for [CookieButtonGroup] as requested for tab navigation and cookie groupings.
+ * CookieNavBar alias for [CookieButtonGroup] as requested for cookie nav bar and cookie groupings.
  */
+@Composable
+fun CookieNavBar(
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    items: List<CookieButtonItem>,
+    modifier: Modifier = Modifier,
+    columns: Int = 1,
+    cookieSize: Dp = 56.dp,
+    overlap: Dp = 0.dp,
+    shape: Shape = CookieShape,
+    selectedContainerColor: Color = MaterialTheme.colorScheme.primary,
+    selectedContentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    unselectedContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    unselectedContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    isSpinning: Boolean = true,
+    enableWiggle: Boolean = true,
+    wiggleNeighborOnToggleOn: Boolean = false
+) = CookieButtonGroup(
+    selectedIndex = selectedIndex,
+    onSelect = onSelect,
+    items = items,
+    modifier = modifier,
+    columns = columns,
+    cookieSize = cookieSize,
+    overlap = overlap,
+    shape = shape,
+    selectedContainerColor = selectedContainerColor,
+    selectedContentColor = selectedContentColor,
+    unselectedContainerColor = unselectedContainerColor,
+    unselectedContentColor = unselectedContentColor,
+    isSpinning = isSpinning,
+    enableWiggle = enableWiggle,
+    wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn
+)
+
+/**
+ * Backward compatibility alias for [CookieNavBar].
+ */
+@Deprecated("Use CookieNavBar instead", ReplaceWith("CookieNavBar(selectedIndex, onSelect, items, modifier, columns, cookieSize, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enableWiggle, wiggleNeighborOnToggleOn)"))
 @Composable
 fun TabNavCookie(
     selectedIndex: Int,
@@ -646,7 +685,7 @@ fun TabNavCookie(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false
-) = CookieButtonGroup(
+) = CookieNavBar(
     selectedIndex = selectedIndex,
     onSelect = onSelect,
     items = items,

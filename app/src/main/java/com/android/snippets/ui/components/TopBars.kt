@@ -1,4 +1,4 @@
-package com.android.snippets.ui.components
+﻿package com.android.snippets.ui.components
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import kotlinx.coroutines.launch
@@ -993,3 +993,34 @@ fun LargeMainTopBar(
 }
 
 
+/**
+ * CookieToolbar represents the floating cookie toolbar container.
+ */
+@Composable
+fun CookieToolbar(
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = CircleShape,
+    color: Color = MaterialTheme.colorScheme.surfaceContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    content: @Composable RowScope.() -> Unit
+) {
+    BlurredSurface(
+        shape = shape,
+        color = color,
+        contentColor = contentColor,
+        shadowElevation = 8.dp,
+        tonalElevation = 0.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(84.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
+    }
+}
