@@ -1,4 +1,4 @@
-package com.android.snippets.ui.util
+﻿package com.android.snippets.ui.util
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.CubicBezierEasing
@@ -39,6 +39,26 @@ object Motion {
     val SheetPopSpring = spring<Float>(
         dampingRatio = 0.52f,
         stiffness = 320f
+    )
+
+    val ToolbarEnterSpring = spring<androidx.compose.ui.unit.Dp>(
+        dampingRatio = 0.65f,
+        stiffness = Spring.StiffnessMediumLow
+    )
+
+    val ToolbarExitSpring = spring<androidx.compose.ui.unit.Dp>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMedium
+    )
+
+    val ToolbarScaleEnterSpring = spring<Float>(
+        dampingRatio = 0.65f,
+        stiffness = Spring.StiffnessMediumLow
+    )
+
+    val ToolbarScaleExitSpring = spring<Float>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMedium
     )
 
     fun wiggleSpec(direction: Float = 1f, amplitude: Float = 8f): KeyframesSpec<Float> = keyframes {

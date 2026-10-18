@@ -1,4 +1,4 @@
-package com.android.snippets.ui
+﻿package com.android.snippets.ui
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
@@ -687,7 +687,12 @@ fun LibraryScreen(
                         .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                         .widthIn(max = 500.dp)
                         .fillMaxWidth()
-                        .offset(y = toolbarOffset)
+                        .graphicsLayer {
+                            translationY = toolbarOffset.toPx()
+                            scaleX = toolbarScale
+                            scaleY = toolbarScale
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+                        }
                 ) { searchMode ->
                     if (searchMode == 2) {
                         SelectionToolbar(
@@ -919,7 +924,12 @@ fun LibraryScreen(
                         .align(Alignment.BottomCenter)
                         .safeDrawingPadding()
                         .padding(bottom = 132.dp)
-                        .offset(y = toolbarOffset)
+                        .graphicsLayer {
+                            translationY = toolbarOffset.toPx()
+                            scaleX = toolbarScale
+                            scaleY = toolbarScale
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+                        }
                 ) {
                     AnimatedCookieButton(
                         onClick = {
