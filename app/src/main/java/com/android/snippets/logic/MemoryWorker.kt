@@ -1,6 +1,7 @@
 package com.android.snippets.logic
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -46,6 +47,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         const val SUMMARY_NOTIFICATION_ID = 0
         const val INPUT_PHOTO_ID = "photo_id"
         const val INPUT_NOTIFICATION_TYPE = "notification_type"
+        const val NOTIFICATION_DATE_FORMAT = "EEE, d MMM"
         private const val PREFS = "memory_notification_state"
         private const val KEY_POSTED_IDS = "posted_ids"
 
@@ -78,56 +80,177 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(notificationId(photoId))
-            clearPostedNotificationState(context, photoId)
-            val remaining = postedIds(context)
+            val remaining = clearPostedNotificationState(context, photoId)
             if (remaining.isEmpty()) {
                 notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
+            } else {
+                updateSummaryNotification(context, remaining)
             }
+        }
+
+        fun updateSummaryNotification(context: Context, currentPostedIds: Set<String> = postedIds(context)) {
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (currentPostedIds.isEmpty()) {
+                notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
+                return
+            }
+            val summary = buildSummaryNotification(context, currentPostedIds)
+            notificationManager.notify(SUMMARY_NOTIFICATION_ID, summary)
         }
 
         fun wasNotificationPosted(context: Context, photoId: String): Boolean {
             return postedIds(context).contains(photoId)
         }
 
-        fun clearPostedNotificationState(context: Context, photoId: String) {
-            if (photoId.isBlank()) return
+        @Synchronized
+        fun clearPostedNotificationState(context: Context, photoId: String): Set<String> {
+            if (photoId.isBlank()) return postedIds(context)
             val updated = postedIds(context) - photoId
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putStringSet(KEY_POSTED_IDS, updated)
-                .apply()
+                .commit()
+            return updated
         }
 
         private fun notificationId(photoId: String): Int = photoId.hashCode()
 
-        private fun markNotificationPosted(context: Context, photoId: String) {
+        @Synchronized
+        fun markNotificationPosted(context: Context, photoId: String): Set<String> {
             val updated = postedIds(context) + photoId
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putStringSet(KEY_POSTED_IDS, updated)
-                .apply()
+                .commit()
+            return updated
         }
 
-        private fun postedIds(context: Context): Set<String> {
+        @Synchronized
+        fun postedIds(context: Context): Set<String> {
             val rawSet = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getStringSet(KEY_POSTED_IDS, null)
             return if (rawSet != null) HashSet(rawSet) else emptySet()
         }
+
+        fun loadAllPhotos(context: Context): List<Photo> {
+            return try {
+                val file = File(context.filesDir, "photos_v2.json")
+                if (!file.exists()) return emptyList()
+                val json = file.readText()
+                val type = object : TypeToken<List<Photo>>() {}.type
+                Gson().fromJson(json, type) ?: emptyList()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                emptyList()
+            }
+        }
+
+        fun loadPhoto(context: Context, photoId: String): Photo? {
+            return loadAllPhotos(context).firstOrNull { it.id == photoId }
+        }
+
+        fun buildNotificationMetadata(
+            context: Context? = null,
+            photo: Photo?,
+            notificationType: String
+        ): Pair<String, String> {
+            if (photo == null) {
+                return notificationFallbackText(notificationType)
+            }
+
+            // Notification date format: "Wed, 18 Oct"
+            val dayAndDate = SimpleDateFormat(NOTIFICATION_DATE_FORMAT, Locale.getDefault())
+                .format(Date(photo.date))
+
+            // Photo name in notification title (fallback: day and date)
+            val nameOrDate = photo.name?.takeIf { it.isNotBlank() } ?: dayAndDate
+
+            // plus location
+            val locationStr = LocationUtils.getLocationFromExif(context, photo)
+
+            val title = listOfNotNull(nameOrDate, locationStr).joinToString(" • ")
+
+            // Metadata: date in body when custom name is used, snippets, favorite status, star rating
+            val dateInBody = if (!photo.name.isNullOrBlank()) dayAndDate else null
+            val snippetsText = photo.snippets.takeIf { it.isNotEmpty() }?.joinToString(" • ")
+            val favoriteStr = if (photo.isFavorite) "❤️ Favorite" else null
+            val ratingStr = if (photo.rating > 0) "★ ${photo.rating}" else null
+
+            val metaParts = listOfNotNull(dateInBody, snippetsText, favoriteStr, ratingStr)
+            val text = if (metaParts.isNotEmpty()) {
+                metaParts.joinToString(" • ")
+            } else {
+                notificationFallbackText(notificationType).second
+            }
+
+            return title to text
+        }
+
+        fun buildSummaryNotification(
+            context: Context,
+            postedPhotoIds: Set<String>
+        ): Notification {
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, com.android.snippets.MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra("open_memory", true)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val count = postedPhotoIds.size.coerceAtLeast(1)
+            val title = if (count == 1) "1 memory waiting" else "$count memories waiting"
+            val text = if (count == 1) {
+                "You have a memory waiting to be viewed"
+            } else {
+                "You have $count memories waiting to be viewed"
+            }
+
+            val inboxStyle = NotificationCompat.InboxStyle()
+                .setBigContentTitle(title)
+                .setSummaryText("Memories")
+
+            val allPhotos = loadAllPhotos(context)
+            val postedPhotos = allPhotos.filter { postedPhotoIds.contains(it.id) }
+            val displayedPhotos = if (postedPhotos.isNotEmpty()) postedPhotos else allPhotos.take(count)
+
+            for (photo in displayedPhotos.take(5)) {
+                val (itemTitle, _) = buildNotificationMetadata(context, photo, TYPE_NEW)
+                inboxStyle.addLine(itemTitle)
+            }
+
+            return NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(inboxStyle)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setAutoCancel(true)
+                .setGroup(GROUP_KEY)
+                .setGroupSummary(true)
+                .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
+                .setContentIntent(pendingIntent)
+                .build()
+        }
+
+        fun notificationFallbackText(notificationType: String): Pair<String, String> {
+            return when (notificationType) {
+                TYPE_RESURFACED -> "Memory resurfaced" to "A past memory is ready to revisit"
+                TYPE_UPDATED -> "Memory refreshed" to "New snippets waiting"
+                else -> "New memory" to "Relive this memory"
+            }
+        }
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
-        val pendingIntent = PendingIntent.getActivity(
-            applicationContext,
-            0,
-            Intent(applicationContext, com.android.snippets.MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra("open_memory", true)
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        return ForegroundInfo(SUMMARY_NOTIFICATION_ID, summaryNotification(pendingIntent))
+        val posted = postedIds(applicationContext)
+        return ForegroundInfo(SUMMARY_NOTIFICATION_ID, buildSummaryNotification(applicationContext, posted))
     }
 
     override suspend fun doWork(): Result {
@@ -156,8 +279,8 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val photo = loadPhoto(photoId)
-        val (title, text) = buildNotificationMetadata(photo, notificationType)
+        val photo = loadPhoto(applicationContext, photoId)
+        val (title, text) = buildNotificationMetadata(applicationContext, photo, notificationType)
         val rawBitmap = photo?.let { loadPhotoBitmap(it) }
         val memoryCardBitmap = rawBitmap?.let { createMemoryCardBitmap(it) }
 
@@ -166,10 +289,10 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
             .setGroup(GROUP_KEY)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
             .setContentIntent(pendingIntent)
 
         if (memoryCardBitmap != null) {
@@ -187,23 +310,14 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         val notification = notificationBuilder.build()
 
-        notificationManager.notify(notificationId(photoId), notification)
-        notificationManager.notify(SUMMARY_NOTIFICATION_ID, summaryNotification(pendingIntent))
         markNotificationPosted(applicationContext, photoId)
-    }
+        val currentPosted = postedIds(applicationContext)
 
-    private fun loadPhoto(photoId: String): Photo? {
-        return try {
-            val file = File(applicationContext.filesDir, "photos_v2.json")
-            if (!file.exists()) return null
-            val json = file.readText()
-            val type = object : TypeToken<List<Photo>>() {}.type
-            val photos: List<Photo> = Gson().fromJson(json, type) ?: emptyList()
-            photos.firstOrNull { it.id == photoId }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
+        notificationManager.notify(notificationId(photoId), notification)
+        notificationManager.notify(
+            SUMMARY_NOTIFICATION_ID,
+            buildSummaryNotification(applicationContext, currentPosted)
+        )
     }
 
     private suspend fun loadPhotoBitmap(photo: Photo): Bitmap? {
@@ -390,49 +504,6 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         return Bitmap.createBitmap(finalPixels, width, height, Bitmap.Config.ARGB_8888)
     }
 
-    private fun buildNotificationMetadata(photo: Photo?, notificationType: String): Pair<String, String> {
-        if (photo == null) {
-            return notificationFallbackText(notificationType)
-        }
-
-        // 1. Day and Date
-        val dayAndDate = SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(photo.date))
-
-        // 2. Favorite badge
-        val favoriteStr = if (photo.isFavorite) "❤️ Favorite" else null
-
-        val title = listOfNotNull(dayAndDate, favoriteStr).joinToString(" • ")
-
-        // 3. Star rating
-        val ratingStr = if (photo.rating > 0) "★ ${photo.rating}" else null
-
-        // 4. Shortened location name
-        val locationStr = LocationUtils.getLocationFromExif(applicationContext, photo)
-
-        val metaParts = listOfNotNull(ratingStr, locationStr)
-        val text = if (metaParts.isNotEmpty()) {
-            metaParts.joinToString(" • ")
-        } else {
-            notificationFallbackText(notificationType).second
-        }
-
-        return title to text
-    }
-
-    private fun summaryNotification(pendingIntent: PendingIntent) =
-        NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Memories waiting")
-            .setContentText("You have memories waiting to be viewed")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .setAutoCancel(true)
-            .setGroup(GROUP_KEY)
-            .setGroupSummary(true)
-            .setContentIntent(pendingIntent)
-            .build()
-
     private fun openMemoryIntent(photoId: String): Intent {
         return Intent(applicationContext, com.android.snippets.MainActivity::class.java).apply {
             action = "com.android.snippets.OPEN_MEMORY.$photoId"
@@ -441,14 +512,6 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("open_memory", true)
             putExtra("photo_id", photoId)
-        }
-    }
-
-    private fun notificationFallbackText(notificationType: String): Pair<String, String> {
-        return when (notificationType) {
-            TYPE_RESURFACED -> "A memory resurfaced!" to "A past memory is ready to revisit"
-            TYPE_UPDATED -> "A memory was refreshed!" to "A viewed memory has new snippets waiting"
-            else -> "A new memory!" to "There's a new memory with snippets for you to see"
         }
     }
 }

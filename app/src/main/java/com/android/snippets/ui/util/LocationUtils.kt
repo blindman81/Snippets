@@ -12,7 +12,7 @@ import android.provider.MediaStore
 
 object LocationUtils {
 
-    fun getLocationFromExif(context: Context, photo: Photo): String? {
+    fun getLocationFromExif(context: Context? = null, photo: Photo): String? {
         if (!photo.locationName.isNullOrBlank()) {
             return cleanLocationName(photo.locationName)
         }
