@@ -66,7 +66,6 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.exifinterface)
     implementation(libs.androidx.ui.text.google.fonts)
-    implementation(libs.androidx.graphics.shapes)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.haze)
 

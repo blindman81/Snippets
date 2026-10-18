@@ -1,4 +1,4 @@
-package com.android.snippets.ui
+﻿package com.android.snippets.ui
 import com.android.snippets.ui.components.*
 
 import androidx.compose.foundation.layout.*
@@ -646,7 +646,7 @@ private fun ButtonGroupScope.themeToggleableItem(
                 interactionSource = interactionSource,
                 modifier = Modifier.weight(animatedWeight),
                 shapes = shapes,
-                colors = ToggleButtonDefaults.toggleButtonColors(
+                colors = ToggleButtonDefaults.colors(
                     checkedContainerColor = MaterialTheme.colorScheme.primary,
                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -793,4 +793,3 @@ fun AutoBackupScheduleDialog(
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = true)
     )
 }
-
