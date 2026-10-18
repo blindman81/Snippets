@@ -9,6 +9,10 @@ import androidx.compose.ui.graphics.vector.path
 
 
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.ContactMail
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -51,6 +55,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
     AppPredictiveBackHandler {
         viewModel.navigateLibrary()
     }
+    val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     val hazeState = LocalHazeState.current ?: rememberHazeState()
@@ -145,7 +150,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "DEVELOPER",
+                        text = "DIRECTOR",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -161,93 +166,39 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                 }
 
                 Text(
-                    text = buildAnnotatedString {
-                        append("Created with ")
-                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)) {
-                            append("Antigravity")
-                        }
-                        append(", ")
-                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)) {
-                            append("Codex")
-                        }
-                        append(", and ")
-                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)) {
-                            append("Stitch")
-                        }
-                        append(" (only in early development stage)")
-                    },
+                    text = "Design ideas by me, code by agentic tools.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.widthIn(max = 280.dp)
                 )
 
-                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-                val xLogo = remember {
-                    androidx.compose.ui.graphics.vector.ImageVector.Builder(
-                        name = "XLogo",
-                        defaultWidth = 24.dp,
-                        defaultHeight = 24.dp,
-                        viewportWidth = 24f,
-                        viewportHeight = 24f
-                    ).path(fill = SolidColor(Color.Black)) {
-                        moveTo(18.244f, 2.25f)
-                        horizontalLineToRelative(3.308f)
-                        lineToRelative(-7.227f, 8.26f)
-                        lineToRelative(8.502f, 11.24f)
-                        horizontalLineToRelative(-6.657f)
-                        lineToRelative(-5.214f, -6.817f)
-                        lineToRelative(-5.966f, 6.817f)
-                        horizontalLineTo(1.68f)
-                        lineToRelative(7.73f, -8.835f)
-                        lineTo(1.254f, 2.25f)
-                        horizontalLineTo(8.08f)
-                        lineToRelative(4.713f, 6.231f)
-                        close()
-                        moveTo(17.083f, 19.77f)
-                        horizontalLineToRelative(1.833f)
-                        lineTo(7.084f, 4.126f)
-                        horizontalLineTo(5.117f)
-                        close()
-                    }.build()
-
-
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AnimatedCookieButton(
-                        onClick = { 
+                AnimatedCookieButton(
+                    onClick = {
+                        val email = "lnsnippets2026@gmail.com"
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:$email")
+                            setPackage("com.google.android.gm")
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
                             try {
-                                uriHandler.openUri("https://discord.gg/t272UTb4q")
-                            } catch (e: Exception) {
-                                // Handle potential error
+                                val fallbackIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:$email")
+                                }
+                                context.startActivity(fallbackIntent)
+                            } catch (e2: Exception) {
+                                // Fallback if no email client is available
                             }
-                        },
-                        icon = DiscordIcon(),
-                        contentDescription = "Discord",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        size = 56.dp
-                    )
-
-                    AnimatedCookieButton(
-                        onClick = { 
-                            try {
-                                uriHandler.openUri("https://x.com/NL_1818")
-                            } catch (e: Exception) {
-                                // Handle potential error
-                            }
-                        },
-                        icon = xLogo,
-                        contentDescription = "X",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        size = 56.dp
-                    )
-                }
+                        }
+                    },
+                    icon = Icons.Default.ContactMail,
+                    contentDescription = "Contact Mail",
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    size = 56.dp
+                )
 
             }
         }
@@ -277,24 +228,29 @@ fun LicenseDialog(onDismiss: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 LicenseItem(
-                    name = "Android Jetpack (AndroidX)",
+                    name = "Android Jetpack & Jetpack Compose",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2018 The Android Open Source Project"
+                    copyright = "Copyright (c) 2018-2025 The Android Open Source Project"
                 )
                 LicenseItem(
                     name = "Material Components for Android",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2018 The Android Open Source Project"
+                    copyright = "Copyright (c) 2018-2025 The Android Open Source Project"
                 )
                 LicenseItem(
-                    name = "Kotlin Standard Library",
+                    name = "Kotlin & Kotlin Coroutines",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2010-2024 JetBrains s.r.o."
+                    copyright = "Copyright (c) 2010-2025 JetBrains s.r.o. and Kotlin Programming Language contributors"
                 )
                 LicenseItem(
                     name = "Coil",
                     license = "Apache License 2.0",
                     copyright = "Copyright (c) 2024 Coil Contributors"
+                )
+                LicenseItem(
+                    name = "Haze",
+                    license = "Apache License 2.0",
+                    copyright = "Copyright (c) 2023-2025 Chris Banes"
                 )
                 LicenseItem(
                     name = "Gson",
