@@ -47,7 +47,7 @@ enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, Fle
 
 class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private companion object {
+    companion object {
         const val MEMORY_REMINDER_PREFIX = "memory_reminder_"
         const val NEW_MEMORY_NOTIFICATION_DELAY_HOURS = 12L
         const val VIEWED_MEMORY_VISIBLE_HOURS = 24L
@@ -63,6 +63,12 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val RECENTLY_VIEWED_MEMORY_MS: Long = TimeUnit.HOURS.toMillis(RECENTLY_VIEWED_MEMORY_HOURS)
         val VIEWED_MEMORY_RESET_MS: Long = TimeUnit.DAYS.toMillis(VIEWED_MEMORY_RESET_DAYS)
         val SURFACED_MEMORY_SPACING_MS: Long = TimeUnit.HOURS.toMillis(SURFACED_MEMORY_SPACING_HOURS)
+
+        val EMOTICONS_LIST: List<String> = listOf(
+            ":)", ":(", ":D", ":P", ":O", ":-)", ":-(", ":-D", ":-P", ";)", ";D", 
+            "^_^", ">_<", "o_o", "O_O", "-_-", "T_T", "8-)", "8)", ":3", "xD", "XD",
+            ":' )", ":' (", ":v", ":/", ":\\", ">:)", ">:(", "O:)", "u_u"
+        )
     }
 
     private val prefs = application.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
@@ -271,8 +277,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     private fun saveCollectionIcons() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val json = gson.toJson(collectionIcons)
-                collectionIconsFile.writeText(json)
+                collectionIconsFile.bufferedWriter().use { writer ->
+                    gson.toJson(collectionIcons, writer)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -515,8 +522,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         loadAllData()
         pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
         loadRecentSearches()
-        startHintRotation()
-
     }
 
     private fun loadAllData() {
@@ -791,8 +796,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
                 storageMutex.withLock {
                     try {
-                        val json = gson.toJson(snapshot)
-                        photosFile.writeText(json)
+                        photosFile.bufferedWriter().use { writer ->
+                            gson.toJson(snapshot, writer)
+                        }
                         BackupManager(getApplication()).dataChanged()
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -1048,8 +1054,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             storageMutex.withLock {
                 try {
-                    val json = gson.toJson(userCollections)
-                    collectionsFile.writeText(json)
+                    collectionsFile.bufferedWriter().use { writer ->
+                        gson.toJson(userCollections, writer)
+                    }
                     BackupManager(getApplication()).dataChanged()
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -1277,9 +1284,22 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     private fun extractImageDimensions(uri: Uri): Pair<Int, Int> {
         return try {
-            val resolver = getApplication<Application>().contentResolver
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            resolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input, null, options) }
+            val path = uri.path
+            if (path != null && !uri.toString().startsWith("content:")) {
+                val file = File(path)
+                if (file.exists()) {
+                    java.io.FileInputStream(file).use { input ->
+                        BitmapFactory.decodeStream(input, null, options)
+                    }
+                } else {
+                    val resolver = getApplication<Application>().contentResolver
+                    resolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input, null, options) }
+                }
+            } else {
+                val resolver = getApplication<Application>().contentResolver
+                resolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input, null, options) }
+            }
             val width = options.outWidth.takeIf { it > 0 } ?: 0
             val height = options.outHeight.takeIf { it > 0 } ?: 0
             width to height
@@ -2658,7 +2678,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     private val monthDateFormat = java.text.SimpleDateFormat("MMMM yyyy", Locale.getDefault())
     private val yearDateFormat = java.text.SimpleDateFormat("yyyy", Locale.getDefault())
     private val dayOfWeekFormat = java.text.SimpleDateFormat("EEEE", Locale.getDefault())
+    private val weekRangeFormat = java.text.SimpleDateFormat("MMM d", Locale.getDefault())
     private val groupCalendar = Calendar.getInstance()
+    private val startCalendar = Calendar.getInstance()
+    private val endCalendar = Calendar.getInstance()
 
     private fun groupPhotosByDate(
         source: List<Photo>, 
@@ -2680,6 +2703,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         groupCalendar.timeInMillis = now
         val todayDay = groupCalendar.get(Calendar.DAY_OF_YEAR)
         val todayYear = groupCalendar.get(Calendar.YEAR)
+        val weekCache = HashMap<Int, String>()
+        val dateObj = java.util.Date()
 
         return source.groupBy { photo ->
             groupCalendar.timeInMillis = photo.date
@@ -2691,23 +2716,27 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     when {
                         photoYear == todayYear && photoDay == todayDay -> "Today"
                         photoYear == todayYear && photoDay == todayDay - 1 -> "Yesterday"
-                        else -> groupDateFormat.format(java.util.Date(photo.date))
+                        else -> {
+                            dateObj.time = photo.date
+                            groupDateFormat.format(dateObj)
+                        }
                     }
                 }
                 DisplayMode.Week -> {
-                    // Prettier week range: "Oct 14 - Oct 20"
-                    val startCalendar = Calendar.getInstance().apply {
-                        timeInMillis = photo.date
-                        set(Calendar.DAY_OF_WEEK, Calendar.MONDAY) // Consistent week start
+                    val photoWeek = groupCalendar.get(Calendar.WEEK_OF_YEAR)
+                    val cacheKey = photoYear * 100 + photoWeek
+                    weekCache.getOrPut(cacheKey) {
+                        startCalendar.timeInMillis = photo.date
+                        startCalendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                        endCalendar.timeInMillis = startCalendar.timeInMillis
+                        endCalendar.add(Calendar.DAY_OF_WEEK, 6)
+                        "${weekRangeFormat.format(startCalendar.time)} - ${weekRangeFormat.format(endCalendar.time)}"
                     }
-                    val endCalendar = Calendar.getInstance().apply {
-                        timeInMillis = startCalendar.timeInMillis
-                        add(Calendar.DAY_OF_WEEK, 6)
-                    }
-                    val rangeFormat = SimpleDateFormat("MMM d", Locale.getDefault())
-                    "${rangeFormat.format(startCalendar.time)} - ${rangeFormat.format(endCalendar.time)}"
                 }
-                DisplayMode.Month -> monthDateFormat.format(java.util.Date(photo.date))
+                DisplayMode.Month -> {
+                    dateObj.time = photo.date
+                    monthDateFormat.format(dateObj)
+                }
             }
         }
     }
@@ -2726,35 +2755,58 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         return false
     }
 
-    fun containsEmoticon(s: String): Boolean {
-        val emoticons = listOf(
-            ":)", ":(", ":D", ":P", ":O", ":-)", ":-(", ":-D", ":-P", ";)", ";D", 
-            "^_^", ">_<", "o_o", "O_O", "-_-", "T_T", "8-)", "8)", ":3", "xD", "XD",
-            ":' )", ":' (", ":v", ":/", ":\\", ">:)", ">:(", "O:)", "u_u"
-        )
-        return emoticons.any { s.contains(it) }
-    }
+    fun containsEmoticon(s: String): Boolean = EMOTICONS_LIST.any { s.contains(it) }
 
     val favoritesUniqueSnippets: List<String> by derivedStateOf {
-        photos.filter { it.isFavorite }.flatMap { it.snippets }.distinct()
+        val set = LinkedHashSet<String>()
+        val pList = photos
+        for (i in pList.indices) {
+            val p = pList[i]
+            if (p.isFavorite) {
+                val snips = p.snippets
+                for (j in snips.indices) set.add(snips[j])
+            }
+        }
+        set.toList()
     }
 
     fun getCollectionUniqueSnippets(collection: String): List<String> {
-        return photos.filter { it.collections.contains(collection) }.flatMap { it.snippets }.distinct()
+        val set = LinkedHashSet<String>()
+        val pList = photos
+        for (i in pList.indices) {
+            val p = pList[i]
+            if (p.collections.contains(collection)) {
+                val snips = p.snippets
+                for (j in snips.indices) set.add(snips[j])
+            }
+        }
+        return set.toList()
     }
 
     val allUniqueSnippets: List<String> by derivedStateOf {
-        val baseSnippets = photos.flatMap { it.snippets }.distinct()
+        val baseSnippets = LinkedHashSet<String>()
+        val pList = photos
+        for (i in pList.indices) {
+            val snips = pList[i].snippets
+            for (j in snips.indices) baseSnippets.add(snips[j])
+        }
 
         val filtered = when (snippetSortType) {
             SnippetSortType.Favorites -> {
-                val favSnippets = photos.filter { it.isFavorite }.flatMap { it.snippets }.toSet()
+                val favSnippets = HashSet<String>()
+                for (i in pList.indices) {
+                    val p = pList[i]
+                    if (p.isFavorite) {
+                        val snips = p.snippets
+                        for (j in snips.indices) favSnippets.add(snips[j])
+                    }
+                }
                 baseSnippets.filter { it in favSnippets }
             }
             SnippetSortType.Emoji -> baseSnippets.filter { containsEmoji(it) }
             SnippetSortType.Emoticons -> baseSnippets.filter { containsEmoticon(it) }
             SnippetSortType.Color -> baseSnippets.filter { snippetColors.containsKey(it) }
-            else -> baseSnippets
+            else -> baseSnippets.toList()
         }
 
         when (snippetSortType) {
@@ -2870,45 +2922,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun startHintRotation() {
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(1000)
-            while (true) {
-                val hints = mutableListOf<String>()
-                
-                // 1. Base hint based on screen
-                val base = "Library"
-                hints.add(base)
-
-                // 2. Time-based hints (Dynamic)
-                val now = java.util.Date()
-                hints.add(yearDateFormat.format(now)) // e.g. 2024
-                hints.add(java.text.SimpleDateFormat("MMMM", Locale.getDefault()).format(now)) // e.g. April
-                hints.add(dayOfWeekFormat.format(now)) // e.g. Monday
-                hints.add("Week ${java.util.Calendar.getInstance().get(java.util.Calendar.WEEK_OF_YEAR)}") // e.g. Week 18
-
-                // 3. Collections (Non-empty)
-                userCollections.filter { coll -> photos.any { it.collections.contains(coll) } }
-                    .shuffled().take(3).forEach { 
-                        hints.add(it) 
-                    }
-                
-                // 4. Snippets
-                allUniqueSnippets.shuffled().take(3).forEach { 
-                    hints.add(it) 
-                }
-
-                if (hints.isEmpty()) {
-                    rotatingSearchHint = "Library"
-                    kotlinx.coroutines.delay(4000)
-                    continue
-                }
-
-                for (hint in hints) {
-                    rotatingSearchHint = hint
-                    kotlinx.coroutines.delay(3000)
-                }
-            }
-        }
+        // Disabled to prevent infinite background wakeups, CPU churn, and battery drain.
     }
 
     fun getSnippetColor(name: String): Int? {

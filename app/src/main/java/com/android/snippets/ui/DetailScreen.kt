@@ -761,13 +761,17 @@ private fun DetailPhotoFrame(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = coil.request.ImageRequest.Builder(LocalContext.current)
+            val context = LocalContext.current
+            val imageRequest = remember(photo.uriString) {
+                coil.request.ImageRequest.Builder(context)
                     .data(photo.uriString)
                     .crossfade(false)
                     .memoryCacheKey(photo.uriString)
                     .placeholderMemoryCacheKey(photo.uriString)
-                    .build(),
+                    .build()
+            }
+            AsyncImage(
+                model = imageRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 onSuccess = { state ->

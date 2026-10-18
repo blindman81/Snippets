@@ -9,6 +9,7 @@ import android.os.Build
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
+import coil.imageLoader
 import coil.memory.MemoryCache
 import coil.util.DebugLogger
 
@@ -16,6 +17,24 @@ class SnippetsApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        try {
+            if (level >= TRIM_MEMORY_BACKGROUND || level >= TRIM_MEMORY_UI_HIDDEN) {
+                imageLoader.memoryCache?.clear()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        try {
+            imageLoader.memoryCache?.clear()
+        } catch (_: Exception) {
+        }
     }
 
     override fun newImageLoader(): ImageLoader {

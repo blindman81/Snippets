@@ -615,24 +615,21 @@ object MediaSaver {
     private fun createBlurredBackground(src: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
         val srcWidth = src.width.toFloat()
         val srcHeight = src.height.toFloat()
-        val scaleX = targetWidth / srcWidth
-        val scaleY = targetHeight / srcHeight
+        // Downsample directly to 20% to avoid allocating an 8.3MB intermediate bitmap
+        val blurW = (targetWidth * 0.20f).toInt().coerceAtLeast(16)
+        val blurH = (targetHeight * 0.20f).toInt().coerceAtLeast(16)
+        val scaleX = blurW / srcWidth
+        val scaleY = blurH / srcHeight
         val scale = maxOf(scaleX, scaleY) * 1.08f
         val scaledW = (srcWidth * scale).toInt().coerceAtLeast(1)
         val scaledH = (srcHeight * scale).toInt().coerceAtLeast(1)
         
-        val cropped = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(cropped)
+        val downscaled = Bitmap.createBitmap(blurW, blurH, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(downscaled)
         val matrix = android.graphics.Matrix()
         matrix.postScale(scale, scale)
-        matrix.postTranslate((targetWidth - scaledW) * 0.5f, (targetHeight - scaledH) * 0.5f)
+        matrix.postTranslate((blurW - scaledW) * 0.5f, (blurH - scaledH) * 0.5f)
         canvas.drawBitmap(src, matrix, null)
-        
-        // Downsample to 20% for silky smooth performance and high fidelity
-        val blurW = (targetWidth * 0.20f).toInt().coerceAtLeast(16)
-        val blurH = (targetHeight * 0.20f).toInt().coerceAtLeast(16)
-        val downscaled = Bitmap.createScaledBitmap(cropped, blurW, blurH, true)
-        cropped.recycle()
         
         // Multi-pass Gaussian blur:
         // Lighter blur for the top (matching startRadius = 4.dp in MemoryScreen)

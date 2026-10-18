@@ -72,6 +72,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 
+private val GrayscaleColorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuBottomSheet(
@@ -440,17 +442,19 @@ fun HistoryBottomSheet(
                                                 }
                                             )
                                     ) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(LocalContext.current)
+                                        val context = LocalContext.current
+                                        val imageRequest = remember(photo.uriString) {
+                                            ImageRequest.Builder(context)
                                                 .data(photo.uriString)
                                                 .crossfade(true)
                                                 .memoryCacheKey(photo.uriString)
-                                                .build(),
+                                                .build()
+                                        }
+                                        AsyncImage(
+                                            model = imageRequest,
                                             contentDescription = null,
                                             contentScale = ContentScale.Crop,
-                                            colorFilter = if (photo.isViewed) {
-                                                ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
-                                            } else null,
+                                            colorFilter = if (photo.isViewed) GrayscaleColorFilter else null,
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .then(if (photo.isViewed) Modifier.alpha(0.5f) else Modifier)

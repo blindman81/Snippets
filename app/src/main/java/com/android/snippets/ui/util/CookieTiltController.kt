@@ -65,7 +65,7 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
 
     private const val MAX_TILT_DEGREES = 28f
     private const val TILT_SENSITIVITY_DIVISOR = 5.0f
-    private const val DEADBAND_THRESHOLD = 0.4f
+    private const val DEADBAND_THRESHOLD = 1.2f
 
     fun initialize(context: Context) {
         if (appContext != null) return

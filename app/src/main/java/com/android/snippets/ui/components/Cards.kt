@@ -97,8 +97,13 @@ import coil.request.ImageRequest
 import coil.imageLoader
 import com.android.snippets.model.Photo
 
+private val GrayscaleColorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
 
-
+private fun getSaturationColorFilter(saturation: Float): ColorFilter? = when {
+    saturation >= 0.999f -> null
+    saturation <= 0.001f -> GrayscaleColorFilter
+    else -> ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) })
+}
 @Composable
 fun SelectedPhotoIndicator(
     isSelected: Boolean,
@@ -226,18 +231,8 @@ fun MemoryAvatar(
             model = photo.uriString,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            alignment = Alignment { size, space, _ ->
-                val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
-                    (space.width - size.width).coerceAtMost(0),
-                    (space.width - size.width).coerceAtLeast(0)
-                )
-                val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
-                    (space.height - size.height).coerceAtMost(0),
-                    (space.height - size.height).coerceAtLeast(0)
-                )
-                androidx.compose.ui.unit.IntOffset(x, y)
-            },
-            colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) }),
+            alignment = Alignment.Center,
+            colorFilter = getSaturationColorFilter(saturation),
             modifier = Modifier.fillMaxSize().padding(2.dp)
         )
     }
@@ -679,26 +674,21 @@ fun PhotoMasonryItem(
                             } ?: Modifier.fillMaxWidth().wrapContentHeight()
                         }
 
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
+                        val context = LocalContext.current
+                        val imageRequest = remember(photo.uriString) {
+                            ImageRequest.Builder(context)
                                 .data(photo.uriString)
                                 .crossfade(true)
                                 .memoryCacheKey(photo.uriString)
-                                .build(),
+                                .build()
+                        }
+
+                        AsyncImage(
+                            model = imageRequest,
                             contentDescription = null,
                             contentScale = if (fillCard || isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
-                            colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
-                            alignment = Alignment { size, space, _ ->
-                                val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
-                                    (space.width - size.width).coerceAtMost(0),
-                                    (space.width - size.width).coerceAtLeast(0)
-                                )
-                                val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
-                                    (space.height - size.height).coerceAtMost(0),
-                                    (space.height - size.height).coerceAtLeast(0)
-                                )
-                                androidx.compose.ui.unit.IntOffset(x, y)
-                            },
+                            colorFilter = getSaturationColorFilter(saturation),
+                            alignment = Alignment.Center,
                             modifier = aspectModifier.then(
                                 if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
                             )
@@ -865,26 +855,21 @@ fun PhotoMasonryItem(
                         } ?: Modifier.fillMaxWidth().wrapContentHeight()
                     }
 
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
+                    val context = LocalContext.current
+                    val imageRequest = remember(photo.uriString) {
+                        ImageRequest.Builder(context)
                             .data(photo.uriString)
                             .crossfade(true)
                             .memoryCacheKey(photo.uriString)
-                            .build(),
+                            .build()
+                    }
+
+                    AsyncImage(
+                        model = imageRequest,
                         contentDescription = null,
                         contentScale = if (isCustomPolygon) ContentScale.Crop else ContentScale.FillWidth,
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }),
-                        alignment = Alignment { size, space, _ ->
-                            val x = ((space.width - size.width) * 0.5f).toInt().coerceIn(
-                                (space.width - size.width).coerceAtMost(0),
-                                (space.width - size.width).coerceAtLeast(0)
-                            )
-                            val y = ((space.height - size.height) * 0.5f).toInt().coerceIn(
-                                (space.height - size.height).coerceAtMost(0),
-                                (space.height - size.height).coerceAtLeast(0)
-                            )
-                            androidx.compose.ui.unit.IntOffset(x, y)
-                        },
+                        colorFilter = getSaturationColorFilter(saturation),
+                        alignment = Alignment.Center,
                         modifier = aspectModifier.then(
                             if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
                         )
@@ -1343,17 +1328,20 @@ fun PhotoCard(
                                     }
                                 ).clip(photoClipShape)
                             ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
+                                val context = LocalContext.current
+                                val imageRequest = remember(photo.uriString) {
+                                    ImageRequest.Builder(context)
                                         .data(photo.uriString)
                                         .crossfade(true)
                                         .memoryCacheKey(photo.uriString)
-                                        .build(),
+                                        .build()
+                                }
+
+                                AsyncImage(
+                                    model = imageRequest,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                                        androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
-                                    ),
+                                    colorFilter = getSaturationColorFilter(saturation),
                                     modifier = Modifier.fillMaxSize().then(
                                         if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
                                     )
@@ -1748,12 +1736,13 @@ fun SameDayPhotoCarousel(
     val view = LocalView.current
     val context = LocalContext.current
     
-    // Preload the first few photos so they don't pop in when scrolling
+    // Preload the first few visible photos with explicit size so they don't consume uncompressed full-res RAM
     LaunchedEffect(photoList) {
         val imageLoader = context.imageLoader
-        photoList.take(15).forEach { photo ->
+        photoList.take(6).forEach { photo ->
             val request = ImageRequest.Builder(context)
                 .data(photo.uriString)
+                .size(840, 960)
                 .build()
             imageLoader.enqueue(request)
         }

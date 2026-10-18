@@ -266,25 +266,6 @@ fun LibraryScreen(
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val hazeState = com.android.snippets.ui.components.LocalHazeState.current ?: dev.chrisbanes.haze.rememberHazeState()
 
-    var hazeInvalidationTrigger by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(viewModel.customGridColumns, currentTab) {
-        repeat(12) {
-            hazeInvalidationTrigger++
-            kotlinx.coroutines.delay(30)
-        }
-    }
-
-    LaunchedEffect(currentGridState.isScrollInProgress) {
-        if (currentGridState.isScrollInProgress) {
-            while (currentGridState.isScrollInProgress) {
-                hazeInvalidationTrigger++
-                kotlinx.coroutines.delay(16)
-            }
-            hazeInvalidationTrigger++
-        }
-    }
-
     androidx.compose.runtime.CompositionLocalProvider(
         com.android.snippets.ui.components.LocalHazeState provides hazeState
     ) {
@@ -341,11 +322,6 @@ fun LibraryScreen(
                         state = pagerState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .drawWithContent {
-                                hazeInvalidationTrigger
-                                viewModel.customGridColumns
-                                drawContent()
-                            }
                             .then(
                                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                                     Modifier.hazeSource(state = hazeState, key = viewModel.customGridColumns)

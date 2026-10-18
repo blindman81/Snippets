@@ -299,27 +299,26 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private fun createBlurredBackground(src: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
         val srcWidth = src.width.toFloat()
         val srcHeight = src.height.toFloat()
-        val scaleX = targetWidth / srcWidth
-        val scaleY = targetHeight / srcHeight
+
+        val tinyW = (targetWidth * 0.08f).toInt().coerceAtLeast(8)
+        val tinyH = (targetHeight * 0.08f).toInt().coerceAtLeast(8)
+        val scaleX = tinyW / srcWidth
+        val scaleY = tinyH / srcHeight
         val scale = maxOf(scaleX, scaleY)
         val scaledW = (srcWidth * scale).toInt().coerceAtLeast(1)
         val scaledH = (srcHeight * scale).toInt().coerceAtLeast(1)
 
-        val cropped = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(cropped)
+        val tiny = Bitmap.createBitmap(tinyW, tinyH, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(tiny)
         val matrix = Matrix().apply {
             postScale(scale, scale)
-            postTranslate((targetWidth - scaledW) * 0.5f, (targetHeight - scaledH) * 0.5f)
+            postTranslate((tinyW - scaledW) * 0.5f, (tinyH - scaledH) * 0.5f)
         }
         canvas.drawBitmap(src, matrix, null)
 
-        val tinyW = (targetWidth * 0.08f).toInt().coerceAtLeast(8)
-        val tinyH = (targetHeight * 0.08f).toInt().coerceAtLeast(8)
-        val tiny = Bitmap.createScaledBitmap(cropped, tinyW, tinyH, true)
         val blurredTiny = boxBlur(tiny, 4)
         val blurred = Bitmap.createScaledBitmap(blurredTiny, targetWidth, targetHeight, true)
 
-        cropped.recycle()
         tiny.recycle()
         blurredTiny.recycle()
         return blurred
@@ -344,20 +343,20 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             for (i in -range..range) {
                 val x = i.coerceIn(0, width - 1)
                 val pixel = pixels[offset + x]
-                rSum += Color.red(pixel)
-                gSum += Color.green(pixel)
-                bSum += Color.blue(pixel)
+                rSum += (pixel ushr 16) and 0xFF
+                gSum += (pixel ushr 8) and 0xFF
+                bSum += pixel and 0xFF
             }
 
             for (x in 0 until width) {
-                newPixels[offset + x] = Color.rgb(rSum / size, gSum / size, bSum / size)
+                newPixels[offset + x] = (0xFF shl 24) or ((rSum / size) shl 16) or ((gSum / size) shl 8) or (bSum / size)
                 val prevX = (x - range).coerceIn(0, width - 1)
                 val nextX = (x + range + 1).coerceIn(0, width - 1)
                 val prevPixel = pixels[offset + prevX]
                 val nextPixel = pixels[offset + nextX]
-                rSum += Color.red(nextPixel) - Color.red(prevPixel)
-                gSum += Color.green(nextPixel) - Color.green(prevPixel)
-                bSum += Color.blue(nextPixel) - Color.blue(prevPixel)
+                rSum += ((nextPixel ushr 16) and 0xFF) - ((prevPixel ushr 16) and 0xFF)
+                gSum += ((nextPixel ushr 8) and 0xFF) - ((prevPixel ushr 8) and 0xFF)
+                bSum += (nextPixel and 0xFF) - (prevPixel and 0xFF)
             }
         }
 
@@ -371,20 +370,20 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             for (i in -range..range) {
                 val y = i.coerceIn(0, height - 1)
                 val pixel = newPixels[y * width + x]
-                rSum += Color.red(pixel)
-                gSum += Color.green(pixel)
-                bSum += Color.blue(pixel)
+                rSum += (pixel ushr 16) and 0xFF
+                gSum += (pixel ushr 8) and 0xFF
+                bSum += pixel and 0xFF
             }
 
             for (y in 0 until height) {
-                finalPixels[y * width + x] = Color.rgb(rSum / size, gSum / size, bSum / size)
+                finalPixels[y * width + x] = (0xFF shl 24) or ((rSum / size) shl 16) or ((gSum / size) shl 8) or (bSum / size)
                 val prevY = (y - range).coerceIn(0, height - 1)
                 val nextY = (y + range + 1).coerceIn(0, height - 1)
                 val prevPixel = newPixels[prevY * width + x]
                 val nextPixel = newPixels[nextY * width + x]
-                rSum += Color.red(nextPixel) - Color.red(prevPixel)
-                gSum += Color.green(nextPixel) - Color.green(prevPixel)
-                bSum += Color.blue(nextPixel) - Color.blue(prevPixel)
+                rSum += ((nextPixel ushr 16) and 0xFF) - ((prevPixel ushr 16) and 0xFF)
+                gSum += ((nextPixel ushr 8) and 0xFF) - ((prevPixel ushr 8) and 0xFF)
+                bSum += (nextPixel and 0xFF) - (prevPixel and 0xFF)
             }
         }
 
