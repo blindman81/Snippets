@@ -10,11 +10,11 @@
     <color name="amber_baseline">#FFDEAC</color>
     <color name="themed_icon_accent">#FD9F73</color>
     
-    <color name="splash_bg_light">#F2E0D1</color>
-    <color name="splash_bg_dark">#42474E</color>
+    <color name="splash_bg_light">#F0E0D5</color>
+    <color name="splash_bg_dark">#3D332C</color>
 
-    <color name="orange_primary">#824D00</color>
-    <color name="orange_primary_dark">#FFB86F</color>
+    <color name="orange_primary">#8A5100</color>
+    <color name="orange_primary_dark">#FFB870</color>
     <color name="splash_cookie_color">@color/orange_primary</color>
     <color name="splash_background">@color/splash_bg_light</color>
 
