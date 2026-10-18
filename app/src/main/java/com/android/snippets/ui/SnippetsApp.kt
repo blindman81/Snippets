@@ -332,7 +332,10 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     }
 
     if (viewModel.showFilterSheet) {
-        val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val filterSheetState = rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+        )
         BlurredModalBottomSheet(
             onDismissRequest = { viewModel.closeFilter() },
             sheetState = filterSheetState,

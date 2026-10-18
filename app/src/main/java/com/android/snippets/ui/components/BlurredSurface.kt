@@ -65,9 +65,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -211,14 +212,14 @@ fun BlurredSurface(
 fun BlurredModalBottomSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(),
+    sheetState: SheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
     shape: Shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     alpha: Float = HazeDefaults.tintAlpha,
     contentColor: Color = contentColorFor(containerColor),
     scrimColor: Color = BottomSheetDefaults.ScrimColor,
     dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults.DragHandle() },
-    contentWindowInsets: @Composable () -> WindowInsets = { BottomSheetDefaults.windowInsets },
+    contentWindowInsets: @Composable () -> WindowInsets = { BottomSheetDefaults.modalWindowInsets },
     hazeState: HazeState? = LocalHazeState.current,
     content: @Composable ColumnScope.() -> Unit
 ) {

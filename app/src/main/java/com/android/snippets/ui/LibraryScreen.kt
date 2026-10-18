@@ -45,6 +45,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.res.painterResource
@@ -757,10 +761,23 @@ fun LibraryScreen(
                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
 
+                                val searchTextFieldState = rememberTextFieldState(viewModel.searchQuery)
+                                LaunchedEffect(searchTextFieldState) {
+                                    snapshotFlow { searchTextFieldState.text.toString() }.collect { newText ->
+                                        if (viewModel.searchQuery != newText) {
+                                            viewModel.searchQuery = newText
+                                        }
+                                    }
+                                }
+                                LaunchedEffect(viewModel.searchQuery) {
+                                    if (searchTextFieldState.text.toString() != viewModel.searchQuery) {
+                                        searchTextFieldState.setTextAndPlaceCursorAtEnd(viewModel.searchQuery)
+                                    }
+                                }
+
                                 // Text field
                                 BasicTextField(
-                                    value = viewModel.searchQuery,
-                                    onValueChange = { viewModel.searchQuery = it },
+                                    state = searchTextFieldState,
                                     modifier = Modifier
                                         .weight(1f)
                                         .focusRequester(searchFocusRequester),
@@ -770,14 +787,14 @@ fun LibraryScreen(
                                         fontSize = 17.sp
                                     ),
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                    singleLine = true,
+                                    lineLimits = TextFieldLineLimits.SingleLine,
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    keyboardActions = KeyboardActions(onSearch = {
+                                    onKeyboardAction = {
                                         viewModel.addRecentSearch(viewModel.searchQuery)
                                         isSearchOpen = false
                                         focusManager.clearFocus()
-                                    }),
-                                    decorationBox = { innerTextField ->
+                                    },
+                                    decorator = { innerTextField ->
                                         Box(contentAlignment = Alignment.CenterStart) {
                                             if (viewModel.searchQuery.isEmpty()) {
                                                 Text(
@@ -1056,9 +1073,9 @@ fun LibraryScreen(
                                 listOf(
                                     cookieButtonItem(Icons.Default.ArrowDownward, contentDescription = "Newest first", tooltip = "Newest first", iconSize = 22.dp),
                                     cookieButtonItem(Icons.Default.ArrowUpward, contentDescription = "Oldest first", tooltip = "Oldest first", iconSize = 22.dp),
-                                    cookieButtonItem(Icons.Default.TextSnippet, contentDescription = "Most snippets", tooltip = "Most snippets", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.AutoMirrored.Filled.TextSnippet, contentDescription = "Most snippets", tooltip = "Most snippets", iconSize = 22.dp),
                                     cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Most starred", tooltip = "Most starred", iconSize = 22.dp),
-                                    cookieButtonItem(Icons.Default.TextSnippet, contentDescription = "Least snippets", tooltip = "Least snippets", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.AutoMirrored.Filled.TextSnippet, contentDescription = "Least snippets", tooltip = "Least snippets", iconSize = 22.dp),
                                     cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Least starred", tooltip = "Least starred", iconSize = 22.dp)
                                 )
                             }
@@ -1094,11 +1111,13 @@ fun LibraryScreen(
                                         verticalArrangement = Arrangement.Top,
                                         modifier = Modifier.width(48.dp)
                                     ) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+
                                         Surface(
                                             shape = CookieShape,
                                             color = MaterialTheme.colorScheme.primary,
                                             contentColor = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(44.dp)
+                                            modifier = Modifier.size(48.dp)
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
                                                 when (iconOrEmoji) {
@@ -1115,7 +1134,7 @@ fun LibraryScreen(
                                             }
                                         }
 
-                                        Spacer(modifier = Modifier.height(38.dp))
+                                        Spacer(modifier = Modifier.height(26.dp))
 
                                         // Spring physics M3 pagination dots
                                         Row(
@@ -1428,7 +1447,7 @@ fun LibraryScreen(
                                                                         }
                                                                         2 -> showPillInfo("Most snippets") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.TextSnippet,
+                                                                                imageVector = Icons.AutoMirrored.Filled.TextSnippet,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1444,7 +1463,7 @@ fun LibraryScreen(
                                                                         }
                                                                         4 -> showPillInfo("Least snippets") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.TextSnippet,
+                                                                                imageVector = Icons.AutoMirrored.Filled.TextSnippet,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
