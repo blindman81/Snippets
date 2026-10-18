@@ -8,6 +8,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.KeyframesSpec
+import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -39,6 +41,17 @@ object Motion {
         stiffness = 320f
     )
 
+    fun wiggleSpec(direction: Float = 1f, amplitude: Float = 8f): KeyframesSpec<Float> = keyframes {
+        durationMillis = 400
+        0f at 0
+        (amplitude * direction) at 60 using FastOutSlowInEasing
+        (-amplitude * direction) at 140 using FastOutSlowInEasing
+        (amplitude * 0.6f * direction) at 220 using FastOutSlowInEasing
+        (-amplitude * 0.3f * direction) at 300 using FastOutSlowInEasing
+        (amplitude * 0.1f * direction) at 360 using FastOutSlowInEasing
+        0f at 400
+    }
+
     @Composable
     fun ExpressiveSheetContent(
         modifier: Modifier = Modifier,
@@ -57,7 +70,7 @@ object Motion {
 
     fun screenTransition(initialState: Screen, targetState: Screen, motionScheme: androidx.compose.material3.MotionScheme): ContentTransform {
         val isNavigatingBack = targetState == Screen.Library ||
-            (initialState in listOf(Screen.SelectIcon, Screen.PhotosCarousel) && targetState == Screen.Settings) ||
+            (initialState in listOf(Screen.EmojiPicker, Screen.PhotosCarousel) && targetState == Screen.Settings) ||
             (initialState in listOf(Screen.MonthlyRecap, Screen.YearlyRecap))
 
         return when {
