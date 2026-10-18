@@ -1,4 +1,4 @@
-package com.android.snippets.viewmodel
+﻿package com.android.snippets.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -3030,14 +3030,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             addJsonFileOrMemory("snippetFirstSeenTimes", snippetFirstSeenFile, snippetFirstSeenTimes)
 
             val prefsObj = com.google.gson.JsonObject().apply {
-                prefs.all.forEach { (key, value) ->
+                prefs.all.toSortedMap().forEach { (key, value) ->
                     when (value) {
                         is Boolean -> addProperty(key, value)
                         is Number -> addProperty(key, value)
                         is String -> addProperty(key, value)
                         is Set<*> -> {
                             val arr = com.google.gson.JsonArray()
-                            value.forEach { item -> if (item is String) arr.add(item) }
+                            value.filterIsInstance<String>().sorted().forEach { item -> arr.add(item) }
                             add(key, arr)
                         }
                     }

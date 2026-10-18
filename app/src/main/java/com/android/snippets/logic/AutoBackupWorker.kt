@@ -1,4 +1,4 @@
-package com.android.snippets.logic
+﻿package com.android.snippets.logic
 
 import android.content.Context
 import android.os.Environment
@@ -15,8 +15,72 @@ import java.io.FileOutputStream
 import java.util.Calendar
 
 class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    private companion object {
+    companion object {
         const val TAG = "AutoBackupWorker"
+
+        fun hasNewChanges(existing: JsonObject, current: JsonObject): Boolean {
+            val allKeys = (existing.keySet() + current.keySet()) - "exportedAt"
+            for (key in allKeys) {
+                val existingElem = existing.get(key)
+                val currentElem = current.get(key)
+                if (existingElem != currentElem) {
+                    return true
+                }
+            }
+            return false
+        }
+
+        fun getReferenceBackupFile(backupDir: File, suffix: String): File? {
+            val backupFile = File(backupDir, "snippets_backup_auto_$suffix.json")
+            if (backupFile.exists()) return backupFile
+
+            val otherFiles = backupDir.listFiles { _, name ->
+                name.startsWith("snippets_backup_auto_") && name.endsWith(".json")
+            } ?: return null
+            return otherFiles.filter { it.isFile }.maxByOrNull { it.lastModified() }
+        }
+
+        fun buildBackupData(context: Context, gson: Gson = Gson()): JsonObject {
+            return JsonObject().apply {
+                addProperty("version", 2)
+
+                fun addJsonFileIfExists(key: String, fileName: String) {
+                    val file = File(context.filesDir, fileName)
+                    if (file.exists()) {
+                        try {
+                            val elem = gson.fromJson(file.readText(), JsonElement::class.java)
+                            add(key, elem)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error reading $fileName for auto backup", e)
+                        }
+                    }
+                }
+
+                addJsonFileIfExists("photos", "photos_v2.json")
+                addJsonFileIfExists("collections", "collections_v2.json")
+                addJsonFileIfExists("collectionIcons", "collection_icons_v2.json")
+                addJsonFileIfExists("snippetColors", "snippet_colors_v2.json")
+                addJsonFileIfExists("snippetStyles", "snippet_styles_v2.json")
+                addJsonFileIfExists("snippetFirstSeenTimes", "snippet_first_seen_v1.json")
+
+                val prefs = context.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
+                val prefsObj = JsonObject().apply {
+                    prefs.all.toSortedMap().forEach { (key, value) ->
+                        when (value) {
+                            is Boolean -> addProperty(key, value)
+                            is Number -> addProperty(key, value)
+                            is String -> addProperty(key, value)
+                            is Set<*> -> {
+                                val arr = JsonArray()
+                                value.filterIsInstance<String>().sorted().forEach { item -> arr.add(item) }
+                                add(key, arr)
+                            }
+                        }
+                    }
+                }
+                add("settings", prefsObj)
+            }
+        }
     }
 
     override suspend fun doWork(): Result {
@@ -42,7 +106,12 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
 
         return try {
-            performBackup(schedule.lowercase())
+            val performed = performBackup(schedule.lowercase())
+            if (performed) {
+                Log.d(TAG, "Auto backup completed successfully.")
+            } else {
+                Log.d(TAG, "Auto backup skipped: no new changes.")
+            }
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Auto backup failed", e)
@@ -50,59 +119,36 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
     }
 
-    private fun performBackup(suffix: String) {
+    private fun performBackup(suffix: String): Boolean {
         val backupDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SnippetsBackups")
         if (!backupDir.exists()) backupDir.mkdirs()
 
         val backupFile = File(backupDir, "snippets_backup_auto_$suffix.json")
-        Log.d(TAG, "Creating auto backup file: ${backupFile.absolutePath}")
-
         val gson = Gson()
+        val currentBackupData = buildBackupData(applicationContext, gson)
 
-        val backupJsonObj = JsonObject().apply {
-            addProperty("version", 2)
+        val referenceFile = getReferenceBackupFile(backupDir, suffix)
+        if (referenceFile != null && referenceFile.exists()) {
+            try {
+                val existingJson = gson.fromJson(referenceFile.readText(), JsonObject::class.java)
+                if (existingJson != null && !hasNewChanges(existingJson, currentBackupData)) {
+                    Log.d(TAG, "No new changes detected compared to ${referenceFile.name}. Skipping auto backup.")
+                    return false
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to read or parse existing backup file ${referenceFile.name}, continuing with backup", e)
+            }
+        }
+
+        Log.d(TAG, "New changes detected or no existing backup. Creating auto backup file: ${backupFile.absolutePath}")
+        val backupJsonObj = currentBackupData.deepCopy().apply {
             addProperty("exportedAt", System.currentTimeMillis())
-
-            fun addJsonFileIfExists(key: String, fileName: String) {
-                val file = File(applicationContext.filesDir, fileName)
-                if (file.exists()) {
-                    try {
-                        val elem = gson.fromJson(file.readText(), JsonElement::class.java)
-                        add(key, elem)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error reading $fileName for auto backup", e)
-                    }
-                }
-            }
-
-            addJsonFileIfExists("photos", "photos_v2.json")
-            addJsonFileIfExists("collections", "collections_v2.json")
-            addJsonFileIfExists("collectionIcons", "collection_icons_v2.json")
-            addJsonFileIfExists("snippetColors", "snippet_colors_v2.json")
-            addJsonFileIfExists("snippetStyles", "snippet_styles_v2.json")
-            addJsonFileIfExists("snippetFirstSeenTimes", "snippet_first_seen_v1.json")
-
-            val prefs = applicationContext.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
-            val prefsObj = JsonObject().apply {
-                prefs.all.forEach { (key, value) ->
-                    when (value) {
-                        is Boolean -> addProperty(key, value)
-                        is Number -> addProperty(key, value)
-                        is String -> addProperty(key, value)
-                        is Set<*> -> {
-                            val arr = JsonArray()
-                            value.forEach { item -> if (item is String) arr.add(item) }
-                            add(key, arr)
-                        }
-                    }
-                }
-            }
-            add("settings", prefsObj)
         }
 
         FileOutputStream(backupFile).use { outputStream ->
             outputStream.write(gson.toJson(backupJsonObj).toByteArray(Charsets.UTF_8))
         }
         Log.d(TAG, "Auto backup completed successfully.")
+        return true
     }
 }
