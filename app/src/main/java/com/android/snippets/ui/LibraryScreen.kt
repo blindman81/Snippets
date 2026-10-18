@@ -946,7 +946,7 @@ fun LibraryScreen(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         size = 48.dp,
-                        isSpinning = false
+                        isSpinning = !isAnyPopupActive
                     )
                 }
 
