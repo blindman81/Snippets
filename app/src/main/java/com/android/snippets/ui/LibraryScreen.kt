@@ -1,6 +1,8 @@
 package com.android.snippets.ui
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.boundsInParent
@@ -17,8 +19,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -57,7 +57,6 @@ import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
-import com.android.snippets.ui.components.rememberMonetTintedColor
 
 import androidx.compose.foundation.pager.*
 import androidx.compose.foundation.rememberScrollState
@@ -129,7 +128,6 @@ fun LibraryScreen(
     windowSizeClass: WindowSizeClass?,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
-    isDetailTransitioning: Boolean = false,
     onAddPhotos: (String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -162,15 +160,12 @@ fun LibraryScreen(
         }
     }
     
-    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet
+    var longPressedCollection by remember { mutableStateOf<String?>(null) }
+    var deletingCollection by remember { mutableStateOf<String?>(null) }
+
+    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet || (longPressedCollection != null) || (deletingCollection != null)
     val allowMemorySpin = !isAnyPopupActive
     val curated = viewModel.curatedMemories
-    
-    var longPressedCollection by remember { mutableStateOf<String?>(null) }
-    var renamingCollection by remember { mutableStateOf<String?>(null) }
-    var deletingCollection by remember { mutableStateOf<String?>(null) }
-    var draggedCollection by remember { mutableStateOf<String?>(null) }
-    val dragOffsetAnim = remember { androidx.compose.animation.core.Animatable(0f) }
     
     val pageTabs = remember(viewModel.userCollections) {
         listOf("Library", "Favorites") + viewModel.userCollections
@@ -320,13 +315,10 @@ fun LibraryScreen(
                         label = "status_bar_blur_alpha"
                     )
 
-                    val statusBarTint = rememberMonetTintedColor(
-                        baseColor = MaterialTheme.colorScheme.surfaceContainer,
-                        weight = 0.28f
-                    )
-                    val statusBarHazeStyle = remember(statusBarTint) {
+                    val statusBarBaseColor = MaterialTheme.colorScheme.surfaceContainer
+                    val statusBarHazeStyle = remember(statusBarBaseColor) {
                         HazeStyle(
-                            tint = HazeTint(statusBarTint.copy(alpha = HazeDefaults.tintAlpha)),
+                            tint = HazeTint(statusBarBaseColor.copy(alpha = HazeDefaults.tintAlpha)),
                             blurRadius = HazeDefaults.blurRadius,
                             noiseFactor = HazeDefaults.noiseFactor
                         )
@@ -473,7 +465,7 @@ fun LibraryScreen(
                                                                else -> CardPosition.Middle
                                                            }
 
-                                                           PhotoCardListItem(
+                                                           PhotoCard(
                                                                photo = photo,
                                                                position = CardPosition.Single,
                                                                isSelected = viewModel.selectedPhotoIds.contains(photo.id),
@@ -502,7 +494,7 @@ fun LibraryScreen(
                                                                },
                                                                sharedTransitionScope = sharedTransitionScope,
                                                                animatedVisibilityScope = animatedVisibilityScope,
-                                                               modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                               modifier = Modifier.fillMaxWidth()
                                                            )
                                                        }
                                                        0 -> {
@@ -513,7 +505,7 @@ fun LibraryScreen(
                                                                index == totalCount - 1 -> CardPosition.Last
                                                                else -> CardPosition.Middle
                                                            }
-                                                           PhotoListItem(
+                                                           PhotoCard(
                                                                photo = photo,
                                                                position = cardPos,
                                                                isSelected = viewModel.selectedPhotoIds.contains(photo.id),
@@ -540,10 +532,9 @@ fun LibraryScreen(
                                                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                                                    if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
                                                                },
-                                                               shape = RoundedCornerShape(12.dp),
                                                                sharedTransitionScope = sharedTransitionScope,
                                                                animatedVisibilityScope = animatedVisibilityScope,
-                                                               modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                               modifier = Modifier.fillMaxWidth()
                                                            )
                                                        }
                                                        else -> {
@@ -557,7 +548,7 @@ fun LibraryScreen(
                                                                isLeastSnippets = isLeast,
                                                                sharedTransitionScope = sharedTransitionScope,
                                                                animatedVisibilityScope = animatedVisibilityScope,
-                                                               shape = RoundedCornerShape(16.dp),
+                                                               shape = RoundedCornerShape(12.dp),
                                                                tab = tabForPage,
                                                                onClick = {
                                                                    if (viewModel.isSelectionMode) {
@@ -578,7 +569,7 @@ fun LibraryScreen(
                                                                },
                                                                fillCard = false,
                                                                viewModel = viewModel,
-                                                               modifier = Modifier.fillMaxWidth().alpha(if ((viewModel.currentScreen == Screen.Detail || isDetailTransitioning) && viewModel.activePhotoId == photo.id) 0f else 1f)
+                                                               modifier = Modifier.fillMaxWidth()
                                                            )
                                                        }
                                                    }
@@ -640,11 +631,8 @@ fun LibraryScreen(
                                          horizontalArrangement = Arrangement.Start,
                                          verticalAlignment = Alignment.CenterVertically
                                      ) {
-                                         androidx.compose.material3.ButtonGroup(
-                                              horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
-                                              overflowIndicator = {}
-                                          ) {
-                                              allTabs.forEachIndexed { tabIndex, tabName ->
+                                          val navTabItems = remember(allTabs, currentTab) {
+                                              allTabs.mapIndexed { tabIndex, tabName ->
                                                   val isSelected = tabName == currentTab
                                                   val iconOrEmoji = when (tabName) {
                                                       "Library" -> Icons.Default.PhotoLibrary
@@ -652,206 +640,51 @@ fun LibraryScreen(
                                                       else -> viewModel.getCollectionIcon(tabName)
                                                   }
                                                   val isSystem = tabName == "Library" || tabName == "Favorites"
-                                                  val customIndex = viewModel.userCollections.indexOf(tabName)
+                                                  val positionModifier = Modifier.onGloballyPositioned { coords ->
+                                                      tabPositions[tabName] = coords.boundsInParent().left
+                                                      tabWidths[tabName] = coords.size.width.toFloat()
+                                                  }
 
-                                                  customItem(
-                                                      buttonGroupContent = {
-                                                          key(tabName) {
-                                                              val isDragged = draggedCollection == tabName
-                                                              val density = androidx.compose.ui.platform.LocalDensity.current
-                                                              val positionModifier = Modifier.onGloballyPositioned { coords ->
-                                                                  tabPositions[tabName] = coords.boundsInParent().left
-                                                                  tabWidths[tabName] = coords.size.width.toFloat()
-                                                              }
-                                                              val itemWidthPx = remember { with(density) { 120.dp.toPx() } }
+                                                  cookieButtonItem(
+                                                      contentDescription = tabName,
+                                                      tooltip = if (isSystem) tabName else null,
+                                                      modifier = positionModifier,
+                                                      icon = { iconModifier, tint ->
+                                                          when (iconOrEmoji) {
+                                                              is androidx.compose.ui.graphics.vector.ImageVector -> Icon(iconOrEmoji, contentDescription = tabName, modifier = iconModifier.size(20.dp), tint = tint)
+                                                              is Int -> Icon(painterResource(id = iconOrEmoji), contentDescription = tabName, modifier = iconModifier.size(20.dp), tint = tint)
+                                                              is String -> Text(text = iconOrEmoji, fontSize = 16.sp, modifier = iconModifier)
+                                                              else -> Icon(Icons.Default.Folder, contentDescription = tabName, modifier = iconModifier.size(20.dp), tint = tint)
+                                                          }
+                                                      }
+                                                  )
+                                              }
+                                          }
 
-                                                              val dragModifier = if (!isSystem) {
-                                                                  Modifier
-                                                                      .pointerInput(tabName) {
-                                                                          detectDragGesturesAfterLongPress(
-                                                                              onDragStart = {
-                                                                                  view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                                  draggedCollection = tabName
-                                                                                  scope.launch { dragOffsetAnim.snapTo(0f) }
-                                                                              },
-                                                                              onDrag = { change, dragAmount ->
-                                                                                  change.consume()
-                                                                                  scope.launch { dragOffsetAnim.snapTo(dragOffsetAnim.value + dragAmount.x) }
-                                                                                  
-                                                                                  val index = viewModel.userCollections.indexOf(tabName)
-                                                                                  if (index != -1) {
-                                                                                      if (dragOffsetAnim.value > itemWidthPx && index < viewModel.userCollections.size - 1) {
-                                                                                          view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                                          viewModel.moveCollectionRight(tabName)
-                                                                                          scope.launch {
-                                                                                              dragOffsetAnim.animateTo(
-                                                                                                  dragOffsetAnim.value - itemWidthPx,
-                                                                                                  androidx.compose.animation.core.spring(
-                                                                                                      dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                                                                                      stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-                                                                                                  )
-                                                                                              )
-                                                                                          }
-                                                                                      } else if (dragOffsetAnim.value < -itemWidthPx && index > 0) {
-                                                                                          view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                                          viewModel.moveCollectionLeft(tabName)
-                                                                                          scope.launch {
-                                                                                              dragOffsetAnim.animateTo(
-                                                                                                  dragOffsetAnim.value + itemWidthPx,
-                                                                                                  androidx.compose.animation.core.spring(
-                                                                                                      dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                                                                                      stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-                                                                                                  )
-                                                                                              )
-                                                                                          }
-                                                                                      }
-                                                                                  }
-                                                                              },
-                                                                              onDragEnd = {
-                                                                                  scope.launch {
-                                                                                      dragOffsetAnim.animateTo(
-                                                                                          0f,
-                                                                                          androidx.compose.animation.core.spring(
-                                                                                              dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                                                                                              stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                                                                          )
-                                                                                      )
-                                                                                      draggedCollection = null
-                                                                                  }
-                                                                              },
-                                                                              onDragCancel = {
-                                                                                  scope.launch {
-                                                                                      dragOffsetAnim.snapTo(0f)
-                                                                                      draggedCollection = null
-                                                                                  }
-                                                                              }
-                                                                          )
-                                                                      }
-                                                                      .graphicsLayer {
-                                                                          val currentlyDragged = draggedCollection == tabName
-                                                                          translationX = if (currentlyDragged) dragOffsetAnim.value else 0f
-                                                                          scaleX = if (currentlyDragged) 1.08f else 1f
-                                                                          scaleY = if (currentlyDragged) 1.08f else 1f
-                                                                          alpha = if (currentlyDragged) 0.85f else 1f
-                                                                          shadowElevation = 0f
-                                                                      }
-                                                              } else {
-                                                                  Modifier
-                                                              }
+                                          val selectedTabIndex = allTabs.indexOf(currentTab).coerceAtLeast(0)
 
-                                                              val interactionSource = remember { MutableInteractionSource() }
-                                                              val isPressed by interactionSource.collectIsPressedAsState()
-
-                                                               // Calculate target width for spring animation & press compression accommodating wide font
-                                                               val showLabel = viewModel.showCollectionName && isSelected
-                                                               val textExtra = if (showLabel) (tabName.length * 10f).dp else 0.dp
-                                                               val baseSelectedWidth = if (showLabel) (88.dp + textExtra).coerceAtLeast(136.dp) else 76.dp
-                                                               val baseUnselectedWidth = 56.dp
-
-                                                               val targetWidth = when {
-                                                                   isSelected && isPressed -> if (showLabel) baseSelectedWidth + 8.dp else 84.dp
-                                                                   isSelected -> baseSelectedWidth
-                                                                   isPressed -> 64.dp
-                                                                   else -> baseUnselectedWidth
-                                                               }
-
-                                                               val animatedWidth by animateDpAsState(
-                                                                   targetValue = targetWidth,
-                                                                   animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-                                                                   label = "tabWidth_$tabName"
-                                                               )
-                                                                val baseShapes = when {
-                                                                    allTabs.size == 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                                                    tabIndex == 0 -> androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                                                    tabIndex == allTabs.size - 1 -> androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                                                    else -> androidx.compose.material3.ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                                                }
-                                                                val shapes = if (isSelected) baseShapes.copy(pressedShape = baseShapes.checkedShape) else baseShapes
-                                                                ToggleButton(
-                                                                    checked = isSelected,
-                                                                    onCheckedChange = { checked ->
-                                                                        val pageIndex = pageTabs.indexOf(tabName)
-                                                                        if (pageIndex != -1) {
-                                                                            if (isSelected) {
-                                                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                            } else {
-                                                                                scope.launch { pagerState.animateScrollToPage(pageIndex) }
-                                                                            }
-                                                                        }
-                                                                    },
-                                                                    interactionSource = interactionSource,
-                                                                    shapes = shapes,
-                                                                    contentPadding = PaddingValues(horizontal = 12.dp),
-                                                                    colors = ToggleButtonDefaults.toggleButtonColors(
-                                                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                                    ),
-                                                                    modifier = dragModifier.then(positionModifier).height(48.dp).width(animatedWidth)
-                                                                ) {
-                                                                 Row(
-                                                                     verticalAlignment = Alignment.CenterVertically,
-                                                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                                                 ) {
-                                                                     Box(
-                                                                         contentAlignment = Alignment.Center,
-                                                                         modifier = Modifier.size(20.dp)
-                                                                     ) {
-                                                                         if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
-                                                                             Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                                         } else if (iconOrEmoji is String) {
-                                                                             Text(text = iconOrEmoji, fontSize = 14.sp)
-                                                                         } else if (iconOrEmoji is Int) {
-                                                                             Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(16.dp))
-                                                                         }
-                                                                     }
-                                                                     
-                                                                     if (showLabel) {
-                                                                         Text(
-                                                                             text = tabName,
-                                                                             style = com.android.snippets.ui.theme.titleMediumEmphasized.copy(
-                                                                                 fontSize = 12.sp,
-                                                                                 fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                                                                             ),
-                                                                             fontWeight = FontWeight.Bold,
-                                                                             maxLines = 1,
-                                                                             softWrap = false
-                                                                         )
-                                                                     }
-                                                                 }
-                                                             }
-                                                         }
-                                                     },
-                                                     menuContent = { state ->
-                                                         DropdownMenuItem(
-                                                             leadingIcon = {
-                                                                 if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
-                                                                     Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                                 } else if (iconOrEmoji is String) {
-                                                                     Text(text = iconOrEmoji, fontSize = 16.sp)
-                                                                 } else if (iconOrEmoji is Int) {
-                                                                     Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(20.dp))
-                                                                 }
-                                                             },
-                                                             text = {
-                                                                 Text(
-                                                                     text = tabName,
-                                                                     style = MaterialTheme.typography.labelLarge
-                                                                 )
-                                                             },
-                                                             onClick = {
-                                                                 val pageIndex = pageTabs.indexOf(tabName)
-                                                                 if (pageIndex != -1) {
-                                                                     scope.launch { pagerState.animateScrollToPage(pageIndex) }
-                                                                 }
-                                                                 state.dismiss()
-                                                             }
-                                                         )
-                                                     }
-                                                 )
-                                             }
-                                         }
+                                          CookieButtonGroup(
+                                              selectedIndex = selectedTabIndex,
+                                              onSelect = { index ->
+                                                  val tabName = allTabs.getOrNull(index) ?: return@CookieButtonGroup
+                                                  val pageIndex = pageTabs.indexOf(tabName)
+                                                  if (pageIndex != -1) {
+                                                      if (tabName == currentTab) {
+                                                          view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                      } else {
+                                                          scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                      }
+                                                  }
+                                              },
+                                              items = navTabItems,
+                                              cookieSize = 48.dp,
+                                              overlap = 0.dp,
+                                              selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                              selectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                              unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                              unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                              enableWiggle = true
+                                          )
                                      }
                                  }
 
@@ -898,7 +731,7 @@ fun LibraryScreen(
                             tonalElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp)
+                                .height(84.dp)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -984,165 +817,103 @@ fun LibraryScreen(
                             tonalElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp)
+                                .height(84.dp)
                         ) {
-                            val isDarkTheme = when (viewModel.themePreference) {
-                                com.android.snippets.viewmodel.ThemePreference.LIGHT -> false
-                                com.android.snippets.viewmodel.ThemePreference.DARK -> true
-                                com.android.snippets.viewmodel.ThemePreference.SYSTEM -> isSystemInDarkTheme()
-                            }
-                            val toolbarLabelColor = if (isDarkTheme) Color.White else Color.Black
-
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // Menu
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    AnimatedCookieButton(
-                                        onClick = {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            showMenuPopup = !showMenuPopup
-                                            showCollectionsPopup = false
-                                        },
-                                        icon = Icons.Default.Menu,
-                                        contentDescription = "Menu",
-                                        isSpinning = !isAnyPopupActive,
-                                        size = 48.dp,
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Menu",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = toolbarLabelColor
-                                    )
-                                }
+                                AnimatedCookieButton(
+                                    onClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        showMenuPopup = !showMenuPopup
+                                        showCollectionsPopup = false
+                                    },
+                                    icon = Icons.Default.Menu,
+                                    contentDescription = "Menu",
+                                    isSpinning = !isAnyPopupActive,
+                                    size = 48.dp,
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
 
                                 // Search
                                 val isSearchActive = viewModel.searchQuery.isNotEmpty()
                                 val searchIcon = if (isSearchActive && flatPhotos.isNotEmpty()) SearchSuccessIcon() else Icons.Default.Search
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    AnimatedCookieButton(
-                                        onClick = {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            isSearchOpen = true
-                                        },
-                                        icon = searchIcon,
-                                        contentDescription = "Search",
-                                        isSpinning = !isAnyPopupActive,
-                                        size = 48.dp,
-                                        containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Search",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = toolbarLabelColor
-                                    )
-                                }
+                                AnimatedCookieButton(
+                                    onClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        isSearchOpen = true
+                                    },
+                                    icon = searchIcon,
+                                    contentDescription = "Search",
+                                    isSpinning = !isAnyPopupActive,
+                                    size = 48.dp,
+                                    containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
 
-                                 // Manage (Middle)
-                                 Column(
-                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                     verticalArrangement = Arrangement.Center
-                                 ) {
-                                     AnimatedCookieButton(
-                                         onClick = {
-                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                             val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
-                                             longPressedCollection = activeTab
-                                         },
-                                         icon = ImageVector.vectorResource(id = R.drawable.ic_folder_managed),
-                                         contentDescription = "Manage",
-                                         isSpinning = !isAnyPopupActive,
-                                         size = 48.dp,
-                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                     )
-                                     Spacer(modifier = Modifier.height(4.dp))
-                                     Text(
-                                         text = "Manage",
-                                         style = MaterialTheme.typography.labelSmall,
-                                         color = toolbarLabelColor
-                                     )
-                                 }
+                                // Manage (Middle)
+                                AnimatedCookieButton(
+                                    onClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
+                                        longPressedCollection = activeTab
+                                    },
+                                    icon = ImageVector.vectorResource(id = R.drawable.ic_folder_managed),
+                                    contentDescription = "Manage",
+                                    isSpinning = !isAnyPopupActive,
+                                    size = 48.dp,
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
 
                                 // History
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Box {
-                                        AnimatedCookieButton(
-                                            onClick = {
-                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                showHistoryBottomSheet = true
-                                            },
-                                            icon = Icons.Default.History,
-                                            contentDescription = "History",
-                                            isSpinning = !isAnyPopupActive,
-                                            size = 48.dp,
-                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                        )
-                                        // Unviewed-memories indicator dot
-                                        if (viewModel.hasUnviewedMemories) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .align(Alignment.TopEnd)
-                                                    .offset(x = (-4).dp, y = 4.dp)
-                                                    .size(8.dp)
-                                                    .background(
-                                                        color = MaterialTheme.colorScheme.tertiary,
-                                                        shape = CircleShape
-                                                    )
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "History",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = toolbarLabelColor
-                                    )
-                                }
-
-                                val isFilterActive = viewModel.selectedFilterSnippets.isNotEmpty() || viewModel.showFilterSheet
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
+                                Box {
                                     AnimatedCookieButton(
                                         onClick = {
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
-                                            viewModel.filteringCategory = activeTab
-                                            viewModel.navigateFilter()
+                                            showHistoryBottomSheet = true
                                         },
-                                        icon = Icons.Default.FilterList,
-                                        contentDescription = "Filters",
+                                        icon = Icons.Default.History,
+                                        contentDescription = "History",
                                         isSpinning = !isAnyPopupActive,
                                         size = 48.dp,
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Filter",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = toolbarLabelColor
-                                    )
+                                    // Unviewed-memories indicator dot
+                                    if (viewModel.hasUnviewedMemories) {
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .offset(x = (-4).dp, y = 4.dp)
+                                                .size(8.dp)
+                                                .background(
+                                                    color = MaterialTheme.colorScheme.tertiary,
+                                                    shape = CircleShape
+                                                )
+                                        )
+                                    }
                                 }
+
+                                val isFilterActive = viewModel.selectedFilterSnippets.isNotEmpty() || viewModel.showFilterSheet
+                                AnimatedCookieButton(
+                                    onClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
+                                        viewModel.filteringCategory = activeTab
+                                        viewModel.navigateFilter()
+                                    },
+                                    icon = Icons.Default.FilterList,
+                                    contentDescription = "Filters",
+                                    isSpinning = !isAnyPopupActive,
+                                    size = 48.dp,
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             }
                         }
 
@@ -1199,614 +970,613 @@ fun LibraryScreen(
                     onDismissRequest = { longPressedCollection = null },
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ) {
-                    Motion.ExpressiveSheetContent {
-                        val colName = longPressedCollection ?: ""
-                        val iconOrEmoji = when (colName) {
-                            "Library" -> Icons.Default.PhotoLibrary
-                            "Favorites" -> Icons.Default.Favorite
-                            else -> viewModel.getCollectionIcon(colName)
-                        }
-                        val isSystemCollection = longPressedCollection == "Library" || longPressedCollection == "Favorites"
-                        val managePagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
-                        val density = androidx.compose.ui.platform.LocalDensity.current
-                        var page0Height by remember { mutableStateOf<androidx.compose.ui.unit.Dp?>(null) }
-                        var page1Height by remember { mutableStateOf<androidx.compose.ui.unit.Dp?>(null) }
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.android.snippets.ui.util.LocalTiltActive provides (com.android.snippets.ui.util.LocalTiltActive.current && (deletingCollection == null))
+                    ) {
+                        Motion.ExpressiveSheetContent {
+                            val managePagerState = rememberPagerState(initialPage = 0, pageCount = { 3 })
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 24.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Surface(
-                                    shape = CookieShape,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(44.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        if (iconOrEmoji is androidx.compose.ui.graphics.vector.ImageVector) {
-                                            Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(24.dp))
-                                        } else if (iconOrEmoji is String) {
-                                            Text(text = iconOrEmoji, fontSize = 20.sp)
-                                        } else if (iconOrEmoji is Int) {
-                                            Icon(painterResource(id = iconOrEmoji), contentDescription = null, modifier = Modifier.size(24.dp))
-                                        }
+                            var activePillInfo by remember { mutableStateOf<SortPillInfo?>(null) }
+                            var displayedPillInfo by remember { mutableStateOf<SortPillInfo?>(null) }
+                            var pillInfoJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+                            fun showPillInfo(name: String, icon: @Composable () -> Unit) {
+                                pillInfoJob?.cancel()
+                                val info = SortPillInfo(name, icon, System.currentTimeMillis())
+                                displayedPillInfo = info
+                                activePillInfo = info
+                                pillInfoJob = scope.launch {
+                                    kotlinx.coroutines.delay(3500)
+                                    activePillInfo = null
+                                }
+                            }
+
+                            LaunchedEffect(managePagerState.currentPage) {
+                                pillInfoJob?.cancel()
+                                activePillInfo = null
+                            }
+
+                            val collection = longPressedCollection ?: ""
+                            val iconOrEmoji = when (collection) {
+                                "Library" -> Icons.Default.PhotoLibrary
+                                "Favorites" -> Icons.Default.Favorite
+                                else -> viewModel.getCollectionIcon(collection)
+                            }
+
+                            val actions = remember(longPressedCollection) {
+                                when (longPressedCollection) {
+                                    "Library" -> listOf("ADD")
+                                    "Favorites" -> listOf("ADD", "REMOVE")
+                                    else -> listOf("ADD", "REMOVE", "EDIT_EMOJI", "DELETE")
+                                }
+                            }
+
+                            val actionItems = remember(actions) {
+                                actions.map { action ->
+                                    when (action) {
+                                        "ADD" -> cookieButtonItem(
+                                            icon = Icons.Default.AddPhotoAlternate,
+                                            contentDescription = "Add photos",
+                                            tooltip = "Add photos",
+                                            iconSize = 28.dp
+                                        )
+                                        "REMOVE" -> cookieButtonItem(
+                                            icon = Icons.Default.Remove,
+                                            contentDescription = "Remove photos",
+                                            tooltip = "Remove photos",
+                                            iconSize = 28.dp
+                                        )
+                                        "EDIT_EMOJI" -> cookieButtonItem(
+                                            icon = Icons.Default.AddReaction,
+                                            contentDescription = "Edit emoji",
+                                            tooltip = "Edit emoji",
+                                            iconSize = 28.dp
+                                        )
+                                        "DELETE" -> cookieButtonItem(
+                                            icon = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tooltip = "Delete",
+                                            iconSize = 28.dp
+                                        )
+                                        else -> cookieButtonItem(Icons.Default.MoreHoriz)
                                     }
                                 }
-                                Text(
-                                    text = colName,
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface
+                            }
+
+                            var selectedActionIndex by remember { mutableIntStateOf(-1) }
+                            var actionJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+                            val currentSortType = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library")
+
+                            val sortOptions = remember {
+                                listOf(
+                                    com.android.snippets.viewmodel.PhotoSortType.DateNewest,
+                                    com.android.snippets.viewmodel.PhotoSortType.DateOldest,
+                                    com.android.snippets.viewmodel.PhotoSortType.MostSnippets,
+                                    com.android.snippets.viewmodel.PhotoSortType.MostStarred,
+                                    com.android.snippets.viewmodel.PhotoSortType.LeastSnippets,
+                                    com.android.snippets.viewmodel.PhotoSortType.LeastStarred
                                 )
                             }
+                            val sortItems = remember(sortOptions) {
+                                listOf(
+                                    cookieButtonItem(Icons.Default.ArrowDownward, contentDescription = "Newest first", tooltip = "Newest first", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.Default.ArrowUpward, contentDescription = "Oldest first", tooltip = "Oldest first", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.Default.TextSnippet, contentDescription = "Most snippets", tooltip = "Most snippets", iconSize = 22.dp),
+                                    cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Most starred", tooltip = "Most starred", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.Default.TextSnippet, contentDescription = "Least snippets", tooltip = "Least snippets", iconSize = 22.dp),
+                                    cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Least starred", tooltip = "Least starred", iconSize = 22.dp)
+                                )
+                            }
+                            val selectedSortIndex = sortOptions.indexOf(currentSortType)
 
-                            // Spring physics M3 pagination dots
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp, bottom = 12.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                repeat(2) { index ->
-                                    val isSelected = (if (managePagerState.isScrollInProgress) managePagerState.targetPage else managePagerState.currentPage) == index
-                                    val animatedWidth by animateDpAsState(
-                                        targetValue = if (isSelected) 32.dp else 10.dp,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioLowBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        ),
-                                        label = "manage_dot_width_$index"
-                                    )
-                                    val animatedColor by animateColorAsState(
-                                        targetValue = if (isSelected) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.secondaryContainer
-                                        },
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
-                                        ),
-                                        label = "manage_dot_color_$index"
-                                    )
-
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(horizontal = 4.dp, vertical = 6.dp)
-                                            .height(10.dp)
-                                            .width(animatedWidth)
-                                            .clip(CircleShape)
-                                            .background(animatedColor)
-                                            .clickable {
-                                                if (!isSelected) {
-                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                    scope.launch {
-                                                        managePagerState.animateScrollToPage(
-                                                            page = index,
-                                                            animationSpec = spring(
-                                                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                                                stiffness = Spring.StiffnessLow
-                                                            )
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                    )
+                            val currentCols = when (val raw = viewModel.customGridColumns) {
+                                null -> when (windowSizeClass?.widthSizeClass) {
+                                    androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Expanded,
+                                    androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Medium -> 3
+                                    else -> 1
                                 }
+                                0 -> 1
+                                else -> raw.coerceIn(1, 3)
                             }
 
-                            HorizontalPager(
-                                state = managePagerState,
-                                beyondViewportPageCount = 1,
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .then(
-                                        if (page0Height != null && page1Height != null) {
-                                            val progress = (managePagerState.currentPage + managePagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
-                                            val currentHeight = lerp(page0Height!!, page1Height!!, progress)
-                                            Modifier.height(currentHeight)
-                                        } else {
-                                            Modifier
-                                        }
-                                    ),
-                                verticalAlignment = Alignment.Top
-                            ) { page ->
-                                if (page == 0) {
-                                    // First page: Actions
+                                    .defaultMinSize(minHeight = 154.dp)
+                                    .padding(top = 8.dp, bottom = 20.dp),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp),
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    // Collection icon with pagination dots below it
                                     Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .verticalScroll(rememberScrollState())
-                                            .onSizeChanged { size ->
-                                                if (size.height > 0) {
-                                                    with(density) { page0Height = size.height.toDp() }
-                                                }
-                                            }
-                                            .padding(top = 16.dp, bottom = 16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Top,
+                                        modifier = Modifier.width(48.dp)
                                     ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 28.dp)
-                                                .padding(bottom = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        Surface(
+                                            shape = CookieShape,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(44.dp)
                                         ) {
-                                            ShapedSectionHeader(icon = MoreSectionIcon())
-                                            Text(
-                                                text = "Actions",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            Button(
-                                                onClick = {
-                                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                    onAddPhotos(longPressedCollection!!)
-                                                    longPressedCollection = null
-                                                },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shapes = ButtonDefaults.shapes(
-                                                    shape = CircleShape,
-                                                    pressedShape = RoundedCornerShape(12.dp)
-                                                ),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.primary,
-                                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                                ),
-                                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.Start
-                                                ) {
-                                                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
-                                                    Spacer(modifier = Modifier.width(12.dp))
-                                                    Text("Add photos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                                }
-                                            }
-
-                                            if (longPressedCollection != "Library") {
-                                                Button(
-                                                    onClick = {
-                                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                        viewModel.startCollectionRemoval(longPressedCollection!!)
-                                                        longPressedCollection = null
-                                                    },
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    shapes = ButtonDefaults.shapes(
-                                                        shape = CircleShape,
-                                                        pressedShape = RoundedCornerShape(12.dp)
-                                                    ),
-                                                    colors = ButtonDefaults.buttonColors(
-                                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                    ),
-                                                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
-                                                ) {
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.Start
-                                                    ) {
-                                                        Icon(Icons.Default.Remove, contentDescription = null)
-                                                        Spacer(modifier = Modifier.width(12.dp))
-                                                        Text("Remove photos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                            Box(contentAlignment = Alignment.Center) {
+                                                when (iconOrEmoji) {
+                                                    is androidx.compose.ui.graphics.vector.ImageVector -> {
+                                                        Icon(iconOrEmoji, contentDescription = null, modifier = Modifier.size(24.dp))
                                                     }
-                                                }
-                                            }
-
-                                            if (!isSystemCollection) {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    // 1. Edit name
-                                                    Button(
-                                                        onClick = {
-                                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                            renamingCollection = longPressedCollection
-                                                            longPressedCollection = null
-                                                        },
-                                                        modifier = Modifier.weight(1f),
-                                                        shapes = ButtonDefaults.shapes(
-                                                            shape = CircleShape,
-                                                            pressedShape = RoundedCornerShape(12.dp)
-                                                        ),
-                                                        colors = ButtonDefaults.buttonColors(
-                                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                        ),
-                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp)
-                                                    ) {
-                                                        Row(
-                                                            modifier = Modifier.fillMaxWidth(),
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                            horizontalArrangement = Arrangement.Center
-                                                        ) {
-                                                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                            Spacer(modifier = Modifier.width(8.dp))
-                                                            Text(
-                                                                text = "Edit name",
-                                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
-                                                                ),
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
-                                                        }
+                                                    is String -> {
+                                                        Text(text = iconOrEmoji, fontSize = 20.sp)
                                                     }
-
-                                                    // 2. Add emoji
-                                                    Button(
-                                                        onClick = {
-                                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                            viewModel.navigateSelectIcon(longPressedCollection!!)
-                                                            longPressedCollection = null
-                                                        },
-                                                        modifier = Modifier.weight(1f),
-                                                        shapes = ButtonDefaults.shapes(
-                                                            shape = CircleShape,
-                                                            pressedShape = RoundedCornerShape(12.dp)
-                                                        ),
-                                                        colors = ButtonDefaults.buttonColors(
-                                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                        ),
-                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp)
-                                                    ) {
-                                                        Row(
-                                                            modifier = Modifier.fillMaxWidth(),
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                            horizontalArrangement = Arrangement.Center
-                                                        ) {
-                                                            Icon(Icons.Default.AddReaction, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                            Spacer(modifier = Modifier.width(8.dp))
-                                                            Text(
-                                                                text = "Add emoji",
-                                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
-                                                                ),
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
-                                                        }
-                                                    }
-
-                                                    // 3. Delete
-                                                    Button(
-                                                        onClick = {
-                                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                            deletingCollection = longPressedCollection
-                                                            longPressedCollection = null
-                                                        },
-                                                        modifier = Modifier.weight(1f),
-                                                        shapes = ButtonDefaults.shapes(
-                                                            shape = CircleShape,
-                                                            pressedShape = RoundedCornerShape(12.dp)
-                                                        ),
-                                                        colors = ButtonDefaults.buttonColors(
-                                                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                                        ),
-                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 12.dp)
-                                                    ) {
-                                                        Row(
-                                                            modifier = Modifier.fillMaxWidth(),
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                            horizontalArrangement = Arrangement.Center
-                                                        ) {
-                                                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(20.dp))
-                                                            Spacer(modifier = Modifier.width(8.dp))
-                                                            Text(
-                                                                text = "Delete",
-                                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
-                                                                ),
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
-                                                        }
+                                                    else -> {
+                                                        Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(24.dp))
                                                     }
                                                 }
                                             }
                                         }
-                                    }
-                                } else {
-                                    // Second page: View and Sort
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .verticalScroll(rememberScrollState())
-                                            .onSizeChanged { size ->
-                                                if (size.height > 0) {
-                                                    with(density) { page1Height = size.height.toDp() }
-                                                }
-                                            }
-                                            .padding(top = 16.dp, bottom = 16.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 28.dp)
-                                                .padding(bottom = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            ShapedSectionHeader(icon = Icons.Default.ViewAgenda)
-                                            Text(
-                                                text = "View",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
 
+                                        Spacer(modifier = Modifier.height(38.dp))
+
+                                        // Spring physics M3 pagination dots
                                         Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 28.dp, vertical = 8.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            val currentCols = viewModel.customGridColumns?.coerceIn(-1, 3) ?: when (windowSizeClass?.widthSizeClass) {
-                                                androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Expanded -> 3
-                                                else -> 2
-                                            }
-
-                                            ViewOptionItem(
-                                                columnCount = -1,
-                                                isSelected = currentCols == -1,
-                                                onClick = {
-                                                    viewModel.updateCustomGridColumns(-1)
-                                                    listStates.values.forEach { state ->
-                                                        scope.launch { state.scrollToItem(0) }
-                                                    }
-                                                },
-                                                icon = ViewAgendaCustomIcon()
-                                            )
-
-                                            ViewOptionItem(
-                                                columnCount = 0,
-                                                isSelected = currentCols == 0,
-                                                onClick = {
-                                                    viewModel.updateCustomGridColumns(0)
-                                                    listStates.values.forEach { state ->
-                                                        scope.launch { state.scrollToItem(0) }
-                                                    }
-                                                },
-                                                icon = FormatListBulletedIcon()
-                                            )
-
-                                            ViewOptionItem(
-                                                columnCount = 2,
-                                                isSelected = currentCols == 2,
-                                                onClick = {
-                                                    viewModel.updateCustomGridColumns(2)
-                                                    listStates.values.forEach { state ->
-                                                        scope.launch { state.scrollToItem(0) }
-                                                    }
-                                                },
-                                                icon = ViewGrid2Icon()
-                                            )
-
-                                            ViewOptionItem(
-                                                columnCount = 3,
-                                                isSelected = currentCols == 3,
-                                                onClick = {
-                                                    viewModel.updateCustomGridColumns(3)
-                                                    listStates.values.forEach { state ->
-                                                        scope.launch { state.scrollToItem(0) }
-                                                    }
-                                                },
-                                                icon = ViewGrid3Icon()
-                                            )
-                                        }
-
-                                        Spacer(modifier = Modifier.height(16.dp))
-
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 28.dp)
-                                                .padding(bottom = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            ShapedSectionHeader(icon = SortIcon())
-                                            Text(
-                                                text = "Sort",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-
-                                        androidx.compose.material3.ButtonGroup(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
-                                            overflowIndicator = {}
-                                        ) {
-                                            val dateOptions = listOf(com.android.snippets.viewmodel.PhotoSortType.DateNewest, com.android.snippets.viewmodel.PhotoSortType.DateOldest)
-                                            val dateLabels = listOf("Newest first", "Oldest first")
-                                            val dateIcons = listOf(Icons.Default.ArrowDownward, Icons.Default.ArrowUpward)
-
-                                            dateOptions.forEachIndexed { index, option ->
-                                                val isSelected = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library") == option
-                                                surfaceContainerHighestToggleableItem(
-                                                    weight = 1f,
-                                                    checked = isSelected,
-                                                    onCheckedChange = {
-                                                        if (!isSelected) {
-                                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                            viewModel.setPhotoSortTypeFor(longPressedCollection ?: "Library", option)
-                                                            listStates.values.forEach { state ->
-                                                                scope.launch { state.scrollToItem(0) }
-                                                            }
-                                                        }
-                                                    },
-                                                    icon = { Icon(dateIcons[index], null, modifier = Modifier.size(18.dp)) },
-                                                    label = dateLabels[index],
-                                                    isFirst = index == 0,
-                                                    isLast = index == dateOptions.size - 1
+                                            repeat(3) { index ->
+                                                val isSelected = (if (managePagerState.isScrollInProgress) managePagerState.targetPage else managePagerState.currentPage) == index
+                                                val animatedWidth by animateDpAsState(
+                                                    targetValue = if (isSelected) 18.dp else 6.dp,
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                                        stiffness = Spring.StiffnessMediumLow
+                                                    ),
+                                                    label = "manage_dot_width_$index"
                                                 )
-                                            }
-                                        }
-
-                                        androidx.compose.material3.ButtonGroup(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
-                                            overflowIndicator = {}
-                                        ) {
-                                            val snippetOptions = listOf(com.android.snippets.viewmodel.PhotoSortType.MostSnippets, com.android.snippets.viewmodel.PhotoSortType.LeastSnippets)
-                                            val snippetLabels = listOf("Most snippets", "Least snippets")
-                                            val snippetIcons = listOf(androidx.compose.material.icons.Icons.Default.TextSnippet, androidx.compose.material.icons.Icons.Default.TextSnippet)
-
-                                            snippetOptions.forEachIndexed { index, option ->
-                                                val isSelected = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library") == option
-                                                surfaceContainerHighestToggleableItem(
-                                                    weight = 1f,
-                                                    checked = isSelected,
-                                                    onCheckedChange = {
-                                                        if (!isSelected) {
-                                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                            viewModel.setPhotoSortTypeFor(longPressedCollection ?: "Library", option)
-                                                            listStates.values.forEach { state ->
-                                                                scope.launch { state.scrollToItem(0) }
-                                                            }
-                                                        }
+                                                val animatedColor by animateColorAsState(
+                                                    targetValue = if (isSelected) {
+                                                        MaterialTheme.colorScheme.primary
+                                                    } else {
+                                                        MaterialTheme.colorScheme.secondaryContainer
                                                     },
-                                                    icon = { Icon(snippetIcons[index], null, modifier = Modifier.size(18.dp)) },
-                                                    label = snippetLabels[index],
-                                                    isFirst = index == 0,
-                                                    isLast = index == snippetOptions.size - 1
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                                        stiffness = Spring.StiffnessMediumLow
+                                                    ),
+                                                    label = "manage_dot_color_$index"
                                                 )
-                                            }
-                                        }
 
-                                        androidx.compose.material3.ButtonGroup(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween),
-                                            overflowIndicator = {}
-                                        ) {
-                                            val starOptions = listOf(com.android.snippets.viewmodel.PhotoSortType.MostStarred, com.android.snippets.viewmodel.PhotoSortType.LeastStarred)
-                                            val starLabels = listOf("Most starred", "Least starred")
-
-                                            starOptions.forEachIndexed { index, option ->
-                                                val isSelected = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library") == option
-                                                surfaceContainerHighestToggleableItem(
-                                                    weight = 1f,
-                                                    checked = isSelected,
-                                                    onCheckedChange = {
-                                                        if (!isSelected) {
-                                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                            viewModel.setPhotoSortTypeFor(longPressedCollection ?: "Library", option)
-                                                            listStates.values.forEach { state ->
-                                                                scope.launch { state.scrollToItem(0) }
+                                                Box(
+                                                    modifier = Modifier
+                                                        .height(6.dp)
+                                                        .width(animatedWidth)
+                                                        .clip(CircleShape)
+                                                        .background(animatedColor)
+                                                        .clickable {
+                                                            if (!isSelected) {
+                                                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                                                scope.launch {
+                                                                    managePagerState.animateScrollToPage(
+                                                                        page = index,
+                                                                        animationSpec = spring(
+                                                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                                                            stiffness = Spring.StiffnessLow
+                                                                        )
+                                                                    )
+                                                                }
                                                             }
                                                         }
-                                                    },
-                                                    icon = { Icon(painterResource(id = R.drawable.ic_star_rating), null, modifier = Modifier.size(18.dp)) },
-                                                    label = starLabels[index],
-                                                    isFirst = index == 0,
-                                                    isLast = index == starOptions.size - 1
                                                 )
                                             }
                                         }
                                     }
+
+                                    // Action pill composable rendered on each page
+                                    val actionPillContent: @Composable () -> Unit = {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(36.dp)
+                                                .padding(top = 4.dp),
+                                            contentAlignment = Alignment.CenterStart
+                                        ) {
+                                            androidx.compose.animation.AnimatedVisibility(
+                                                visible = activePillInfo != null,
+                                                enter = fadeIn(animationSpec = tween(200)) + slideInVertically(
+                                                    initialOffsetY = { -it / 2 },
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                                        stiffness = Spring.StiffnessMediumLow
+                                                    )
+                                                ),
+                                                exit = fadeOut(animationSpec = tween(200)) + slideOutVertically(
+                                                    targetOffsetY = { -it / 2 },
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                                        stiffness = Spring.StiffnessMediumLow
+                                                    )
+                                                )
+                                            ) {
+                                                displayedPillInfo?.let { currentInfo ->
+                                                    Surface(
+                                                        modifier = Modifier.height(32.dp),
+                                                        shape = CircleShape,
+                                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                        border = null
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 12.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.Start
+                                                        ) {
+                                                            currentInfo.icon()
+                                                            Spacer(modifier = Modifier.width(6.dp))
+                                                            Text(
+                                                                text = currentInfo.text,
+                                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                                    fontWeight = FontWeight.Medium,
+                                                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
+                                                                ),
+                                                                color = MaterialTheme.colorScheme.onSurface,
+                                                                fontSize = 12.sp,
+                                                                maxLines = 1,
+                                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Horizontal pager next to collection icon spanning button row and action pill row
+                                    BoxWithConstraints(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(126.dp)
+                                    ) {
+                                        val availableWidth = maxWidth
+                                        val actionCookieSize = remember(availableWidth, actionItems.size) {
+                                            availableWidth / actionItems.size.coerceAtLeast(4)
+                                        }
+                                        val sortCookieSize = remember(availableWidth, sortItems.size) {
+                                            availableWidth / sortItems.size.coerceAtLeast(1)
+                                        }
+
+                                        HorizontalPager(
+                                            state = managePagerState,
+                                            beyondViewportPageCount = 2,
+                                            pageSpacing = 16.dp,
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalAlignment = Alignment.Top
+                                        ) { page ->
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.Top
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(86.dp),
+                                                    contentAlignment = Alignment.CenterStart
+                                                ) {
+                                                when (page) {
+                                                    0 -> {
+                                                        // Page 1: Actions
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.Start
+                                                        ) {
+                                                            CookieButtonGroup(
+                                                                selectedIndex = selectedActionIndex,
+                                                                onSelect = { index ->
+                                                                    val action = actions.getOrNull(index) ?: return@CookieButtonGroup
+                                                                    selectedActionIndex = index
+                                                                    when (action) {
+                                                                        "ADD" -> showPillInfo("Add photos") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.AddPhotoAlternate,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        "REMOVE" -> showPillInfo("Remove photos") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.Remove,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        "EDIT_EMOJI" -> showPillInfo("Edit emoji") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.AddReaction,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        "DELETE" -> showPillInfo("Delete") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.Delete,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                    actionJob?.cancel()
+                                                                    actionJob = scope.launch {
+                                                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                                        kotlinx.coroutines.delay(350)
+                                                                        when (action) {
+                                                                            "ADD" -> {
+                                                                                onAddPhotos(longPressedCollection!!)
+                                                                                longPressedCollection = null
+                                                                            }
+                                                                            "REMOVE" -> {
+                                                                                if (longPressedCollection == "Library") {
+                                                                                    viewModel.clearSelection()
+                                                                                    viewModel.forceSelectionMode = true
+                                                                                } else {
+                                                                                    viewModel.startCollectionRemoval(longPressedCollection!!)
+                                                                                }
+                                                                                longPressedCollection = null
+                                                                            }
+                                                                            "EDIT_EMOJI" -> {
+                                                                                viewModel.navigateEmojiPicker(longPressedCollection!!)
+                                                                                longPressedCollection = null
+                                                                            }
+                                                                            "DELETE" -> {
+                                                                                if (longPressedCollection != "Library") {
+                                                                                    deletingCollection = longPressedCollection
+                                                                                } else {
+                                                                                    viewModel.showSnackbar("Cannot delete Library collection")
+                                                                                }
+                                                                                longPressedCollection = null
+                                                                            }
+                                                                        }
+                                                                        selectedActionIndex = -1
+                                                                    }
+                                                                },
+                                                                onItemClick = { index ->
+                                                                    val action = actions.getOrNull(index) ?: return@CookieButtonGroup
+                                                                    when (action) {
+                                                                        "ADD" -> showPillInfo("Add photos") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.AddPhotoAlternate,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        "REMOVE" -> showPillInfo("Remove photos") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.Remove,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        "EDIT_EMOJI" -> showPillInfo("Edit emoji") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.AddReaction,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        "DELETE" -> showPillInfo("Delete") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.Delete,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                },
+                                                                items = actionItems,
+                                                                columns = 1,
+                                                                cookieSize = actionCookieSize,
+                                                                overlap = 0.dp,
+                                                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                                selectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                                unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                enableWiggle = false
+                                                            )
+                                                        }
+                                                    }
+                                                    1 -> {
+                                                        // Page 2: Sort items
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.Start,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            CookieButtonGroup(
+                                                                selectedIndex = selectedSortIndex,
+                                                                onSelect = { index ->
+                                                                    val option = sortOptions.getOrNull(index) ?: return@CookieButtonGroup
+                                                                    if (currentSortType != option) {
+                                                                        val col = longPressedCollection ?: "Library"
+                                                                        viewModel.setPhotoSortTypeFor(col, option)
+                                                                        listStates[col]?.let { state ->
+                                                                            scope.launch { state.scrollToItem(0) }
+                                                                        }
+                                                                    }
+                                                                },
+                                                                onItemClick = { index ->
+                                                                    when (index) {
+                                                                        0 -> showPillInfo("Newest first") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.ArrowDownward,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        1 -> showPillInfo("Oldest first") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.ArrowUpward,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        2 -> showPillInfo("Most snippets") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.TextSnippet,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        3 -> showPillInfo("Most starred") {
+                                                                            Icon(
+                                                                                painter = painterResource(id = R.drawable.ic_star_rating),
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        4 -> showPillInfo("Least snippets") {
+                                                                            Icon(
+                                                                                imageVector = Icons.Default.TextSnippet,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                        5 -> showPillInfo("Least starred") {
+                                                                            Icon(
+                                                                                painter = painterResource(id = R.drawable.ic_star_rating),
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(16.dp),
+                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                },
+                                                                items = sortItems,
+                                                                columns = 1,
+                                                                cookieSize = sortCookieSize,
+                                                                overlap = 0.dp,
+                                                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                                selectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                                unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                enableWiggle = true
+                                                            )
+                                                        }
+                                                    }
+                                                    2 -> {
+                                                        // Page 3: View items (no horizontalScroll, easily fits 3 items and swipe works smoothly)
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = if (availableWidth >= 86.dp * 3) {
+                                                                Arrangement.SpaceBetween
+                                                            } else {
+                                                                Arrangement.spacedBy(10.dp, Alignment.Start)
+                                                            },
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            ViewOptionItem(
+                                                                columnCount = 1,
+                                                                isSelected = currentCols == 1,
+                                                                onClick = {
+                                                                    viewModel.updateCustomGridColumns(1)
+                                                                    listStates.values.forEach { state ->
+                                                                        scope.launch { state.scrollToItem(0) }
+                                                                    }
+                                                                    showPillInfo("Single column") {
+                                                                        Icon(ViewAgendaCustomIcon(), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                    }
+                                                                },
+                                                                icon = ViewAgendaCustomIcon(),
+                                                                size = 86.dp
+                                                            )
+
+                                                            ViewOptionItem(
+                                                                columnCount = 2,
+                                                                isSelected = currentCols == 2,
+                                                                onClick = {
+                                                                    viewModel.updateCustomGridColumns(2)
+                                                                    listStates.values.forEach { state ->
+                                                                        scope.launch { state.scrollToItem(0) }
+                                                                    }
+                                                                    showPillInfo("Two columns") {
+                                                                        Icon(ViewGrid2Icon(), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                    }
+                                                                },
+                                                                icon = ViewGrid2Icon(),
+                                                                size = 86.dp
+                                                            )
+
+                                                            ViewOptionItem(
+                                                                columnCount = 3,
+                                                                isSelected = currentCols == 3,
+                                                                onClick = {
+                                                                    viewModel.updateCustomGridColumns(3)
+                                                                    listStates.values.forEach { state ->
+                                                                        scope.launch { state.scrollToItem(0) }
+                                                                    }
+                                                                    showPillInfo("Three columns") {
+                                                                        Icon(ViewGrid3Icon(), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                    }
+                                                                },
+                                                                icon = ViewGrid3Icon(),
+                                                                size = 86.dp
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            actionPillContent()
+                                        }
+                                    }
+                                }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-
-                renamingCollection?.let { oldName ->
-                    var newName by remember { mutableStateOf(oldName) }
-                    BlurredAlertDialog(
-                        onDismissRequest = { renamingCollection = null },
-                        title = { Text("Rename collection") },
-                        text = {
-                            OutlinedTextField(
-                                value = newName,
-                                onValueChange = { newName = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                if (newName.isNotBlank() && newName != oldName) {
-                                    viewModel.renameCollection(oldName, newName.trim())
-                                }
-                                renamingCollection = null
-                            }) {
-                                Text("Rename")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { renamingCollection = null }) {
-                                Text("Cancel")
-                            }
-                        }
-                    )
-                }
-
-                deletingCollection?.let { collectionName ->
+                deletingCollection?.let { collection ->
                     BlurredAlertDialog(
                         onDismissRequest = { deletingCollection = null },
-                        title = { Text("Delete collection") },
-                        text = { Text("Are you sure you want to delete '$collectionName'? Your photos will be saved.") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    viewModel.deleteCollection(collectionName)
-                                    if (currentTab == collectionName) {
-                                        scope.launch { pagerState.animateScrollToPage(0) }
-                                    }
-                                    deletingCollection = null
-                                }
-                            ) {
-                                Text("Delete", color = MaterialTheme.colorScheme.secondary)
+                        onConfirm = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            viewModel.deleteCollection(collection)
+                            if (currentTab == collection) {
+                                scope.launch { pagerState.animateScrollToPage(0) }
                             }
+                            deletingCollection = null
                         },
-                        dismissButton = {
-                            TextButton(onClick = { deletingCollection = null }) {
-                                Text("Cancel")
-                            }
+                        title = {
+                            Text(
+                                text = "Delete collection?",
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = (-0.5).sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Are you sure you want to delete this collection? Your photos will be saved.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     )
                 }
@@ -1821,175 +1591,109 @@ fun LibraryScreen(
 
 
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
-private fun ButtonGroupScope.surfaceContainerHighestToggleableItem(
-    weight: Float = 1f,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    icon: @Composable () -> Unit,
-    label: String,
-    isFirst: Boolean = false,
-    isLast: Boolean = false
-) {
-    customItem(
-        buttonGroupContent = {
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-
-            val targetWeight = when {
-                checked && isPressed -> 1.30f
-                checked -> 1.20f
-                isPressed -> 1.10f
-                else -> 1.0f
-            }
-
-            val animatedWeight by animateFloatAsState(
-                targetValue = targetWeight,
-                animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-                label = "sortWeight_$label"
-            )
-
-            val baseShapes = when {
-                isFirst && isLast -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                isFirst -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                isLast -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-            }
-
-            val shapes = if (checked) baseShapes.copy(pressedShape = baseShapes.checkedShape) else baseShapes
-
-            ToggleButton(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                interactionSource = interactionSource,
-                shapes = shapes,
-                modifier = Modifier
-                    .weight(animatedWeight)
-                    .height(40.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                colors = ToggleButtonDefaults.toggleButtonColors(
-                    checkedContainerColor = MaterialTheme.colorScheme.primary,
-                    checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) {
-                icon()
-                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text(
-                    text = label,
-                    style = if (checked) {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                        )
-                    } else {
-                        MaterialTheme.typography.labelLarge
-                    },
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
-        },
-        menuContent = { state ->
-            DropdownMenuItem(
-                leadingIcon = icon,
-                text = {
-                    Text(
-                        text = label,
-                        style = if (checked) {
-                            MaterialTheme.typography.labelLarge.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                            )
-                        } else {
-                            MaterialTheme.typography.labelLarge
-                        }
-                    )
-                },
-                onClick = {
-                    onCheckedChange(!checked)
-                    state.dismiss()
-                }
-            )
-        }
-    )
 }
+
+
 
 @Composable
 private fun ViewOptionItem(
     columnCount: Int,
     isSelected: Boolean,
     onClick: () -> Unit,
-    icon: ImageVector
+    icon: ImageVector,
+    size: androidx.compose.ui.unit.Dp = 86.dp
 ) {
     val view = LocalView.current
+    val scope = rememberCoroutineScope()
     val shape = CookieShape
 
     val rotation = remember { Animatable(0f) }
     val scaleX = remember { Animatable(1f) }
     val scaleY = remember { Animatable(1f) }
+    var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-    LaunchedEffect(isSelected) {
-        if (isSelected) {
-            rotation.animateTo(
-                targetValue = rotation.value + 360f,
-                animationSpec = tween(500, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-            )
+    val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = isSelected)
+
+    fun triggerSpin() {
+        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        onClick()
+        spinJob?.cancel()
+        spinJob = scope.launch {
+            val scaleJobX = launch {
+                scaleX.animateTo(0.84f, Motion.PressSpring)
+                scaleX.animateTo(1f, Motion.BouncySpring)
+            }
+            val scaleJobY = launch {
+                scaleY.animateTo(0.84f, Motion.PressSpring)
+                scaleY.animateTo(1f, Motion.BouncySpring)
+            }
+            val rotJob = launch {
+                rotation.animateTo(
+                    targetValue = rotation.value + 360f,
+                    animationSpec = Motion.BouncySpring
+                )
+            }
+            rotJob.join()
+            scaleJobX.join()
+            scaleJobY.join()
         }
     }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    var lastIsSelected by remember { mutableStateOf(isSelected) }
+    LaunchedEffect(isSelected) {
+        if (isSelected && !lastIsSelected && spinJob?.isActive != true) {
+            rotation.animateTo(
+                targetValue = rotation.value + 360f,
+                animationSpec = Motion.BouncySpring
+            )
+        }
+        lastIsSelected = isSelected
+    }
+
+    val animatedContainerColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = tween(durationMillis = 200),
+        label = "view_option_container_color"
+    )
+    val animatedContentColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 200),
+        label = "view_option_content_color"
+    )
+
+    Box(
         modifier = Modifier
+            .size(size)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
-                if (!isSelected) {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    onClick()
-                }
-            }
-    ) {
-        val containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-        val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-        
-        Box(
-            modifier = Modifier.size(48.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        this.rotationZ = rotation.value
-                        this.scaleX = scaleX.value
-                        this.scaleY = scaleY.value
-                    }
-                    .clip(shape)
-                    .background(containerColor)
-            )
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        
-        RadioButton(
-            selected = isSelected,
-            onClick = {
-                if (!isSelected) {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    onClick()
-                }
+                triggerSpin()
             },
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary,
-                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    this.rotationZ = rotation.value + (if (isSelected) tiltAngle else 0f)
+                    this.scaleX = scaleX.value
+                    this.scaleY = scaleY.value
+                }
+                .clip(shape)
+                .background(animatedContainerColor)
+        )
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = animatedContentColor,
+            modifier = Modifier.size(if (size.value >= 86f) 32.dp else 24.dp)
         )
     }
 }
 
+private data class SortPillInfo(
+    val text: String,
+    val icon: @Composable () -> Unit,
+    val timestamp: Long = System.currentTimeMillis()
+)
