@@ -218,7 +218,7 @@ fun DetailTopBar(
                         )
 
                         DropdownMenuItem(
-                            text = { Text("Rate photo") },
+                            text = { Text("Rate") },
                             leadingIcon = { Icon(painterResource(id = R.drawable.ic_star_rating), null) },
                             onClick = { view.performHapticFeedback(HapticFeedbackConstants.CONFIRM); onRate(); closeMenu() }
                         )

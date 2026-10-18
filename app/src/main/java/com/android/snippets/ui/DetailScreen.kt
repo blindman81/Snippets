@@ -921,7 +921,7 @@ fun RateFoodDialog(
         },
         title = {
             Text(
-                text = "Rate photo",
+                text = "Rate",
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
