@@ -1,4 +1,4 @@
-package com.android.snippets.ui.components
+﻿package com.android.snippets.ui.components
 
 import kotlinx.coroutines.launch
 import dev.chrisbanes.haze.HazeDefaults
@@ -438,7 +438,6 @@ fun HistoryBottomSheet(
                                                 onClick = {
                                                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                                                     viewModel.openMemory(curated, itemIndex)
-                                                    onDismissRequest()
                                                 }
                                             )
                                     ) {

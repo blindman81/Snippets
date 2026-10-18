@@ -151,7 +151,7 @@ fun LibraryScreen(
             viewModel.searchQuery = ""
         } else if (viewModel.isSelectionMode) {
             viewModel.clearSelection()
-        } else if (showHistoryBottomSheet) {
+        } else if (viewModel.showHistoryBottomSheet) {
             showHistoryBottomSheet = false
         } else if (showMenuPopup) {
             showMenuPopup = false
@@ -856,7 +856,7 @@ fun LibraryScreen(
                                     AnimatedCookieButton(
                                         onClick = {
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            showHistoryBottomSheet = true
+                                            viewModel.showHistoryBottomSheet = true
                                         },
                                         icon = Icons.Default.History,
                                         contentDescription = "History",
@@ -909,7 +909,7 @@ fun LibraryScreen(
 
                         HistoryBottomSheet(
                             show = showHistoryBottomSheet,
-                            onDismissRequest = { showHistoryBottomSheet = false },
+                            onDismissRequest = { viewModel.showHistoryBottomSheet = false },
                             viewModel = viewModel,
                             view = view
                         )
