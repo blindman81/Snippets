@@ -284,52 +284,11 @@ fun SwipePrompt(modifier: Modifier = Modifier, alphaValue: Float = 0.6f) {
 
 @Composable
 fun getSnippetTextStyle(
-    style: com.android.snippets.viewmodel.SnippetStyle,
+    style: com.android.snippets.viewmodel.SnippetStyle = com.android.snippets.viewmodel.SnippetStyle.Default,
     base: androidx.compose.ui.text.TextStyle,
     isCloud: Boolean = false
 ): androidx.compose.ui.text.TextStyle {
-    val styled = when (style) {
-        com.android.snippets.viewmodel.SnippetStyle.Thin -> base.copy(
-            fontWeight = FontWeight.Thin,
-            fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif
-        )
-        com.android.snippets.viewmodel.SnippetStyle.Cursive -> base.copy(
-            fontFamily = androidx.compose.ui.text.font.FontFamily.Cursive
-        )
-        com.android.snippets.viewmodel.SnippetStyle.Mono -> base.copy(
-            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-        )
-        com.android.snippets.viewmodel.SnippetStyle.Serif -> base.copy(
-            fontFamily = androidx.compose.ui.text.font.FontFamily.Serif
-        )
-        com.android.snippets.viewmodel.SnippetStyle.Spaced -> base.copy(
-            letterSpacing = if (isCloud) 1.5.sp else 4.sp,
-            fontWeight = FontWeight.Bold
-        )
-        com.android.snippets.viewmodel.SnippetStyle.Bold -> base.copy(
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.5).sp,
-            fontFamily = androidx.compose.ui.text.font.FontFamily(typeface = android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.NORMAL))
-        )
-        com.android.snippets.viewmodel.SnippetStyle.FlexHeavy -> base.copy(
-            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexHeavy
-        )
-        com.android.snippets.viewmodel.SnippetStyle.FlexWide -> base.copy(
-            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-        )
-        com.android.snippets.viewmodel.SnippetStyle.FlexSlant -> base.copy(
-            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexSlant
-        )
-        com.android.snippets.viewmodel.SnippetStyle.FlexGrade -> base.copy(
-            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexGrade
-        )
-        com.android.snippets.viewmodel.SnippetStyle.Flex -> base.copy(
-            fontFamily = com.android.snippets.ui.theme.GoogleSansFlex,
-            fontWeight = FontWeight.Bold
-        )
-        else -> base
-    }
-    return styled.copy(
+    return base.copy(
         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
     )
 }

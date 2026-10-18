@@ -259,7 +259,7 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
             Text(
                 snippet,
                 style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = if (isSelected) com.android.snippets.ui.theme.GoogleSansFlexWide else com.android.snippets.ui.theme.GoogleSansFlexRound
+                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -294,7 +294,6 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
         SnippetSortType.Favorites -> "Favorites"
         SnippetSortType.Emoji -> "Sort by emoji"
         SnippetSortType.Emoticons -> "Sort by emoticons"
-        else -> ""
     }
 
     val icon = when (type) {
@@ -349,7 +348,6 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
         }
         SnippetSortType.New -> Icons.AutoMirrored.Filled.TextSnippet
         SnippetSortType.Old -> Icons.AutoMirrored.Filled.TextSnippet
-        else -> Icons.AutoMirrored.Filled.TextSnippet
     }
 
     SettingsCardItem(

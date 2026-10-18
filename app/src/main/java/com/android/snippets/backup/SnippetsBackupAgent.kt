@@ -32,8 +32,6 @@ class SnippetsBackupAgent : BackupAgent() {
             "photos_v2.json",
             "collections_v2.json",
             "collection_icons_v2.json",
-            "snippet_colors_v2.json",
-            "snippet_styles_v2.json",
             "snippet_first_seen_v1.json"
         )
         for (fileName in filesToBackup) {

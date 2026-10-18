@@ -21,7 +21,6 @@ import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.Dispatchers
 import com.android.snippets.ui.shapes.CookiePolygon
 import com.android.snippets.ui.shapes.AppShape
-import com.android.snippets.ui.theme.getPastelSnippetColorInt
 import com.android.snippets.ui.theme.getSnippetBackgroundColorInt
 import com.android.snippets.ui.theme.getSnippetTextColorInt
 import kotlinx.coroutines.withContext
@@ -70,9 +69,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, locationText: String? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, locationText: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime, locationText) ?: return@withContext false
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, appShape, showTime, locationText) ?: return@withContext false
             
             val fileName = "Snippet_Card_${System.currentTimeMillis()}.jpg"
             val contentValues = ContentValues().apply {
@@ -134,9 +133,9 @@ object MediaSaver {
         }
     }
 
-    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, snippetColors: Map<String, Int> = emptyMap(), snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle> = emptyMap(), appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, locationText: String? = null): Uri? = withContext(Dispatchers.IO) {
+    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, locationText: String? = null): Uri? = withContext(Dispatchers.IO) {
         try {
-            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, snippetColors, snippetStyles, appShape, showTime, locationText) ?: return@withContext null
+            val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, appShape, showTime, locationText) ?: return@withContext null
             
             val cachePath = File(context.cacheDir, "images")
             cachePath.mkdirs()
@@ -165,7 +164,7 @@ object MediaSaver {
         }
     }
 
-    private suspend fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, snippetColors: Map<String, Int>, snippetStyles: Map<String, com.android.snippets.viewmodel.SnippetStyle>, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, overrideLocationText: String? = null): Bitmap? {
+    private suspend fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, overrideLocationText: String? = null): Bitmap? {
         val width = 1440
         val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -450,38 +449,8 @@ object MediaSaver {
             val total = snippets.size
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getCloudScalingFactor(total)
             
-            val forcedStyle = snippetStyles[trimmedText] ?: com.android.snippets.viewmodel.SnippetStyle.Default
-            
-            val typeface = when(forcedStyle) {
-                com.android.snippets.viewmodel.SnippetStyle.Thin ->
-                    getCustomTypeface(context, "'wght' 100, 'ROND' 100") ?: Typeface.create("sans-serif-thin", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.Cursive ->
-                    Typeface.create("cursive", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.Mono ->
-                    Typeface.MONOSPACE
-                com.android.snippets.viewmodel.SnippetStyle.Serif ->
-                    Typeface.SERIF
-                com.android.snippets.viewmodel.SnippetStyle.Bold ->
-                    Typeface.create("sans-serif-black", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.Spaced ->
-                    getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                com.android.snippets.viewmodel.SnippetStyle.FlexHeavy ->
-                    getCustomTypeface(context, "'wght' 1000, 'ROND' 100") ?: Typeface.create("sans-serif-black", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.FlexWide ->
-                    getCustomTypeface(context, "'wdth' 151, 'ROND' 100") ?: Typeface.create("sans-serif", Typeface.NORMAL)
-                com.android.snippets.viewmodel.SnippetStyle.FlexSlant ->
-                    getCustomTypeface(context, "'slnt' -10, 'ROND' 100") ?: Typeface.create("sans-serif", Typeface.ITALIC)
-                com.android.snippets.viewmodel.SnippetStyle.FlexGrade ->
-                    getCustomTypeface(context, "'GRAD' 100, 'ROND' 100") ?: Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                else ->
-                    getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            }
-            
-            val letterSpacingVal = when(forcedStyle) {
-                com.android.snippets.viewmodel.SnippetStyle.Spaced -> 0.12f
-                com.android.snippets.viewmodel.SnippetStyle.FlexWide -> 0.05f
-                else -> 0f
-            }
+            val typeface = getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            val letterSpacingVal = 0f
 
             val baseFontSize = when (personality) {
                 0, 1 -> 24f // Large

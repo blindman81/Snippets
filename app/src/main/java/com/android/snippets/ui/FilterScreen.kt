@@ -56,7 +56,6 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
         SnippetSortType.Favorites -> "favorites"
         SnippetSortType.Emoji -> "emoji"
         SnippetSortType.Emoticons -> "emoticons"
-        else -> "new"
     }
 
     val currentSortArrow = when (viewModel.snippetSortType) {

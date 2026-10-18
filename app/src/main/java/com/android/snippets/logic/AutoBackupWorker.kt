@@ -1,4 +1,4 @@
-﻿package com.android.snippets.logic
+package com.android.snippets.logic
 
 import android.content.Context
 import android.os.Environment
@@ -59,8 +59,6 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 addJsonFileIfExists("photos", "photos_v2.json")
                 addJsonFileIfExists("collections", "collections_v2.json")
                 addJsonFileIfExists("collectionIcons", "collection_icons_v2.json")
-                addJsonFileIfExists("snippetColors", "snippet_colors_v2.json")
-                addJsonFileIfExists("snippetStyles", "snippet_styles_v2.json")
                 addJsonFileIfExists("snippetFirstSeenTimes", "snippet_first_seen_v1.json")
 
                 val prefs = context.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)

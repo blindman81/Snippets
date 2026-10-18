@@ -399,8 +399,6 @@ fun MemoryScreen(
                                     index = index,
                                     total = photo.snippets.size,
                                     photoColors = emptyList(),
-                                    forcedColor = viewModel.getSnippetColor(snippet),
-                                    forcedStyle = viewModel.getSnippetStyle(snippet),
                                     screenWidth = cloudWidth,
                                     screenHeight = cloudHeight,
                                     hazeState = pageHazeState
@@ -699,8 +697,6 @@ fun FloatingSnippet(
     index: Int, 
     total: Int, 
     photoColors: List<Int> = emptyList(),
-    forcedColor: Int? = null,
-    forcedStyle: com.android.snippets.viewmodel.SnippetStyle? = null,
     screenWidth: androidx.compose.ui.unit.Dp,
     screenHeight: androidx.compose.ui.unit.Dp,
     hazeState: dev.chrisbanes.haze.HazeState? = null
@@ -726,7 +722,7 @@ fun FloatingSnippet(
     val emojiCount = text.count { it.code > 0x2000 }
     val specialCount = text.count { it in "-_!?.()[]{}<>:;" }
     val normalCount = text.length - emojiCount - specialCount
-    val cloudLetterSpacing = if (forcedStyle == com.android.snippets.viewmodel.SnippetStyle.Spaced) 1.5.sp else 0.sp
+    val cloudLetterSpacing = 0.sp
     val estimatedSpacingWidth = with(density) {
         if (text.length > 1) (cloudLetterSpacing * (text.length - 1)).toDp() else 0.dp
     }
@@ -753,8 +749,7 @@ fun FloatingSnippet(
         else -> MaterialTheme.typography.labelLarge.copy(fontSize = (14 * finalScaling).sp, fontWeight = FontWeight.Normal)
     }
     val textStyle = com.android.snippets.ui.getSnippetTextStyle(
-        forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
-        baseStyle,
+        base = baseStyle,
         isCloud = true
     )
 

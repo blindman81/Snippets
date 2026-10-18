@@ -1,4 +1,4 @@
-﻿package com.android.snippets.viewmodel
+package com.android.snippets.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -37,7 +37,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class Screen { Library, Detail, Memory, Settings, About, EmojiPicker, Filter, PhotosCarousel, Stats, MonthlyRecap, YearlyRecap }
-enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites, Color, Style }
+enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, MostStarred, LeastStarred }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
 
@@ -602,40 +602,30 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 )
             }.sortedByDescending { it.date }
 
-            val loadedColors = try {
+            val loadedColors = emptyMap<String, Int>()
+            try {
                 if (snippetColorsFile.exists()) {
-                    val json = snippetColorsFile.readText()
-                    val type = object : TypeToken<Map<String, Int>>() {}.type
-                    val rawColors: Map<String, Int> = gson.fromJson(json, type) ?: emptyMap()
-                    var changed = false
-                    val migrated = rawColors.mapValues { (name, color) ->
-                        val pastel = com.android.snippets.ui.theme.toPastelSnippetColorInt(name, color)
-                        if (pastel != color) changed = true
-                        pastel
-                    }
-                    if (changed) {
-                        try {
-                            snippetColorsFile.writeText(gson.toJson(migrated))
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                    migrated
-                } else emptyMap()
+                    snippetColorsFile.delete()
+                }
+                val legacyColors = File(getApplication<Application>().filesDir, "snippet_colors.json")
+                if (legacyColors.exists()) {
+                    legacyColors.delete()
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
-                emptyMap()
             }
 
-            val loadedStyles = try {
+            val loadedStyles = emptyMap<String, SnippetStyle>()
+            try {
                 if (snippetStylesFile.exists()) {
-                    val json = snippetStylesFile.readText()
-                    val type = object : TypeToken<Map<String, SnippetStyle>>() {}.type
-                    gson.fromJson<Map<String, SnippetStyle>>(json, type) ?: emptyMap()
-                } else emptyMap()
+                    snippetStylesFile.delete()
+                }
+                val legacyStyles = File(getApplication<Application>().filesDir, "snippet_styles.json")
+                if (legacyStyles.exists()) {
+                    legacyStyles.delete()
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
-                emptyMap()
             }
 
             val loadedFirstSeen = try {
@@ -1128,7 +1118,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                             val trimmed = targetSnippet.trim()
                             if (duplicate.snippets.size < 6 && !duplicate.snippets.contains(trimmed)) {
                                 val now = System.currentTimeMillis()
-                                updateSnippetColor(trimmed, com.android.snippets.ui.theme.toPastelSnippetColorInt(trimmed, null))
                                 val isFirstSeen = !snippetFirstSeenTimes.containsKey(trimmed)
                                 if (isFirstSeen) {
                                     snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
@@ -1179,7 +1168,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
                 if (!targetSnippet.isNullOrBlank()) {
                     val trimmed = targetSnippet.trim()
-                    updateSnippetColor(trimmed, com.android.snippets.ui.theme.toPastelSnippetColorInt(trimmed, null))
                     val isFirstSeen = !snippetFirstSeenTimes.containsKey(trimmed)
                     if (isFirstSeen) {
                         snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
@@ -1794,7 +1782,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun updateSnippets(photoId: String, text: String, color: Int? = null, style: SnippetStyle? = null) {
+    fun updateSnippets(photoId: String, text: String) {
         val targetPhoto = photos.find { it.id == photoId }
         if (targetPhoto != null && targetPhoto.snippets.size >= 6) {
             android.widget.Toast.makeText(getApplication(), "Maximum 6 snippets per photo", android.widget.Toast.LENGTH_SHORT).show()
@@ -1803,14 +1791,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         val trimmedText = text.trim()
         if (trimmedText.isBlank()) return
-
-        // Update color and style if provided
-        if (color != null) {
-            updateSnippetColor(trimmedText, color)
-        }
-        if (style != null) {
-            updateSnippetStyle(trimmedText, style)
-        }
 
         val newSnippets = listOf(trimmedText)
         val now = System.currentTimeMillis()
@@ -2032,12 +2012,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         isBusy = false
     }
 
-    fun bulkAddSnippet(photoIds: Set<String>, text: String, color: Int, style: SnippetStyle) {
+    fun bulkAddSnippet(photoIds: Set<String>, text: String) {
         val trimmedText = text.trim()
         if (trimmedText.isBlank() || photoIds.isEmpty()) return
-
-        updateSnippetColor(trimmedText, color)
-        updateSnippetStyle(trimmedText, style)
 
         val now = System.currentTimeMillis()
         if (!snippetFirstSeenTimes.containsKey(trimmedText)) {
@@ -2229,7 +2206,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
             val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
-            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, showTime = showTimeInMemories, locationText = locationText)
+            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, showTime = showTimeInMemories, locationText = locationText)
             if (success) {
                 android.widget.Toast.makeText(context, "Downloaded to Gallery", android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -2240,7 +2217,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
             val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
-            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, snippetColors, snippetStyles, showTime = showTimeInMemories, locationText = locationText)
+            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, showTime = showTimeInMemories, locationText = locationText)
             if (uri != null) {
                 val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "image/jpeg"
@@ -2276,8 +2253,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                         snippets = pureSnippets,
                         isDark = isDarkTheme,
                         bgColor = if (isDarkTheme) android.graphics.Color.BLACK else android.graphics.Color.WHITE,
-                        snippetColors = snippetColors,
-                        snippetStyles = snippetStyles,
                         showTime = showTimeInMemories,
                         locationText = locationText
                     )
@@ -2805,7 +2780,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             }
             SnippetSortType.Emoji -> baseSnippets.filter { containsEmoji(it) }
             SnippetSortType.Emoticons -> baseSnippets.filter { containsEmoticon(it) }
-            SnippetSortType.Color -> baseSnippets.filter { snippetColors.containsKey(it) }
             else -> baseSnippets.toList()
         }
 
@@ -2816,10 +2790,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                                                            else filtered.sortedByDescending { snippetFirstSeenTimes[it] ?: 0L }
             SnippetSortType.AZ -> if (isSortAscending) filtered.sortedWith(String.CASE_INSENSITIVE_ORDER) 
                                  else filtered.sortedWith(String.CASE_INSENSITIVE_ORDER.reversed())
-            SnippetSortType.Color -> if (isSortAscending) filtered.sortedBy { snippetColors[it] ?: 0 } 
-                                    else filtered.sortedByDescending { snippetColors[it] ?: 0 }
-            SnippetSortType.Style -> if (isSortAscending) filtered.sortedBy { snippetStyles[it]?.name ?: "" }
-                                    else filtered.sortedByDescending { snippetStyles[it]?.name ?: "" }
             SnippetSortType.Emoji, SnippetSortType.Emoticons, SnippetSortType.Favorites -> filtered.sorted()
         }
     }
@@ -2926,64 +2896,15 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun getSnippetColor(name: String): Int? {
-        val trimmed = name.trim()
-        val color = snippetColors[trimmed] ?: return null
-        return com.android.snippets.ui.theme.toPastelSnippetColorInt(trimmed, color)
+        return null
     }
 
     fun getSnippetFirstSeenTime(name: String): Long? {
         return snippetFirstSeenTimes[name.trim()]
     }
 
-    fun updateSnippetColor(name: String, color: Int?) {
-        val trimmed = name.trim()
-        if (trimmed.isBlank()) return
-        
-        val pastelColor = if (color != null) com.android.snippets.ui.theme.toPastelSnippetColorInt(trimmed, color) else null
-        snippetColors = if (pastelColor == null) {
-            snippetColors - trimmed
-        } else {
-            snippetColors + (trimmed to pastelColor)
-        }
-        saveSnippetColors()
-    }
-
     fun getSnippetStyle(name: String): SnippetStyle {
-        return snippetStyles[name.trim()] ?: SnippetStyle.Default
-    }
-
-    fun updateSnippetStyle(name: String, style: SnippetStyle) {
-        val trimmed = name.trim()
-        if (trimmed.isBlank()) return
-        
-        snippetStyles = snippetStyles + (trimmed to style)
-        saveSnippetStyles()
-    }
-
-
-
-    private fun saveSnippetStyles() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                val json = gson.toJson(snippetStyles)
-                snippetStylesFile.writeText(json)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-
-
-    private fun saveSnippetColors() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                val json = gson.toJson(snippetColors)
-                snippetColorsFile.writeText(json)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        return SnippetStyle.Default
     }
 
 
@@ -3025,8 +2946,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             addJsonFileOrMemory("photos", photosFile, photos)
             addJsonFileOrMemory("collections", collectionsFile, userCollections)
             addJsonFileOrMemory("collectionIcons", collectionIconsFile, collectionIcons)
-            addJsonFileOrMemory("snippetColors", snippetColorsFile, snippetColors)
-            addJsonFileOrMemory("snippetStyles", snippetStylesFile, snippetStyles)
             addJsonFileOrMemory("snippetFirstSeenTimes", snippetFirstSeenFile, snippetFirstSeenTimes)
 
             val prefsObj = com.google.gson.JsonObject().apply {
@@ -3068,14 +2987,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 collectionIconsFile.writeText(gson.toJson(iconsElem))
             }
 
-            if (rootObj.has("snippetColors")) {
-                val colorsElem = rootObj.get("snippetColors")
-                snippetColorsFile.writeText(gson.toJson(colorsElem))
-            }
-
-            if (rootObj.has("snippetStyles")) {
-                val stylesElem = rootObj.get("snippetStyles")
-                snippetStylesFile.writeText(gson.toJson(stylesElem))
+            try {
+                if (snippetColorsFile.exists()) snippetColorsFile.delete()
+                if (snippetStylesFile.exists()) snippetStylesFile.delete()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
 
             if (rootObj.has("snippetFirstSeenTimes")) {
