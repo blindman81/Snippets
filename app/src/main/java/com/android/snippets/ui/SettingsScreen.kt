@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui
+package com.android.snippets.ui
 import com.android.snippets.ui.components.*
 
 import androidx.compose.foundation.layout.*
@@ -769,6 +769,7 @@ fun AutoBackupScheduleDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .selectable(
                                 selected = (selectedSchedule == option),
                                 onClick = { selectedSchedule = option },
@@ -793,3 +794,4 @@ fun AutoBackupScheduleDialog(
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = true)
     )
 }
+

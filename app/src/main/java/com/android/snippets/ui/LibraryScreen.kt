@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui
+package com.android.snippets.ui
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp

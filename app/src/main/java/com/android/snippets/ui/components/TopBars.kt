@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.components
+package com.android.snippets.ui.components
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import kotlinx.coroutines.launch
@@ -1030,6 +1030,7 @@ fun LargeMainTopBar(
                 },
                 icon = navigationIcon,
                 contentDescription = "Navigation",
+                size = 44.dp,
                 isSpinning = isSpinning
             )
         },
