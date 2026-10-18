@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.components
+package com.android.snippets.ui.components
 
 import kotlinx.coroutines.launch
 import dev.chrisbanes.haze.HazeDefaults
@@ -139,18 +139,7 @@ fun MenuBottomSheet(
                             }
                         )
 
-                        // 3. Settings
-                        MenuRowButton(
-                            icon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                            label = "Settings",
-                            onClick = {
-                                onDismissRequest()
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                viewModel.navigateSettings()
-                            }
-                        )
-
-                        // 4. Stats
+                        // 3. Stats
                         MenuRowButton(
                             icon = { Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(18.dp)) },
                             label = "Stats",
@@ -158,6 +147,17 @@ fun MenuBottomSheet(
                                 onDismissRequest()
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                 viewModel.navigateStats()
+                            }
+                        )
+
+                        // 4. Settings
+                        MenuRowButton(
+                            icon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            label = "Settings",
+                            onClick = {
+                                onDismissRequest()
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                viewModel.navigateSettings()
                             }
                         )
 
