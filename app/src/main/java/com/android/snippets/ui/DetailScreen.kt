@@ -613,6 +613,7 @@ private fun DetailPhotoFrame(
     modifier: Modifier = Modifier,
     showLoading: Boolean = false,
     shapeProvider: (() -> Shape)? = null,
+    offsetProvider: (() -> IntOffset)? = null,
     progressProvider: (() -> Float)? = null,
     dismissConfig: DetailDismissConfig? = null
 ) {
@@ -624,26 +625,7 @@ private fun DetailPhotoFrame(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .then(photoModifier)
-            .graphicsLayer {
-                val p = progressProvider?.invoke() ?: 0f
-                if (p > 0f && dismissConfig != null) {
-                    val maxW = size.width
-                    val maxH = size.height
-                    if (maxW > 0f && maxH > 0f) {
-                        val targetW = dismissConfig.targetWidthPx.coerceAtMost(maxW)
-                        val targetH = dismissConfig.targetHeightPx.coerceAtMost(maxH)
-                        val targetScaleX = targetW / maxW
-                        val targetScaleY = targetH / maxH
-                        scaleX = 1f - (1f - targetScaleX) * p
-                        scaleY = 1f - (1f - targetScaleY) * p
-                    }
-                }
-                if (shapeProvider != null) {
-                    val currentShape = shapeProvider()
-                    shape = currentShape
-                    clip = currentShape != RectangleShape
-                }
-            }
+            .offset { offsetProvider?.invoke() ?: IntOffset.Zero }
             .then(
                 if (isTransitionTarget && sharedTransitionScope != null && animatedVisibilityScope != null) {
                     with(sharedTransitionScope) {
@@ -660,7 +642,14 @@ private fun DetailPhotoFrame(
                 } else {
                     Modifier
                 }
-            ),
+            )
+            .graphicsLayer {
+                if (shapeProvider != null) {
+                    val currentShape = shapeProvider()
+                    shape = currentShape
+                    clip = currentShape != RectangleShape
+                }
+            },
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(
@@ -721,7 +710,7 @@ fun EmptyDetailContent(
         shapeProvider = dismissConfig.targetShape,
         onUiAlphaChange = onUiAlphaChange,
         onBgAlphaChange = onBgAlphaChange
-    ) { currentShapeProvider, progressProvider ->
+    ) { currentShapeProvider, progressProvider, offsetProvider ->
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DetailPhotoFrame(
                 photo = photo,
@@ -731,6 +720,7 @@ fun EmptyDetailContent(
                 isTransitionTarget = isTransitionTarget,
                 modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize(),
                 shapeProvider = currentShapeProvider,
+                offsetProvider = offsetProvider,
                 progressProvider = progressProvider,
                 dismissConfig = dismissConfig
             )
@@ -875,7 +865,7 @@ fun SnippetsDetailContent(
                 }
             }
         }
-    ) { currentShapeProvider, progressProvider ->
+    ) { currentShapeProvider, progressProvider, offsetProvider ->
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DetailPhotoFrame(
                 photo = photo,
@@ -885,6 +875,7 @@ fun SnippetsDetailContent(
                 isTransitionTarget = isTransitionTarget,
                 modifier = photo.aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier.fillMaxSize(),
                 shapeProvider = currentShapeProvider,
+                offsetProvider = offsetProvider,
                 progressProvider = progressProvider,
                 dismissConfig = dismissConfig
             )
@@ -1358,7 +1349,7 @@ fun SwipeToDismissContainer(
     onUiAlphaChange: (Float) -> Unit = {},
     onBgAlphaChange: (Float) -> Unit = {},
     overlayContent: @Composable (bgAlphaProvider: () -> Float, uiAlphaProvider: () -> Float) -> Unit = { _, _ -> },
-    content: @Composable (shapeProvider: () -> Shape, progressProvider: () -> Float) -> Unit
+    content: @Composable (shapeProvider: () -> Shape, progressProvider: () -> Float, offsetProvider: () -> IntOffset) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     
@@ -1379,6 +1370,12 @@ fun SwipeToDismissContainer(
 
     val currentOffsetY = { if (isSettling) animOffsetY.value else dragOffsetY }
     val currentOffsetX = { if (isSettling) animOffsetX.value else dragOffsetX }
+    val offsetProvider = {
+        IntOffset(
+            kotlin.math.round(currentOffsetX()).toInt(),
+            kotlin.math.round(currentOffsetY()).toInt()
+        )
+    }
 
     val bgAlphaProvider = {
         val progress = (kotlin.math.abs(currentOffsetY()) / maxDrag).coerceIn(0f, 1f)
@@ -1485,14 +1482,9 @@ fun SwipeToDismissContainer(
         // Apply the background and other overlay elements underneath the moving photo
         overlayContent(bgAlphaProvider, uiAlphaProvider)
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    translationX = currentOffsetX()
-                    translationY = currentOffsetY()
-                }
+            modifier = Modifier.fillMaxSize()
         ) {
-            content(currentShapeProvider, resizeProgressProvider)
+            content(currentShapeProvider, resizeProgressProvider, offsetProvider)
         }
     }
 }

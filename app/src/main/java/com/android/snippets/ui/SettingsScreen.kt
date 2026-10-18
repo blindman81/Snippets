@@ -356,8 +356,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                                 columns = 1,
                                 cookieSize = 72.dp,
                                 overlap = 0.dp,
-                                horizontalAlignment = Alignment.Start,
-                                wiggleNeighborOnToggleOn = true
+                                horizontalAlignment = Alignment.Start
                             )
                         }
                     }
