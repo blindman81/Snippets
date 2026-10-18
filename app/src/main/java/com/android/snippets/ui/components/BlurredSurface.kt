@@ -9,6 +9,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
@@ -17,6 +19,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -40,6 +45,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.android.snippets.ui.util.LocalTiltActive
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -98,7 +104,7 @@ val LocalHazeState = compositionLocalOf<HazeState?> { null }
 fun rememberMonetTintedColor(
     baseColor: Color,
     tintColor: Color = MaterialTheme.colorScheme.surfaceTint,
-    weight: Float = 0.28f
+    weight: Float = 0.0f
 ): Color {
     return remember(baseColor, tintColor, weight) {
         if (weight <= 0f) baseColor else {
@@ -134,7 +140,7 @@ fun BlurredSurface(
     tonalElevation: Dp = 0.dp,
     contentColor: Color = contentColorFor(color),
     hazeState: HazeState? = LocalHazeState.current,
-    monetTintWeight: Float = 0.28f,
+    monetTintWeight: Float = 0.0f,
     content: @Composable () -> Unit
 ) {
     val tintedColor = rememberMonetTintedColor(baseColor = color, weight = monetTintWeight)
@@ -155,6 +161,7 @@ fun BlurredSurface(
                         } else Modifier
                     )
                     .clip(shape)
+                    .background(tintedColor.copy(alpha = alpha.coerceIn(0f, 0.4f)))
                     .hazeEffect(
                         state = hazeState,
                         style = hazeStyle
@@ -339,7 +346,7 @@ fun BlurredModalBottomSheet(
                 blurEndRadius = HazeDefaults.blurRadius,
                 contentColor = contentColor,
                 hazeState = hazeState,
-                monetTintWeight = 0.28f,
+                monetTintWeight = 0.0f,
                 modifier = modifier
                     .fillMaxWidth()
                     .offset { IntOffset(0, animatedDragOffsetY.roundToInt()) }
@@ -385,7 +392,11 @@ fun BlurredModalBottomSheet(
                             dragHandle()
                         }
                     }
-                    content()
+                    CompositionLocalProvider(
+                        LocalTiltActive provides (!isDismissing)
+                    ) {
+                        content()
+                    }
                 }
             }
         }
@@ -401,8 +412,9 @@ fun BlurredModalBottomSheet(
 @Composable
 fun BlurredAlertDialog(
     onDismissRequest: () -> Unit,
-    confirmButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    onConfirm: (() -> Unit)? = null,
+    confirmButton: @Composable (() -> Unit)? = null,
     dismissButton: @Composable (() -> Unit)? = null,
     icon: @Composable (() -> Unit)? = null,
     title: @Composable (() -> Unit)? = null,
@@ -416,91 +428,195 @@ fun BlurredAlertDialog(
     properties: DialogProperties = DialogProperties(),
     hazeState: HazeState? = LocalHazeState.current
 ) {
-    BackHandler(onBack = onDismissRequest)
+    val coroutineScope = rememberCoroutineScope()
+    var isDismissing by remember { mutableStateOf(false) }
+    val visibleState = remember {
+        MutableTransitionState(false).apply { targetState = true }
+    }
+    val scrimAlpha = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        scrimAlpha.animateTo(1f, animationSpec = tween(durationMillis = 200))
+    }
+
+    val triggerDismiss: () -> Unit = {
+        if (!isDismissing) {
+            isDismissing = true
+            visibleState.targetState = false
+            coroutineScope.launch {
+                scrimAlpha.animateTo(0f, animationSpec = tween(durationMillis = 200))
+            }
+            coroutineScope.launch {
+                delay(220)
+                onDismissRequest()
+            }
+        }
+    }
+
+    val triggerConfirm: () -> Unit = {
+        if (!isDismissing) {
+            isDismissing = true
+            visibleState.targetState = false
+            coroutineScope.launch {
+                scrimAlpha.animateTo(0f, animationSpec = tween(durationMillis = 200))
+            }
+            coroutineScope.launch {
+                delay(220)
+                onConfirm?.invoke()
+            }
+        }
+    }
+
+    BackHandler(enabled = !isDismissing, onBack = { triggerDismiss() })
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .zIndex(999f)
-            .background(Color.Black.copy(alpha = 0.32f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismissRequest
-            ),
+            .zIndex(999f),
         contentAlignment = Alignment.Center
     ) {
-        BlurredSurface(
-            shape = shape,
-            color = containerColor,
-            alpha = HazeDefaults.tintAlpha,
-            shadowElevation = 8.dp,
-            tonalElevation = tonalElevation,
-            monetTintWeight = 0.28f,
-            hazeState = hazeState,
-            modifier = modifier
-                .padding(horizontal = 24.dp)
-                .widthIn(min = 280.dp, max = 560.dp)
+        // Scrim backdrop
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { this.alpha = scrimAlpha.value }
+                .background(Color.Black.copy(alpha = 0.32f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = {}
+                    onClick = { triggerDismiss() }
                 )
+        )
+
+        val motionScheme = MaterialTheme.motionScheme
+
+        AnimatedVisibility(
+            visibleState = visibleState,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = motionScheme.defaultSpatialSpec()
+            ) + fadeIn(animationSpec = motionScheme.defaultEffectsSpec()),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = motionScheme.fastSpatialSpec()
+            ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec())
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
+            CompositionLocalProvider(
+                LocalTiltActive provides (!isDismissing)
             ) {
-                if (icon != null) {
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 16.dp)
-                            .align(Alignment.CenterHorizontally)
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides iconContentColor) {
-                            icon()
-                        }
-                    }
-                }
-                if (title != null) {
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 16.dp)
-                            .align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally)
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides titleContentColor) {
-                            ProvideTextStyle(MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold)) {
-                                title()
-                            }
-                        }
-                    }
-                }
-                if (text != null) {
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 24.dp)
-                            .align(Alignment.Start)
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides textContentColor) {
-                            ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                                text()
-                            }
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                BlurredSurface(
+                shape = shape,
+                color = containerColor,
+                alpha = 0.65f,
+                shadowElevation = 8.dp,
+                tonalElevation = tonalElevation,
+                monetTintWeight = 0.0f,
+                hazeState = hazeState,
+                modifier = modifier
+                    .padding(horizontal = 24.dp)
+                    .widthIn(min = 280.dp, max = 560.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
                 ) {
-                    if (dismissButton != null) {
-                        dismissButton()
-                        Spacer(Modifier.width(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = if (text != null) 16.dp else 0.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (icon != null) {
+                                CompositionLocalProvider(LocalContentColor provides iconContentColor) {
+                                    icon()
+                                }
+                            }
+                            if (title != null) {
+                                CompositionLocalProvider(LocalContentColor provides titleContentColor) {
+                                    ProvideTextStyle(
+                                        MaterialTheme.typography.headlineSmall.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = titleContentColor
+                                        )
+                                    ) {
+                                        title()
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AnimatedCookieButton(
+                                onClick = { triggerDismiss() },
+                                icon = Icons.Default.Close,
+                                contentDescription = "Close",
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                size = 40.dp
+                            )
+                            if (onConfirm != null) {
+                                AnimatedCookieButton(
+                                    onClick = { triggerConfirm() },
+                                    icon = Icons.Default.Check,
+                                    contentDescription = "Confirm",
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    size = 40.dp
+                                )
+                            }
+                        }
                     }
-                    confirmButton()
+
+                    if (text != null) {
+                        val hasBottomButtons = confirmButton != null || dismissButton != null
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (hasBottomButtons) Modifier.padding(bottom = 24.dp) else Modifier)
+                                .align(Alignment.Start)
+                        ) {
+                            CompositionLocalProvider(LocalContentColor provides textContentColor) {
+                                ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                                    text()
+                                }
+                            }
+                        }
+                    }
+
+                    if (confirmButton != null || dismissButton != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (dismissButton != null) {
+                                dismissButton()
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            confirmButton?.invoke()
+                        }
+                    }
                 }
             }
         }
     }
 }
+}
+
