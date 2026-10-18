@@ -101,7 +101,7 @@ fun SelectionToolbar(
             tonalElevation = 0.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(100.dp)
+                .height(84.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -124,8 +124,8 @@ fun SelectionToolbar(
                 )
 
                 val textToShow = when {
-                    viewModel.pendingCollectionAssignment != null -> "Add to ${viewModel.pendingCollectionAssignment}"
-                    viewModel.pendingCollectionRemoval != null -> "Remove from ${viewModel.pendingCollectionRemoval}"
+                    viewModel.pendingCollectionAssignment != null -> "Add photos"
+                    viewModel.pendingCollectionRemoval != null -> "Remove photos"
                     viewModel.pendingSnippetToApply != null -> "Add '${viewModel.pendingSnippetToApply}'"
                     viewModel.pendingLocationToApply != null -> {
                         val loc = viewModel.pendingLocationToApply!!
@@ -182,8 +182,8 @@ fun SelectionToolbar(
                         },
                         icon = Icons.Default.Check,
                         contentDescription = "Confirm",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                         size = 44.dp,
                         isSpinning = isSpinning
                     )
@@ -252,12 +252,20 @@ fun FloatingTitlePill(
             // Attempt common date formats; fallback to original if parsing fails
             val parser = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
             val parsed = parser.parse(dateText)
-            SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(parsed)
+            if (parsed != null) {
+                SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(parsed)
+            } else {
+                dateText
+            }
         } catch (e: Exception) {
             try {
                 val parser = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
                 val parsed = parser.parse(dateText)
-                SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(parsed)
+                if (parsed != null) {
+                    SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(parsed)
+                } else {
+                    dateText
+                }
             } catch (e2: Exception) {
                 // If parsing fails, fall back to original text (could already be month-year)
                 dateText
@@ -476,6 +484,7 @@ fun MainTopBar(
     leftAlignTitle: Boolean = true,
     titleIcon: ImageVector? = null,
     forceTransparentBackground: Boolean = false,
+    showDividerOnScroll: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val view = LocalView.current
@@ -615,7 +624,7 @@ fun MainTopBar(
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.Transparent
                 )
-            } else if (isScrolled && !forceTransparentBackground) {
+            } else if (isScrolled && !forceTransparentBackground && showDividerOnScroll) {
                 HorizontalDivider(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     thickness = 0.5.dp,
@@ -729,6 +738,7 @@ fun SearchViewOverlay(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            @Suppress("DEPRECATION")
                             BasicTextField(
                                 value = viewModel.searchQuery,
                                 onValueChange = { viewModel.searchQuery = it },
@@ -886,6 +896,11 @@ fun SearchViewOverlay(
     if (viewModel.showClearHistoryDialog) {
         BlurredAlertDialog(
             onDismissRequest = { viewModel.showClearHistoryDialog = false },
+            onConfirm = {
+                viewModel.clearRecentSearches()
+                viewModel.showClearHistoryDialog = false
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             title = { 
                 Text(
@@ -898,31 +913,6 @@ fun SearchViewOverlay(
                     "This will remove all your recent searches.",
                     style = MaterialTheme.typography.bodyLarge
                 ) 
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.clearRecentSearches()
-                        viewModel.showClearHistoryDialog = false
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    ),
-                    shape = CircleShape,
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Text("Clear All", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    viewModel.showClearHistoryDialog = false 
-                }) {
-                    Text("Cancel", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                }
             }
         )
     }
@@ -959,11 +949,13 @@ fun LargeMainTopBar(
     onNavigationClick: () -> Unit,
     navigationIcon: ImageVector = Icons.AutoMirrored.Filled.ArrowBack,
     isSpinning: Boolean = true,
-    scrollBehavior: TopAppBarScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    scrolledContainerColor: Color = MaterialTheme.colorScheme.surface,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    val collapsedFraction = scrollBehavior.state.collapsedFraction
+    val collapsedFraction = scrollBehavior?.state?.collapsedFraction ?: 0f
     val fontSize = (34f - 12f * collapsedFraction).sp
     val lineHeight = (42f - 14f * collapsedFraction).sp
 
@@ -988,14 +980,13 @@ fun LargeMainTopBar(
                 },
                 icon = navigationIcon,
                 contentDescription = "Navigation",
-                size = 44.dp,
                 isSpinning = isSpinning
             )
         },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = containerColor,
+            scrolledContainerColor = scrolledContainerColor
         ),
         scrollBehavior = scrollBehavior
     )
