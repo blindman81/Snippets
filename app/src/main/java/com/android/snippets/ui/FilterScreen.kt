@@ -1,114 +1,183 @@
 package com.android.snippets.ui
 
 import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.runtime.*
-import androidx.compose.animation.*
-import com.android.snippets.ui.shapes.CookieShape
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.Dp
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.draw.clip
-import androidx.compose.runtime.saveable.rememberSaveable
-import com.android.snippets.ui.components.*
-import com.android.snippets.ui.theme.titleEmphasized
-import com.android.snippets.ui.util.Motion
+import com.android.snippets.ui.components.FilterSnippetContent
+import com.android.snippets.ui.shapes.CookieShape
+import com.android.snippets.viewmodel.SnippetSortType
 import com.android.snippets.viewmodel.SnippetsViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterScreen(viewModel: SnippetsViewModel) {
     val view = LocalView.current
-    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-    val coroutineScope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(initialPage = selectedTabIndex, pageCount = { 2 })
-    
-    // Sync selectedTabIndex with pager state changes
-    var isFirstFilterTabLoad by remember { mutableStateOf(true) }
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.currentPage }.collect { page ->
-            if (selectedTabIndex != page) {
-                selectedTabIndex = page
-                if (!isFirstFilterTabLoad) {
-                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                }
-            }
-            isFirstFilterTabLoad = false
-        }
-    }
-    
-    val snippetsIcon = remember {
-        ImageVector.Builder(
-            name = "SnippetsTab",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 960f,
-            viewportHeight = 960f
-        ).apply {
-            addGroup(
-                name = "snippets_group",
-                translationY = 960f
-            ).apply {
-                addPath(
-                    pathData = androidx.compose.ui.graphics.vector.PathParser().parsePathString("M200-200h560v-367L567-760H200v560Zm0 80q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h400l240 240v400q0 33-23.5 56.5T760-120H200Zm80-160h400v-80H280v80Zm0-160h400v-80H280v80Zm0-160h280v-80H280v80Zm-80 400v-560 560Z").toNodes(),
-                    fill = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black)
-                )
-            }
-        }.build()
-    }
-
-    val sortIcon = remember {
-        ImageVector.Builder(
-            name = "SortTab",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 960f,
-            viewportHeight = 960f
-        ).apply {
-            addGroup(
-                name = "sort_group",
-                translationY = 960f
-            ).apply {
-                addPath(
-                    pathData = androidx.compose.ui.graphics.vector.PathParser().parsePathString("M120-240v-80h240v80H120Zm0-200v-80h480v80H120Zm0-200v-80h720v80H120Z").toNodes(),
-                    fill = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black)
-                )
-            }
-        }.build()
-    }
-
-
 
     AppPredictiveBackHandler {
         viewModel.closeFilter()
     }
-    val snippetsScrollState = rememberScrollState()
-    val sortScrollState = rememberScrollState()
-    val activeScrollState = when (selectedTabIndex) {
-        0 -> snippetsScrollState
-        else -> sortScrollState
+
+    var expanded by remember { mutableStateOf(false) }
+
+    var isNew by remember(viewModel.snippetSortType) {
+        mutableStateOf(viewModel.snippetSortType != SnippetSortType.Old)
     }
-    val isScrolled by remember { derivedStateOf<Boolean> { activeScrollState.value > 0 } }
+    var azAscending by remember(viewModel.snippetSortType, viewModel.isSortAscending) {
+        mutableStateOf(if (viewModel.snippetSortType == SnippetSortType.AZ) viewModel.isSortAscending else true)
+    }
+    var monthAscending by remember(viewModel.snippetSortType, viewModel.isSortAscending) {
+        mutableStateOf(if (viewModel.snippetSortType == SnippetSortType.Month) viewModel.isSortAscending else true)
+    }
+    var yearAscending by remember(viewModel.snippetSortType, viewModel.isSortAscending) {
+        mutableStateOf(if (viewModel.snippetSortType == SnippetSortType.Year) viewModel.isSortAscending else true)
+    }
+    val currentSortLabel = when (viewModel.snippetSortType) {
+        SnippetSortType.New -> "new"
+        SnippetSortType.Old -> "old"
+        SnippetSortType.AZ -> if (viewModel.isSortAscending) "a-z" else "z-a"
+        SnippetSortType.Month -> if (viewModel.isSortAscending) "first month" else "last month"
+        SnippetSortType.Year -> if (viewModel.isSortAscending) "first year" else "last year"
+        SnippetSortType.Favorites -> "favorites"
+        SnippetSortType.Emoji -> "emoji"
+        SnippetSortType.Emoticons -> "emoticons"
+        else -> "new"
+    }
+
+    val currentSortArrow = when (viewModel.snippetSortType) {
+        SnippetSortType.Old -> Icons.Default.ArrowDownward
+        SnippetSortType.New -> Icons.Default.ArrowUpward
+        SnippetSortType.AZ, SnippetSortType.Month, SnippetSortType.Year -> {
+            if (viewModel.isSortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward
+        }
+        else -> null
+    }
+
+    data class SortMenuItem(
+        val text: String,
+        val arrowIcon: ImageVector? = null,
+        val onToggleArrow: (() -> Unit)? = null,
+        val onSelect: () -> Unit,
+        val isSelected: Boolean
+    )
+
+    val menuItems = listOf(
+        // 1. new > old
+        SortMenuItem(
+            text = if (isNew) "new" else "old",
+            arrowIcon = if (isNew) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+            onToggleArrow = {
+                val next = !isNew
+                isNew = next
+                if (viewModel.snippetSortType == SnippetSortType.New || viewModel.snippetSortType == SnippetSortType.Old) {
+                    viewModel.snippetSortType = if (next) SnippetSortType.New else SnippetSortType.Old
+                }
+            },
+            onSelect = {
+                viewModel.snippetSortType = if (isNew) SnippetSortType.New else SnippetSortType.Old
+            },
+            isSelected = viewModel.snippetSortType == SnippetSortType.New || viewModel.snippetSortType == SnippetSortType.Old
+        ),
+        // 2. a-z > z-a
+        SortMenuItem(
+            text = if (azAscending) "a-z" else "z-a",
+            arrowIcon = if (azAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+            onToggleArrow = {
+                val next = !azAscending
+                azAscending = next
+                if (viewModel.snippetSortType == SnippetSortType.AZ) {
+                    viewModel.isSortAscending = next
+                }
+            },
+            onSelect = {
+                viewModel.snippetSortType = SnippetSortType.AZ
+                viewModel.isSortAscending = azAscending
+            },
+            isSelected = viewModel.snippetSortType == SnippetSortType.AZ
+        ),
+        // 3. first month > last month
+        SortMenuItem(
+            text = if (monthAscending) "first month" else "last month",
+            arrowIcon = if (monthAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+            onToggleArrow = {
+                val next = !monthAscending
+                monthAscending = next
+                if (viewModel.snippetSortType == SnippetSortType.Month) {
+                    viewModel.isSortAscending = next
+                }
+            },
+            onSelect = {
+                viewModel.snippetSortType = SnippetSortType.Month
+                viewModel.isSortAscending = monthAscending
+            },
+            isSelected = viewModel.snippetSortType == SnippetSortType.Month
+        ),
+        // 4. first year > last year
+        SortMenuItem(
+            text = if (yearAscending) "first year" else "last year",
+            arrowIcon = if (yearAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+            onToggleArrow = {
+                val next = !yearAscending
+                yearAscending = next
+                if (viewModel.snippetSortType == SnippetSortType.Year) {
+                    viewModel.isSortAscending = next
+                }
+            },
+            onSelect = {
+                viewModel.snippetSortType = SnippetSortType.Year
+                viewModel.isSortAscending = yearAscending
+            },
+            isSelected = viewModel.snippetSortType == SnippetSortType.Year
+        ),
+        // 5. favorites
+        SortMenuItem(
+            text = "favorites",
+            arrowIcon = null,
+            onToggleArrow = null,
+            onSelect = {
+                viewModel.snippetSortType = SnippetSortType.Favorites
+            },
+            isSelected = viewModel.snippetSortType == SnippetSortType.Favorites
+        ),
+        // 6. emoji
+        SortMenuItem(
+            text = "emoji",
+            arrowIcon = null,
+            onToggleArrow = null,
+            onSelect = {
+                viewModel.snippetSortType = SnippetSortType.Emoji
+            },
+            isSelected = viewModel.snippetSortType == SnippetSortType.Emoji
+        ),
+        // 7. emoticons
+        SortMenuItem(
+            text = "emoticons",
+            arrowIcon = null,
+            onToggleArrow = null,
+            onSelect = {
+                viewModel.snippetSortType = SnippetSortType.Emoticons
+            },
+            isSelected = viewModel.snippetSortType == SnippetSortType.Emoticons
+        )
+    )
+
+    val configuration = LocalConfiguration.current
+    val maxContentHeight = (configuration.screenHeightDp * 0.72f).dp
 
     Column(
         modifier = Modifier
@@ -118,9 +187,9 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .padding(horizontal = 24.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Surface(
                 shape = CookieShape,
@@ -132,89 +201,118 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                     Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(24.dp))
                 }
             }
-            Text(
-                text = "Filter",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
 
-        @OptIn(ExperimentalMaterial3Api::class)
-        PrimaryTabRow(
-            selectedTabIndex = selectedTabIndex,
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.primary,
-            divider = {},
-            indicator = {
-                TabRowDefaults.PrimaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(
-                        selectedTabIndex = selectedTabIndex,
-                        matchContentSize = true
+            Box {
+                FilterChip(
+                    selected = true,
+                    onClick = {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        expanded = !expanded
+                    },
+                    label = {
+                        Text(
+                            text = currentSortLabel,
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            maxLines = 1
+                        )
+                    },
+                    leadingIcon = currentSortArrow?.let { arrow ->
+                        {
+                            Icon(
+                                imageVector = arrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                            )
+                        }
+                    },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = if (expanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(FilterChipDefaults.IconSize)
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        iconColor = MaterialTheme.colorScheme.primary,
+                        selectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
-                    width = Dp.Unspecified,
-                    shape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)
+                    border = null
                 )
-            }
-        ) {
-            val tabs = listOf("Snippets" to snippetsIcon, "Sort" to sortIcon)
-            tabs.forEachIndexed { index, (label, icon) ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { 
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    },
-                    text = {
-                        val isSelected = selectedTabIndex == index
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(if (isSelected) 2.dp else 4.dp)
-                        ) {
-                            Icon(icon, null, modifier = Modifier.size(24.dp))
-                             Text(
-                                 text = label,
-                                 style = if (isSelected) com.android.snippets.ui.theme.titleMediumEmphasized.copy(
-                                     fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide
-                                 ) else MaterialTheme.typography.titleMedium.copy(
-                                     fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
-                                 ),
-                                 fontWeight = FontWeight.Bold
-                             )
-                        }
-                    },
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(start = 2.dp, end = 2.dp, top = 0.dp, bottom = 0.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                )
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    menuItems.forEach { item ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = item.text,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontFamily = if (item.isSelected) com.android.snippets.ui.theme.GoogleSansFlexWide else com.android.snippets.ui.theme.GoogleSansFlexRound,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = if (item.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            },
+                            leadingIcon = if (item.arrowIcon != null) {
+                                {
+                                    IconButton(
+                                        onClick = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                            item.onToggleArrow?.invoke()
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = item.arrowIcon,
+                                            contentDescription = "Toggle sort direction",
+                                            tint = if (item.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            } else null,
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                item.onSelect()
+                                expanded = false
+                            },
+                            contentPadding = PaddingValues(
+                                start = if (item.arrowIcon != null) 8.dp else 16.dp,
+                                end = 8.dp,
+                                top = 2.dp,
+                                bottom = 2.dp
+                            )
+                        )
+                    }
+                }
             }
         }
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 500.dp)
-        ) { page ->
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.TopStart
-            ) {
-                FilterSnippetContent(
-                    viewModel = viewModel,
-                    onDismiss = { viewModel.closeFilter() },
-                    showDisplay = true,
-                    showSort = false,
-                    scrollState = when (page) {
-                        0 -> snippetsScrollState
-                        else -> sortScrollState
-                    },
-                    selectedTabIndex = page
-                )
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxContentHeight)
+        ) {
+            FilterSnippetContent(
+                viewModel = viewModel,
+                onDismiss = { viewModel.closeFilter() },
+                showDisplay = true,
+                showSort = false,
+                selectedTabIndex = 0
+            )
         }
     }
 }
