@@ -141,10 +141,9 @@ fun LibraryScreen(
 
 
     var isSearchOpen by remember { mutableStateOf(false) }
-    var showHistoryBottomSheet by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
 
-    val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
+    val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || viewModel.showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
     AppPredictiveBackHandler(enabled = isBackHandlerEnabled) {
         if (isSearchOpen) {
             isSearchOpen = false
@@ -152,7 +151,7 @@ fun LibraryScreen(
         } else if (viewModel.isSelectionMode) {
             viewModel.clearSelection()
         } else if (viewModel.showHistoryBottomSheet) {
-            showHistoryBottomSheet = false
+            viewModel.showHistoryBottomSheet = false
         } else if (showMenuPopup) {
             showMenuPopup = false
         } else if (showCollectionsPopup) {
@@ -163,7 +162,7 @@ fun LibraryScreen(
     var longPressedCollection by remember { mutableStateOf<String?>(null) }
     var deletingCollection by remember { mutableStateOf<String?>(null) }
 
-    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || showHistoryBottomSheet || (longPressedCollection != null) || (deletingCollection != null)
+    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || viewModel.showHistoryBottomSheet || (longPressedCollection != null) || (deletingCollection != null)
     val allowMemorySpin = !isAnyPopupActive
     val curated = viewModel.curatedMemories
     
@@ -235,10 +234,26 @@ fun LibraryScreen(
         }
     }
 
+    val isCookieToolbarVisible = viewModel.isSelectionMode || isFabVisible
+
     val cookieToolbarOffset by animateDpAsState(
-        targetValue = if (viewModel.isSelectionMode || isFabVisible) 0.dp else 200.dp,
-        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-        label = "toolbar_offset"
+        targetValue = if (isCookieToolbarVisible) 0.dp else 200.dp,
+        animationSpec = if (isCookieToolbarVisible) {
+            Motion.ToolbarEnterSpring
+        } else {
+            Motion.ToolbarExitSpring
+        },
+        label = "cookie_toolbar_offset"
+    )
+
+    val cookieToolbarScale by animateFloatAsState(
+        targetValue = if (isCookieToolbarVisible) 1f else 0.88f,
+        animationSpec = if (isCookieToolbarVisible) {
+            Motion.ToolbarScaleEnterSpring
+        } else {
+            Motion.ToolbarScaleExitSpring
+        },
+        label = "cookie_toolbar_scale"
     )
 
     val currentGridState = remember(currentTab) {
@@ -251,16 +266,22 @@ fun LibraryScreen(
         }
     }
 
-    val tabBarOffset by animateDpAsState(
+    LaunchedEffect(isScrolled) {
+        if (!isScrolled) {
+            isFabVisible = true
+        }
+    }
+
+    val cookieNavBarOffset by animateDpAsState(
         targetValue = if (isScrolled) (-100).dp else 0.dp,
         animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-        label = "tab_bar_offset"
+        label = "cookie_nav_bar_offset"
     )
 
-    val tabBarAlpha by animateFloatAsState(
+    val cookieNavBarAlpha by animateFloatAsState(
         targetValue = if (isScrolled) 0f else 1f,
         animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
-        label = "tab_bar_alpha"
+        label = "cookie_nav_bar_alpha"
     )
 
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -587,15 +608,15 @@ fun LibraryScreen(
                                           )
                                   )
 
-                                 // Tab Bar stuck at the top of the surface background
+                                 // Cookie Nav Bar stuck at the top of the surface background
                                  Box(
                                      modifier = Modifier
                                          .align(Alignment.TopStart)
                                          .fillMaxWidth()
                                          .padding(top = statusBarTop + 8.dp)
                                          .graphicsLayer {
-                                             translationY = tabBarOffset.toPx()
-                                             alpha = tabBarAlpha
+                                             translationY = cookieNavBarOffset.toPx()
+                                             alpha = cookieNavBarAlpha
                                          },
                                      contentAlignment = Alignment.CenterStart
                                  ) {
@@ -641,8 +662,8 @@ fun LibraryScreen(
 
                                           CookieButtonGroup(
                                               selectedIndex = selectedTabIndex,
-                                              onSelect = { index ->
-                                                  val tabName = allTabs.getOrNull(index) ?: return@CookieButtonGroup
+                                              onSelect = selectTab@ { index ->
+                                                  val tabName = allTabs.getOrNull(index) ?: return@selectTab
                                                   val pageIndex = pageTabs.indexOf(tabName)
                                                   if (pageIndex != -1) {
                                                       if (tabName == currentTab) {
@@ -666,54 +687,53 @@ fun LibraryScreen(
 
 
 
-                // Cookie Toolbar - morphs between normal controls and inline search bar
+                // Cookie Toolbar � morphs between normal controls and inline search bar
                 val isCookieToolbarVisibleState = !viewModel.isSelectionMode && isFabVisible
 
-                val motionScheme = MaterialTheme.motionScheme
-                AnimatedContent(
-                    targetState = when {
-                        viewModel.isSelectionMode -> 2
-                        isSearchOpen -> 1
-                        else -> 0
-                    },
-                    transitionSpec = {
-                        (fadeIn(motionScheme.defaultEffectsSpec()) + scaleIn(initialScale = 0.92f, animationSpec = motionScheme.defaultSpatialSpec()))
-                            .togetherWith(fadeOut(motionScheme.fastEffectsSpec()) + scaleOut(targetScale = 0.92f, animationSpec = motionScheme.fastSpatialSpec()))
-                    },
-                    label = "cookie_toolbar_mode",
+                BlurredSurface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    shadowElevation = 8.dp,
+                    tonalElevation = 0.dp,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .safeDrawingPadding()
                         .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                         .widthIn(max = 500.dp)
                         .fillMaxWidth()
+                        .height(84.dp)
                         .graphicsLayer {
                             translationY = cookieToolbarOffset.toPx()
                             scaleX = cookieToolbarScale
                             scaleY = cookieToolbarScale
                             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                         }
-                ) { searchMode ->
-                    if (searchMode == 2) {
-                        SelectionToolbar(
-                            viewModel = viewModel,
-                            onDeleteClick = { viewModel.showBulkDeleteModal = true },
-                            isSpinning = !isAnyPopupActive,
-                            isScrolled = isScrolled
-                        )
-                    } else if (searchMode == 1) {
-                        // â”€â”€ SEARCH MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-                        BlurredSurface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                            shadowElevation = 8.dp,
-                            tonalElevation = 0.dp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(84.dp)
-                        ) {
+                ) {
+                    val motionScheme = MaterialTheme.motionScheme
+                    AnimatedContent(
+                        targetState = when {
+                            viewModel.isSelectionMode -> 2
+                            isSearchOpen -> 1
+                            else -> 0
+                        },
+                        transitionSpec = {
+                            (fadeIn(motionScheme.defaultEffectsSpec()) + scaleIn(initialScale = 0.92f, animationSpec = motionScheme.defaultSpatialSpec()))
+                                .togetherWith(fadeOut(motionScheme.fastEffectsSpec()) + scaleOut(targetScale = 0.92f, animationSpec = motionScheme.fastSpatialSpec()))
+                        },
+                        contentAlignment = Alignment.Center,
+                        label = "cookie_toolbar_mode",
+                        modifier = Modifier.fillMaxSize()
+                    ) { searchMode ->
+                        if (searchMode == 2) {
+                            SelectionToolbarContent(
+                                viewModel = viewModel,
+                                onDeleteClick = { viewModel.showBulkDeleteModal = true },
+                                isSpinning = !isAnyPopupActive,
+                                isScrolled = isScrolled
+                            )
+                        } else if (searchMode == 1) {
+                            // Search Mode
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -788,18 +808,8 @@ fun LibraryScreen(
                                     )
                                 }
                             }
-                        }
-                    } else {
-                        // â”€â”€ NORMAL MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                        BlurredSurface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                            shadowElevation = 8.dp,
-                            tonalElevation = 0.dp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(84.dp)
-                        ) {
+                        } else {
+                            // Normal Mode
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -852,33 +862,33 @@ fun LibraryScreen(
                                 )
 
                                 // History
-                                Box {
-                                    AnimatedCookieButton(
-                                        onClick = {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                            viewModel.showHistoryBottomSheet = true
-                                        },
-                                        icon = Icons.Default.History,
-                                        contentDescription = "History",
-                                        isSpinning = !isAnyPopupActive,
-                                        size = 48.dp,
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    // Unviewed-memories indicator dot
-                                    if (viewModel.hasUnviewedMemories) {
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .offset(x = (-4).dp, y = 4.dp)
-                                                .size(8.dp)
-                                                .background(
-                                                    color = MaterialTheme.colorScheme.tertiary,
-                                                    shape = CircleShape
-                                                )
-                                        )
+                                AnimatedCookieButton(
+                                    onClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        viewModel.showHistoryBottomSheet = true
+                                    },
+                                    icon = Icons.Default.History,
+                                    contentDescription = "History",
+                                    isSpinning = !isAnyPopupActive,
+                                    size = 48.dp,
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    badge = {
+                                        // Unviewed-memories indicator dot
+                                        if (viewModel.hasUnviewedMemories) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .offset(x = (-4).dp, y = 4.dp)
+                                                    .size(8.dp)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.tertiary,
+                                                        shape = CircleShape
+                                                    )
+                                            )
+                                        }
                                     }
-                                }
+                                )
 
                                 val isFilterActive = viewModel.selectedFilterSnippets.isNotEmpty() || viewModel.showFilterSheet
                                 AnimatedCookieButton(
@@ -897,9 +907,8 @@ fun LibraryScreen(
                                 )
                             }
                         }
-
-                        }
                     }
+                }
                         MenuBottomSheet(
                             show = showMenuPopup,
                             onDismissRequest = { showMenuPopup = false },
@@ -908,7 +917,7 @@ fun LibraryScreen(
                         )
 
                         HistoryBottomSheet(
-                            show = showHistoryBottomSheet,
+                            show = viewModel.showHistoryBottomSheet,
                             onDismissRequest = { viewModel.showHistoryBottomSheet = false },
                             viewModel = viewModel,
                             view = view
@@ -918,17 +927,16 @@ fun LibraryScreen(
 
                 AnimatedVisibility(
                     visible = isScrolled && !viewModel.isSelectionMode && !isSearchOpen,
-                    enter = fadeIn() + scaleIn(initialScale = 0.8f),
-                    exit = fadeOut() + scaleOut(targetScale = 0.8f),
+                    enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                            scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
+                    exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                           scaleOut(targetScale = 0.8f, animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .safeDrawingPadding()
                         .padding(bottom = 132.dp)
                         .graphicsLayer {
                             translationY = cookieToolbarOffset.toPx()
-                            scaleX = cookieToolbarScale
-                            scaleY = cookieToolbarScale
-                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                         }
                 ) {
                     AnimatedCookieButton(
@@ -1261,8 +1269,8 @@ fun LibraryScreen(
                                                         ) {
                                                             CookieButtonGroup(
                                                                 selectedIndex = selectedActionIndex,
-                                                                onSelect = { index ->
-                                                                    val action = actions.getOrNull(index) ?: return@CookieButtonGroup
+                                                                onSelect = selectAction@ { index ->
+                                                                    val action = actions.getOrNull(index) ?: return@selectAction
                                                                     selectedActionIndex = index
                                                                     when (action) {
                                                                         "ADD" -> showPillInfo("Add photos") {
@@ -1332,8 +1340,8 @@ fun LibraryScreen(
                                                                         selectedActionIndex = -1
                                                                     }
                                                                 },
-                                                                onItemClick = { index ->
-                                                                    val action = actions.getOrNull(index) ?: return@CookieButtonGroup
+                                                                onItemClick = clickAction@ { index ->
+                                                                    val action = actions.getOrNull(index) ?: return@clickAction
                                                                     when (action) {
                                                                         "ADD" -> showPillInfo("Add photos") {
                                                                             Icon(
@@ -1390,8 +1398,8 @@ fun LibraryScreen(
                                                         ) {
                                                             CookieButtonGroup(
                                                                 selectedIndex = selectedSortIndex,
-                                                                onSelect = { index ->
-                                                                    val option = sortOptions.getOrNull(index) ?: return@CookieButtonGroup
+                                                                onSelect = selectSort@ { index ->
+                                                                    val option = sortOptions.getOrNull(index) ?: return@selectSort
                                                                     if (currentSortType != option) {
                                                                         val col = longPressedCollection ?: "Library"
                                                                         viewModel.setPhotoSortTypeFor(col, option)
@@ -1683,3 +1691,4 @@ private data class SortPillInfo(
     val icon: @Composable () -> Unit,
     val timestamp: Long = System.currentTimeMillis()
 )
+

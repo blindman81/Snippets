@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -78,17 +79,127 @@ import com.android.snippets.model.Photo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SelectionToolbar(
+fun SelectionToolbarContent(
     viewModel: SnippetsViewModel,
     onDeleteClick: () -> Unit,
     isSpinning: Boolean = true,
-    isScrolled: Boolean = false
+    isScrolled: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
     val context = LocalContext.current
 
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        AnimatedCookieButton(
+            onClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                viewModel.clearSelection()
+            },
+            icon = Icons.Default.Close,
+            contentDescription = "Clear Selection",
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            size = 44.dp,
+            isSpinning = isSpinning
+        )
+
+        val textToShow = when {
+            viewModel.pendingCollectionAssignment != null -> "Add photos"
+            viewModel.pendingCollectionRemoval != null -> "Remove photos"
+            viewModel.pendingSnippetToApply != null -> "Add '${viewModel.pendingSnippetToApply}'"
+            viewModel.pendingLocationToApply != null -> {
+                val loc = viewModel.pendingLocationToApply!!
+                val clean = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(
+                    context,
+                    com.android.snippets.model.Photo(uriString = "", locationLink = loc)
+                ) ?: loc
+                "Set location '$clean'"
+            }
+            viewModel.pendingRatingToApply != 0 -> {
+                val rating = viewModel.pendingRatingToApply
+                "Set rating to $rating ★"
+            }
+            else -> ""
+        }
+        if (textToShow.isNotEmpty()) {
+            Text(
+                text = textToShow,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        } else {
+            AnimatedCookieButton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    viewModel.shareSelectedPhotos(context)
+                },
+                icon = Icons.Default.Share,
+                contentDescription = "Share Selection",
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                size = 44.dp,
+                isSpinning = isSpinning
+            )
+        }
+
+        if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null || viewModel.pendingSnippetToApply != null || viewModel.pendingLocationToApply != null || viewModel.pendingRatingToApply != 0) {
+            AnimatedCookieButton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    if (viewModel.pendingCollectionAssignment != null) {
+                        viewModel.confirmCollectionAssignment()
+                    } else if (viewModel.pendingCollectionRemoval != null) {
+                        viewModel.confirmCollectionRemoval()
+                    } else if (viewModel.pendingSnippetToApply != null) {
+                        viewModel.confirmBulkSnippetApply()
+                    } else if (viewModel.pendingLocationToApply != null) {
+                        viewModel.confirmBulkLocationApply()
+                    } else if (viewModel.pendingRatingToApply != 0) {
+                        viewModel.confirmBulkRatingApply()
+                    }
+                },
+                icon = Icons.Default.Check,
+                contentDescription = "Confirm",
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                size = 44.dp,
+                isSpinning = isSpinning
+            )
+        } else {
+            AnimatedCookieButton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                    onDeleteClick()
+                },
+                icon = Icons.Default.Delete,
+                contentDescription = "Delete",
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                size = 44.dp,
+                isSpinning = isSpinning
+            )
+        }
+    }
+}
+
+@Composable
+fun SelectionToolbar(
+    viewModel: SnippetsViewModel,
+    onDeleteClick: () -> Unit,
+    isSpinning: Boolean = true,
+    isScrolled: Boolean = false,
+    modifier: Modifier = Modifier
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 0.dp),
         contentAlignment = Alignment.Center
@@ -103,106 +214,45 @@ fun SelectionToolbar(
                 .fillMaxWidth()
                 .height(84.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                AnimatedCookieButton(
-                    onClick = {
-                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                        viewModel.clearSelection()
-                    },
-                    icon = Icons.Default.Close,
-                    contentDescription = "Clear Selection",
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    size = 44.dp,
-                    isSpinning = isSpinning
-                )
-
-                val textToShow = when {
-                    viewModel.pendingCollectionAssignment != null -> "Add photos"
-                    viewModel.pendingCollectionRemoval != null -> "Remove photos"
-                    viewModel.pendingSnippetToApply != null -> "Add '${viewModel.pendingSnippetToApply}'"
-                    viewModel.pendingLocationToApply != null -> {
-                        val loc = viewModel.pendingLocationToApply!!
-                        val clean = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(
-                            context,
-                            com.android.snippets.model.Photo(uriString = "", locationLink = loc)
-                        ) ?: loc
-                        "Set location '$clean'"
-                    }
-                    viewModel.pendingRatingToApply != 0 -> {
-                        val rating = viewModel.pendingRatingToApply
-                        "Set rating to $rating ★"
-                    }
-                    else -> ""
-                }
-                if (textToShow.isNotEmpty()) {
-                    Text(
-                        text = textToShow,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else {
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.shareSelectedPhotos(context)
-                        },
-                        icon = Icons.Default.Share,
-                        contentDescription = "Share Selection",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        size = 44.dp,
-                        isSpinning = isSpinning
-                    )
-                }
-
-                if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null || viewModel.pendingSnippetToApply != null || viewModel.pendingLocationToApply != null || viewModel.pendingRatingToApply != 0) {
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            if (viewModel.pendingCollectionAssignment != null) {
-                                viewModel.confirmCollectionAssignment()
-                            } else if (viewModel.pendingCollectionRemoval != null) {
-                                viewModel.confirmCollectionRemoval()
-                            } else if (viewModel.pendingSnippetToApply != null) {
-                                viewModel.confirmBulkSnippetApply()
-                            } else if (viewModel.pendingLocationToApply != null) {
-                                viewModel.confirmBulkLocationApply()
-                            } else if (viewModel.pendingRatingToApply != 0) {
-                                viewModel.confirmBulkRatingApply()
-                            }
-                        },
-                        icon = Icons.Default.Check,
-                        contentDescription = "Confirm",
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        size = 44.dp,
-                        isSpinning = isSpinning
-                    )
-                } else {
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                            onDeleteClick()
-                        },
-                        icon = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        size = 44.dp,
-                        isSpinning = isSpinning
-                    )
-                }
-            }
+            SelectionToolbarContent(
+                viewModel = viewModel,
+                onDeleteClick = onDeleteClick,
+                isSpinning = isSpinning,
+                isScrolled = isScrolled
+            )
         }
+    }
+}
+
+/**
+ * CookieToolbar represents the floating cookie toolbar container.
+ */
+@Composable
+fun CookieToolbar(
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = CircleShape,
+    color: Color = MaterialTheme.colorScheme.surfaceContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    content: @Composable RowScope.() -> Unit
+) {
+    BlurredSurface(
+        shape = shape,
+        color = color,
+        contentColor = contentColor,
+        shadowElevation = 8.dp,
+        tonalElevation = 0.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(84.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
     }
 }
 
@@ -993,34 +1043,3 @@ fun LargeMainTopBar(
 }
 
 
-/**
- * CookieToolbar represents the floating cookie toolbar container.
- */
-@Composable
-fun CookieToolbar(
-    modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = CircleShape,
-    color: Color = MaterialTheme.colorScheme.surfaceContainer,
-    contentColor: Color = MaterialTheme.colorScheme.onSurface,
-    content: @Composable RowScope.() -> Unit
-) {
-    BlurredSurface(
-        shape = shape,
-        color = color,
-        contentColor = contentColor,
-        shadowElevation = 8.dp,
-        tonalElevation = 0.dp,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(84.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            content = content
-        )
-    }
-}
