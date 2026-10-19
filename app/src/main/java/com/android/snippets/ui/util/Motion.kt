@@ -61,6 +61,16 @@ object Motion {
         stiffness = Spring.StiffnessMedium
     )
 
+    val NavBarEnterSpring = spring<androidx.compose.ui.unit.Dp>(
+        dampingRatio = 0.65f,
+        stiffness = Spring.StiffnessMediumLow
+    )
+
+    val NavBarExitSpring = spring<androidx.compose.ui.unit.Dp>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMedium
+    )
+
     @OptIn(ExperimentalSharedTransitionApi::class)
     val SharedPhotoBoundsTransform: BoundsTransform = BoundsTransform { _, _ ->
         tween(durationMillis = 260, easing = FastOutSlowInEasing)
