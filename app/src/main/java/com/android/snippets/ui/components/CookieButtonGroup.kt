@@ -429,7 +429,7 @@ fun CookieButtonGroup(
                                 val targetIndex = getTargetMorphIndex(index)
                                 var isHeld = false
                                 val holdJob = scope.launch {
-                                    kotlinx.coroutines.delay(150L)
+                                    kotlinx.coroutines.delay(120L)
                                     isHeld = true
                                     launch {
                                         pressScales[index].animateTo(0.92f, Motion.PressSpring)
@@ -553,7 +553,7 @@ fun CookieButtonGroup(
             verticalArrangement = Arrangement.spacedBy(rowSpacing, Alignment.CenterVertically),
             horizontalAlignment = horizontalAlignment
         ) {
-            val chunkedItems = remember(items, columns) { items.chunked(columns) }
+            val chunkedItems = items.chunked(columns)
             chunkedItems.forEachIndexed { rowIndex, rowItems ->
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(-overlap, horizontalAlignment),
