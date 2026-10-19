@@ -119,6 +119,42 @@ fun AnimatedCookieButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun AnimatedCookieButton(
+    onClick: () -> Unit,
+    iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
+    modifier: Modifier = Modifier,
+    tooltip: String? = null,
+    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    size: androidx.compose.ui.unit.Dp = 56.dp,
+    shape: androidx.compose.ui.graphics.Shape = CookieShape,
+    isSpinning: Boolean = true,
+    spinOnEntry: Boolean = false,
+    enabled: Boolean = true,
+    hapticOnHold: Boolean = true,
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
+) {
+    AnimatedCookieButtonImpl(
+        onClick = onClick,
+        iconContent = iconContent,
+        modifier = modifier,
+        tooltip = tooltip,
+        containerColor = containerColor,
+        contentColor = contentColor,
+        size = size,
+        shape = shape,
+        isSpinning = isSpinning,
+        spinOnEntry = spinOnEntry,
+        enabled = enabled,
+        hapticOnHold = hapticOnHold,
+        iconSize = iconSize,
+        badge = badge
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun AnimatedCookieButtonImpl(
     onClick: () -> Unit,
     iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
@@ -219,8 +255,6 @@ private fun AnimatedCookieButtonImpl(
                     scaleX = animScaleX.value
                     scaleY = animScaleY.value
                 }
-                .clip(currentShape)
-                .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
                 .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
                     detectTapGestures(
@@ -275,6 +309,12 @@ private fun AnimatedCookieButtonImpl(
                 },
             contentAlignment = Alignment.Center
         ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(currentShape)
+                    .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+            )
             val iconModifier = Modifier
                 .size(iconSize)
                 .graphicsLayer { 

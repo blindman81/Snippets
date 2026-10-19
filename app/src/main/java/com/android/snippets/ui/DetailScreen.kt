@@ -195,7 +195,7 @@ fun DetailScreen(
     var showLinkModal by remember { mutableStateOf(false) }
     var showNameModal by remember { mutableStateOf(false) }
 
-    val currentPhoto = photos.getOrNull(pagerState.currentPage) ?: photo
+    val currentPhoto = viewModel.photos.find { it.id == photo.id } ?: photos.getOrNull(pagerState.currentPage) ?: photo
     var isInfoExpanded by remember(currentPhoto.id) { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.pendingOpenAddSnippetDialog, photo.id) {
@@ -250,6 +250,7 @@ fun DetailScreen(
                         onPhotoThumbnailClick = { scrollToTopActions[pagerState.currentPage]?.invoke() },
                         hasSnippets = hasSnippetsCurrent,
                         showAddButton = true,
+                        isAddActive = showAddModal,
                         onAdd = { showAddModal = true },
                         onDownload = { 
                             viewModel.downloadPhotoCard(context, currentPhoto, isDarkCard, if (isDarkCard) android.graphics.Color.BLACK else android.graphics.Color.WHITE) 
