@@ -579,155 +579,163 @@ private fun SpinningCookieButton(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun AddSnippetsModal(
-    photo: com.android.snippets.model.Photo,
-    onAdd: (String) -> Unit,
-    onClose: () -> Unit,
-    viewModel: com.android.snippets.viewmodel.SnippetsViewModel
-) {
-    val view = LocalView.current
-    var text by remember { mutableStateOf("") }
-    val localSnippetsCount = photo.snippets.size
-
-    BlurredModalBottomSheet(
-        onDismissRequest = onClose,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    ) {
-        Motion.ExpressiveSheetContent {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    Text(
-                        text = "Add a Snippet",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Start
-                    )
-
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedTextField(
-                            value = text,
-                            onValueChange = { if (it.length <= 15) text = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                            label = { Text("New Snippet", style = MaterialTheme.typography.labelMedium) },
-                            placeholder = { Text("Type here...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
-                            singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                                cursorColor = MaterialTheme.colorScheme.primary
-                            ),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                }
-                            )
-                        )
-                        Text(
-                            text = "${text.length}/15",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (text.length >= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(top = 10.dp, end = 16.dp)
-                        )
-                    }
-
-                    // Suggestions Menu
-                    val suggestions = remember(text, viewModel.allUniqueSnippets) {
-                        if (text.isEmpty()) {
-                            viewModel.allUniqueSnippets.take(9)
-                        } else {
-                            viewModel.allUniqueSnippets.filter { 
-                                it.contains(text, ignoreCase = true) && !it.equals(text, ignoreCase = true)
-                            }.take(9)
-                        }
-                    }
-                    
-                    AnimatedVisibility(
-                        visible = suggestions.isNotEmpty(),
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        @OptIn(ExperimentalLayoutApi::class)
-                        FlowRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            suggestions.forEach { suggestion ->
-                                SuggestionChip(
-                                    onClick = { 
-                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                        text = suggestion 
-                                    },
-                                    label = { Text(suggestion, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
-                                    shape = SuggestionChipDefaults.shape,
-                                    colors = SuggestionChipDefaults.suggestionChipColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    border = null
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = {
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        onAdd(text.trim())
-                        onClose()
-                    },
-                    enabled = text.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                    shapes = ButtonDefaults.shapes(
-                        shape = CircleShape,
-                        pressedShape = RoundedCornerShape(12.dp)
-                    ),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                    ),
-                    contentPadding = PaddingValues(16.dp)
-                ) {
-                    Text(
-                        text = "Add Snippet ($localSnippetsCount/6)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
-}
-
-
+fun AddSnippetsModal(
+    photo: com.android.snippets.model.Photo,
+    onAdd: (String) -> Unit,
+    onClose: () -> Unit,
+    viewModel: com.android.snippets.viewmodel.SnippetsViewModel
+) {
+    val view = LocalView.current
+    var text by remember { mutableStateOf("") }
+    val localSnippetsCount = photo.snippets.size
+
+    BlurredModalBottomSheet(
+        onDismissRequest = onClose,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Motion.ExpressiveSheetContent {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 48.dp)
+                        .padding(top = 4.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Add a Snippet",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                    )
+
+                    AnimatedVisibility(
+                        visible = text.isNotBlank(),
+                        enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                                scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
+                        exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                               scaleOut(targetScale = 0.8f, animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium))
+                    ) {
+                        AnimatedCookieButton(
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                onAdd(text.trim())
+                                onClose()
+                            },
+                            icon = Icons.Default.Check,
+                            contentDescription = "Confirm",
+                            tooltip = "Add Snippet ($localSnippetsCount/6)",
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            size = 48.dp,
+                            iconSize = 22.dp,
+                            spinOnEntry = true
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.Start
+                ) {
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = text,
+                            onValueChange = { if (it.length <= 15) text = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            label = { Text("New Snippet", style = MaterialTheme.typography.labelMedium) },
+                            placeholder = { Text("Type here...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    if (text.isNotBlank()) {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                        onAdd(text.trim())
+                                        onClose()
+                                    } else {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    }
+                                }
+                            )
+                        )
+                        Text(
+                            text = "${text.length}/15",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (text.length >= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 10.dp, end = 16.dp)
+                        )
+                    }
+
+                    // Suggestions Menu
+                    val suggestions = remember(text, viewModel.allUniqueSnippets) {
+                        if (text.isEmpty()) {
+                            viewModel.allUniqueSnippets.take(9)
+                        } else {
+                            viewModel.allUniqueSnippets.filter { 
+                                it.contains(text, ignoreCase = true) && !it.equals(text, ignoreCase = true)
+                            }.take(9)
+                        }
+                    }
+                    
+                    AnimatedVisibility(
+                        visible = suggestions.isNotEmpty(),
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            suggestions.forEach { suggestion ->
+                                SuggestionChip(
+                                    onClick = { 
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        text = suggestion 
+                                    },
+                                    label = { Text(suggestion, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                                    shape = SuggestionChipDefaults.shape,
+                                    colors = SuggestionChipDefaults.suggestionChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    border = null
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 enum class CanvasAction { DOWNLOAD, SHARE }
 
 @Composable
