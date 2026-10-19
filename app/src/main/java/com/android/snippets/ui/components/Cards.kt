@@ -114,53 +114,32 @@ fun SelectedPhotoIndicator(
 ) {
     if (!isSelected) return
 
-    val rotation = remember { androidx.compose.animation.core.Animatable(0f) }
-
-    LaunchedEffect(isSelected) {
-        if (isSelected) {
-            rotation.animateTo(
-                targetValue = rotation.value + 360f,
-                animationSpec = tween(400, easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f))
-            )
-        } else {
-            rotation.snapTo(0f)
-        }
-    }
-
     Box(
         modifier = modifier
-            .size(72.dp)
-            .clip(CircleShape)
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                else Color.Black.copy(alpha = 0.2f)
-            ),
+            .size(44.dp)
+            .clip(CookieShape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
         contentAlignment = Alignment.Center
     ) {
-        if (isSelected) {
+        Box(
+            modifier = Modifier.size(36.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Box(
-                modifier = Modifier.size(36.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            rotationZ = rotation.value
-                        }
-                        .clip(CookieShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CookieShape)
+                    .background(MaterialTheme.colorScheme.primary)
+            )
 
-                Text(
-                    text = count.toString(),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp
-                    )
+            Text(
+                text = count.toString(),
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp
                 )
-            }
+            )
         }
     }
 }
@@ -419,43 +398,32 @@ fun SnippetsMasonryRow(
     val candidates = remember(snippets) { snippets.take(2) }
     val spacingPx = with(LocalDensity.current) { 4.dp.roundToPx() }
 
-    SubcomposeLayout(
+    Layout(
+        content = {
+            for (snippet in candidates) {
+                SnippetMasonryChip(
+                    snippet = snippet,
+                    isSelected = isSelected,
+                    viewModel = viewModel
+                )
+            }
+        },
         modifier = modifier
-    ) { constraints ->
+    ) { measurables, constraints ->
         val maxW = if (constraints.hasBoundedWidth) constraints.maxWidth else Int.MAX_VALUE
-        if (candidates.isEmpty() || maxW <= 0) {
-            return@SubcomposeLayout layout(0, 0) {}
+        if (measurables.isEmpty() || maxW <= 0) {
+            return@Layout layout(0, 0) {}
         }
 
-        // Measure candidate 0 (first snippet)
-        val measurables0 = subcompose("snippet_0") {
-            SnippetMasonryChip(
-                snippet = candidates[0],
-                isSelected = isSelected,
-                viewModel = viewModel
-            )
-        }
-        val p0 = measurables0.firstOrNull()?.measure(Constraints(maxWidth = maxW))
-        if (p0 == null) {
-            return@SubcomposeLayout layout(0, 0) {}
-        }
-
+        val p0 = measurables[0].measure(Constraints(maxWidth = maxW))
         var showSecond = false
         var p1: Placeable? = null
 
-        if (candidates.size > 1) {
+        if (measurables.size > 1) {
             val remainingW = maxW - p0.width - spacingPx
             if (remainingW > 0) {
-                val measurables1 = subcompose("snippet_1") {
-                    SnippetMasonryChip(
-                        snippet = candidates[1],
-                        isSelected = isSelected,
-                        viewModel = viewModel
-                    )
-                }
-                // Measure candidate 1 at unconstrained width to get its natural size
-                val unconstrainedP1 = measurables1.firstOrNull()?.measure(Constraints())
-                if (unconstrainedP1 != null && unconstrainedP1.width <= remainingW) {
+                val unconstrainedP1 = measurables[1].measure(Constraints())
+                if (unconstrainedP1.width <= remainingW) {
                     showSecond = true
                     p1 = unconstrainedP1
                 }
@@ -677,8 +645,9 @@ fun PhotoMasonryItem(
                         val imageRequest = remember(photo.uriString) {
                             ImageRequest.Builder(context)
                                 .data(photo.uriString)
-                                .crossfade(true)
+                                .crossfade(false)
                                 .memoryCacheKey(photo.uriString)
+                                .placeholderMemoryCacheKey(photo.uriString)
                                 .build()
                         }
 
@@ -856,8 +825,9 @@ fun PhotoMasonryItem(
                     val imageRequest = remember(photo.uriString) {
                         ImageRequest.Builder(context)
                             .data(photo.uriString)
-                            .crossfade(true)
+                            .crossfade(false)
                             .memoryCacheKey(photo.uriString)
+                            .placeholderMemoryCacheKey(photo.uriString)
                             .build()
                     }
 
