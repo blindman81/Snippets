@@ -6,7 +6,7 @@
 
 A beautiful Material 3 Expressive app to write upto 10 letters of snippets to your photos. View and share them in an expressive way.
 
-Relive your moments with memories that cycles photos every day.
+Relive moments with memories that cycles photos every day.
 
 Rate food you eat upto 5 stars.
 
