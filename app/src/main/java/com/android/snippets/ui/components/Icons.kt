@@ -570,69 +570,48 @@ fun AndroidIcon(): ImageVector {
     }
 }
 
-@Composable
-fun LibraryIcon(): ImageVector {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    return remember {
-        ImageVector.Builder(
-            name = "LibraryIcon",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 960f,
-            viewportHeight = 960f
-        ).apply {
-            group(translationY = 960f) {
-                path(fill = SolidColor(primaryColor)) {
-                    moveTo(360f, -400f)
-                    horizontalLineToRelative(400f)
-                    lineTo(622f, -580f)
-                    lineToRelative(-92f, 120f)
-                    lineToRelative(-62f, -80f)
-                    lineToRelative(-108f, 140f)
-                    close()
-                    
-                    moveToRelative(-40f, 160f)
-                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
-                    reflectiveQuadTo(240f, -320f)
-                    verticalLineToRelative(-480f)
-                    quadToRelative(0f, -33f, 23.5f, -56.5f)
-                    reflectiveQuadTo(320f, -880f)
-                    horizontalLineToRelative(480f)
-                    quadToRelative(33f, 0f, 56.5f, 23.5f)
-                    reflectiveQuadTo(880f, -800f)
-                    verticalLineToRelative(480f)
-                    quadToRelative(0f, 33f, -23.5f, 56.5f)
-                    reflectiveQuadTo(800f, -240f)
-                    horizontalLineTo(320f)
-                    close()
-                    
-                    moveToRelative(0f, -80f)
-                    horizontalLineToRelative(480f)
-                    verticalLineToRelative(-480f)
-                    horizontalLineTo(320f)
-                    verticalLineToRelative(480f)
-                    close()
-                    
-                    moveTo(160f, -80f)
-                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
-                    reflectiveQuadTo(80f, -160f)
-                    verticalLineToRelative(-560f)
-                    horizontalLineToRelative(80f)
-                    verticalLineToRelative(560f)
-                    horizontalLineToRelative(560f)
-                    verticalLineToRelative(80f)
-                    horizontalLineTo(160f)
-                    close()
-                    
-                    moveToRelative(160f, -720f)
-                    verticalLineToRelative(480f)
-                    verticalLineToRelative(-480f)
-                    close()
-                }
-            }
-        }.build()
-    }
+val CollectionsBookmarkFilled: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "CollectionsBookmarkFilled",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "M320-240q-33 0-56.5-23.5T240-320v-480q0-33 23.5-56.5T320-880h480q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H320ZM160-80q-33 0-56.5-23.5T80-160v-520q0-17 11.5-28.5T120-720q17 0 28.5 11.5T160-680v520h520q17 0 28.5 11.5T720-120q0 17-11.5 28.5T680-80H160Zm360-475q0 12 10 17.5t20-.5l49-30q10-6 21-6t21 6l49 30q10 6 20 .5t10-17.5v-245H520v245Z"
+                ).toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
 }
+
+val CollectionsBookmarkOutlined: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "CollectionsBookmarkOutlined",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "M320-320h480v-480h-80v245q0 12-10 18t-20-1l-49-29q-10-6-21.5-6t-20.5 6l-49 29q-11 7-20.5 1t-9.5-18v-245H320v480Zm0 80q-33 0-56.5-23.5T240-320v-480q0-33 23.5-56.5T320-880h480q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H320ZM160-80q-33 0-56.5-23.5T80-160v-520q0-17 11.5-28.5T120-720q17 0 28.5 11.5T160-680v520h520q17 0 28.5 11.5T720-120q0 17-11.5 28.5T680-80H160Zm160-720v480-480Zm200 245q0 12 9.5 18t20.5-1l49-29q9-6 20.5-6t21.5 6l49 29q10 7 20 1t10-18q0 12-10 18t-20-1l-49-29q-10-6-21.5-6t-20.5 6l-49 29q-11 7-20.5 1t-9.5-18Z"
+                ).toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
+
+fun CollectionsBookmarkIcon(filled: Boolean = true): ImageVector =
+    if (filled) CollectionsBookmarkFilled else CollectionsBookmarkOutlined
+
+fun LibraryIcon(filled: Boolean = true): ImageVector = CollectionsBookmarkIcon(filled)
 
 @Composable
 fun SearchSuccessIcon(): ImageVector {
@@ -1340,11 +1319,12 @@ fun SortIcon(
 @Composable
 fun ViewGrid2Icon(
     modifier: Modifier = Modifier,
-    tint: Color = LocalContentColor.current
+    tint: Color = LocalContentColor.current,
+    filled: Boolean = false
 ): ImageVector {
-    return remember(tint) {
+    return remember(tint, filled) {
         ImageVector.Builder(
-            name = "ViewGrid2Icon",
+            name = if (filled) "ViewGrid2Filled" else "ViewGrid2Outlined",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 960f,
@@ -1366,12 +1346,14 @@ fun ViewGrid2Icon(
                     reflectiveQuadTo(760f, -120f)
                     horizontalLineTo(600f)
                     close()
-                    moveTo(600f, -760f)
-                    verticalLineToRelative(560f)
-                    horizontalLineToRelative(160f)
-                    verticalLineToRelative(-560f)
-                    horizontalLineTo(600f)
-                    close()
+                    if (!filled) {
+                        moveTo(600f, -760f)
+                        verticalLineToRelative(560f)
+                        horizontalLineToRelative(160f)
+                        verticalLineToRelative(-560f)
+                        horizontalLineTo(600f)
+                        close()
+                    }
                     moveTo(200f, -120f)
                     quadToRelative(-33f, 0f, -56.5f, -23.5f)
                     reflectiveQuadTo(120f, -200f)
@@ -1386,20 +1368,14 @@ fun ViewGrid2Icon(
                     reflectiveQuadTo(360f, -120f)
                     horizontalLineTo(200f)
                     close()
-                    moveTo(200f, -760f)
-                    verticalLineToRelative(560f)
-                    horizontalLineToRelative(160f)
-                    verticalLineToRelative(-560f)
-                    horizontalLineTo(200f)
-                    close()
-                    moveTo(760f, -760f)
-                    horizontalLineTo(600f)
-                    horizontalLineToRelative(160f)
-                    close()
-                    moveTo(360f, -760f)
-                    horizontalLineTo(200f)
-                    horizontalLineToRelative(160f)
-                    close()
+                    if (!filled) {
+                        moveTo(200f, -760f)
+                        verticalLineToRelative(560f)
+                        horizontalLineToRelative(160f)
+                        verticalLineToRelative(-560f)
+                        horizontalLineTo(200f)
+                        close()
+                    }
                 }
             }
         }.build()
@@ -1409,51 +1385,28 @@ fun ViewGrid2Icon(
 @Composable
 fun ViewGrid3Icon(
     modifier: Modifier = Modifier,
-    tint: Color = LocalContentColor.current
+    tint: Color = LocalContentColor.current,
+    filled: Boolean = false
 ): ImageVector {
-    return remember(tint) {
+    return remember(tint, filled) {
         ImageVector.Builder(
-            name = "ViewGrid3Icon",
+            name = if (filled) "ViewGrid3Filled" else "ViewGrid3Outlined",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 960f,
             viewportHeight = 960f
         ).apply {
             group(translationY = 960f) {
-                path(fill = SolidColor(tint)) {
-                    moveTo(121f, -280f)
-                    verticalLineToRelative(-400f)
-                    quadToRelative(0f, -33f, 23.5f, -56.5f)
-                    reflectiveQuadTo(201f, -760f)
-                    horizontalLineToRelative(559f)
-                    quadToRelative(33f, 0f, 56.5f, 23.5f)
-                    reflectiveQuadTo(840f, -680f)
-                    verticalLineToRelative(400f)
-                    quadToRelative(0f, 33f, -23.5f, 56.5f)
-                    reflectiveQuadTo(760f, -200f)
-                    horizontalLineTo(201f)
-                    quadToRelative(-33f, 0f, -56.5f, -23.5f)
-                    reflectiveQuadTo(121f, -280f)
-                    close()
-                    moveTo(200f, -280f)
-                    horizontalLineToRelative(133f)
-                    verticalLineToRelative(-400f)
-                    horizontalLineTo(200f)
-                    verticalLineToRelative(400f)
-                    close()
-                    moveTo(413f, -280f)
-                    horizontalLineToRelative(133f)
-                    verticalLineToRelative(-400f)
-                    horizontalLineTo(413f)
-                    verticalLineToRelative(400f)
-                    close()
-                    moveTo(626f, -280f)
-                    horizontalLineToRelative(133f)
-                    verticalLineToRelative(-400f)
-                    horizontalLineTo(626f)
-                    verticalLineToRelative(400f)
-                    close()
-                }
+                addPath(
+                    pathData = PathParser().parsePathString(
+                        if (filled) {
+                            "M200-200q-33 0-56.5-23.5T120-280v-400q0-33 23.5-56.5T200-760h53q33 0 56.5 23.5T333-680v400q0 33-23.5 56.5T253-200h-53Zm253 0q-33 0-56.5-23.5T373-280v-400q0-33 23.5-56.5T453-760h53q33 0 56.5 23.5T586-680v400q0 33-23.5 56.5T506-200h-53Zm253 0q-33 0-56.5-23.5T626-280v-400q0-33 23.5-56.5T706-760h53q33 0 56.5 23.5T839-680v400q0 33-23.5 56.5T759-200h-53Z"
+                        } else {
+                            "M121-280v-400q0-33 23.5-56.5T201-760h559q33 0 56.5 23.5T840-680v400q0 33-23.5 56.5T760-200H201q-33 0-56.5-23.5T121-280Zm79 0h133v-400H200v400Zm213 0h133v-400H413v400Zm213 0h133v-400H626v400Z"
+                        }
+                    ).toNodes(),
+                    fill = SolidColor(tint)
+                )
             }
         }.build()
     }
@@ -1462,11 +1415,12 @@ fun ViewGrid3Icon(
 @Composable
 fun ViewAgendaCustomIcon(
     modifier: Modifier = Modifier,
-    tint: Color = LocalContentColor.current
+    tint: Color = LocalContentColor.current,
+    filled: Boolean = false
 ): ImageVector {
-    return remember(tint) {
+    return remember(tint, filled) {
         ImageVector.Builder(
-            name = "ViewAgendaCustomIcon",
+            name = if (filled) "ViewAgendaCustomFilled" else "ViewAgendaCustomOutlined",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 960f,
@@ -1474,7 +1428,13 @@ fun ViewAgendaCustomIcon(
         ).apply {
             group(translationY = 960f) {
                 addPath(
-                    pathData = PathParser().parsePathString("M120-200q-33 0-56.5-23.5T40-280v-400q0-33 23.5-56.5T120-760h400q33 0 56.5 23.5T600-680v400q0 33-23.5 56.5T520-200H120Zm0-80h400v-400H120v400Zm40-80h320L376-500l-76 100-56-74-84 114Zm520 160v-560h80v560h-80Zm160 0v-560h80v560h-80Zm-720-80v-400 400Z").toNodes(),
+                    pathData = PathParser().parsePathString(
+                        if (filled) {
+                            "M120-200q-33 0-56.5-23.5T40-280v-400q0-33 23.5-56.5T120-760h400q33 0 56.5 23.5T600-680v400q0 33-23.5 56.5T520-200H120Zm40-160h320L376-500l-76 100-56-74-84 114Zm520 160v-560h80v560h-80Zm160 0v-560h80v560h-80Z"
+                        } else {
+                            "M120-200q-33 0-56.5-23.5T40-280v-400q0-33 23.5-56.5T120-760h400q33 0 56.5 23.5T600-680v400q0 33-23.5 56.5T520-200H120Zm0-80h400v-400H120v400Zm40-80h320L376-500l-76 100-56-74-84 114Zm520 160v-560h80v560h-80Zm160 0v-560h80v560h-80Zm-720-80v-400 400Z"
+                        }
+                    ).toNodes(),
                     fill = SolidColor(tint)
                 )
             }
@@ -1645,4 +1605,196 @@ val MotionModeIconVector: ImageVector by lazy {
 
 @Composable
 fun MotionModeIcon(): ImageVector = MotionModeIconVector
+
+val DownloadMaterialSymbol: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "DownloadMaterialSymbol",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "M480-336 296-520q-9-9-9-21t9-21q9-9 21-9t21 9l102 102v-270q0-12 9-21t21-9q12 0 21 9t9 21v270l102-102q9-9 21-9t21 9q9 9 9 21t-9 21L480-336Zm-240 176q-33 0-56.5-23.5T160-240v-80q0-12 9-21t21-9q12 0 21 9t9 21v80h480v-80q0-12 9-21t21-9q12 0 21 9t9 21v80q0 33-23.5 56.5T720-160H240Z"
+                ).toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
+
+@Composable
+fun DownloadSymbolIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+) {
+    Icon(
+        imageVector = DownloadMaterialSymbol,
+        contentDescription = "Download",
+        modifier = modifier,
+        tint = tint
+    )
+}
+
+val DeleteMaterialSymbol: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "DeleteMaterialSymbol",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "M280-120q-33 0-56.5-23.5T200-200v-520h-40q-17 0-28.5-11.5T120-760t11.5-28.5T160-800h160v-40q0-17 11.5-28.5T360-880h240q17 0 28.5 11.5T640-840v40h160q17 0 28.5 11.5T840-760t-11.5 28.5T800-720h-40v520q0 33-23.5 56.5T680-120H280Zm0-80h400v-520H280v520Zm80-120q0 17 11.5 28.5T400-280t28.5-11.5T440-320v-240q0-17-11.5-28.5T400-600t-28.5 11.5T360-560v240Zm160 0q0 17 11.5 28.5T560-280t28.5-11.5T600-320v-240q0-17-11.5-28.5T560-600t-28.5 11.5T520-560v240ZM360-800h240v-40H360v40Zm-80 80v-520 520Z"
+                ).toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
+
+@Composable
+fun DeleteSymbolIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current
+) {
+    Icon(
+        imageVector = DeleteMaterialSymbol,
+        contentDescription = "Delete",
+        modifier = modifier,
+        tint = tint
+    )
+}
+
+val MoreHorizFilledMaterialSymbol: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "MoreHorizFilledMaterialSymbol",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "M240-400q-33 0-56.5-23.5T160-480q0-33 23.5-56.5T240-560q33 0 56.5 23.5T320-480q0 33-23.5 56.5T240-400Zm240 0q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm240 0q-33 0-56.5-23.5T640-480q0-33 23.5-56.5T720-560q33 0 56.5 23.5T800-480q0 33-23.5 56.5T720-400Z"
+                ).toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
+
+val MoreHorizMaterialSymbol: ImageVector get() = MoreHorizFilledMaterialSymbol
+
+val MoreHorizOutlinedMaterialSymbol: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "MoreHorizOutlinedMaterialSymbol",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "M240-400q-33 0-56.5-23.5T160-480q0-33 23.5-56.5T240-560q33 0 56.5 23.5T320-480q0 33-23.5 56.5T240-400Zm0-40q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520q17 0 28.5 11.5T280-480q0 17-11.5 28.5T240-440Zm240 40q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-40q-17 0-28.5-11.5T440-480q0-17 11.5-28.5T480-520q17 0 28.5 11.5T520-480q0 17-11.5 28.5T480-440Zm240 40q-33 0-56.5-23.5T640-480q0-33 23.5-56.5T720-560q33 0 56.5 23.5T800-480q0 33-23.5 56.5T720-400Zm0-40q-17 0-28.5-11.5T680-480q0-17 11.5-28.5T720-520q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440Z"
+                ).toNodes(),
+                pathFillType = PathFillType.EvenOdd,
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
+
+@Composable
+fun MoreHorizSymbolIcon(
+    modifier: Modifier = Modifier,
+    filled: Boolean = true,
+    tint: Color = LocalContentColor.current
+) {
+    Icon(
+        imageVector = if (filled) MoreHorizFilledMaterialSymbol else MoreHorizOutlinedMaterialSymbol,
+        contentDescription = "More options",
+        modifier = modifier,
+        tint = tint
+    )
+}
+
+val KidStarFilledMaterialSymbol: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "KidStarFilledMaterialSymbol",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "m305-704 112-145q12-16 28.5-23.5T480-880q18 0 34.5 7.5T543-849l112 145 170 57q26 8 41 29.5t15 47.5q0 12-3.5 24T866-523L756-367l4 164q1 35-23 59t-56 24q-2 0-22-3l-179-50-179 50q-5 2-11 2.5t-11 .5q-32 0-56-24t-23-59l4-165L95-523q-8-11-11.5-23T80-570q0-25 14.5-46.5T135-647l170-57Z"
+                ).toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
+
+val KidStarOutlinedMaterialSymbol: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "KidStarOutlinedMaterialSymbol",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "m305-704 112-145q12-16 28.5-23.5T480-880q18 0 34.5 7.5T543-849l112 145 170 57q26 8 41 29.5t15 47.5q0 12-3.5 24T866-523L756-367l4 164q1 35-23 59t-56 24q-2 0-22-3l-179-50-179 50q-5 2-11 2.5t-11 .5q-32 0-56-24t-23-59l4-165L95-523q-8-11-11.5-23T80-570q0-25 14.5-46.5T135-647l170-57Zm49 69-194 64 124 179-4 191 200-55 200 56-4-192 124-177-194-66-126-165-126 165Zm126 135Z"
+                ).toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
+
+val KidStarMaterialSymbol: ImageVector get() = KidStarFilledMaterialSymbol
+
+@Composable
+fun KidStarSymbolIcon(
+    modifier: Modifier = Modifier,
+    filled: Boolean = false,
+    tint: Color = LocalContentColor.current
+) {
+    Icon(
+        imageVector = if (filled) KidStarFilledMaterialSymbol else KidStarOutlinedMaterialSymbol,
+        contentDescription = "Star",
+        modifier = modifier,
+        tint = tint
+    )
+}
+
+val ShareOutlinedMaterialSymbol: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ShareOutlinedMaterialSymbol",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 960f,
+        viewportHeight = 960f
+    ).apply {
+        group(translationY = 960f) {
+            addPath(
+                pathData = PathParser().parsePathString(
+                    "M720-80q-50 0-85-35t-35-85q0-7 1-14.5t3-13.5L322-392q-17 15-38 23.5t-44 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q23 0 44 8.5t38 23.5l282-164q-2-6-3-13.5t-1-14.5q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-23 0-44-8.5T638-672L356-508q2 6 3 13.5t1 14.5q0 7-1 14.5t-3 13.5l282 164q17-15 38-23.5t44-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-640q17 0 28.5-11.5T760-760q0-17-11.5-28.5T720-800q-17 0-28.5 11.5T680-760q0 17 11.5 28.5T720-720ZM240-440q17 0 28.5-11.5T280-480q0-17-11.5-28.5T240-520q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440Zm480 280q17 0 28.5-11.5T760-200q0-17-11.5-28.5T720-240q-17 0-28.5 11.5T680-200q0 17 11.5 28.5T720-160Zm0-600ZM240-480Zm480 280Z"
+                ).toNodes(),
+                fill = SolidColor(Color.White)
+            )
+        }
+    }.build()
+}
 

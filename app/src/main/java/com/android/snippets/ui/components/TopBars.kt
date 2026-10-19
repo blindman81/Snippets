@@ -58,6 +58,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import android.content.Intent
+import com.ln.android.snippets.R
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -141,7 +142,7 @@ fun SelectionToolbarContent(
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     viewModel.shareSelectedPhotos(context)
                 },
-                icon = Icons.Default.Share,
+                icon = R.drawable.ic_share,
                 contentDescription = "Share Selection",
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -179,7 +180,7 @@ fun SelectionToolbarContent(
                     view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                     onDeleteClick()
                 },
-                icon = Icons.Default.Delete,
+                icon = R.drawable.ic_delete,
                 contentDescription = "Delete",
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,

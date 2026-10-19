@@ -191,27 +191,25 @@ fun LibraryScreen(
     }
     
     val flatPhotosRaw = viewModel.filteredPhotos
-    val currentTabSort = viewModel.getPhotoSortTypeFor(currentTab)
-    
-    val filteredFlatPhotos = remember(flatPhotosRaw, currentTab, currentTabSort) {
-        val filtered = flatPhotosRaw.filter { photo ->
-            when (currentTab) {
-                "Library" -> true
-                "Favorites" -> photo.isFavorite
-                else -> photo.collections.contains(currentTab)
-            }
-        }
-        viewModel.sortPhotos(filtered, currentTabSort)
-    }
-    
-    val flatPhotos = filteredFlatPhotos
-    
+
     LaunchedEffect(viewModel.activePhotoId, viewModel.currentScreen) {
+        val activeId = viewModel.activePhotoId
         if (
             viewModel.currentScreen != Screen.Detail &&
-            viewModel.activePhotoId != null
+            activeId != null
         ) {
-            val targetIndex = flatPhotos.indexOfFirst { it.id == viewModel.activePhotoId }
+            val tabSort = viewModel.getPhotoSortTypeFor(currentTab)
+            val tabPhotos = viewModel.sortPhotos(
+                flatPhotosRaw.filter { photo ->
+                    when (currentTab) {
+                        "Library" -> true
+                        "Favorites" -> photo.isFavorite
+                        else -> photo.collections.contains(currentTab)
+                    }
+                },
+                tabSort
+            )
+            val targetIndex = tabPhotos.indexOfFirst { it.id == activeId }
             if (targetIndex != -1) {
                 val gridState = listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
                 kotlinx.coroutines.delay(250)
@@ -227,11 +225,15 @@ fun LibraryScreen(
     var isFabVisible by remember { mutableStateOf(true) }
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
+            private var scrollBuffer = 0f
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -5) {
-                    isFabVisible = false
-                } else if (available.y > 5) {
-                    isFabVisible = true
+                scrollBuffer += available.y
+                if (scrollBuffer < -20f) {
+                    if (isFabVisible) isFabVisible = false
+                    scrollBuffer = 0f
+                } else if (scrollBuffer > 20f) {
+                    if (!isFabVisible) isFabVisible = true
+                    scrollBuffer = 0f
                 }
                 return Offset.Zero
             }
@@ -266,7 +268,7 @@ fun LibraryScreen(
 
     val isScrolled by remember(currentGridState) {
         derivedStateOf {
-            currentGridState.firstVisibleItemIndex > 0 || currentGridState.firstVisibleItemScrollOffset > 0
+            currentGridState.firstVisibleItemIndex > 0 || currentGridState.firstVisibleItemScrollOffset > 10
         }
     }
 
@@ -278,13 +280,21 @@ fun LibraryScreen(
 
     val cookieNavBarOffset by animateDpAsState(
         targetValue = if (isScrolled) (-100).dp else 0.dp,
-        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        animationSpec = if (!isScrolled) {
+            Motion.NavBarEnterSpring
+        } else {
+            Motion.NavBarExitSpring
+        },
         label = "cookie_nav_bar_offset"
     )
 
     val cookieNavBarAlpha by animateFloatAsState(
         targetValue = if (isScrolled) 0f else 1f,
-        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+        animationSpec = if (!isScrolled) {
+            spring(stiffness = Spring.StiffnessMediumLow)
+        } else {
+            MaterialTheme.motionScheme.defaultEffectsSpec()
+        },
         label = "cookie_nav_bar_alpha"
     )
 
@@ -334,9 +344,11 @@ fun LibraryScreen(
                     val tabRowScrollState = rememberScrollState()
                     val tabPositions = remember { mutableStateMapOf<String, Float>() }
                     val tabWidths = remember { mutableStateMapOf<String, Float>() }
-                    LaunchedEffect(currentTab) {
-                        val tabX = tabPositions[currentTab] ?: return@LaunchedEffect
-                        val tabW = tabWidths[currentTab] ?: return@LaunchedEffect
+                    val targetPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
+                    val activeTabTarget = pageTabs.getOrNull(targetPage) ?: "Library"
+                    LaunchedEffect(activeTabTarget) {
+                        val tabX = tabPositions[activeTabTarget] ?: return@LaunchedEffect
+                        val tabW = tabWidths[activeTabTarget] ?: return@LaunchedEffect
                         val rowW = tabRowScrollState.maxValue + 0f
                         val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
                             .coerceIn(0f, rowW)
@@ -345,6 +357,8 @@ fun LibraryScreen(
 
                     HorizontalPager(
                         state = pagerState,
+                        key = { page -> pageTabs.getOrNull(page) ?: page },
+                        beyondViewportPageCount = 1,
                         modifier = Modifier
                             .fillMaxSize()
                             .then(
@@ -392,17 +406,6 @@ fun LibraryScreen(
                             val minColumns = -1
                             val maxColumns = 3
 
-                            // Calculate max and min snippets counts once for the whole page/list:
-                            val nonZeroSnippetCounts = remember(pageFilteredPhotos) {
-                                pageFilteredPhotos.map { it.snippets.size }.filter { it > 0 }
-                            }
-                            val maxSnippets = remember(nonZeroSnippetCounts) {
-                                nonZeroSnippetCounts.maxOrNull() ?: 0
-                            }
-                            val minSnippets = remember(nonZeroSnippetCounts) {
-                                nonZeroSnippetCounts.minOrNull() ?: 0
-                            }
-
                             LazyVerticalStaggeredGrid(
                                 columns = StaggeredGridCells.Fixed(displayColumns),
                                 state = pageListState,
@@ -414,7 +417,7 @@ fun LibraryScreen(
                                             var zoomAccumulator = 1f
                                             do {
                                                 val event = awaitPointerEvent()
-                                                val numPointers = event.changes.filter { it.pressed }.size
+                                                val numPointers = event.changes.count { it.pressed }
                                                 if (numPointers >= 2) {
                                                     val zoomChange = event.calculateZoom()
                                                     if (zoomChange != 1f) {
@@ -437,7 +440,7 @@ fun LibraryScreen(
                                                              }
                                                              zoomAccumulator = 1f
                                                          }
-                                                    }
+                                                     }
                                                 }
                                             } while (event.changes.any { it.pressed })
                                         }
@@ -448,10 +451,14 @@ fun LibraryScreen(
                                     top = topGridPadding,
                                     bottom = 140.dp
                                 ),
-                                              horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                              verticalItemSpacing = if (currentGridColumns == 0) 2.dp else 4.dp
-                                          ) {
-                                              itemsIndexed(pageFilteredPhotos, key = { _, photo -> photo.id }) { index, photo ->
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalItemSpacing = if (currentGridColumns == 0) 2.dp else 4.dp
+                            ) {
+                                itemsIndexed(
+                                    items = pageFilteredPhotos,
+                                    key = { _, photo -> photo.id },
+                                    contentType = { _, _ -> if (currentGridColumns <= 0) "card" else "masonry" }
+                                ) { index, photo ->
                                                    val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
                                                    val isLeast = tabSortType == com.android.snippets.viewmodel.PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
                                                   
@@ -632,11 +639,10 @@ fun LibraryScreen(
                                          horizontalArrangement = Arrangement.Start,
                                          verticalAlignment = Alignment.CenterVertically
                                      ) {
-                                          val cookieNavBarItems = remember(allTabs, currentTab) {
+                                          val cookieNavBarItems = remember(allTabs, activeTabTarget) {
                                               allTabs.mapIndexed { tabIndex, tabName ->
-                                                  val isSelected = tabName == currentTab
                                                   val iconOrEmoji = when (tabName) {
-                                                      "Library" -> Icons.Default.PhotoLibrary
+                                                      "Library" -> CollectionsBookmarkIcon(filled = tabName == activeTabTarget)
                                                       "Favorites" -> Icons.Default.Favorite
                                                       else -> viewModel.getCollectionIcon(tabName)
                                                   }
@@ -662,7 +668,7 @@ fun LibraryScreen(
                                               }
                                           }
 
-                                          val selectedTabIndex = allTabs.indexOf(currentTab).coerceAtLeast(0)
+                                          val selectedTabIndex = allTabs.indexOf(activeTabTarget).coerceAtLeast(0)
 
                                           CookieButtonGroup(
                                               selectedIndex = selectedTabIndex,
@@ -673,7 +679,13 @@ fun LibraryScreen(
                                                       if (tabName == currentTab) {
                                                           view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                                       } else {
-                                                          scope.launch { pagerState.animateScrollToPage(pageIndex) }
+                                                          scope.launch {
+                                                           val current = pagerState.currentPage
+                                                           if (kotlin.math.abs(pageIndex - current) > 1) {
+                                                               pagerState.scrollToPage(if (pageIndex > current) pageIndex - 1 else pageIndex + 1)
+                                                           }
+                                                           pagerState.animateScrollToPage(pageIndex)
+                                                       }
                                                       }
                                                   }
                                               },
@@ -1015,7 +1027,7 @@ fun LibraryScreen(
 
                             val collection = longPressedCollection ?: ""
                             val iconOrEmoji = when (collection) {
-                                "Library" -> Icons.Default.PhotoLibrary
+                                "Library" -> CollectionsBookmarkIcon(filled = true)
                                 "Favorites" -> Icons.Default.Favorite
                                 else -> viewModel.getCollectionIcon(collection)
                             }
@@ -1050,7 +1062,7 @@ fun LibraryScreen(
                                             iconSize = 28.dp
                                         )
                                         "DELETE" -> cookieButtonItem(
-                                            icon = Icons.Default.Delete,
+                                            icon = R.drawable.ic_delete,
                                             contentDescription = "Delete",
                                             tooltip = "Delete",
                                             iconSize = 28.dp
@@ -1324,7 +1336,7 @@ fun LibraryScreen(
                                                                         }
                                                                         "DELETE" -> showPillInfo("Delete") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.Delete,
+                                                                                painter = painterResource(id = R.drawable.ic_delete),
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1394,7 +1406,7 @@ fun LibraryScreen(
                                                                         }
                                                                         "DELETE" -> showPillInfo("Delete") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.Delete,
+                                                                                painter = painterResource(id = R.drawable.ic_delete),
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1517,10 +1529,10 @@ fun LibraryScreen(
                                                                         scope.launch { state.scrollToItem(0) }
                                                                     }
                                                                     showPillInfo("Single column") {
-                                                                        Icon(ViewAgendaCustomIcon(), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                        Icon(ViewAgendaCustomIcon(filled = true), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                                                                     }
                                                                 },
-                                                                icon = ViewAgendaCustomIcon(),
+                                                                icon = ViewAgendaCustomIcon(filled = currentCols == 1),
                                                                 size = 86.dp
                                                             )
 
@@ -1533,10 +1545,10 @@ fun LibraryScreen(
                                                                         scope.launch { state.scrollToItem(0) }
                                                                     }
                                                                     showPillInfo("Two columns") {
-                                                                        Icon(ViewGrid2Icon(), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                        Icon(ViewGrid2Icon(filled = true), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                                                                     }
                                                                 },
-                                                                icon = ViewGrid2Icon(),
+                                                                icon = ViewGrid2Icon(filled = currentCols == 2),
                                                                 size = 86.dp
                                                             )
 
@@ -1549,10 +1561,10 @@ fun LibraryScreen(
                                                                         scope.launch { state.scrollToItem(0) }
                                                                     }
                                                                     showPillInfo("Three columns") {
-                                                                        Icon(ViewGrid3Icon(), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                        Icon(ViewGrid3Icon(filled = true), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                                                                     }
                                                                 },
-                                                                icon = ViewGrid3Icon(),
+                                                                icon = ViewGrid3Icon(filled = currentCols == 3),
                                                                 size = 86.dp
                                                             )
                                                         }
