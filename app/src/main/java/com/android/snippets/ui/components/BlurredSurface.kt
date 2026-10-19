@@ -5,8 +5,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.Job
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.fadeIn
@@ -287,21 +291,24 @@ fun BlurredModalBottomSheet(
             ),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
+            val density = LocalDensity.current
+            val dismissThreshold = with(density) { 140.dp.toPx() }
+            val dismissVelocityThreshold = with(density) { 1200.dp.toPx() }
             var dragOffsetY by remember { mutableFloatStateOf(0f) }
-            val animatedDragOffsetY by animateFloatAsState(
-                targetValue = dragOffsetY,
-                animationSpec = motionScheme.defaultSpatialSpec(),
-                label = "sheet_drag_offset"
-            )
+            var settleJob by remember { mutableStateOf<Job?>(null) }
+            var childScrolledInGesture by remember { mutableStateOf(false) }
 
             val nestedScrollConnection = remember {
                 object : NestedScrollConnection {
                     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                        if (dragOffsetY > 0f && available.y != 0f) {
-                            val newOffset = (dragOffsetY + available.y).coerceAtLeast(0f)
-                            val consumedY = newOffset - dragOffsetY
-                            dragOffsetY = newOffset
-                            return Offset(0f, consumedY)
+                        if (source == NestedScrollSource.UserInput) {
+                            settleJob?.cancel()
+                            if (dragOffsetY > 0f && available.y < 0f) {
+                                val newOffset = (dragOffsetY + available.y).coerceAtLeast(0f)
+                                val consumedY = newOffset - dragOffsetY
+                                dragOffsetY = newOffset
+                                return Offset(0f, consumedY)
+                            }
                         }
                         return Offset.Zero
                     }
@@ -311,28 +318,67 @@ fun BlurredModalBottomSheet(
                         available: Offset,
                         source: NestedScrollSource
                     ): Offset {
+                        if (consumed.y != 0f) {
+                            childScrolledInGesture = true
+                        }
+
+                        // Never allow programmatic scroll/flings to drag the sheet
+                        if (source != NestedScrollSource.UserInput) {
+                            return Offset.Zero
+                        }
+
+                        // If user scrolled the child list in this gesture, do not drag sheet on hitting top
+                        if (childScrolledInGesture) {
+                            return Offset.Zero
+                        }
+
                         if (available.y > 0f) {
-                            dragOffsetY = (dragOffsetY + available.y).coerceAtLeast(0f)
-                            return Offset(0f, available.y)
+                            settleJob?.cancel()
+                            val newOffset = (dragOffsetY + available.y).coerceAtLeast(0f)
+                            val consumedY = newOffset - dragOffsetY
+                            dragOffsetY = newOffset
+                            return Offset(0f, consumedY)
                         }
                         return Offset.Zero
                     }
 
                     override suspend fun onPreFling(available: Velocity): Velocity {
-                        if (dragOffsetY > 160f) {
-                            triggerDismiss()
-                            return available
-                        } else {
-                            dragOffsetY = 0f
+                        childScrolledInGesture = false
+
+                        if (dragOffsetY > 0f) {
+                            if (dragOffsetY > dismissThreshold || (dragOffsetY > with(density) { 32.dp.toPx() } && available.y > dismissVelocityThreshold)) {
+                                triggerDismiss()
+                                return available
+                            } else {
+                                settleJob = coroutineScope.launch {
+                                    animate(
+                                        initialValue = dragOffsetY,
+                                        targetValue = 0f,
+                                        animationSpec = motionScheme.defaultSpatialSpec()
+                                    ) { value, _ -> dragOffsetY = value }
+                                }
+                                return available
+                            }
                         }
                         return Velocity.Zero
                     }
 
                     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                        if (dragOffsetY > 160f || available.y > 600f) {
-                            triggerDismiss()
-                        } else {
-                            dragOffsetY = 0f
+                        childScrolledInGesture = false
+
+                        // A child list completing its fling at the top should NEVER dismiss the sheet
+                        if (dragOffsetY > 0f) {
+                            if (dragOffsetY > dismissThreshold) {
+                                triggerDismiss()
+                            } else {
+                                settleJob = coroutineScope.launch {
+                                    animate(
+                                        initialValue = dragOffsetY,
+                                        targetValue = 0f,
+                                        animationSpec = motionScheme.defaultSpatialSpec()
+                                    ) { value, _ -> dragOffsetY = value }
+                                }
+                            }
                         }
                         return Velocity.Zero
                     }
@@ -350,22 +396,42 @@ fun BlurredModalBottomSheet(
                 monetTintWeight = 0.0f,
                 modifier = modifier
                     .fillMaxWidth()
-                    .offset { IntOffset(0, animatedDragOffsetY.roundToInt()) }
+                    .offset { IntOffset(0, dragOffsetY.roundToInt()) }
                     .nestedScroll(nestedScrollConnection)
                     .pointerInput(Unit) {
+                        val velocityTracker = VelocityTracker()
                         detectVerticalDragGestures(
+                            onDragStart = {
+                                settleJob?.cancel()
+                                velocityTracker.resetTracking()
+                            },
                             onDragEnd = {
-                                if (dragOffsetY > 160f) {
+                                val velocity = velocityTracker.calculateVelocity().y
+                                if (dragOffsetY > dismissThreshold || (dragOffsetY > with(density) { 32.dp.toPx() } && velocity > dismissVelocityThreshold)) {
                                     triggerDismiss()
                                 } else {
-                                    dragOffsetY = 0f
+                                    settleJob = coroutineScope.launch {
+                                        animate(
+                                            initialValue = dragOffsetY,
+                                            targetValue = 0f,
+                                            animationSpec = motionScheme.defaultSpatialSpec()
+                                        ) { value, _ -> dragOffsetY = value }
+                                    }
                                 }
                             },
                             onDragCancel = {
-                                dragOffsetY = 0f
+                                settleJob = coroutineScope.launch {
+                                    animate(
+                                        initialValue = dragOffsetY,
+                                        targetValue = 0f,
+                                        animationSpec = motionScheme.defaultSpatialSpec()
+                                    ) { value, _ -> dragOffsetY = value }
+                                }
                             },
                             onVerticalDrag = { change, dragAmount ->
                                 change.consume()
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                settleJob?.cancel()
                                 if (dragAmount > 0 || dragOffsetY > 0) {
                                     dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
                                 }
