@@ -849,7 +849,13 @@ fun LibraryScreen(
 
                                 // Search
                                 val isSearchActive = viewModel.searchQuery.isNotEmpty()
-                                val searchIcon = if (isSearchActive && flatPhotos.isNotEmpty()) SearchSuccessIcon() else Icons.Default.Search
+                                val searchIcon = if (isSearchActive && flatPhotosRaw.any { photo ->
+                                    when (currentTab) {
+                                        "Library" -> true
+                                        "Favorites" -> photo.isFavorite
+                                        else -> photo.collections.contains(currentTab)
+                                    }
+                                }) SearchSuccessIcon() else Icons.Default.Search
                                 AnimatedCookieButton(
                                     onClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
