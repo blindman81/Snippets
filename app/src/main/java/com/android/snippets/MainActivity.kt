@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
         if (intent?.getBooleanExtra("open_memory", false) == true) {
             pendingNotificationPhotoId = intent.getStringExtra("photo_id")
             pendingNotificationToken = System.currentTimeMillis()
+            com.android.snippets.logic.MemoryWorker.cancelSummaryNotification(this)
             intent.removeExtra("open_memory")
             intent.removeExtra("photo_id")
         }
@@ -143,6 +144,13 @@ class MainActivity : ComponentActivity() {
                     insetsController.isAppearanceLightStatusBars = !isDarkTheme
                 }
                 insetsController.isAppearanceLightNavigationBars = !isDarkTheme
+            }
+
+            androidx.compose.runtime.LaunchedEffect(currentScreen) {
+                if (currentScreen == com.android.snippets.viewmodel.Screen.Memory) {
+                    com.android.snippets.logic.MemoryWorker.isInMemoryScreen = true
+                    com.android.snippets.logic.MemoryWorker.cancelSummaryNotification(activity)
+                }
             }
             
             var showSplashOverlay by remember { mutableStateOf(true) }

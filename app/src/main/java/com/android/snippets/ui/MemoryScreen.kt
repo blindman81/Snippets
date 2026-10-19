@@ -66,6 +66,7 @@ import com.android.snippets.ui.util.rotateWithBounds
 import com.android.snippets.ui.theme.*
 import androidx.compose.ui.res.painterResource
 import com.android.snippets.viewmodel.Screen
+import com.android.snippets.logic.MemoryWorker
 import com.ln.android.snippets.R
 import com.android.snippets.viewmodel.SnippetsViewModel
 import java.text.SimpleDateFormat
@@ -135,6 +136,15 @@ fun MemoryScreen(
                 val insetsController = WindowCompat.getInsetsController(window, window.decorView)
                 insetsController.isAppearanceLightStatusBars = !isDarkTheme
             }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        MemoryWorker.isInMemoryScreen = true
+        MemoryWorker.cancelSummaryNotification(context)
+        onDispose {
+            MemoryWorker.isInMemoryScreen = false
+            MemoryWorker.cancelSummaryNotification(context)
         }
     }
 

@@ -112,7 +112,7 @@ class MemoryNotificationTest {
     }
 
     @Test
-    fun testPhotoWithSnippetsInBody() {
+    fun testPhotoWithSnippetsInBodyDoesNotIncludeSnippets() {
         val calendar = Calendar.getInstance().apply {
             set(2026, Calendar.OCTOBER, 18, 12, 0, 0)
         }
@@ -130,11 +130,13 @@ class MemoryNotificationTest {
         val (title, text) = MemoryWorker.buildNotificationMetadata(null, photo, MemoryWorker.TYPE_NEW)
 
         assertEquals("$expectedDate • Central Park", title)
-        assertEquals("Picnic with friends • Sunny afternoon", text)
+        assertEquals("Relive this memory", text)
+        org.junit.Assert.assertFalse(text.contains("Picnic with friends"))
+        org.junit.Assert.assertFalse(text.contains("Sunny afternoon"))
     }
 
     @Test
-    fun testPhotoWithSnippetsAndCustomName() {
+    fun testPhotoWithSnippetsAndCustomNameDoesNotIncludeSnippets() {
         val calendar = Calendar.getInstance().apply {
             set(2026, Calendar.OCTOBER, 18, 12, 0, 0)
         }
@@ -152,7 +154,8 @@ class MemoryNotificationTest {
         val (title, text) = MemoryWorker.buildNotificationMetadata(null, photo, MemoryWorker.TYPE_NEW)
 
         assertEquals("Summer Trip • Miami Beach", title)
-        assertEquals("$expectedDate • Swimming in the ocean", text)
+        assertEquals(expectedDate, text)
+        org.junit.Assert.assertFalse(text.contains("Swimming in the ocean"))
     }
 
     @Test
@@ -175,8 +178,22 @@ class MemoryNotificationTest {
     }
 
     @Test
+    fun testUpdatedTypeFallbackDoesNotMentionSnippets() {
+        val (_, text) = MemoryWorker.notificationFallbackText(MemoryWorker.TYPE_UPDATED)
+        org.junit.Assert.assertFalse(text.contains("snippets", ignoreCase = true))
+    }
+
+    @Test
     fun testGroupKeyAndSummaryIdConstants() {
         assertEquals("com.android.snippets.MEMORIES", MemoryWorker.GROUP_KEY)
         assertEquals(0, MemoryWorker.SUMMARY_NOTIFICATION_ID)
+    }
+
+    @Test
+    fun testInMemoryScreenState() {
+        MemoryWorker.isInMemoryScreen = true
+        assertTrue(MemoryWorker.isInMemoryScreen)
+        MemoryWorker.isInMemoryScreen = false
+        org.junit.Assert.assertFalse(MemoryWorker.isInMemoryScreen)
     }
 }

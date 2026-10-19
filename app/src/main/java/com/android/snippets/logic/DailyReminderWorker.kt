@@ -105,7 +105,7 @@ class DailyReminderWorker(context: Context, params: WorkerParameters) : Worker(c
         val (title, text) = when {
             count == 1 -> "1 memory has surfaced" to "A memory is waiting for you to revisit"
             count > 1  -> "$count memories have surfaced" to "Tap to explore your surfaced memories"
-            else       -> "Take a look at your memories" to "Open the app to add new snippets today"
+            else       -> "Take a look at your memories" to "Open the app to revisit your memories today"
         }
 
         val notification = NotificationCompat.Builder(applicationContext, MemoryWorker.CHANNEL_ID)

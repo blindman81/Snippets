@@ -2472,6 +2472,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         currentMemoryIndex = index.coerceIn(0, activeMemoriesSnapshot.size - 1)
         previousScreen = currentScreen
         currentScreen = Screen.Memory
+        MemoryWorker.isInMemoryScreen = true
+        MemoryWorker.cancelSummaryNotification(getApplication())
     }
 
     fun openMemory(index: Int) {

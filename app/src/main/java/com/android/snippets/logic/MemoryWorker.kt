@@ -45,6 +45,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         const val CHANNEL_ID = "new_memory_channel"
         const val GROUP_KEY = "com.android.snippets.MEMORIES"
         const val SUMMARY_NOTIFICATION_ID = 0
+        const val FOREGROUND_NOTIFICATION_ID = 1001
         const val INPUT_PHOTO_ID = "photo_id"
         const val INPUT_NOTIFICATION_TYPE = "notification_type"
         const val NOTIFICATION_DATE_FORMAT = "EEE, d MMM"
@@ -54,6 +55,9 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         const val TYPE_NEW = "new"
         const val TYPE_UPDATED = "updated"
         const val TYPE_RESURFACED = "resurfaced"
+
+        @Volatile
+        var isInMemoryScreen: Boolean = false
 
         fun canPostNotifications(context: Context): Boolean {
             val hasRuntimePermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -75,28 +79,23 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             return true
         }
 
+        fun cancelSummaryNotification(context: Context) {
+            val notificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
+        }
+
         fun cancelPostedNotification(context: Context, photoId: String) {
             if (photoId.isBlank()) return
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(notificationId(photoId))
-            val remaining = clearPostedNotificationState(context, photoId)
-            if (remaining.isEmpty()) {
-                notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
-            } else {
-                updateSummaryNotification(context, remaining)
-            }
+            clearPostedNotificationState(context, photoId)
+            cancelSummaryNotification(context)
         }
 
         fun updateSummaryNotification(context: Context, currentPostedIds: Set<String> = postedIds(context)) {
-            val notificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (currentPostedIds.isEmpty()) {
-                notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
-                return
-            }
-            val summary = buildSummaryNotification(context, currentPostedIds)
-            notificationManager.notify(SUMMARY_NOTIFICATION_ID, summary)
+            cancelSummaryNotification(context)
         }
 
         fun wasNotificationPosted(context: Context, photoId: String): Boolean {
@@ -171,13 +170,12 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
             val title = listOfNotNull(nameOrDate, locationStr).joinToString(" • ")
 
-            // Metadata: date in body when custom name is used, snippets, favorite status, star rating
+            // Metadata: date in body when custom name is used, favorite status, star rating
             val dateInBody = if (!photo.name.isNullOrBlank()) dayAndDate else null
-            val snippetsText = photo.snippets.takeIf { it.isNotEmpty() }?.joinToString(" • ")
             val favoriteStr = if (photo.isFavorite) "❤️ Favorite" else null
             val ratingStr = if (photo.rating > 0) "★ ${photo.rating}" else null
 
-            val metaParts = listOfNotNull(dateInBody, snippetsText, favoriteStr, ratingStr)
+            val metaParts = listOfNotNull(dateInBody, favoriteStr, ratingStr)
             val text = if (metaParts.isNotEmpty()) {
                 metaParts.joinToString(" • ")
             } else {
@@ -242,15 +240,19 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         fun notificationFallbackText(notificationType: String): Pair<String, String> {
             return when (notificationType) {
                 TYPE_RESURFACED -> "Memory resurfaced" to "A past memory is ready to revisit"
-                TYPE_UPDATED -> "Memory refreshed" to "New snippets waiting"
+                TYPE_UPDATED -> "Memory refreshed" to "Relive this memory"
                 else -> "New memory" to "Relive this memory"
             }
         }
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
-        val posted = postedIds(applicationContext)
-        return ForegroundInfo(SUMMARY_NOTIFICATION_ID, buildSummaryNotification(applicationContext, posted))
+        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Preparing memory")
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+        return ForegroundInfo(FOREGROUND_NOTIFICATION_ID, notification)
     }
 
     override suspend fun doWork(): Result {
@@ -292,7 +294,6 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setAutoCancel(true)
             .setGroup(GROUP_KEY)
-            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
             .setContentIntent(pendingIntent)
 
         if (memoryCardBitmap != null) {
@@ -311,13 +312,9 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val notification = notificationBuilder.build()
 
         markNotificationPosted(applicationContext, photoId)
-        val currentPosted = postedIds(applicationContext)
 
         notificationManager.notify(notificationId(photoId), notification)
-        notificationManager.notify(
-            SUMMARY_NOTIFICATION_ID,
-            buildSummaryNotification(applicationContext, currentPosted)
-        )
+        cancelSummaryNotification(applicationContext)
     }
 
     private suspend fun loadPhotoBitmap(photo: Photo): Bitmap? {
