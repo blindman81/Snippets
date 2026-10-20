@@ -634,8 +634,8 @@ fun BlurredAlertDialog(
                                 onClick = { triggerDismiss() },
                                 icon = Icons.Default.Close,
                                 contentDescription = "Close",
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                 size = 40.dp
                             )
                             if (onConfirm != null) {

@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun CookieSplitButton(
     primaryIcon: ImageVector,
+    onMenuToggle: (() -> Unit)? = null,
     onPrimaryClick: () -> Unit,
     modifier: Modifier = Modifier,
     trailingIcon: ImageVector? = null,
@@ -73,8 +74,8 @@ fun CookieSplitButton(
     shape: Shape = CookieShape,
     selectedContainerColor: Color = MaterialTheme.colorScheme.primary,
     selectedContentColor: Color = MaterialTheme.colorScheme.onPrimary,
-    unselectedContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    unselectedContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
     enabled: Boolean = true
 ) {
@@ -321,6 +322,7 @@ fun CookieSplitButton(
 
                                 // Perform menu toggle simultaneously
                                 expanded = !expanded
+                                if (expanded) onMenuToggle?.invoke()
 
                                 // Wiggle adjacent button (leading button) - only morph when held
                                 triggerWiggleLeading(-1f)
@@ -377,7 +379,7 @@ fun CookieSplitButton(
             ) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     tonalElevation = 3.dp,
                     shadowElevation = 3.dp
                 ) {

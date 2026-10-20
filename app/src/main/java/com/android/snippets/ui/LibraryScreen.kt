@@ -1420,8 +1420,8 @@ fun LibraryScreen(
                                                                 overlap = 0.dp,
                                                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                                                                 selectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                                unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                                                 enableWiggle = false
                                                             )
                                                         }
@@ -1503,8 +1503,8 @@ fun LibraryScreen(
                                                                 overlap = 0.dp,
                                                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                                                                 selectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                                unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                                                 enableWiggle = true
                                                             )
                                                         }
@@ -1682,12 +1682,12 @@ private fun ViewOptionItem(
     }
 
     val animatedContainerColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
         animationSpec = tween(durationMillis = 200),
         label = "view_option_container_color"
     )
     val animatedContentColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
         animationSpec = tween(durationMillis = 200),
         label = "view_option_content_color"
     )

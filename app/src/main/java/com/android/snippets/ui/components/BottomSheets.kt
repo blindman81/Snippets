@@ -141,8 +141,8 @@ fun MenuBottomSheet(
                                 contentDescription = "New Collection",
                                 tooltip = "New Collection",
                                 size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurface
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
 
                             // 2. Select
@@ -156,8 +156,8 @@ fun MenuBottomSheet(
                                 contentDescription = "Select",
                                 tooltip = "Select",
                                 size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurface
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
 
                             // 3. Stats
@@ -171,8 +171,8 @@ fun MenuBottomSheet(
                                 contentDescription = "Stats",
                                 tooltip = "Stats",
                                 size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurface
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
 
                             // 4. Settings
@@ -186,8 +186,8 @@ fun MenuBottomSheet(
                                 contentDescription = "Settings",
                                 tooltip = "Settings",
                                 size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurface
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
 
                             // 5. About
@@ -201,8 +201,8 @@ fun MenuBottomSheet(
                                 contentDescription = "About",
                                 tooltip = "About",
                                 size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurface
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     }

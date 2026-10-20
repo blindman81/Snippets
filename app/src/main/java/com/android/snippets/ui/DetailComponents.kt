@@ -175,6 +175,7 @@ fun DetailTopBar(
                 val hasRating = photo.rating > 0
 
                 CookieSplitButton(
+                    onMenuToggle = { if (isInfoExpanded) onToggleInfoExpand() },
                     primaryIcon = Icons.Default.Add,
                     contentDescription = "Add snippets",
                     isPrimaryActive = isAddActive,
@@ -220,12 +221,14 @@ fun DetailTopBar(
                             icon = if (hasName) Icons.AutoMirrored.Filled.Label else Icons.AutoMirrored.Outlined.Label,
                             contentDescription = if (hasName) "Rename photo" else "Name photo",
                             tooltip = if (hasName) "Rename photo" else "Name photo",
+                            isSelected = hasName,
                             onClick = onNamePhotoClick
                         ),
                         cookieButtonItem(
                             icon = if (hasLocation) Icons.Filled.Place else Icons.Outlined.Place,
                             contentDescription = if (hasLocation) "Edit location link" else "Link to a place",
                             tooltip = if (hasLocation) "Edit location link" else "Link to a place",
+                            isSelected = hasLocation,
                             onClick = onAddLinkClick
                         ),
                         cookieButtonItem(
@@ -247,7 +250,7 @@ fun DetailTopBar(
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.ExtraBold
                                             ),
-                                            color = MaterialTheme.colorScheme.surface,
+                                            color = MaterialTheme.colorScheme.onPrimary,
                                             modifier = Modifier.padding(top = 0.5.dp)
                                         )
                                     }
@@ -261,6 +264,7 @@ fun DetailTopBar(
                                 }
                             },
                             tooltip = "Rate",
+                            isSelected = hasRating,
                             onClick = onRate
                         ),
                         cookieButtonItem(
@@ -268,6 +272,7 @@ fun DetailTopBar(
                             contentDescription = "Snippets",
                             tooltip = "Snippets",
                             enabled = hasSnippets,
+                            isSelected = hasSnippets,
                             onClick = onSnippets
                         ),
                         cookieButtonItem(
