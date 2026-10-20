@@ -2493,9 +2493,19 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onMemoryViewed(index: Int) {
-        if (activeMemoriesSnapshot.isEmpty()) return
-        currentMemoryIndex = index.coerceIn(0, activeMemoriesSnapshot.size - 1)
-        activeMemoriesSnapshot.getOrNull(currentMemoryIndex)?.let { markAsViewed(it.id) }
+        val list = activeMemoriesSnapshot.ifEmpty { curatedMemories }
+        if (list.isEmpty()) return
+        currentMemoryIndex = index.coerceIn(0, list.size - 1)
+        list.getOrNull(currentMemoryIndex)?.let { markAsViewed(it.id) }
+    }
+
+    fun onMemoryViewed(photoId: String) {
+        val list = activeMemoriesSnapshot.ifEmpty { curatedMemories }
+        val index = list.indexOfFirst { it.id == photoId }
+        if (index != -1) {
+            currentMemoryIndex = index
+        }
+        markAsViewed(photoId)
     }
 
     private fun markAsViewed(id: String) {

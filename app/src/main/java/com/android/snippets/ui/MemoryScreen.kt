@@ -82,13 +82,16 @@ fun MemoryScreen(
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
-    AppPredictiveBackHandler {
-        viewModel.navigateLibrary()
-    }
     val photoList = viewModel.activeMemoriesSnapshot.ifEmpty { viewModel.curatedMemories }
     val initialPage = (viewModel.currentMemoryIndex + 1).coerceIn(1, (photoList.size).coerceAtLeast(1))
     val pagerState = rememberPagerState(initialPage = initialPage) {
         photoList.size + 2 // [Close, Photos..., Close]
+    }
+    AppPredictiveBackHandler {
+        photoList.getOrNull(pagerState.currentPage - 1)?.let {
+            viewModel.onMemoryViewed(it.id)
+        }
+        viewModel.navigateLibrary()
     }
     val transitionTargetId by remember { derivedStateOf { photoList.getOrNull(pagerState.currentPage - 1)?.id } }
 
@@ -235,8 +238,7 @@ fun MemoryScreen(
             val isSettled = pagerState.settledPage == pageIndex
             LaunchedEffect(isSettled) {
                 if (isSettled) {
-                    kotlinx.coroutines.delay(1500)
-                    viewModel.onMemoryViewed(pageIndex - 1)
+                    viewModel.onMemoryViewed(photo.id)
                 }
             }
 
@@ -252,6 +254,7 @@ fun MemoryScreen(
                                 val released = tryAwaitRelease()
                                 isPressed = false
                                 if (released) {
+                                    viewModel.onMemoryViewed(photo.id)
                                     if (offset.x < size.width * 0.3f) {
                                         coroutineScope.launch {
                                             pagerState.animateScrollToPage(pagerState.settledPage - 1)
