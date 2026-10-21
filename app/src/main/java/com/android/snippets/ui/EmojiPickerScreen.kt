@@ -1,4 +1,4 @@
-package com.android.snippets.ui
+﻿package com.android.snippets.ui
 import com.android.snippets.ui.components.*
 
 import androidx.compose.foundation.background
@@ -21,9 +21,7 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
-import androidx.compose.animation.core.*
 import com.android.snippets.ui.shapes.CookieShape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.text.BasicTextField
@@ -56,31 +54,6 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
         if (icon in systemIcons) "" else icon
     }
     var selectedEmoji by remember(initialEmoji) { mutableStateOf(initialEmoji) }
-    
-    var isHolding by remember { mutableStateOf(false) }
-    val rotation = remember { Animatable(0f) }
-    val animScaleX = remember { Animatable(1f) }
-    val animScaleY = remember { Animatable(1f) }
-    val animTranslationX = remember { Animatable(0f) }
-    val animTranslationY = remember { Animatable(0f) }
-    LaunchedEffect(isHolding) {
-        val duration = if (isHolding) 600 else 30000
-        while (true) {
-            rotation.animateTo(
-                targetValue = rotation.value + 360f,
-                animationSpec = tween(duration, easing = LinearEasing)
-            )
-        }
-    }
-
-    LaunchedEffect(isHolding) {
-        if (isHolding) {
-            while (true) {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                kotlinx.coroutines.delay(100)
-            }
-        }
-    }
 
     val icons = listOf(
         "Landscape" to Icons.Default.Landscape,
@@ -168,6 +141,7 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
                             icon = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             size = 56.dp,
+                            isSpinning = false,
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -192,6 +166,7 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
                             contentDescription = "Confirm",
                             tooltip = "Done",
                             size = 56.dp,
+                            isSpinning = false,
                             enabled = selectedEmoji.isNotBlank(),
                             containerColor = if (selectedEmoji.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = if (selectedEmoji.isNotBlank()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -204,7 +179,7 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(top = paddingValues.calculateTopPadding())) {
             // Icon Grid (Scrollable)
-            // Centered Spinning Cookie
+            // Centered Cookie
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -220,14 +195,6 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
                         .size(160.dp)
                         .pointerInput(Unit) {
                             detectTapGestures(
-                                onPress = {
-                                    isHolding = true
-                                    try {
-                                        awaitRelease()
-                                    } finally {
-                                        isHolding = false
-                                    }
-                                },
                                 onTap = {
                                     view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                                     selectedEmoji = "" 
@@ -237,13 +204,10 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
                             )
                         }
                 ) {
-                    // Spinning 9-Sided Cookie Background
+                    // 9-Sided Cookie Background
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer { 
-                                rotationZ = rotation.value
-                            }
                             .clip(CookieShape)
                             .background(MaterialTheme.colorScheme.secondaryContainer)
                     )
@@ -1090,6 +1054,7 @@ fun IconSelectionItem(
             icon = icon,
             modifier = Modifier.fillMaxSize(),
             shape = CookieShape,
+            isSpinning = false,
             size = 120.dp
         )
     }
