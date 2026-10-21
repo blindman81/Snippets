@@ -1164,20 +1164,14 @@ fun PhotoCard(
         label = "bottomCardTopCorner"
     )
     val bottomCornerSize by animateDpAsState(
-        targetValue = if (isPressed) 24.dp else {
-            if (position == CardPosition.Last || position == CardPosition.Single) 12.dp else 4.dp
-        },
-        label = "bottomCardBottomCorner"
-    )
-    val bottomEndCornerSize by animateDpAsState(
         targetValue = if (isPressed) 24.dp else 12.dp,
-        label = "bottomCardBottomEndCorner"
+        label = "bottomCardBottomCorner"
     )
     val bottomCardShape = RoundedCornerShape(
         topStart = topCornerSize,
         topEnd = topCornerSize,
         bottomStart = bottomCornerSize,
-        bottomEnd = bottomEndCornerSize
+        bottomEnd = bottomCornerSize
     )
     val finalShape = if (isPressed) {
         RoundedCornerShape(24.dp)
