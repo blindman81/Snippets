@@ -1,4 +1,4 @@
-package com.android.snippets.ui
+﻿package com.android.snippets.ui
 import com.android.snippets.ui.components.*
 
 import androidx.compose.foundation.layout.*
@@ -589,9 +589,18 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                          ),
                          color = MaterialTheme.colorScheme.onSurface
                      )
-                     PremiumSwitch(
-                         checked = reminderEnabled,
-                         onCheckedChange = { reminderEnabled = it }
+                     AnimatedCookieButton(
+                         onClick = {
+                             reminderEnabled = !reminderEnabled
+                         },
+                         icon = com.ln.android.snippets.R.drawable.ic_daily_reminder,
+                         contentDescription = if (reminderEnabled) "Disable reminder" else "Enable reminder",
+                         tooltip = if (reminderEnabled) "Disable reminder" else "Enable reminder",
+                         containerColor = if (reminderEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                         contentColor = if (reminderEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                         size = 48.dp,
+                         iconSize = 24.dp,
+                         isSpinning = true
                      )
                  }
              },

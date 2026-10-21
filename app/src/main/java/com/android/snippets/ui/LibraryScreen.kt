@@ -1,4 +1,4 @@
-package com.android.snippets.ui
+﻿package com.android.snippets.ui
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
@@ -1278,6 +1278,9 @@ fun LibraryScreen(
                                         val sortCookieSize = remember(availableWidth, sortItems.size) {
                                             availableWidth / sortItems.size.coerceAtLeast(1)
                                         }
+                                        val viewCookieSize = remember(availableWidth) {
+                                            if (availableWidth >= 86.dp * 3) 86.dp else ((availableWidth - 20.dp) / 3).coerceIn(48.dp, 86.dp)
+                                        }
 
                                         HorizontalPager(
                                             state = managePagerState,
@@ -1520,52 +1523,79 @@ fun LibraryScreen(
                                                             },
                                                             verticalAlignment = Alignment.CenterVertically
                                                         ) {
-                                                            ViewOptionItem(
-                                                                columnCount = 1,
-                                                                isSelected = currentCols == 1,
+                                                            AnimatedCookieButton(
                                                                 onClick = {
                                                                     viewModel.updateCustomGridColumns(1)
                                                                     listStates.values.forEach { state ->
                                                                         scope.launch { state.scrollToItem(0) }
                                                                     }
                                                                     showPillInfo("Single column") {
-                                                                        Icon(ViewAgendaCustomIcon(filled = true), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                        Icon(
+                                                                            imageVector = ViewAgendaCustomIcon(filled = true),
+                                                                            contentDescription = null,
+                                                                            modifier = Modifier.size(16.dp),
+                                                                            tint = MaterialTheme.colorScheme.primary
+                                                                        )
                                                                     }
                                                                 },
                                                                 icon = ViewAgendaCustomIcon(filled = currentCols == 1),
-                                                                size = 86.dp
+                                                                contentDescription = "Single column",
+                                                                tooltip = "Single column",
+                                                                containerColor = if (currentCols == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                                                contentColor = if (currentCols == 1) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                                                                size = viewCookieSize,
+                                                                iconSize = if (viewCookieSize >= 72.dp) 32.dp else 24.dp,
+                                                                isSpinning = true
                                                             )
 
-                                                            ViewOptionItem(
-                                                                columnCount = 2,
-                                                                isSelected = currentCols == 2,
+                                                            AnimatedCookieButton(
                                                                 onClick = {
                                                                     viewModel.updateCustomGridColumns(2)
                                                                     listStates.values.forEach { state ->
                                                                         scope.launch { state.scrollToItem(0) }
                                                                     }
                                                                     showPillInfo("Two columns") {
-                                                                        Icon(ViewGrid2Icon(filled = true), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                        Icon(
+                                                                            imageVector = ViewGrid2Icon(filled = true),
+                                                                            contentDescription = null,
+                                                                            modifier = Modifier.size(16.dp),
+                                                                            tint = MaterialTheme.colorScheme.primary
+                                                                        )
                                                                     }
                                                                 },
                                                                 icon = ViewGrid2Icon(filled = currentCols == 2),
-                                                                size = 86.dp
+                                                                contentDescription = "Two columns",
+                                                                tooltip = "Two columns",
+                                                                containerColor = if (currentCols == 2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                                                contentColor = if (currentCols == 2) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                                                                size = viewCookieSize,
+                                                                iconSize = if (viewCookieSize >= 72.dp) 32.dp else 24.dp,
+                                                                isSpinning = true
                                                             )
 
-                                                            ViewOptionItem(
-                                                                columnCount = 3,
-                                                                isSelected = currentCols == 3,
+                                                            AnimatedCookieButton(
                                                                 onClick = {
                                                                     viewModel.updateCustomGridColumns(3)
                                                                     listStates.values.forEach { state ->
                                                                         scope.launch { state.scrollToItem(0) }
                                                                     }
                                                                     showPillInfo("Three columns") {
-                                                                        Icon(ViewGrid3Icon(filled = true), contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                                                        Icon(
+                                                                            imageVector = ViewGrid3Icon(filled = true),
+                                                                            contentDescription = null,
+                                                                            modifier = Modifier.size(16.dp),
+                                                                            tint = MaterialTheme.colorScheme.primary
+                                                                        )
                                                                     }
                                                                 },
                                                                 icon = ViewGrid3Icon(filled = currentCols == 3),
-                                                                size = 86.dp
+                                                                contentDescription = "Three columns",
+                                                                tooltip = "Three columns",
+                                                                containerColor = if (currentCols == 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                                                contentColor = if (currentCols == 3) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                                                                size = viewCookieSize,
+                                                                iconSize = if (viewCookieSize >= 72.dp) 32.dp else 24.dp,
+                                                                isSpinning = true
                                                             )
                                                         }
                                                     }
@@ -1626,102 +1656,7 @@ fun LibraryScreen(
 
 
 
-@Composable
-private fun ViewOptionItem(
-    columnCount: Int,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    icon: ImageVector,
-    size: androidx.compose.ui.unit.Dp = 86.dp
-) {
-    val view = LocalView.current
-    val scope = rememberCoroutineScope()
-    val shape = CookieShape
 
-    val rotation = remember { Animatable(0f) }
-    val scaleX = remember { Animatable(1f) }
-    val scaleY = remember { Animatable(1f) }
-    var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-
-    val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = isSelected)
-
-    fun triggerSpin() {
-        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-        onClick()
-        spinJob?.cancel()
-        spinJob = scope.launch {
-            val scaleJobX = launch {
-                scaleX.animateTo(0.84f, Motion.PressSpring)
-                scaleX.animateTo(1f, Motion.BouncySpring)
-            }
-            val scaleJobY = launch {
-                scaleY.animateTo(0.84f, Motion.PressSpring)
-                scaleY.animateTo(1f, Motion.BouncySpring)
-            }
-            val rotJob = launch {
-                rotation.animateTo(
-                    targetValue = rotation.value + 360f,
-                    animationSpec = Motion.BouncySpring
-                )
-            }
-            rotJob.join()
-            scaleJobX.join()
-            scaleJobY.join()
-        }
-    }
-
-    var lastIsSelected by remember { mutableStateOf(isSelected) }
-    LaunchedEffect(isSelected) {
-        if (isSelected && !lastIsSelected && spinJob?.isActive != true) {
-            rotation.animateTo(
-                targetValue = rotation.value + 360f,
-                animationSpec = Motion.BouncySpring
-            )
-        }
-        lastIsSelected = isSelected
-    }
-
-    val animatedContainerColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-        animationSpec = tween(durationMillis = 200),
-        label = "view_option_container_color"
-    )
-    val animatedContentColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-        animationSpec = tween(durationMillis = 200),
-        label = "view_option_content_color"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                triggerSpin()
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    this.rotationZ = rotation.value + (if (isSelected) tiltAngle else 0f)
-                    this.scaleX = scaleX.value
-                    this.scaleY = scaleY.value
-                }
-                .clip(shape)
-                .background(animatedContainerColor)
-        )
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = animatedContentColor,
-            modifier = Modifier.size(if (size.value >= 86f) 32.dp else 24.dp)
-        )
-    }
-}
 
 private data class SortPillInfo(
     val text: String,
