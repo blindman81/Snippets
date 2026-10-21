@@ -1,9 +1,10 @@
-package com.android.snippets.ui.components
+﻿package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -46,6 +47,7 @@ fun AnimatedCookieButton(
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     AnimatedCookieButtonImpl(
@@ -69,6 +71,7 @@ fun AnimatedCookieButton(
         enabled = enabled,
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
+        isOnBlurredSurface = isOnBlurredSurface,
         badge = badge
     )
 }
@@ -90,6 +93,7 @@ fun AnimatedCookieButton(
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     AnimatedCookieButtonImpl(
@@ -113,6 +117,7 @@ fun AnimatedCookieButton(
         enabled = enabled,
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
+        isOnBlurredSurface = isOnBlurredSurface,
         badge = badge
     )
 }
@@ -133,6 +138,7 @@ fun AnimatedCookieButton(
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     AnimatedCookieButtonImpl(
@@ -149,6 +155,7 @@ fun AnimatedCookieButton(
         enabled = enabled,
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
+        isOnBlurredSurface = isOnBlurredSurface,
         badge = badge
     )
 }
@@ -169,6 +176,7 @@ private fun AnimatedCookieButtonImpl(
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     val view = LocalView.current
@@ -187,9 +195,12 @@ private fun AnimatedCookieButtonImpl(
     val settleRotation = remember { Animatable(0f) }
     var isSettling by remember { mutableStateOf(false) }
 
+    val isCallerPrimary = containerColor == MaterialTheme.colorScheme.primary
     val isActive = (isHolding && !isHoldCompleted) || isTapped
+    val isPrimary = isActive || isCallerPrimary
+
     val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
-    val targetContent = if (isActive) MaterialTheme.colorScheme.onPrimary else contentColor
+    val targetContent = if (isPrimary) MaterialTheme.colorScheme.onPrimary else contentColor
 
     val animatedContainerColor by animateColorAsState(
         targetValue = targetContainer,
@@ -202,7 +213,12 @@ private fun AnimatedCookieButtonImpl(
         label = "cookie_button_content_color"
     )
 
-    val isPrimary = (targetContainer == MaterialTheme.colorScheme.primary) || (containerColor == MaterialTheme.colorScheme.primary)
+    val primaryAlpha by animateFloatAsState(
+        targetValue = if (isPrimary) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "cookie_button_primary_alpha"
+    )
+
     val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = enabled && isPrimary)
 
     val isMorphActive = (isHolding && !isHoldCompleted) || isSettling
@@ -309,12 +325,40 @@ private fun AnimatedCookieButtonImpl(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(currentShape)
-                    .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
-            )
+            if (isOnBlurredSurface) {
+                // Outline variant layer (bottom):
+                // Retains button container color with M3 outline variant border.
+                // Kept at full opacity so it never fades out when turning primary.
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(currentShape)
+                        .background(if (enabled) containerColor else containerColor.copy(alpha = 0.38f))
+                        .border(
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                            shape = currentShape
+                        )
+                )
+                // Primary layer: drawn OVER the outline variant so the outline is not visible when primary
+                if (primaryAlpha > 0.001f) {
+                    val primaryColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer { alpha = primaryAlpha }
+                            .border(1.dp, primaryColor, currentShape)
+                            .clip(currentShape)
+                            .background(primaryColor)
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(currentShape)
+                        .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+                )
+            }
             val iconModifier = Modifier
                 .size(iconSize)
                 .graphicsLayer { 
@@ -394,7 +438,7 @@ private fun AnimatedCookieButtonImpl(
             kotlinx.coroutines.delay(120L)
             if (!isHolding) return@LaunchedEffect
 
-            // Continuous global rotation from LoadingIndicator (4666ms per 360°)
+            // Continuous global rotation from LoadingIndicator (4666ms per 360Â°)
             val globalRotationJob = launch {
                 globalRotation.animateTo(
                     targetValue = 360f,

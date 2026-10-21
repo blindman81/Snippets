@@ -1,4 +1,4 @@
-package com.android.snippets.ui.components
+﻿package com.android.snippets.ui.components
 
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -102,6 +102,11 @@ import dev.chrisbanes.haze.hazeEffect
 val LocalHazeState = compositionLocalOf<HazeState?> { null }
 
 /**
+ * CompositionLocal indicating whether the content is currently hosted within a [BlurredSurface].
+ */
+val LocalIsOnBlurredSurface = compositionLocalOf { false }
+
+/**
  * Blends a base surface color with the system Material You Monet dynamic color (surfaceTint)
  * so that frosted glass blur across the app has a rich, vibrant Monet tint rather than looking gray.
  */
@@ -177,7 +182,10 @@ fun BlurredSurface(
                         } else Modifier
                     )
             ) {
-                CompositionLocalProvider(LocalContentColor provides contentColor) {
+                CompositionLocalProvider(
+                    LocalContentColor provides contentColor,
+                    LocalIsOnBlurredSurface provides true
+                ) {
                     content()
                 }
             }
@@ -189,9 +197,12 @@ fun BlurredSurface(
                 border = border,
                 shadowElevation = shadowElevation,
                 tonalElevation = tonalElevation,
-                contentColor = contentColor,
-                content = content
-            )
+                contentColor = contentColor
+            ) {
+                CompositionLocalProvider(LocalIsOnBlurredSurface provides true) {
+                    content()
+                }
+            }
         }
     } else {
         Surface(
@@ -201,9 +212,12 @@ fun BlurredSurface(
             border = border,
             shadowElevation = shadowElevation,
             tonalElevation = tonalElevation,
-            contentColor = contentColor,
-            content = content
-        )
+            contentColor = contentColor
+        ) {
+            CompositionLocalProvider(LocalIsOnBlurredSurface provides true) {
+                content()
+            }
+        }
     }
 }
 

@@ -1,11 +1,13 @@
-package com.android.snippets.ui.components
+﻿package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -190,6 +193,7 @@ fun CookieButtonGroup(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     onItemClick: ((Int) -> Unit)? = null
 ) {
     val view = LocalView.current
@@ -382,6 +386,14 @@ fun CookieButtonGroup(
 
     val renderCookieItem = @Composable { index: Int, item: CookieButtonItem ->
         val isSelected = item.isSelected ?: (index == currentSelectedIndex)
+        val isPrimary = isSelected && (selectedContainerColor == MaterialTheme.colorScheme.primary)
+        val isCallerPrimary = unselectedContainerColor == MaterialTheme.colorScheme.primary
+
+        val primaryAlpha by animateFloatAsState(
+            targetValue = if (isPrimary || isCallerPrimary) 1f else 0f,
+            animationSpec = tween(durationMillis = 200),
+            label = "cookie_group_primary_alpha_$index"
+        )
 
         val animatedContainerColor by animateColorAsState(
             targetValue = if (isSelected) selectedContainerColor else unselectedContainerColor,
@@ -389,12 +401,11 @@ fun CookieButtonGroup(
             label = "cookie_container_color_$index"
         )
         val animatedContentColor by animateColorAsState(
-            targetValue = if (isSelected) selectedContentColor else unselectedContentColor,
+            targetValue = if (isSelected || isCallerPrimary) selectedContentColor else unselectedContentColor,
             animationSpec = tween(durationMillis = 200),
             label = "cookie_content_color_$index"
         )
 
-        val isPrimary = isSelected && (selectedContainerColor == MaterialTheme.colorScheme.primary)
         val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = item.enabled && isPrimary)
 
         val cookieContent = @Composable {
@@ -494,9 +505,40 @@ fun CookieButtonGroup(
                         .graphicsLayer {
                             rotationZ = rotations[index].value + wiggleRotations[index].value + tiltAngle
                         }
-                        .clip(currentShape)
-                        .background(if (item.enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
-                )
+                ) {
+                    if (isOnBlurredSurface) {
+                        // Outline variant (bottom layer)
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(currentShape)
+                                .background(if (item.enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
+                                .border(
+                                    border = ButtonDefaults.outlinedButtonBorder(enabled = item.enabled),
+                                    shape = currentShape
+                                )
+                        )
+                        // Primary layer (drawn OVER outline variant)
+                        if (primaryAlpha > 0.001f) {
+                            val primaryBg = if (item.enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .graphicsLayer { alpha = primaryAlpha }
+                                    .border(1.dp, primaryBg, currentShape)
+                                    .clip(currentShape)
+                                    .background(primaryBg)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(currentShape)
+                                .background(if (item.enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+                        )
+                    }
+                }
 
                 // Icon: remains strictly upright
                 item.icon(
@@ -595,6 +637,7 @@ fun CookieButtonGroup(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     onItemClick: ((Int) -> Unit)? = null,
     iconSize: Dp = 22.dp
 ) {
@@ -625,6 +668,7 @@ fun CookieButtonGroup(
         isSpinning = isSpinning,
         enableWiggle = enableWiggle,
         wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
+        isOnBlurredSurface = isOnBlurredSurface,
         onItemClick = onItemClick
     )
 }
@@ -648,7 +692,8 @@ fun CookieNavBar(
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
-    wiggleNeighborOnToggleOn: Boolean = false
+    wiggleNeighborOnToggleOn: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) = CookieButtonGroup(
     selectedIndex = selectedIndex,
     onSelect = onSelect,
@@ -664,13 +709,14 @@ fun CookieNavBar(
     unselectedContentColor = unselectedContentColor,
     isSpinning = isSpinning,
     enableWiggle = enableWiggle,
-    wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn
+    wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
+    isOnBlurredSurface = isOnBlurredSurface
 )
 
 /**
  * Backward compatibility alias for [CookieNavBar].
  */
-@Deprecated("Use CookieNavBar instead", ReplaceWith("CookieNavBar(selectedIndex, onSelect, items, modifier, columns, cookieSize, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enableWiggle, wiggleNeighborOnToggleOn)"))
+@Deprecated("Use CookieNavBar instead", ReplaceWith("CookieNavBar(selectedIndex, onSelect, items, modifier, columns, cookieSize, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enableWiggle, wiggleNeighborOnToggleOn, isOnBlurredSurface)"))
 @Composable
 fun TabNavCookie(
     selectedIndex: Int,
@@ -687,7 +733,8 @@ fun TabNavCookie(
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
-    wiggleNeighborOnToggleOn: Boolean = false
+    wiggleNeighborOnToggleOn: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) = CookieNavBar(
     selectedIndex = selectedIndex,
     onSelect = onSelect,
@@ -703,5 +750,6 @@ fun TabNavCookie(
     unselectedContentColor = unselectedContentColor,
     isSpinning = isSpinning,
     enableWiggle = enableWiggle,
-    wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn
+    wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
+    isOnBlurredSurface = isOnBlurredSurface
 )

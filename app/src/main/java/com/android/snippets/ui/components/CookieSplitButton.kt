@@ -1,4 +1,4 @@
-package com.android.snippets.ui.components
+﻿package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,7 +78,8 @@ fun CookieSplitButton(
     unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
@@ -137,25 +139,39 @@ fun CookieSplitButton(
 
     // Colors
     val isLeadingPrimary = isPrimaryActive || tappedLeading
+    val isLeadingCallerPrimary = unselectedContainerColor == MaterialTheme.colorScheme.primary
+    val leadingPrimaryAlpha by animateFloatAsState(
+        targetValue = if (isLeadingPrimary || isLeadingCallerPrimary) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "split_leading_primary_alpha"
+    )
+
     val animatedLeadingContainerColor by animateColorAsState(
         targetValue = if (isLeadingPrimary) selectedContainerColor else unselectedContainerColor,
         animationSpec = tween(durationMillis = 200),
         label = "split_leading_container"
     )
     val animatedLeadingContentColor by animateColorAsState(
-        targetValue = if (isLeadingPrimary) selectedContentColor else unselectedContentColor,
+        targetValue = if (isLeadingPrimary || isLeadingCallerPrimary) selectedContentColor else unselectedContentColor,
         animationSpec = tween(durationMillis = 200),
         label = "split_leading_content"
     )
 
     val isTrailingPrimary = expanded || tappedTrailing
+    val isTrailingCallerPrimary = unselectedContainerColor == MaterialTheme.colorScheme.primary
+    val trailingPrimaryAlpha by animateFloatAsState(
+        targetValue = if (isTrailingPrimary || isTrailingCallerPrimary) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "split_trailing_primary_alpha"
+    )
+
     val animatedTrailingContainerColor by animateColorAsState(
         targetValue = if (isTrailingPrimary) selectedContainerColor else unselectedContainerColor,
         animationSpec = tween(durationMillis = 200),
         label = "split_trailing_container"
     )
     val animatedTrailingContentColor by animateColorAsState(
-        targetValue = if (isTrailingPrimary) selectedContentColor else unselectedContentColor,
+        targetValue = if (isTrailingPrimary || isTrailingCallerPrimary) selectedContentColor else unselectedContentColor,
         animationSpec = tween(durationMillis = 200),
         label = "split_trailing_content"
     )
@@ -264,9 +280,38 @@ fun CookieSplitButton(
                         .graphicsLayer {
                             rotationZ = rotationLeading.value + wiggleLeading.value + tiltLeading
                         }
-                        .clip(shapeLeading)
-                        .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
-                )
+                ) {
+                    if (isOnBlurredSurface) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeLeading)
+                                .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
+                                .border(
+                                    border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                    shape = shapeLeading
+                                )
+                        )
+                        if (leadingPrimaryAlpha > 0.001f) {
+                            val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .graphicsLayer { alpha = leadingPrimaryAlpha }
+                                    .border(1.dp, primaryBg, shapeLeading)
+                                    .clip(shapeLeading)
+                                    .background(primaryBg)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeLeading)
+                                .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
+                        )
+                    }
+                }
 
                 Icon(
                     imageVector = primaryIcon,
@@ -352,9 +397,38 @@ fun CookieSplitButton(
                         .graphicsLayer {
                             rotationZ = rotationTrailing.value + wiggleTrailing.value + tiltTrailing
                         }
-                        .clip(shapeTrailing)
-                        .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
-                )
+                ) {
+                    if (isOnBlurredSurface) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeTrailing)
+                                .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
+                                .border(
+                                    border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                    shape = shapeTrailing
+                                )
+                        )
+                        if (trailingPrimaryAlpha > 0.001f) {
+                            val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .graphicsLayer { alpha = trailingPrimaryAlpha }
+                                    .border(1.dp, primaryBg, shapeTrailing)
+                                    .clip(shapeTrailing)
+                                    .background(primaryBg)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeTrailing)
+                                .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
+                        )
+                    }
+                }
 
                 Icon(
                     imageVector = actualTrailingIcon,
