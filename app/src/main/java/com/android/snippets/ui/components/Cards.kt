@@ -1456,13 +1456,11 @@ fun PhotoCard(
 
                         androidx.compose.animation.AnimatedVisibility(
                             visible = isExpanded,
-                            enter = fadeIn(animationSpec = tween(400)) + androidx.compose.animation.scaleIn(initialScale = 0.85f, animationSpec = tween(400)),
-                            exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.scaleOut(targetScale = 0.85f, animationSpec = tween(300)),
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
+                            enter = fadeIn(animationSpec = tween(400)),
+                            exit = fadeOut(animationSpec = tween(300)),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            PhotoCookieSplitButton(
+                            PhotoButtonGroup(
                                 photo = photo,
                                 onAdd = onAddSnippet,
                                 onDownload = onDownload,
@@ -1474,7 +1472,10 @@ fun PhotoCard(
                                 onSnippets = onViewSnippets,
                                 onDelete = onDeletePhoto,
                                 isPrimaryActive = isAddSnippetOpen,
-                                buttonSize = 64.dp
+                                buttonSize = 56.dp,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp)
                             )
                         }
 

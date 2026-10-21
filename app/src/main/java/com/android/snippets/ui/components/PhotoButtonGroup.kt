@@ -30,6 +30,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.automirrored.outlined.Label
@@ -63,7 +65,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * PhotoCookieSplitButton component consisting of two connected cookie-shaped buttons:
+ * PhotoButtonGroup component consisting of two connected cookie-shaped buttons:
  * A primary action button (e.g. Add), and a trailing dropdown arrow button.
  *
  * Features:
@@ -74,7 +76,7 @@ import kotlinx.coroutines.launch
  * - Opens a connected button group menu with customizable columns (default 3 columns matching design).
  */
 @Composable
-fun PhotoCookieSplitButton(
+fun PhotoButtonGroup(
     primaryIcon: ImageVector,
     onMenuToggle: (() -> Unit)? = null,
     onPrimaryClick: () -> Unit,
@@ -86,8 +88,8 @@ fun PhotoCookieSplitButton(
     primaryText: String? = null,
     contentDescription: String? = primaryText,
     isPrimaryActive: Boolean = false,
-    menuColumns: Int = 2,
-    buttonSize: Dp = 64.dp,
+    menuColumns: Int = 4,
+    buttonSize: Dp = 56.dp,
     gap: Dp = 1.dp,
     overlap: Dp = 4.dp,
     shape: Shape = CookieShape,
@@ -211,6 +213,7 @@ fun PhotoCookieSplitButton(
 
     Box(modifier = modifier) {
         Row(
+            modifier = Modifier.align(Alignment.TopEnd),
             horizontalArrangement = Arrangement.spacedBy(gap),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -279,19 +282,7 @@ fun PhotoCookieSplitButton(
                                     launch {
                                         morphProgressLeading.animateTo(1f, Motion.BouncySpring)
                                     }
-                                    if (isSpinning) {
-                                        launch {
-                                            rotationLeading.animateTo(
-                                                rotationLeading.value + 360f,
-                                                Motion.BouncySpring
-                                            )
-                                        }
-                                    }
-                                    kotlinx.coroutines.delay(250L)
                                     tappedLeading = false
-                                    if (!isPrimaryActive) {
-                                        morphProgressLeading.animateTo(0f, Motion.BouncySpring)
-                                    }
                                 }
                             }
                         )
@@ -351,131 +342,131 @@ fun PhotoCookieSplitButton(
                 modifier = Modifier
                     .size(buttonSize)
                     .zIndex(if (morphProgressTrailing.value > 0.001f || pressScaleTrailing.value < 0.99f || expanded) 2f else 0f)
-                    .graphicsLayer {
-                        scaleX = pressScaleTrailing.value
-                        scaleY = pressScaleTrailing.value
-                    }
-                    .semantics { role = Role.Button }
-                    .pointerInput(enabled) {
-                        if (!enabled) return@pointerInput
-                        detectTapGestures(
-                            onPress = {
-                                var isHeld = false
-                                val holdJob = scope.launch {
-                                    kotlinx.coroutines.delay(120L)
-                                    isHeld = true
-                                    launch { pressScaleTrailing.animateTo(0.92f, Motion.PressSpring) }
-                                    launch {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                        morphProgressTrailing.animateTo(1f, Motion.BouncySpring)
-                                    }
-                                    launch {
-                                        morphProgressLeading.animateTo(1f, Motion.BouncySpring)
-                                    }
-                                }
-                                try {
-                                    awaitRelease()
-                                } finally {
-                                    holdJob.cancel()
-                                    if (isHeld) {
-                                        scope.launch {
-                                            launch { pressScaleTrailing.animateTo(1f, Motion.BouncySpring) }
-                                            launch { morphProgressTrailing.animateTo(if (expanded) 1f else 0f, Motion.BouncySpring) }
-                                            launch { morphProgressLeading.animateTo(if (isPrimaryActive) 1f else 0f, Motion.BouncySpring) }
-                                        }
-                                    }
-                                }
-                            },
-                            onTap = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                tappedTrailing = true
-
-                                // Perform menu toggle simultaneously
-                                expanded = !expanded
-                                if (expanded) onMenuToggle?.invoke()
-
-                                // Wiggle adjacent button (leading button) - only morph when held
-                                triggerWiggleLeading(-1f)
-
-                                spinTrailingJob?.cancel()
-                                spinTrailingJob = scope.launch {
-                                    launch {
-                                        pressScaleTrailing.animateTo(0.92f, Motion.PressSpring)
-                                        pressScaleTrailing.animateTo(
-                                            1f,
-                                            androidx.compose.animation.core.spring(
-                                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                                                stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-                                            )
-                                        )
-                                    }
-                                    tappedTrailing = false
-                                }
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            rotationZ = rotationTrailing.value + wiggleTrailing.value + tiltTrailing
+                            scaleX = pressScaleTrailing.value
+                            scaleY = pressScaleTrailing.value
                         }
+                        .semantics { role = Role.Button }
+                        .pointerInput(enabled) {
+                            if (!enabled) return@pointerInput
+                            detectTapGestures(
+                                onPress = {
+                                    var isHeld = false
+                                    val holdJob = scope.launch {
+                                        kotlinx.coroutines.delay(120L)
+                                        isHeld = true
+                                        launch { pressScaleTrailing.animateTo(0.92f, Motion.PressSpring) }
+                                        launch {
+                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                            morphProgressTrailing.animateTo(1f, Motion.BouncySpring)
+                                        }
+                                        launch {
+                                            morphProgressLeading.animateTo(1f, Motion.BouncySpring)
+                                        }
+                                    }
+                                    try {
+                                        awaitRelease()
+                                    } finally {
+                                        holdJob.cancel()
+                                        if (isHeld) {
+                                            scope.launch {
+                                                launch { pressScaleTrailing.animateTo(1f, Motion.BouncySpring) }
+                                                launch { morphProgressTrailing.animateTo(if (expanded) 1f else 0f, Motion.BouncySpring) }
+                                                launch { morphProgressLeading.animateTo(if (isPrimaryActive) 1f else 0f, Motion.BouncySpring) }
+                                            }
+                                        }
+                                    }
+                                },
+                                onTap = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    tappedTrailing = true
+
+                                    // Perform menu toggle simultaneously
+                                    expanded = !expanded
+                                    if (expanded) onMenuToggle?.invoke()
+
+                                    // Wiggle adjacent button (leading button) - only morph when held
+                                    triggerWiggleLeading(-1f)
+
+                                    spinTrailingJob?.cancel()
+                                    spinTrailingJob = scope.launch {
+                                        launch {
+                                            pressScaleTrailing.animateTo(0.92f, Motion.PressSpring)
+                                            pressScaleTrailing.animateTo(
+                                                1f,
+                                                androidx.compose.animation.core.spring(
+                                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                                    stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                                                )
+                                            )
+                                        }
+                                        tappedTrailing = false
+                                    }
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (isOnBlurredSurface) {
-                        val secondaryBg = if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f)
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .border(
-                                    border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
-                                    shape = shapeTrailing
-                                )
-                                .clip(shapeTrailing)
-                                .background(secondaryBg)
-                        )
-                        if (trailingPrimaryAlpha > 0.001f) {
-                            val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                rotationZ = rotationTrailing.value + wiggleTrailing.value + tiltTrailing
+                            }
+                    ) {
+                        if (isOnBlurredSurface) {
+                            val secondaryBg = if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f)
                             Box(
                                 modifier = Modifier
                                     .matchParentSize()
-                                    .graphicsLayer { alpha = trailingPrimaryAlpha }
-                                    .border(1.dp, primaryBg, shapeTrailing)
+                                    .border(
+                                        border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                        shape = shapeTrailing
+                                    )
                                     .clip(shapeTrailing)
-                                    .background(primaryBg)
+                                    .background(secondaryBg)
+                            )
+                            if (trailingPrimaryAlpha > 0.001f) {
+                                val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .graphicsLayer { alpha = trailingPrimaryAlpha }
+                                        .border(1.dp, primaryBg, shapeTrailing)
+                                        .clip(shapeTrailing)
+                                        .background(primaryBg)
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(shapeTrailing)
+                                    .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
                             )
                         }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clip(shapeTrailing)
-                                .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
-                        )
                     }
-                }
 
-                Icon(
-                    imageVector = actualTrailingIcon,
-                    contentDescription = "More options",
-                    modifier = Modifier.size(buttonSize * 0.5f),
-                    tint = if (enabled) animatedTrailingContentColor else animatedTrailingContentColor.copy(alpha = 0.38f)
-                )
+                    Icon(
+                        imageVector = actualTrailingIcon,
+                        contentDescription = "More options",
+                        modifier = Modifier.size(buttonSize * 0.5f),
+                        tint = if (enabled) animatedTrailingContentColor else animatedTrailingContentColor.copy(alpha = 0.38f)
+                    )
+                }
             }
         }
 
-        // Button Group Menu (Dropdown) - 2 button CookieButtonGroup
-        if (items.isNotEmpty()) {
-            DropdownMenu(
-                expanded = expanded,
+        // Button Group Menu - in the center of the photo
+        if (items.isNotEmpty() && expanded) {
+            Popup(
+                alignment = Alignment.Center,
                 onDismissRequest = { expanded = false },
-                offset = androidx.compose.ui.unit.DpOffset(x = 0.dp, y = 8.dp),
-                containerColor = Color.Transparent,
-                shadowElevation = 0.dp,
-                tonalElevation = 0.dp,
-                border = null,
-                modifier = Modifier.background(Color.Transparent)
+                properties = PopupProperties(focusable = true)
             ) {
                 BlurredSurface(
                     shape = RoundedCornerShape(12.dp),
@@ -595,7 +586,7 @@ fun SplitButton(
     }
 }
 
-@Deprecated("Use PhotoCookieSplitButton instead", ReplaceWith("PhotoCookieSplitButton(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled, isOnBlurredSurface)"))
+@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled, isOnBlurredSurface)"))
 @Composable
 fun CookieSplitButton(
     primaryIcon: ImageVector,
@@ -609,8 +600,8 @@ fun CookieSplitButton(
     primaryText: String? = null,
     contentDescription: String? = primaryText,
     isPrimaryActive: Boolean = false,
-    menuColumns: Int = 2,
-    buttonSize: Dp = 64.dp,
+    menuColumns: Int = 4,
+    buttonSize: Dp = 56.dp,
     gap: Dp = 1.dp,
     overlap: Dp = 4.dp,
     shape: Shape = CookieShape,
@@ -622,7 +613,61 @@ fun CookieSplitButton(
     enabled: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
-    PhotoCookieSplitButton(
+    PhotoButtonGroup(
+        primaryIcon = primaryIcon,
+        onMenuToggle = onMenuToggle,
+        onPrimaryClick = onPrimaryClick,
+        modifier = modifier,
+        trailingIcon = trailingIcon,
+        trailingFilledIcon = trailingFilledIcon,
+        trailingOutlinedIcon = trailingOutlinedIcon,
+        items = items,
+        primaryText = primaryText,
+        contentDescription = contentDescription,
+        isPrimaryActive = isPrimaryActive,
+        menuColumns = menuColumns,
+        buttonSize = buttonSize,
+        gap = gap,
+        overlap = overlap,
+        shape = shape,
+        selectedContainerColor = selectedContainerColor,
+        selectedContentColor = selectedContentColor,
+        unselectedContainerColor = unselectedContainerColor,
+        unselectedContentColor = unselectedContentColor,
+        isSpinning = isSpinning,
+        enabled = enabled,
+        isOnBlurredSurface = isOnBlurredSurface
+    )
+}
+
+@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled, isOnBlurredSurface)"))
+@Composable
+fun PhotoCookieSplitButton(
+    primaryIcon: ImageVector,
+    onMenuToggle: (() -> Unit)? = null,
+    onPrimaryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingIcon: ImageVector? = null,
+    trailingFilledIcon: ImageVector = MoreHorizFilledMaterialSymbol,
+    trailingOutlinedIcon: ImageVector = MoreHorizOutlinedMaterialSymbol,
+    items: List<CookieButtonItem> = emptyList(),
+    primaryText: String? = null,
+    contentDescription: String? = primaryText,
+    isPrimaryActive: Boolean = false,
+    menuColumns: Int = 4,
+    buttonSize: Dp = 56.dp,
+    gap: Dp = 1.dp,
+    overlap: Dp = 4.dp,
+    shape: Shape = CookieShape,
+    selectedContainerColor: Color = MaterialTheme.colorScheme.primary,
+    selectedContentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    isSpinning: Boolean = true,
+    enabled: Boolean = true,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+) {
+    PhotoButtonGroup(
         primaryIcon = primaryIcon,
         onMenuToggle = onMenuToggle,
         onPrimaryClick = onPrimaryClick,
@@ -650,11 +695,11 @@ fun CookieSplitButton(
 }
 
 /**
- * Photo-specific overload of [PhotoCookieSplitButton].
- * Displays the primary Add Snippet action and the 8 photo actions (2 per row in 4 rows).
+ * Photo-specific overload of [PhotoButtonGroup].
+ * Displays the primary Add Snippet action and the 8 photo actions (4 per row in 2 rows).
  */
 @Composable
-fun PhotoCookieSplitButton(
+fun PhotoButtonGroup(
     photo: Photo,
     onAdd: () -> Unit,
     onDownload: () -> Unit,
@@ -667,7 +712,7 @@ fun PhotoCookieSplitButton(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     isPrimaryActive: Boolean = false,
-    buttonSize: Dp = 64.dp
+    buttonSize: Dp = 56.dp
 ) {
     val view = LocalView.current
     val hasSnippets = photo.snippets.isNotEmpty()
@@ -676,7 +721,7 @@ fun PhotoCookieSplitButton(
     val hasLocation = !photo.locationLink.isNullOrBlank()
     val hasRating = photo.rating > 0
 
-    PhotoCookieSplitButton(
+    PhotoButtonGroup(
         primaryIcon = Icons.Default.Add,
         contentDescription = "Add snippets",
         onPrimaryClick = {
@@ -684,7 +729,7 @@ fun PhotoCookieSplitButton(
             onAdd()
         },
         isPrimaryActive = isPrimaryActive,
-        menuColumns = 2,
+        menuColumns = 4,
         buttonSize = buttonSize,
         modifier = modifier,
         items = run {
@@ -799,6 +844,40 @@ fun PhotoCookieSplitButton(
                 )
             )
         }
+    )
+}
+
+@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(photo, onAdd, onDownload, onShare, onToggleFavorite, onNamePhotoClick, onAddLinkClick, onRate, onSnippets, onDelete, modifier, isPrimaryActive, buttonSize)"))
+@Composable
+fun PhotoCookieSplitButton(
+    photo: Photo,
+    onAdd: () -> Unit,
+    onDownload: () -> Unit,
+    onShare: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onNamePhotoClick: () -> Unit,
+    onAddLinkClick: () -> Unit,
+    onRate: () -> Unit,
+    onSnippets: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    isPrimaryActive: Boolean = false,
+    buttonSize: Dp = 56.dp
+) {
+    PhotoButtonGroup(
+        photo = photo,
+        onAdd = onAdd,
+        onDownload = onDownload,
+        onShare = onShare,
+        onToggleFavorite = onToggleFavorite,
+        onNamePhotoClick = onNamePhotoClick,
+        onAddLinkClick = onAddLinkClick,
+        onRate = onRate,
+        onSnippets = onSnippets,
+        onDelete = onDelete,
+        modifier = modifier,
+        isPrimaryActive = isPrimaryActive,
+        buttonSize = buttonSize
     )
 }
 
