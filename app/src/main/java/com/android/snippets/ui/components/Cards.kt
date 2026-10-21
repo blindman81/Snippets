@@ -1424,7 +1424,7 @@ fun PhotoCard(
                                 .align(Alignment.TopEnd)
                                 .padding(8.dp)
                         ) {
-                            PhotoSplitButton(
+                            PhotoCookieSplitButton(
                                 photo = photo,
                                 onAdd = onAddSnippet,
                                 onDownload = onDownload,
