@@ -1,4 +1,4 @@
-package com.android.snippets.ui.components
+﻿package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Spring
@@ -361,7 +361,7 @@ fun CustomTimePicker(
             modifier = Modifier
                 .size(dialSizeDp)
                 .clip(Cookie12Shape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.65f))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                 .pointerInput(mode, state.is24hour) {
                     detectTapGestures { offset ->
                         handlePointer(offset, isTap = true)
