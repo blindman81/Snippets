@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.platform.LocalContext
@@ -75,6 +76,18 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
         powerManager = app.getSystemService(Context.POWER_SERVICE) as? PowerManager
         sensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GRAVITY)
             ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    }
+
+    private var activeTiltModalCount by mutableIntStateOf(0)
+    val hasTiltModalFocus: Boolean
+        get() = activeTiltModalCount > 0
+
+    fun beginTiltModalFocus() {
+        activeTiltModalCount++
+    }
+
+    fun endTiltModalFocus() {
+        activeTiltModalCount = (activeTiltModalCount - 1).coerceAtLeast(0)
     }
 
     fun subscribe(lifecycleOwner: LifecycleOwner?) {
@@ -184,6 +197,9 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
  */
 val LocalTiltActive = compositionLocalOf { true }
 
+/** True only inside a modal whose controls are allowed to keep tilt while it is open. */
+val LocalTiltModalFocus = compositionLocalOf { false }
+
 private tailrec fun Context.findLifecycleOwner(): LifecycleOwner? {
     return when (this) {
         is LifecycleOwner -> this
@@ -207,10 +223,12 @@ fun rememberCookieTilt(enabled: Boolean): State<Float> {
     val context = LocalContext.current
     val windowInfo = LocalWindowInfo.current
     val isTiltActive = LocalTiltActive.current
+    val isModalTiltFocus = LocalTiltModalFocus.current
     val lifecycleOwner = remember(context) { context.findLifecycleOwner() }
 
     val effectiveEnabled = enabled &&
         CookieTiltController.isGloballyEnabled &&
+        (!CookieTiltController.hasTiltModalFocus || isModalTiltFocus) &&
         windowInfo.isWindowFocused &&
         isTiltActive
 

@@ -337,6 +337,10 @@ fun LibraryScreen(
                     LoadingIndicator()
                 }
             } else {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.android.snippets.ui.util.LocalTiltActive provides
+                        (com.android.snippets.ui.util.LocalTiltActive.current && !isAnyPopupActive)
+                ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val topGridPadding = statusBarTop + 72.dp
@@ -1227,10 +1231,16 @@ fun LibraryScreen(
                                             modifier = Modifier.fillMaxSize(),
                                             verticalAlignment = Alignment.Top
                                         ) { page ->
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalArrangement = Arrangement.Top
+                                            androidx.compose.runtime.CompositionLocalProvider(
+                                                com.android.snippets.ui.util.LocalTiltActive provides
+                                                    (com.android.snippets.ui.util.LocalTiltActive.current &&
+                                                        managePagerState.currentPage == page &&
+                                                        !managePagerState.isScrollInProgress)
                                             ) {
+                                                Column(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalArrangement = Arrangement.Top
+                                                ) {
                                                 Box(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
@@ -1455,12 +1465,14 @@ fun LibraryScreen(
                                             }
                                             actionPillContent()
                                         }
+                                            }
                                     }
                                 }
                                 }
                             }
                         }
                     }
+                }
                 }
             }
                 deletingCollection?.let { collection ->

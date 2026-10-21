@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.android.snippets.ui.util.LocalTiltActive
+import com.android.snippets.ui.util.LocalTiltModalFocus
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -75,6 +76,7 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -251,6 +253,13 @@ fun BlurredModalBottomSheet(
     }
 
     val scrimAlpha = remember { Animatable(0f) }
+
+    DisposableEffect(Unit) {
+        com.android.snippets.ui.util.CookieTiltController.beginTiltModalFocus()
+        onDispose {
+            com.android.snippets.ui.util.CookieTiltController.endTiltModalFocus()
+        }
+    }
 
     LaunchedEffect(Unit) {
         scrimAlpha.animateTo(1f, animationSpec = tween(durationMillis = 250))
@@ -474,7 +483,8 @@ fun BlurredModalBottomSheet(
                         }
                     }
                     CompositionLocalProvider(
-                        LocalTiltActive provides (!isDismissing)
+                        LocalTiltActive provides (!isDismissing),
+                        LocalTiltModalFocus provides true
                     ) {
                         content()
                     }
@@ -515,6 +525,13 @@ fun BlurredAlertDialog(
         MutableTransitionState(false).apply { targetState = true }
     }
     val scrimAlpha = remember { Animatable(0f) }
+
+    DisposableEffect(Unit) {
+        com.android.snippets.ui.util.CookieTiltController.beginTiltModalFocus()
+        onDispose {
+            com.android.snippets.ui.util.CookieTiltController.endTiltModalFocus()
+        }
+    }
 
     LaunchedEffect(Unit) {
         scrimAlpha.animateTo(1f, animationSpec = tween(durationMillis = 200))
@@ -583,7 +600,8 @@ fun BlurredAlertDialog(
             ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec())
         ) {
             CompositionLocalProvider(
-                LocalTiltActive provides (!isDismissing)
+                LocalTiltActive provides (!isDismissing),
+                LocalTiltModalFocus provides true
             ) {
                 BlurredSurface(
                 shape = shape,
