@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui
+package com.android.snippets.ui
 import com.android.snippets.ui.components.*
 
 import androidx.compose.foundation.layout.*
@@ -19,6 +19,8 @@ import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
@@ -284,8 +286,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
                 val dynamicColorsIcon = if (viewModel.useDynamicColors) Icons.Default.FormatColorFill else Icons.Outlined.FormatColorFill
                 val showTimeIcon = if (viewModel.showTimeInMemories) Icons.Default.Schedule else Icons.Outlined.Schedule
-                val expandPhotoNameIcon = if (viewModel.expandPhotoNameIcon) Icons.AutoMirrored.Filled.Label else Icons.AutoMirrored.Outlined.Label
-                val expandDayAndDateIcon = if (viewModel.expandDayAndDateIcon) Icons.Default.CalendarMonth else Icons.Outlined.CalendarMonth
                 val motionModeIcon = MotionModeIcon()
 
                 val interfaceItems = listOf(
@@ -311,30 +311,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                             val next = !viewModel.showTimeInMemories
                             showButtonInfo("Show time in memories and saved photos", if (next) Icons.Default.Schedule else Icons.Outlined.Schedule)
                             viewModel.updateShowTimeInMemories(next)
-                        }
-                    ),
-                    cookieButtonItem(
-                        icon = expandPhotoNameIcon,
-                        contentDescription = "Expand photo name",
-                        tooltip = "Expand photo name",
-                        isSelected = viewModel.expandPhotoNameIcon,
-                        iconSize = 28.dp,
-                        onClick = {
-                            val next = !viewModel.expandPhotoNameIcon
-                            showButtonInfo("Expand photo name", if (next) Icons.AutoMirrored.Filled.Label else Icons.AutoMirrored.Outlined.Label)
-                            viewModel.updateExpandPhotoNameIcon(next)
-                        }
-                    ),
-                    cookieButtonItem(
-                        icon = expandDayAndDateIcon,
-                        contentDescription = "Expand day and date",
-                        tooltip = "Expand day and date",
-                        isSelected = viewModel.expandDayAndDateIcon,
-                        iconSize = 28.dp,
-                        onClick = {
-                            val next = !viewModel.expandDayAndDateIcon
-                            showButtonInfo("Expand day and date", if (next) Icons.Default.CalendarMonth else Icons.Outlined.CalendarMonth)
-                            viewModel.updateExpandDayAndDateIcon(next)
                         }
                     ),
                     cookieButtonItem(
@@ -364,6 +340,75 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                         Box(modifier = Modifier.padding(6.dp)) {
                             CookieButtonGroup(
                                 items = interfaceItems,
+                                columns = 1,
+                                cookieSize = 72.dp,
+                                overlap = 0.dp,
+                                horizontalAlignment = Alignment.Start,
+                                wiggleNeighborOnToggleOn = true
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val expandLabelIcon = if (viewModel.expandLabelIcon) Icons.AutoMirrored.Filled.Label else Icons.AutoMirrored.Outlined.Label
+                val expandCalendarIcon = if (viewModel.expandCalendarIcon) Icons.Default.CalendarMonth else Icons.Outlined.CalendarMonth
+                val expandLocationIcon = if (viewModel.expandLocationIcon) Icons.Default.LocationOn else Icons.Outlined.LocationOn
+
+                val expandItems = listOf(
+                    cookieButtonItem(
+                        icon = expandLabelIcon,
+                        contentDescription = "Expand label icon",
+                        tooltip = "Expand label icon",
+                        isSelected = viewModel.expandLabelIcon,
+                        iconSize = 28.dp,
+                        onClick = {
+                            val next = !viewModel.expandLabelIcon
+                            showButtonInfo("Expand label icon", if (next) Icons.AutoMirrored.Filled.Label else Icons.AutoMirrored.Outlined.Label)
+                            viewModel.updateExpandLabelIcon(next)
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = expandCalendarIcon,
+                        contentDescription = "Expand calendar icon",
+                        tooltip = "Expand calendar icon",
+                        isSelected = viewModel.expandCalendarIcon,
+                        iconSize = 28.dp,
+                        onClick = {
+                            val next = !viewModel.expandCalendarIcon
+                            showButtonInfo("Expand calendar icon", if (next) Icons.Default.CalendarMonth else Icons.Outlined.CalendarMonth)
+                            viewModel.updateExpandCalendarIcon(next)
+                        }
+                    ),
+                    cookieButtonItem(
+                        icon = expandLocationIcon,
+                        contentDescription = "Expand location icon",
+                        tooltip = "Expand location icon",
+                        isSelected = viewModel.expandLocationIcon,
+                        iconSize = 28.dp,
+                        onClick = {
+                            val next = !viewModel.expandLocationIcon
+                            showButtonInfo("Expand location icon", if (next) Icons.Default.LocationOn else Icons.Outlined.LocationOn)
+                            viewModel.updateExpandLocationIcon(next)
+                        }
+                    )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.wrapContentWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(6.dp)) {
+                            CookieButtonGroup(
+                                items = expandItems,
                                 columns = 1,
                                 cookieSize = 72.dp,
                                 overlap = 0.dp,
