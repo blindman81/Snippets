@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.ui.text.style.TextOverflow
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -677,50 +678,73 @@ fun PhotoMasonryItem(
                             modifier = Modifier.align(Alignment.Center)
                         )
 
-                        if (photo.isFavorite && !isSelected && showFavoriteIcon) {
-                            Surface(
-                                color = iconContainerColor.copy(alpha = 0.9f),
-                                shape = LocalAppShape.current,
+                        if (!isSelected && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon))) {
+                            Column(
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .size(24.dp)
+                                    .align(Alignment.TopStart)
+                                    .padding(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Default.Favorite,
-                                        contentDescription = null,
-                                        tint = iconColor,
-                                        modifier = Modifier.size(12.dp)
-                                    )
+                                if (photo.rating > 0) {
+                                    Surface(
+                                        color = iconContainerColor.copy(alpha = 0.9f),
+                                        shape = LocalAppShape.current,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.ic_star_rating),
+                                                contentDescription = null,
+                                                tint = iconColor,
+                                                modifier = Modifier.fillMaxSize().padding(3.dp)
+                                            )
+                                            Text(
+                                                text = photo.rating.toString(),
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.ExtraBold),
+                                                color = iconContainerColor,
+                                                modifier = Modifier.padding(top = 0.5.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (photo.isFavorite && showFavoriteIcon) {
+                                    Surface(
+                                        color = iconContainerColor.copy(alpha = 0.9f),
+                                        shape = LocalAppShape.current,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                Icons.Default.Favorite,
+                                                contentDescription = null,
+                                                tint = iconColor,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
 
-                        if (photo.rating > 0 && !isSelected) {
-                            Surface(
-                                color = iconContainerColor.copy(alpha = 0.9f),
-                                shape = LocalAppShape.current,
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(8.dp)
-                                    .size(24.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_star_rating),
-                                        contentDescription = null,
-                                        tint = iconColor,
-                                        modifier = Modifier.fillMaxSize().padding(3.dp)
-                                    )
-                                    Text(
-                                        text = photo.rating.toString(),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.ExtraBold),
-                                        color = iconContainerColor,
-                                        modifier = Modifier.padding(top = 0.5.dp)
-                                    )
-                                }
-                            }
+                        val masonryLocationName = remember(photo.locationName, photo.locationLink) {
+                            val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
+                                ?: LocationUtils.getLocationFromExif(null, photo)?.trim()
+                            rawName?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
+                        }
+
+                        if (!masonryLocationName.isNullOrBlank() && !isSelected) {
+                            ExpandableCardPillIcon(
+                                icon = Icons.Default.LocationOn,
+                                text = masonryLocationName,
+                                contentDescription = "Photo location",
+                                iconColor = iconColor,
+                                containerColor = iconContainerColor,
+                                modifier = Modifier.align(Alignment.TopEnd),
+                                alignEnd = true,
+                                defaultExpanded = false,
+                                key = "${photo.id}_masonry_location"
+                            )
                         }
 
                         val showBadge = matchingSnippetsCount > 0 || isMostSnippets || isLeastSnippets
@@ -856,6 +880,75 @@ fun PhotoMasonryItem(
                         count = if (viewModel != null) viewModel.selectedPhotoIds.indexOf(photo.id) + 1 else 0,
                         modifier = Modifier.align(Alignment.Center)
                     )
+
+                    if (!isSelected && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon))) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (photo.rating > 0) {
+                                Surface(
+                                    color = iconContainerColor.copy(alpha = 0.9f),
+                                    shape = LocalAppShape.current,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_star_rating),
+                                            contentDescription = null,
+                                            tint = iconColor,
+                                            modifier = Modifier.fillMaxSize().padding(3.dp)
+                                        )
+                                        Text(
+                                            text = photo.rating.toString(),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.ExtraBold),
+                                            color = iconContainerColor,
+                                            modifier = Modifier.padding(top = 0.5.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (photo.isFavorite && showFavoriteIcon) {
+                                Surface(
+                                    color = iconContainerColor.copy(alpha = 0.9f),
+                                    shape = LocalAppShape.current,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Favorite,
+                                            contentDescription = null,
+                                            tint = iconColor,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    val masonryLocationName2 = remember(photo.locationName, photo.locationLink) {
+                        val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
+                            ?: LocationUtils.getLocationFromExif(null, photo)?.trim()
+                        rawName?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
+                    }
+
+                    if (!masonryLocationName2.isNullOrBlank() && !isSelected) {
+                        ExpandableCardPillIcon(
+                            icon = Icons.Default.LocationOn,
+                            text = masonryLocationName2,
+                            contentDescription = "Photo location",
+                            iconColor = iconColor,
+                            containerColor = iconContainerColor,
+                            modifier = Modifier.align(Alignment.TopEnd),
+                            alignEnd = true,
+                            defaultExpanded = false,
+                            key = "${photo.id}_masonry2_location"
+                        )
+                    }
                 }
             }
 
@@ -901,87 +994,7 @@ fun PhotoMasonryItem(
     }
 }
 
-@Composable
-fun TwoColumnCard(
-    photo: Photo,
-    isSelected: Boolean = false,
-    selectionMode: Boolean = false,
-    matchingSnippetsCount: Int = 0,
-    isMostSnippets: Boolean = false,
-    isLeastSnippets: Boolean = false,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
-    showFavoriteIcon: Boolean = true,
-    fillCard: Boolean = false,
-    grayOutIfViewed: Boolean = false,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
-    tab: String? = null,
-    viewModel: SnippetsViewModel? = null
-) {
-    PhotoMasonryItem(
-        photo = photo,
-        isSelected = isSelected,
-        selectionMode = selectionMode,
-        matchingSnippetsCount = matchingSnippetsCount,
-        isMostSnippets = isMostSnippets,
-        isLeastSnippets = isLeastSnippets,
-        onClick = onClick,
-        onLongClick = onLongClick,
-        modifier = modifier,
-        sharedTransitionScope = sharedTransitionScope,
-        animatedVisibilityScope = animatedVisibilityScope,
-        showFavoriteIcon = showFavoriteIcon,
-        fillCard = fillCard,
-        grayOutIfViewed = grayOutIfViewed,
-        shape = shape,
-        tab = tab,
-        viewModel = viewModel
-    )
-}
 
-@Composable
-fun ThreeColumnCard(
-    photo: Photo,
-    isSelected: Boolean = false,
-    selectionMode: Boolean = false,
-    matchingSnippetsCount: Int = 0,
-    isMostSnippets: Boolean = false,
-    isLeastSnippets: Boolean = false,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
-    showFavoriteIcon: Boolean = true,
-    fillCard: Boolean = false,
-    grayOutIfViewed: Boolean = false,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(0.dp),
-    tab: String? = null,
-    viewModel: SnippetsViewModel? = null
-) {
-    PhotoMasonryItem(
-        photo = photo,
-        isSelected = isSelected,
-        selectionMode = selectionMode,
-        matchingSnippetsCount = matchingSnippetsCount,
-        isMostSnippets = isMostSnippets,
-        isLeastSnippets = isLeastSnippets,
-        onClick = onClick,
-        onLongClick = onLongClick,
-        modifier = modifier,
-        sharedTransitionScope = sharedTransitionScope,
-        animatedVisibilityScope = animatedVisibilityScope,
-        showFavoriteIcon = showFavoriteIcon,
-        fillCard = fillCard,
-        grayOutIfViewed = grayOutIfViewed,
-        shape = shape,
-        tab = tab,
-        viewModel = viewModel
-    )
-}
 
 
 @Composable
@@ -1098,6 +1111,7 @@ fun PhotoCard(
     grayOutIfViewed: Boolean = false,
     viewModel: SnippetsViewModel,
     isExpanded: Boolean = false,
+    isAddSnippetOpen: Boolean = false,
     onAddSnippet: () -> Unit = {},
     onDownload: () -> Unit = {},
     onShare: () -> Unit = {},
@@ -1127,7 +1141,7 @@ fun PhotoCard(
 
     val circleBadgesAlpha by animateFloatAsState(
         targetValue = if (isExpanded) 0f else 1f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = 400),
         label = "photoCircleBadgesAlpha"
     )
 
@@ -1206,7 +1220,7 @@ fun PhotoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow))
+                .animateContentSize(Motion.PhotoExpandSpring)
         ) {
             if (!showBottomCard) {
                 Surface(
@@ -1368,58 +1382,82 @@ fun PhotoCard(
                         val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (isDark) Color.White else Color.Black
                         val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
 
-                        if (photo.rating > 0 && circleBadgesAlpha > 0f) {
-                            Surface(
-                                color = iconContainerColor.copy(alpha = 0.9f * circleBadgesAlpha),
-                                shape = CircleShape,
+                        if (circleBadgesAlpha > 0f && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon))) {
+                            Column(
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .padding(8.dp)
-                                    .size(28.dp)
-                                    .graphicsLayer { alpha = circleBadgesAlpha }
+                                    .graphicsLayer { alpha = circleBadgesAlpha },
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_star_rating),
-                                        contentDescription = null,
-                                        tint = iconColor,
-                                        modifier = Modifier.fillMaxSize().padding(4.dp)
-                                    )
-                                    Text(
-                                        text = photo.rating.toString(),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
-                                        color = iconContainerColor,
-                                        modifier = Modifier.padding(top = 1.dp)
-                                    )
+                                if (photo.rating > 0) {
+                                    Surface(
+                                        color = iconContainerColor.copy(alpha = 0.9f * circleBadgesAlpha),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.ic_star_rating),
+                                                contentDescription = null,
+                                                tint = iconColor,
+                                                modifier = Modifier.fillMaxSize().padding(4.dp)
+                                            )
+                                            Text(
+                                                text = photo.rating.toString(),
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold),
+                                                color = iconContainerColor,
+                                                modifier = Modifier.padding(top = 1.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (photo.isFavorite && showFavoriteIcon) {
+                                    Surface(
+                                        color = iconContainerColor.copy(alpha = 0.9f * circleBadgesAlpha),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Favorite,
+                                                contentDescription = "Favorite",
+                                                tint = iconColor,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
 
-                        if (photo.isFavorite && showFavoriteIcon && circleBadgesAlpha > 0f) {
-                            Surface(
-                                color = iconContainerColor.copy(alpha = 0.9f * circleBadgesAlpha),
-                                shape = CircleShape,
+                        val locationName = remember(photo.locationName, photo.locationLink) {
+                            val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
+                                ?: LocationUtils.getLocationFromExif(null, photo)?.trim()
+                            rawName?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
+                        }
+
+                        if (!locationName.isNullOrBlank() && circleBadgesAlpha > 0f) {
+                            ExpandableCardPillIcon(
+                                icon = Icons.Default.LocationOn,
+                                text = locationName,
+                                contentDescription = "Photo location",
+                                iconColor = iconColor,
+                                containerColor = iconContainerColor,
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .size(28.dp)
-                                    .graphicsLayer { alpha = circleBadgesAlpha }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Favorite,
-                                        contentDescription = "Favorite",
-                                        tint = iconColor,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
+                                    .graphicsLayer { alpha = circleBadgesAlpha },
+                                alignEnd = true,
+                                defaultExpanded = viewModel?.expandLocationIcon ?: false,
+                                key = "${photo.id}_location"
+                            )
                         }
 
                         androidx.compose.animation.AnimatedVisibility(
                             visible = isExpanded,
-                            enter = fadeIn(animationSpec = tween(250)) + androidx.compose.animation.scaleIn(initialScale = 0.85f),
-                            exit = fadeOut(animationSpec = tween(200)) + androidx.compose.animation.scaleOut(targetScale = 0.85f),
+                            enter = fadeIn(animationSpec = tween(400)) + androidx.compose.animation.scaleIn(initialScale = 0.85f, animationSpec = tween(400)),
+                            exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.scaleOut(targetScale = 0.85f, animationSpec = tween(300)),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(8.dp)
@@ -1435,7 +1473,8 @@ fun PhotoCard(
                                 onRate = onRatePhoto,
                                 onSnippets = onViewSnippets,
                                 onDelete = onDeletePhoto,
-                                buttonSize = 44.dp
+                                isPrimaryActive = isAddSnippetOpen,
+                                buttonSize = 64.dp
                             )
                         }
 
@@ -1449,7 +1488,7 @@ fun PhotoCard(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
                                     .graphicsLayer { alpha = circleBadgesAlpha },
-                                defaultExpanded = viewModel.expandPhotoNameIcon,
+                                defaultExpanded = viewModel?.expandLabelIcon ?: false,
                                 key = "${photo.id}_name"
                             )
                         }
@@ -1468,7 +1507,7 @@ fun PhotoCard(
                                     .align(Alignment.BottomEnd)
                                     .graphicsLayer { alpha = circleBadgesAlpha },
                                 alignEnd = true,
-                                defaultExpanded = viewModel.expandDayAndDateIcon,
+                                defaultExpanded = viewModel?.expandCalendarIcon ?: false,
                                 key = "${photo.id}_date"
                             )
                         }
@@ -1549,12 +1588,6 @@ fun PhotoCard(
     }
 }
 
-
-enum class ViewItem(val columns: Int) {
-    PhotoCard(1),
-    TwoColumnCard(2),
-    ThreeColumnCard(3)
-}
 
 enum class CardPosition {
     Single, First, Middle, Last
@@ -1784,12 +1817,9 @@ fun SameDayPhotoCarousel(
     val state = rememberCarouselState(initialItem = 0) { photoList.size }
     val carouselItemShape = remember { RoundedCornerShape(48.dp) }
 
-    // Scroll back to the photo that was last opened when returning from Detail
+    // Scroll back to the photo that was last opened
     LaunchedEffect(viewModel.activePhotoId, viewModel.currentScreen) {
-        if (
-            viewModel.currentScreen != Screen.Detail &&
-            viewModel.activePhotoId != null
-        ) {
+        if (viewModel.activePhotoId != null) {
             val targetIndex = photoList.indexOfFirst { it.id == viewModel.activePhotoId }
             if (targetIndex != -1) {
                 kotlinx.coroutines.delay(250)
