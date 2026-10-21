@@ -14,6 +14,7 @@ import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.ui.components.BlurredModalBottomSheet
 import com.android.snippets.ui.components.BlurredAlertDialog
+import com.android.snippets.ui.components.DeleteConfirmationModal
 import com.android.snippets.ui.components.LocalHazeState
 import dev.chrisbanes.haze.HazeState
 
@@ -143,7 +144,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
 
         @OptIn(ExperimentalSharedTransitionApi::class)
         SharedTransitionLayout {
-            val showDetail = viewModel.currentScreen == Screen.Detail
             val isGestureActive = predictiveBackProgress.value > 0f
 
             val transition = androidx.compose.animation.core.updateTransition(
@@ -157,7 +157,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     Screen.Memory, Screen.Settings, Screen.About, Screen.Stats -> Screen.Library
                     Screen.EmojiPicker, Screen.MonthlyRecap, Screen.YearlyRecap -> viewModel.previousScreen
                     Screen.PhotosCarousel -> Screen.Settings
-                    Screen.Detail -> viewModel.detailReturnScreen
                     else -> null
                 }
             } else {
@@ -252,29 +251,14 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                         if (isNavigatingBackFromGesture) {
                             fadeIn(tween(0)) togetherWith fadeOut(tween(0))
                         } else {
-                            if (targetState == Screen.Detail) {
-                                fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(180, easing = FastOutSlowInEasing))
-                            } else if (initialState == Screen.Detail) {
-                                fadeIn(tween(240, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(220, easing = FastOutLinearInEasing))
-                            } else {
-                                Motion.screenTransition(initialState, targetState, motionScheme)
-                            }
+                            Motion.screenTransition(initialState, targetState, motionScheme)
                         }
                     },
                     modifier = Modifier.fillMaxSize()
                 ) { screen ->
                     val isScreenActive = (viewModel.currentScreen == screen)
                     CompositionLocalProvider(LocalTiltActive provides isScreenActive) {
-                        if (screen == Screen.Detail) {
-                            DetailScreen(
-                                viewModel = viewModel,
-                                windowSizeClass = windowSizeClass,
-                                sharedTransitionScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this
-                            )
-                        } else {
-                            RenderScreenContent(screen, this)
-                        }
+                        RenderScreenContent(screen, this)
                     }
                 }
             }

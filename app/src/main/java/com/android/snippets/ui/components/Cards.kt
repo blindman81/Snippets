@@ -1096,7 +1096,17 @@ fun PhotoCard(
     isMostSnippets: Boolean = false,
     isLeastSnippets: Boolean = false,
     grayOutIfViewed: Boolean = false,
-    viewModel: SnippetsViewModel
+    viewModel: SnippetsViewModel,
+    isExpanded: Boolean = false,
+    onAddSnippet: () -> Unit = {},
+    onDownload: () -> Unit = {},
+    onShare: () -> Unit = {},
+    onToggleFavorite: () -> Unit = {},
+    onNamePhoto: () -> Unit = {},
+    onEditLink: () -> Unit = {},
+    onRatePhoto: () -> Unit = {},
+    onViewSnippets: () -> Unit = {},
+    onDeletePhoto: () -> Unit = {}
 ) {
     val saturation by animateFloatAsState(
         targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
@@ -1115,7 +1125,15 @@ fun PhotoCard(
         label = "photoSelectionBlur"
     )
 
+    val circleBadgesAlpha by animateFloatAsState(
+        targetValue = if (isExpanded) 0f else 1f,
+        animationSpec = tween(durationMillis = 200),
+        label = "photoCircleBadgesAlpha"
+    )
+
     val view = LocalView.current
+
+    var imageRatio by remember(photo.id, photo.aspectRatio) { mutableStateOf(photo.aspectRatio) }
 
     val photoShape = RoundedCornerShape(
         topStart = 12.dp,
@@ -1188,13 +1206,13 @@ fun PhotoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .animateContentSize(spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow))
         ) {
             if (!showBottomCard) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .height(240.dp),
                     shape = finalShape,
                     color = blockColor,
                     shadowElevation = if (isSelected) 4.dp else 1.dp
@@ -1254,12 +1272,19 @@ fun PhotoCard(
                         }
                     }
             } else {
-                val photoWeight = 1f
+                val photoModifier = if (isExpanded) {
+                    val ratio = imageRatio ?: photo.aspectRatio ?: 1f
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(ratio)
+                } else {
+                    Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                }
 
                 Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(photoWeight),
+                    modifier = photoModifier,
                     shape = photoShape,
                     color = blockColor,
                     shadowElevation = if (isSelected) 4.dp else 1.dp
@@ -1306,7 +1331,16 @@ fun PhotoCard(
                                 AsyncImage(
                                     model = imageRequest,
                                     contentDescription = null,
-                                    contentScale = ContentScale.Crop,
+                                    contentScale = if (isExpanded) ContentScale.Fit else ContentScale.Crop,
+                                    onSuccess = { state ->
+                                        if (imageRatio == null) {
+                                            val w = state.result.drawable.intrinsicWidth
+                                            val h = state.result.drawable.intrinsicHeight
+                                            if (w > 0 && h > 0) {
+                                                imageRatio = w.toFloat() / h.toFloat()
+                                            }
+                                        }
+                                    },
                                     colorFilter = getSaturationColorFilter(saturation),
                                     modifier = Modifier.fillMaxSize().then(
                                         if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
@@ -1334,14 +1368,15 @@ fun PhotoCard(
                         val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (isDark) Color.White else Color.Black
                         val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
 
-                        if (photo.rating > 0) {
+                        if (photo.rating > 0 && circleBadgesAlpha > 0f) {
                             Surface(
-                                color = iconContainerColor.copy(alpha = 0.9f),
+                                color = iconContainerColor.copy(alpha = 0.9f * circleBadgesAlpha),
                                 shape = CircleShape,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .padding(8.dp)
                                     .size(28.dp)
+                                    .graphicsLayer { alpha = circleBadgesAlpha }
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
@@ -1360,14 +1395,15 @@ fun PhotoCard(
                             }
                         }
 
-                        if (photo.isFavorite && showFavoriteIcon) {
+                        if (photo.isFavorite && showFavoriteIcon && circleBadgesAlpha > 0f) {
                             Surface(
-                                color = iconContainerColor.copy(alpha = 0.9f),
+                                color = iconContainerColor.copy(alpha = 0.9f * circleBadgesAlpha),
                                 shape = CircleShape,
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
                                     .padding(8.dp)
                                     .size(28.dp)
+                                    .graphicsLayer { alpha = circleBadgesAlpha }
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
@@ -1380,33 +1416,62 @@ fun PhotoCard(
                             }
                         }
 
-                        if (!photo.name.isNullOrBlank()) {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isExpanded,
+                            enter = fadeIn(animationSpec = tween(250)) + androidx.compose.animation.scaleIn(initialScale = 0.85f),
+                            exit = fadeOut(animationSpec = tween(200)) + androidx.compose.animation.scaleOut(targetScale = 0.85f),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                        ) {
+                            PhotoSplitButton(
+                                photo = photo,
+                                onAdd = onAddSnippet,
+                                onDownload = onDownload,
+                                onShare = onShare,
+                                onToggleFavorite = onToggleFavorite,
+                                onNamePhotoClick = onNamePhoto,
+                                onAddLinkClick = onEditLink,
+                                onRate = onRatePhoto,
+                                onSnippets = onViewSnippets,
+                                onDelete = onDeletePhoto,
+                                buttonSize = 44.dp
+                            )
+                        }
+
+                        if (!photo.name.isNullOrBlank() && circleBadgesAlpha > 0f) {
                             ExpandableCardPillIcon(
                                 icon = Icons.AutoMirrored.Filled.Label,
                                 text = photo.name,
                                 contentDescription = "Photo name",
                                 iconColor = iconColor,
                                 containerColor = iconContainerColor,
-                                modifier = Modifier.align(Alignment.BottomStart),
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .graphicsLayer { alpha = circleBadgesAlpha },
                                 defaultExpanded = viewModel.expandPhotoNameIcon,
                                 key = "${photo.id}_name"
                             )
                         }
 
-                        val formattedDate = remember(photo.date) {
-                            SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
+                        if (circleBadgesAlpha > 0f) {
+                            val formattedDate = remember(photo.date) {
+                                SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
+                            }
+                            ExpandableCardPillIcon(
+                                icon = Icons.Default.CalendarMonth,
+                                text = formattedDate,
+                                contentDescription = "Photo date",
+                                iconColor = iconColor,
+                                containerColor = iconContainerColor,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .graphicsLayer { alpha = circleBadgesAlpha },
+                                alignEnd = true,
+                                defaultExpanded = viewModel.expandDayAndDateIcon,
+                                key = "${photo.id}_date"
+                            )
                         }
-                        ExpandableCardPillIcon(
-                            icon = Icons.Default.CalendarMonth,
-                            text = formattedDate,
-                            contentDescription = "Photo date",
-                            iconColor = iconColor,
-                            containerColor = iconContainerColor,
-                            modifier = Modifier.align(Alignment.BottomEnd),
-                            alignEnd = true,
-                            defaultExpanded = viewModel.expandDayAndDateIcon,
-                            key = "${photo.id}_date"
-                        )
                     }
                 }
 
@@ -1482,7 +1547,8 @@ fun PhotoCard(
             }
         }
     }
-} // closes PhotoCard
+}
+
 
 enum class ViewItem(val columns: Int) {
     PhotoCard(1),

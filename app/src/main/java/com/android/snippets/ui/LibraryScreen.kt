@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui
+package com.android.snippets.ui
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
@@ -147,9 +147,31 @@ fun LibraryScreen(
     var isSearchOpen by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
 
-    val isBackHandlerEnabled = isSearchOpen || viewModel.isSelectionMode || viewModel.showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
+    var modalPhoto by remember { mutableStateOf<Photo?>(null) }
+    var showAddModal by remember { mutableStateOf(false) }
+    var showSnippetsModal by remember { mutableStateOf(false) }
+    var showDeleteModal by remember { mutableStateOf(false) }
+    var showRateModal by remember { mutableStateOf(false) }
+    var showLinkModal by remember { mutableStateOf(false) }
+    var showNameModal by remember { mutableStateOf(false) }
+
+    val isBackHandlerEnabled = showAddModal || showSnippetsModal || showDeleteModal || showRateModal || showLinkModal || showNameModal || (viewModel.activePhotoId != null) || isSearchOpen || viewModel.isSelectionMode || viewModel.showHistoryBottomSheet || showMenuPopup || showCollectionsPopup
     AppPredictiveBackHandler(enabled = isBackHandlerEnabled) {
-        if (isSearchOpen) {
+        if (showAddModal) {
+            showAddModal = false
+        } else if (showSnippetsModal) {
+            showSnippetsModal = false
+        } else if (showDeleteModal) {
+            showDeleteModal = false
+        } else if (showRateModal) {
+            showRateModal = false
+        } else if (showLinkModal) {
+            showLinkModal = false
+        } else if (showNameModal) {
+            showNameModal = false
+        } else if (viewModel.activePhotoId != null) {
+            viewModel.activePhotoId = null
+        } else if (isSearchOpen) {
             isSearchOpen = false
             viewModel.searchQuery = ""
         } else if (viewModel.isSelectionMode) {
@@ -166,7 +188,7 @@ fun LibraryScreen(
     var longPressedCollection by remember { mutableStateOf<String?>(null) }
     var deletingCollection by remember { mutableStateOf<String?>(null) }
 
-    val isAnyPopupActive = viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || viewModel.showHistoryBottomSheet || (longPressedCollection != null) || (deletingCollection != null)
+    val isAnyPopupActive = showAddModal || showSnippetsModal || showDeleteModal || showRateModal || showLinkModal || showNameModal || viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal || viewModel.showCreateDialog || showMenuPopup || showCollectionsPopup || isSearchOpen || viewModel.showHistoryBottomSheet || (longPressedCollection != null) || (deletingCollection != null)
     val allowMemorySpin = !isAnyPopupActive
     val curated = viewModel.curatedMemories
     
@@ -192,12 +214,9 @@ fun LibraryScreen(
     
     val flatPhotosRaw = viewModel.filteredPhotos
 
-    LaunchedEffect(viewModel.activePhotoId, viewModel.currentScreen) {
+    LaunchedEffect(viewModel.activePhotoId) {
         val activeId = viewModel.activePhotoId
-        if (
-            viewModel.currentScreen != Screen.Detail &&
-            activeId != null
-        ) {
+        if (activeId != null) {
             val tabSort = viewModel.getPhotoSortTypeFor(currentTab)
             val tabPhotos = viewModel.sortPhotos(
                 flatPhotosRaw.filter { photo ->
@@ -212,14 +231,8 @@ fun LibraryScreen(
             val targetIndex = tabPhotos.indexOfFirst { it.id == activeId }
             if (targetIndex != -1) {
                 val gridState = listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
-                kotlinx.coroutines.delay(250)
-                val isVisible = gridState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
-                if (!isVisible) {
-                    gridState.scrollToItem(targetIndex)
-                }
-            }
-            if (windowSizeClass?.widthSizeClass != WindowWidthSizeClass.Expanded) {
-                viewModel.activePhotoId = null
+                kotlinx.coroutines.delay(120)
+                gridState.animateScrollToItem(targetIndex, scrollOffset = -24)
             }
         }
     }
@@ -364,7 +377,7 @@ fun LibraryScreen(
                             .fillMaxSize()
                             .then(
                                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                    Modifier.hazeSource(state = hazeState, key = viewModel.customGridColumns)
+                                    Modifier.hazeSource(state = hazeState)
                                 } else Modifier
                             ),
                         pageSpacing = 16.dp
@@ -390,8 +403,7 @@ fun LibraryScreen(
 
                         if (pageFilteredPhotos.isEmpty()) {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
+                                modifier = Modifier.fillMaxSize()
                                     .padding(top = topGridPadding),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -403,55 +415,11 @@ fun LibraryScreen(
                             }
                         } else {
                             val pageListState = listStates[tabForPage] ?: listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
-                            val rawColumns = viewModel.customGridColumns?.coerceIn(-1, 3)
-                            val currentGridColumns = if (rawColumns == 1) -1 else (rawColumns ?: when (windowSizeClass?.widthSizeClass) {
-                                WindowWidthSizeClass.Expanded -> 3
-                                WindowWidthSizeClass.Medium -> 3
-                                else -> -1
-                            })
-                            val displayColumns = if (currentGridColumns <= 0) 1 else currentGridColumns
-                            val minColumns = -1
-                            val maxColumns = 3
 
                             LazyVerticalStaggeredGrid(
-                                columns = StaggeredGridCells.Fixed(displayColumns),
+                                columns = StaggeredGridCells.Fixed(1),
                                 state = pageListState,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .pointerInput(currentGridColumns) {
-                                        awaitEachGesture {
-                                            awaitFirstDown(requireUnconsumed = false)
-                                            var zoomAccumulator = 1f
-                                            do {
-                                                val event = awaitPointerEvent()
-                                                val numPointers = event.changes.count { it.pressed }
-                                                if (numPointers >= 2) {
-                                                    val zoomChange = event.calculateZoom()
-                                                    if (zoomChange != 1f) {
-                                                        zoomAccumulator *= zoomChange
-                                                        event.changes.forEach { it.consume() }
-                                                         if (zoomAccumulator > 1.25f) {
-                                                             // Pinch out (expanding fingers) -> fewer columns -> larger items
-                                                             if (currentGridColumns > minColumns) {
-                                                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                 val nextCol = if (currentGridColumns == 2) 0 else currentGridColumns - 1
-                                                                 viewModel.updateCustomGridColumns(nextCol)
-                                                             }
-                                                             zoomAccumulator = 1f
-                                                         } else if (zoomAccumulator < 0.8f) {
-                                                             // Pinch in (contracting fingers) -> more columns -> smaller items
-                                                             if (currentGridColumns < maxColumns) {
-                                                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                 val nextCol = if (currentGridColumns == 0) 2 else currentGridColumns + 1
-                                                                 viewModel.updateCustomGridColumns(nextCol)
-                                                             }
-                                                             zoomAccumulator = 1f
-                                                         }
-                                                     }
-                                                }
-                                            } while (event.changes.any { it.pressed })
-                                        }
-                                    },
+                                modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     start = 0.dp,
                                     end = 0.dp,
@@ -459,139 +427,96 @@ fun LibraryScreen(
                                     bottom = 140.dp
                                 ),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalItemSpacing = if (currentGridColumns == 0) 2.dp else 4.dp
+                                verticalItemSpacing = 4.dp
                             ) {
                                 itemsIndexed(
                                     items = pageFilteredPhotos,
                                     key = { _, photo -> "${tabSortType.name}_${photo.id}" },
-                                    contentType = { _, _ -> if (currentGridColumns <= 0) "card" else "masonry" }
+                                    contentType = { _, _ -> "card" }
                                 ) { index, photo ->
-                                                   val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
-                                                   val isLeast = tabSortType == com.android.snippets.viewmodel.PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
-                                                  
-                                                   when (currentGridColumns) {
-                                                       -1, 1 -> {
-                                                           // Calculate card position: First, Middle, Last, or Single
-                                                           val totalCount = pageFilteredPhotos.size
-                                                           val cardPos = when {
-                                                               totalCount == 1 -> CardPosition.Single
-                                                               index == 0 -> CardPosition.First
-                                                               index == totalCount - 1 -> CardPosition.Last
-                                                               else -> CardPosition.Middle
-                                                           }
+                                    val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
+                                    val isLeast = tabSortType == com.android.snippets.viewmodel.PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
+                                    val totalCount = pageFilteredPhotos.size
+                                    val cardPos = when {
+                                        totalCount == 1 -> CardPosition.Single
+                                        index == 0 -> CardPosition.First
+                                        index == totalCount - 1 -> CardPosition.Last
+                                        else -> CardPosition.Middle
+                                    }
+                                    val isDark = isSystemInDarkTheme()
 
-                                                           PhotoCard(
-                                                               photo = photo,
-                                                               position = CardPosition.Single,
-                                                               isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                               selectionMode = viewModel.isSelectionMode,
-                                                               showFavoriteIcon = tabForPage != "Favorites",
-                                                               tab = tabForPage,
-                                                               isMostSnippets = isMost,
-                                                               isLeastSnippets = isLeast,
-                                                               viewModel = viewModel,
-                                                               onClick = {
-                                                                   if (viewModel.isSelectionMode) {
-                                                                       view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                       viewModel.toggleSelection(photo.id)
-                                                                   } else {
-                                                                       view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                       if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                           viewModel.activePhotoId = photo.id
-                                                                       } else {
-                                                                           viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
-                                                                       }
-                                                                   }
-                                                               },
-                                                               onLongClick = {
-                                                                   view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                   if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                               },
-                                                               sharedTransitionScope = sharedTransitionScope,
-                                                               animatedVisibilityScope = animatedVisibilityScope,
-                                                               modifier = Modifier.fillMaxWidth()
-                                                           )
-                                                       }
-                                                       0 -> {
-                                                           val totalCount = pageFilteredPhotos.size
-                                                           val cardPos = when {
-                                                               totalCount == 1 -> CardPosition.Single
-                                                               index == 0 -> CardPosition.First
-                                                               index == totalCount - 1 -> CardPosition.Last
-                                                               else -> CardPosition.Middle
-                                                           }
-                                                           PhotoCard(
-                                                               photo = photo,
-                                                               position = cardPos,
-                                                               isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                               selectionMode = viewModel.isSelectionMode,
-                                                               showFavoriteIcon = tabForPage != "Favorites",
-                                                               tab = tabForPage,
-                                                               isMostSnippets = isMost,
-                                                               isLeastSnippets = isLeast,
-                                                               viewModel = viewModel,
-                                                               onClick = {
-                                                                   if (viewModel.isSelectionMode) {
-                                                                       view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                       viewModel.toggleSelection(photo.id)
-                                                                   } else {
-                                                                       view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                       if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                           viewModel.activePhotoId = photo.id
-                                                                       } else {
-                                                                           viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
-                                                                       }
-                                                                   }
-                                                               },
-                                                               onLongClick = {
-                                                                   view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                   if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                               },
-                                                               sharedTransitionScope = sharedTransitionScope,
-                                                               animatedVisibilityScope = animatedVisibilityScope,
-                                                               modifier = Modifier.fillMaxWidth()
-                                                           )
-                                                       }
-                                                       else -> {
-                                                           PhotoMasonryItem(
-                                                               photo = photo,
-                                                               isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                                                               selectionMode = viewModel.isSelectionMode,
-                                                               showFavoriteIcon = tabForPage != "Favorites",
-                                                               matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
-                                                               isMostSnippets = isMost,
-                                                               isLeastSnippets = isLeast,
-                                                               sharedTransitionScope = sharedTransitionScope,
-                                                               animatedVisibilityScope = animatedVisibilityScope,
-                                                               shape = RoundedCornerShape(12.dp),
-                                                               tab = tabForPage,
-                                                               onClick = {
-                                                                   if (viewModel.isSelectionMode) {
-                                                                       view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                       viewModel.toggleSelection(photo.id)
-                                                                   } else {
-                                                                       view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                                       if (windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Expanded) {
-                                                                           viewModel.activePhotoId = photo.id
-                                                                       } else {
-                                                                           viewModel.openDetail(photo.id, overrideReturnScreen = Screen.Library)
-                                                                       }
-                                                                   }
-                                                               },
-                                                               onLongClick = {
-                                                                   view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                                                   if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                                                               },
-                                                               fillCard = false,
-                                                               viewModel = viewModel,
-                                                               modifier = Modifier.fillMaxWidth()
-                                                           )
-                                                       }
-                                                   }
-                                              }
-                                          }
-                                     }
-                                 } // end of HorizontalPager
+                                    PhotoCard(
+                                        photo = photo,
+                                        position = cardPos,
+                                        isSelected = viewModel.selectedPhotoIds.contains(photo.id),
+                                        selectionMode = viewModel.isSelectionMode,
+                                        showFavoriteIcon = tabForPage != "Favorites",
+                                        tab = tabForPage,
+                                        isMostSnippets = isMost,
+                                        isLeastSnippets = isLeast,
+                                        viewModel = viewModel,
+                                        isExpanded = viewModel.activePhotoId == photo.id,
+                                        onClick = {
+                                            if (viewModel.isSelectionMode) {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                viewModel.toggleSelection(photo.id)
+                                            } else {
+                                                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                val isExpanding = viewModel.activePhotoId != photo.id
+                                                viewModel.activePhotoId = if (isExpanding) photo.id else null
+                                                if (isExpanding) {
+                                                    scope.launch {
+                                                        kotlinx.coroutines.delay(120)
+                                                        pageListState.animateScrollToItem(index, scrollOffset = -24)
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        onLongClick = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                            if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                        },
+                                        onAddSnippet = {
+                                            modalPhoto = photo
+                                            showAddModal = true
+                                        },
+                                        onDownload = {
+                                            viewModel.downloadPhotoCard(context, photo, isDark, if (isDark) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                                        },
+                                        onShare = {
+                                            viewModel.sharePhotoCard(context, photo, isDark, if (isDark) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                                        },
+                                        onToggleFavorite = {
+                                            viewModel.toggleFavorite(photo.id)
+                                        },
+                                        onNamePhoto = {
+                                            modalPhoto = photo
+                                            showNameModal = true
+                                        },
+                                        onEditLink = {
+                                            modalPhoto = photo
+                                            showLinkModal = true
+                                        },
+                                        onRatePhoto = {
+                                            modalPhoto = photo
+                                            showRateModal = true
+                                        },
+                                        onViewSnippets = {
+                                            modalPhoto = photo
+                                            showSnippetsModal = true
+                                        },
+                                        onDeletePhoto = {
+                                            modalPhoto = photo
+                                            showDeleteModal = true
+                                        },
+                                        sharedTransitionScope = sharedTransitionScope,
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+                    } // end of HorizontalPager
 
                                   // Status Bar Progressive Blur Overlay when scrolling
                                   Box(
@@ -758,8 +683,7 @@ fun LibraryScreen(
                         } else if (searchMode == 1) {
                             // Search Mode
                             Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
+                                modifier = Modifier.fillMaxSize()
                                     .padding(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -1010,7 +934,7 @@ fun LibraryScreen(
                         com.android.snippets.ui.util.LocalTiltActive provides (com.android.snippets.ui.util.LocalTiltActive.current && (deletingCollection == null))
                     ) {
                         Motion.ExpressiveSheetContent {
-                            val managePagerState = rememberPagerState(initialPage = 0, pageCount = { 3 })
+                            val managePagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
 
                             var activePillInfo by remember { mutableStateOf<SortPillInfo?>(null) }
                             var displayedPillInfo by remember { mutableStateOf<SortPillInfo?>(null) }
@@ -1166,7 +1090,7 @@ fun LibraryScreen(
                                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            repeat(3) { index ->
+                                            repeat(2) { index ->
                                                 val isSelected = (if (managePagerState.isScrollInProgress) managePagerState.targetPage else managePagerState.currentPage) == index
                                                 val animatedWidth by animateDpAsState(
                                                     targetValue = if (isSelected) 18.dp else 6.dp,
@@ -1284,9 +1208,6 @@ fun LibraryScreen(
                                         }
                                         val sortCookieSize = remember(availableWidth, sortItems.size) {
                                             availableWidth / sortItems.size.coerceAtLeast(1)
-                                        }
-                                        val viewCookieSize = remember(availableWidth) {
-                                            if (availableWidth >= 86.dp * 3) 86.dp else ((availableWidth - 20.dp) / 3).coerceIn(48.dp, 86.dp)
                                         }
 
                                         HorizontalPager(
@@ -1520,93 +1441,6 @@ fun LibraryScreen(
                                                             )
                                                         }
                                                     }
-                                                    2 -> {
-                                                        // Page 3: View items (no horizontalScroll, easily fits 3 items and swipe works smoothly)
-                                                        Row(
-                                                            modifier = Modifier.fillMaxWidth(),
-                                                            horizontalArrangement = if (availableWidth >= 86.dp * 3) {
-                                                                Arrangement.SpaceBetween
-                                                            } else {
-                                                                Arrangement.spacedBy(10.dp, Alignment.Start)
-                                                            },
-                                                            verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                            AnimatedCookieButton(
-                                                                onClick = {
-                                                                    viewModel.updateCustomGridColumns(1)
-                                                                    listStates.values.forEach { state ->
-                                                                        scope.launch { state.scrollToItem(0) }
-                                                                    }
-                                                                    showPillInfo("Single column") {
-                                                                        Icon(
-                                                                            imageVector = ViewAgendaCustomIcon(filled = true),
-                                                                            contentDescription = null,
-                                                                            modifier = Modifier.size(16.dp),
-                                                                            tint = MaterialTheme.colorScheme.primary
-                                                                        )
-                                                                    }
-                                                                },
-                                                                icon = ViewAgendaCustomIcon(filled = currentCols == 1),
-                                                                contentDescription = "Single column",
-                                                                tooltip = "Single column",
-                                                                containerColor = if (currentCols == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                                                contentColor = if (currentCols == 1) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-                                                                size = viewCookieSize,
-                                                                iconSize = if (viewCookieSize >= 72.dp) 32.dp else 24.dp,
-                                                                isSpinning = true
-                                                            )
-
-                                                            AnimatedCookieButton(
-                                                                onClick = {
-                                                                    viewModel.updateCustomGridColumns(2)
-                                                                    listStates.values.forEach { state ->
-                                                                        scope.launch { state.scrollToItem(0) }
-                                                                    }
-                                                                    showPillInfo("Two columns") {
-                                                                        Icon(
-                                                                            imageVector = ViewGrid2Icon(filled = true),
-                                                                            contentDescription = null,
-                                                                            modifier = Modifier.size(16.dp),
-                                                                            tint = MaterialTheme.colorScheme.primary
-                                                                        )
-                                                                    }
-                                                                },
-                                                                icon = ViewGrid2Icon(filled = currentCols == 2),
-                                                                contentDescription = "Two columns",
-                                                                tooltip = "Two columns",
-                                                                containerColor = if (currentCols == 2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                                                contentColor = if (currentCols == 2) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-                                                                size = viewCookieSize,
-                                                                iconSize = if (viewCookieSize >= 72.dp) 32.dp else 24.dp,
-                                                                isSpinning = true
-                                                            )
-
-                                                            AnimatedCookieButton(
-                                                                onClick = {
-                                                                    viewModel.updateCustomGridColumns(3)
-                                                                    listStates.values.forEach { state ->
-                                                                        scope.launch { state.scrollToItem(0) }
-                                                                    }
-                                                                    showPillInfo("Three columns") {
-                                                                        Icon(
-                                                                            imageVector = ViewGrid3Icon(filled = true),
-                                                                            contentDescription = null,
-                                                                            modifier = Modifier.size(16.dp),
-                                                                            tint = MaterialTheme.colorScheme.primary
-                                                                        )
-                                                                    }
-                                                                },
-                                                                icon = ViewGrid3Icon(filled = currentCols == 3),
-                                                                contentDescription = "Three columns",
-                                                                tooltip = "Three columns",
-                                                                containerColor = if (currentCols == 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                                                contentColor = if (currentCols == 3) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-                                                                size = viewCookieSize,
-                                                                iconSize = if (viewCookieSize >= 72.dp) 32.dp else 24.dp,
-                                                                isSpinning = true
-                                                            )
-                                                        }
-                                                    }
                                                 }
                                             }
                                             actionPillContent()
@@ -1648,6 +1482,71 @@ fun LibraryScreen(
                             )
                         }
                     )
+                }
+
+                val currentModalPhoto = modalPhoto?.let { p -> viewModel.photos.find { it.id == p.id } ?: p }
+                if (currentModalPhoto != null) {
+                    if (showAddModal) {
+                        AddSnippetsModal(
+                            photo = currentModalPhoto,
+                            onAdd = { name -> viewModel.updateSnippets(currentModalPhoto.id, name) },
+                            onClose = { showAddModal = false },
+                            viewModel = viewModel
+                        )
+                    }
+                    if (showSnippetsModal) {
+                        SnippetsModal(
+                            photo = currentModalPhoto,
+                            onRemove = { snippet -> viewModel.removeSnippet(currentModalPhoto.id, snippet) },
+                            onClose = { showSnippetsModal = false },
+                            viewModel = viewModel
+                        )
+                    }
+                    if (showDeleteModal) {
+                        DeleteConfirmationModal(
+                            count = 1,
+                            hasPublicPhotos = currentModalPhoto.isPublic,
+                            onDismiss = { showDeleteModal = false },
+                            onConfirm = { unpublish ->
+                                viewModel.deletePhoto(currentModalPhoto.id, unpublish = unpublish)
+                                if (viewModel.activePhotoId == currentModalPhoto.id) {
+                                    viewModel.activePhotoId = null
+                                }
+                                showDeleteModal = false
+                            }
+                        )
+                    }
+                    if (showRateModal) {
+                        RateFoodDialog(
+                            initialRating = currentModalPhoto.rating,
+                            onDismiss = { showRateModal = false },
+                            onConfirm = { rating ->
+                                viewModel.setPhotoRating(currentModalPhoto.id, rating)
+                                showRateModal = false
+                            }
+                        )
+                    }
+                    if (showLinkModal) {
+                        LocationLinkModal(
+                            initialLink = currentModalPhoto.locationLink,
+                            suggestions = viewModel.allUniqueLocations,
+                            onDismiss = { showLinkModal = false },
+                            onSave = { link, name ->
+                                viewModel.updateLocationLink(currentModalPhoto.id, link.takeIf { it.isNotBlank() }, name)
+                                showLinkModal = false
+                            }
+                        )
+                    }
+                    if (showNameModal) {
+                        NamePhotoModal(
+                            initialName = currentModalPhoto.name,
+                            onDismiss = { showNameModal = false },
+                            onSave = { name ->
+                                viewModel.updatePhotoName(currentModalPhoto.id, name)
+                                showNameModal = false
+                            }
+                        )
+                    }
                 }
             }
         }

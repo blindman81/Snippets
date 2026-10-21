@@ -1,4 +1,4 @@
-﻿package com.android.snippets.viewmodel
+package com.android.snippets.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -2294,18 +2294,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun openDetail(id: String, tab: String? = null, overrideReturnScreen: Screen? = null) {
         isSwipeDismissing = false
-        if (currentScreen != Screen.Detail) {
-            detailReturnScreen = overrideReturnScreen ?: currentScreen
-            detailReturnTab = tab ?: libraryCurrentTab
-        }
         activePhotoId = id
         previousScreen = currentScreen
-        currentScreen = Screen.Detail
+        currentScreen = Screen.Library
+        tab?.let { libraryCurrentTab = it }
     }
 
     fun closeDetail() {
-        previousScreen = currentScreen
-        currentScreen = detailReturnScreen
+        activePhotoId = null
     }
 
     fun navigateBack() {
@@ -2322,7 +2318,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 currentScreen = previousScreen
             }
             Screen.Filter,
-            Screen.Library -> Unit
+            Screen.Library -> {
+                if (activePhotoId != null) {
+                    activePhotoId = null
+                }
+            }
         }
     }
 

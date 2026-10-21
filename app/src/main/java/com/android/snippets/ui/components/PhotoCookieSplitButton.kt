@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.components
+package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
@@ -45,7 +45,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * CookieSplitButton component consisting of two connected cookie-shaped buttons:
+ * PhotoCookieSplitButton component consisting of two connected cookie-shaped buttons:
  * A primary action button (e.g. Add), and a trailing dropdown arrow button.
  *
  * Features:
@@ -56,7 +56,7 @@ import kotlinx.coroutines.launch
  * - Opens a connected button group menu with customizable columns (default 3 columns matching design).
  */
 @Composable
-fun CookieSplitButton(
+fun PhotoCookieSplitButton(
     primaryIcon: ImageVector,
     onMenuToggle: (() -> Unit)? = null,
     onPrimaryClick: () -> Unit,
@@ -68,7 +68,7 @@ fun CookieSplitButton(
     primaryText: String? = null,
     contentDescription: String? = primaryText,
     isPrimaryActive: Boolean = false,
-    menuColumns: Int = 2,
+    menuColumns: Int = 4,
     buttonSize: Dp = 52.dp,
     gap: Dp = 1.dp,
     overlap: Dp = 4.dp,
@@ -282,15 +282,16 @@ fun CookieSplitButton(
                         }
                 ) {
                     if (isOnBlurredSurface) {
+                        val secondaryBg = if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f)
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .clip(shapeLeading)
-                                .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
                                 .border(
                                     border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
                                     shape = shapeLeading
                                 )
+                                .clip(shapeLeading)
+                                .background(secondaryBg)
                         )
                         if (leadingPrimaryAlpha > 0.001f) {
                             val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
@@ -399,15 +400,16 @@ fun CookieSplitButton(
                         }
                 ) {
                     if (isOnBlurredSurface) {
+                        val secondaryBg = if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f)
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .clip(shapeTrailing)
-                                .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
                                 .border(
                                     border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
                                     shape = shapeTrailing
                                 )
+                                .clip(shapeTrailing)
+                                .background(secondaryBg)
                         )
                         if (trailingPrimaryAlpha > 0.001f) {
                             val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
@@ -451,7 +453,7 @@ fun CookieSplitButton(
                 border = null,
                 modifier = Modifier.background(Color.Transparent)
             ) {
-                Surface(
+                BlurredSurface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
                     tonalElevation = 3.dp,
@@ -568,3 +570,58 @@ fun SplitButton(
         )
     }
 }
+
+@Deprecated("Use PhotoCookieSplitButton instead", ReplaceWith("PhotoCookieSplitButton(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled, isOnBlurredSurface)"))
+@Composable
+fun CookieSplitButton(
+    primaryIcon: ImageVector,
+    onMenuToggle: (() -> Unit)? = null,
+    onPrimaryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingIcon: ImageVector? = null,
+    trailingFilledIcon: ImageVector = MoreHorizFilledMaterialSymbol,
+    trailingOutlinedIcon: ImageVector = MoreHorizOutlinedMaterialSymbol,
+    items: List<CookieButtonItem> = emptyList(),
+    primaryText: String? = null,
+    contentDescription: String? = primaryText,
+    isPrimaryActive: Boolean = false,
+    menuColumns: Int = 4,
+    buttonSize: Dp = 52.dp,
+    gap: Dp = 1.dp,
+    overlap: Dp = 4.dp,
+    shape: Shape = CookieShape,
+    selectedContainerColor: Color = MaterialTheme.colorScheme.primary,
+    selectedContentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    isSpinning: Boolean = true,
+    enabled: Boolean = true,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+) {
+    PhotoCookieSplitButton(
+        primaryIcon = primaryIcon,
+        onMenuToggle = onMenuToggle,
+        onPrimaryClick = onPrimaryClick,
+        modifier = modifier,
+        trailingIcon = trailingIcon,
+        trailingFilledIcon = trailingFilledIcon,
+        trailingOutlinedIcon = trailingOutlinedIcon,
+        items = items,
+        primaryText = primaryText,
+        contentDescription = contentDescription,
+        isPrimaryActive = isPrimaryActive,
+        menuColumns = menuColumns,
+        buttonSize = buttonSize,
+        gap = gap,
+        overlap = overlap,
+        shape = shape,
+        selectedContainerColor = selectedContainerColor,
+        selectedContentColor = selectedContentColor,
+        unselectedContainerColor = unselectedContainerColor,
+        unselectedContentColor = unselectedContentColor,
+        isSpinning = isSpinning,
+        enabled = enabled,
+        isOnBlurredSurface = isOnBlurredSurface
+    )
+}
+
