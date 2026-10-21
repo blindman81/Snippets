@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.components
+package com.android.snippets.ui.components
 
 import android.content.Context
 import android.view.HapticFeedbackConstants
@@ -371,7 +371,7 @@ fun LocationLinkModal(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = "Paste a Google Maps or location link below.",
@@ -419,12 +419,6 @@ fun LocationLinkModal(
                 )
 
                 if (filteredSuggestions.isNotEmpty()) {
-                    Text(
-                        text = "Suggested locations",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
