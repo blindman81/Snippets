@@ -218,6 +218,9 @@ fun LibraryScreen(
                     gridState.scrollToItem(targetIndex)
                 }
             }
+            if (windowSizeClass?.widthSizeClass != WindowWidthSizeClass.Expanded) {
+                viewModel.activePhotoId = null
+            }
         }
     }
     val startIndex = 0
@@ -262,11 +265,9 @@ fun LibraryScreen(
         label = "cookie_toolbar_scale"
     )
 
-    val currentGridState = remember(currentTab) {
-        listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
-    }
+    val currentGridState = listStates[currentTab] ?: listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
 
-    val isScrolled by remember(currentGridState) {
+    val isScrolled by remember(currentTab, currentGridState) {
         derivedStateOf {
             currentGridState.firstVisibleItemIndex > 0 || currentGridState.firstVisibleItemScrollOffset > 10
         }
@@ -381,6 +382,12 @@ fun LibraryScreen(
                             viewModel.sortPhotos(filtered, tabSortType)
                         }
 
+                        var lastSortType by remember(tabForPage) { mutableStateOf(tabSortType) }
+                        if (lastSortType != tabSortType) {
+                            lastSortType = tabSortType
+                            listStates[tabForPage] = LazyStaggeredGridState()
+                        }
+
                         if (pageFilteredPhotos.isEmpty()) {
                             Box(
                                 modifier = Modifier
@@ -395,7 +402,7 @@ fun LibraryScreen(
                                 }
                             }
                         } else {
-                            val pageListState = listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
+                            val pageListState = listStates[tabForPage] ?: listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
                             val rawColumns = viewModel.customGridColumns?.coerceIn(-1, 3)
                             val currentGridColumns = if (rawColumns == 1) -1 else (rawColumns ?: when (windowSizeClass?.widthSizeClass) {
                                 WindowWidthSizeClass.Expanded -> 3
@@ -456,7 +463,7 @@ fun LibraryScreen(
                             ) {
                                 itemsIndexed(
                                     items = pageFilteredPhotos,
-                                    key = { _, photo -> photo.id },
+                                    key = { _, photo -> "${tabSortType.name}_${photo.id}" },
                                     contentType = { _, _ -> if (currentGridColumns <= 0) "card" else "masonry" }
                                 ) { index, photo ->
                                                    val isMost = tabSortType == com.android.snippets.viewmodel.PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
@@ -1075,7 +1082,7 @@ fun LibraryScreen(
                             var selectedActionIndex by remember { mutableIntStateOf(-1) }
                             var actionJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-                            val currentSortType = viewModel.getPhotoSortTypeFor(longPressedCollection ?: "Library")
+                            val currentSortType = viewModel.getPhotoSortTypeFor(longPressedCollection ?: currentTab)
 
                             val sortOptions = remember {
                                 listOf(
@@ -1440,12 +1447,13 @@ fun LibraryScreen(
                                                                 selectedIndex = selectedSortIndex,
                                                                 onSelect = selectSort@ { index ->
                                                                     val option = sortOptions.getOrNull(index) ?: return@selectSort
+                                                                    val col = longPressedCollection ?: currentTab
+                                                                    viewModel.activePhotoId = null
                                                                     if (currentSortType != option) {
-                                                                        val col = longPressedCollection ?: "Library"
                                                                         viewModel.setPhotoSortTypeFor(col, option)
-                                                                        listStates[col]?.let { state ->
-                                                                            scope.launch { state.scrollToItem(0) }
-                                                                        }
+                                                                    }
+                                                                    listStates[col]?.let { state ->
+                                                                        scope.launch { state.scrollToItem(0) }
                                                                     }
                                                                 },
                                                                 onItemClick = { index ->

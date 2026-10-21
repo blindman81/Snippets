@@ -1,4 +1,4 @@
-package com.android.snippets.viewmodel
+﻿package com.android.snippets.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -476,6 +476,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         get() = _photoSortType.value
         set(value) {
             _photoSortType.value = value
+            libraryListStates["Library"] = androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState()
             saveFilterState()
         }
         
@@ -490,6 +491,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         } else {
             _collectionPhotoSortTypes.value = _collectionPhotoSortTypes.value + (tabName to sortType)
         }
+        libraryListStates[tabName] = androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState()
         saveFilterState()
     }
     
