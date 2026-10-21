@@ -96,9 +96,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         if (isNavigatingBackFromGesture) {
             isNavigatingBackFromGesture = false
         }
-        if (viewModel.isSwipeDismissing) {
-            viewModel.isSwipeDismissing = false
-        }
     }
 
     LaunchedEffect(viewModel.snackbarMessage) {
@@ -163,12 +160,14 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                 null
             }
 
+            val isOverlayShowing = viewModel.showBulkDeleteModal || viewModel.showFilterSheet || viewModel.isAddingPhotos || viewModel.isBusy || viewModel.isCuratingMemories
+
             @Composable
             fun RenderScreenContent(
                 screen: Screen,
                 animatedVisibilityScope: AnimatedVisibilityScope?
             ) {
-                val isScreenActive = (viewModel.currentScreen == screen)
+                val isScreenActive = (viewModel.currentScreen == screen) && !isOverlayShowing
                 CompositionLocalProvider(LocalTiltActive provides isScreenActive) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (screen) {
@@ -256,7 +255,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     },
                     modifier = Modifier.fillMaxSize()
                 ) { screen ->
-                    val isScreenActive = (viewModel.currentScreen == screen)
+                    val isScreenActive = (viewModel.currentScreen == screen) && !isOverlayShowing
                     CompositionLocalProvider(LocalTiltActive provides isScreenActive) {
                         RenderScreenContent(screen, this)
                     }

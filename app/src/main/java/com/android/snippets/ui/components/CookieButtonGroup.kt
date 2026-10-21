@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.components
+package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.annotation.DrawableRes
@@ -194,6 +194,7 @@ fun CookieButtonGroup(
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
+    enableTilt: Boolean = true,
     onItemClick: ((Int) -> Unit)? = null
 ) {
     val view = LocalView.current
@@ -406,7 +407,7 @@ fun CookieButtonGroup(
             label = "cookie_content_color_$index"
         )
 
-        val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = item.enabled && isPrimary)
+        val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = enableTilt && item.enabled && isPrimary)
 
         val cookieContent = @Composable {
             val currentShape = if (morphProgresses[index].value > 0.001f) {
@@ -638,6 +639,7 @@ fun CookieButtonGroup(
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
+    enableTilt: Boolean = true,
     onItemClick: ((Int) -> Unit)? = null,
     iconSize: Dp = 22.dp
 ) {
@@ -669,6 +671,7 @@ fun CookieButtonGroup(
         enableWiggle = enableWiggle,
         wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
         isOnBlurredSurface = isOnBlurredSurface,
+        enableTilt = enableTilt,
         onItemClick = onItemClick
     )
 }
@@ -693,7 +696,9 @@ fun CookieNavBar(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
+    enableTilt: Boolean = true,
+    onItemClick: ((Int) -> Unit)? = null
 ) = CookieButtonGroup(
     selectedIndex = selectedIndex,
     onSelect = onSelect,
@@ -710,13 +715,15 @@ fun CookieNavBar(
     isSpinning = isSpinning,
     enableWiggle = enableWiggle,
     wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
-    isOnBlurredSurface = isOnBlurredSurface
+    isOnBlurredSurface = isOnBlurredSurface,
+    enableTilt = enableTilt,
+    onItemClick = onItemClick
 )
 
 /**
  * Backward compatibility alias for [CookieNavBar].
  */
-@Deprecated("Use CookieNavBar instead", ReplaceWith("CookieNavBar(selectedIndex, onSelect, items, modifier, columns, cookieSize, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enableWiggle, wiggleNeighborOnToggleOn, isOnBlurredSurface)"))
+@Deprecated("Use CookieNavBar instead", ReplaceWith("CookieNavBar(selectedIndex, onSelect, items, modifier, columns, cookieSize, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enableWiggle, wiggleNeighborOnToggleOn, isOnBlurredSurface, enableTilt)"))
 @Composable
 fun TabNavCookie(
     selectedIndex: Int,
@@ -734,7 +741,8 @@ fun TabNavCookie(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
+    enableTilt: Boolean = true
 ) = CookieNavBar(
     selectedIndex = selectedIndex,
     onSelect = onSelect,
@@ -751,5 +759,6 @@ fun TabNavCookie(
     isSpinning = isSpinning,
     enableWiggle = enableWiggle,
     wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
-    isOnBlurredSurface = isOnBlurredSurface
+    isOnBlurredSurface = isOnBlurredSurface,
+    enableTilt = enableTilt
 )

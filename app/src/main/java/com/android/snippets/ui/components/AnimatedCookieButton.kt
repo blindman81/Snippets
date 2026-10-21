@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.components
+package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
@@ -48,6 +48,7 @@ fun AnimatedCookieButton(
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
+    enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     AnimatedCookieButtonImpl(
@@ -72,6 +73,7 @@ fun AnimatedCookieButton(
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
         isOnBlurredSurface = isOnBlurredSurface,
+        enableTilt = enableTilt,
         badge = badge
     )
 }
@@ -94,6 +96,7 @@ fun AnimatedCookieButton(
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
+    enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     AnimatedCookieButtonImpl(
@@ -118,6 +121,7 @@ fun AnimatedCookieButton(
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
         isOnBlurredSurface = isOnBlurredSurface,
+        enableTilt = enableTilt,
         badge = badge
     )
 }
@@ -139,6 +143,7 @@ fun AnimatedCookieButton(
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
+    enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     AnimatedCookieButtonImpl(
@@ -156,6 +161,7 @@ fun AnimatedCookieButton(
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
         isOnBlurredSurface = isOnBlurredSurface,
+        enableTilt = enableTilt,
         badge = badge
     )
 }
@@ -177,6 +183,7 @@ private fun AnimatedCookieButtonImpl(
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
+    enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
 ) {
     val view = LocalView.current
@@ -219,7 +226,7 @@ private fun AnimatedCookieButtonImpl(
         label = "cookie_button_primary_alpha"
     )
 
-    val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = enabled && isPrimary)
+    val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = enableTilt && enabled && isPrimary)
 
     val isMorphActive = (isHolding && !isHoldCompleted) || isSettling
     val isMorphing = (isHoldMorphing && !isHoldCompleted) || isSettling
