@@ -166,7 +166,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                 }
 
                 Text(
-                    text = "Design ideas by me, code by agentic tools.",
+                    text = "UI and UX design by me, code by agentic tools.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

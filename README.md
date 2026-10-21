@@ -10,7 +10,7 @@ Relive moments with memories that cycles photos every day.
 
 Rate food you eat upto 5 stars.
 
-Design ideas by me, code by agentic tools.
+UI and UX design by me, code by agentic tools.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/ec8e11c7-0bcf-4c18-b995-e6cbf363e49c" width="18%">
