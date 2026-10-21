@@ -10,6 +10,7 @@ import androidx.compose.ui.layout.boundsInParent
 import com.android.snippets.ui.components.*
 import com.android.snippets.ui.util.Motion
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 
@@ -22,6 +23,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.ui.geometry.Offset
 
 import androidx.compose.animation.*
@@ -214,7 +216,7 @@ fun LibraryScreen(
     
     val flatPhotosRaw = viewModel.filteredPhotos
 
-    LaunchedEffect(viewModel.activePhotoId) {
+    LaunchedEffect(viewModel.activePhotoId, currentTab) {
         val activeId = viewModel.activePhotoId
         if (activeId != null) {
             val tabSort = viewModel.getPhotoSortTypeFor(currentTab)
@@ -231,8 +233,8 @@ fun LibraryScreen(
             val targetIndex = tabPhotos.indexOfFirst { it.id == activeId }
             if (targetIndex != -1) {
                 val gridState = listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
-                kotlinx.coroutines.delay(120)
-                gridState.animateScrollToItem(targetIndex, scrollOffset = -24)
+                kotlinx.coroutines.delay(80)
+                gridState.smoothScrollToItemSlow(targetIndex, targetOffsetPx = 24)
             }
         }
     }
@@ -456,6 +458,7 @@ fun LibraryScreen(
                                         isLeastSnippets = isLeast,
                                         viewModel = viewModel,
                                         isExpanded = viewModel.activePhotoId == photo.id,
+                                        isAddSnippetOpen = showAddModal && modalPhoto?.id == photo.id,
                                         onClick = {
                                             if (viewModel.isSelectionMode) {
                                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -464,12 +467,6 @@ fun LibraryScreen(
                                                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                                                 val isExpanding = viewModel.activePhotoId != photo.id
                                                 viewModel.activePhotoId = if (isExpanding) photo.id else null
-                                                if (isExpanding) {
-                                                    scope.launch {
-                                                        kotlinx.coroutines.delay(120)
-                                                        pageListState.animateScrollToItem(index, scrollOffset = -24)
-                                                    }
-                                                }
                                             }
                                         },
                                         onLongClick = {
@@ -1030,15 +1027,6 @@ fun LibraryScreen(
                             }
                             val selectedSortIndex = sortOptions.indexOf(currentSortType)
 
-                            val currentCols = when (val raw = viewModel.customGridColumns) {
-                                null -> when (windowSizeClass?.widthSizeClass) {
-                                    androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Expanded,
-                                    androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Medium -> 3
-                                    else -> 1
-                                }
-                                0 -> 1
-                                else -> raw.coerceIn(1, 3)
-                            }
 
                             Column(
                                 modifier = Modifier
@@ -1100,17 +1088,13 @@ fun LibraryScreen(
                                                     ),
                                                     label = "manage_dot_width_$index"
                                                 )
-                                                val animatedColor by animateColorAsState(
-                                                    targetValue = if (isSelected) {
-                                                        MaterialTheme.colorScheme.primary
-                                                    } else {
-                                                        MaterialTheme.colorScheme.secondaryContainer
-                                                    },
+                                                val primaryAlpha by animateFloatAsState(
+                                                    targetValue = if (isSelected) 1f else 0f,
                                                     animationSpec = spring(
                                                         dampingRatio = Spring.DampingRatioNoBouncy,
                                                         stiffness = Spring.StiffnessMediumLow
                                                     ),
-                                                    label = "manage_dot_color_$index"
+                                                    label = "manage_dot_primary_alpha_$index"
                                                 )
 
                                                 Box(
@@ -1118,7 +1102,6 @@ fun LibraryScreen(
                                                         .height(6.dp)
                                                         .width(animatedWidth)
                                                         .clip(CircleShape)
-                                                        .background(animatedColor)
                                                         .clickable {
                                                             if (!isSelected) {
                                                                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -1133,7 +1116,34 @@ fun LibraryScreen(
                                                                 }
                                                             }
                                                         }
-                                                )
+                                                ) {
+                                                    // Outline variant (bottom layer):
+                                                    // Retains secondary container color with M3 outline variant border.
+                                                    // Kept at full opacity so it never fades out when turning primary.
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .matchParentSize()
+                                                            .clip(CircleShape)
+                                                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                                                            .border(
+                                                                width = 1.dp,
+                                                                color = MaterialTheme.colorScheme.outlineVariant,
+                                                                shape = CircleShape
+                                                            )
+                                                    )
+                                                    // Primary layer: drawn OVER outline variant so outline is not visible when primary
+                                                    if (primaryAlpha > 0.001f) {
+                                                        val primaryColor = MaterialTheme.colorScheme.primary
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .matchParentSize()
+                                                                .graphicsLayer { alpha = primaryAlpha }
+                                                                .border(1.dp, primaryColor, CircleShape)
+                                                                .clip(CircleShape)
+                                                                .background(primaryColor)
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -1570,4 +1580,27 @@ private data class SortPillInfo(
     val icon: @Composable () -> Unit,
     val timestamp: Long = System.currentTimeMillis()
 )
+
+private suspend fun LazyStaggeredGridState.smoothScrollToItemSlow(
+    targetIndex: Int,
+    targetOffsetPx: Int = 24,
+    durationMillis: Int = 700
+) {
+    val visibleItem = layoutInfo.visibleItemsInfo.find { it.index == targetIndex }
+    if (visibleItem != null) {
+        val delta = (visibleItem.offset.y - targetOffsetPx).toFloat()
+        if (kotlin.math.abs(delta) > 4f) {
+            animateScrollBy(
+                value = delta,
+                animationSpec = tween(
+                    durationMillis = durationMillis,
+                    easing = FastOutSlowInEasing
+                )
+            )
+        }
+    } else {
+        animateScrollToItem(targetIndex, scrollOffset = -targetOffsetPx)
+    }
+}
+
 
