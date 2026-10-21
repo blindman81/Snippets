@@ -17,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.launch
 import com.android.snippets.viewmodel.Screen
 
@@ -71,9 +72,14 @@ object Motion {
         stiffness = Spring.StiffnessMedium
     )
 
+    val PhotoExpandSpring = spring<IntSize>(
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = 110f
+    )
+
     @OptIn(ExperimentalSharedTransitionApi::class)
     val SharedPhotoBoundsTransform: BoundsTransform = BoundsTransform { _, _ ->
-        tween(durationMillis = 260, easing = FastOutSlowInEasing)
+        tween(durationMillis = 600, easing = FastOutSlowInEasing)
     }
 
     fun wiggleSpec(direction: Float = 1f, amplitude: Float = 8f): KeyframesSpec<Float> = keyframes {
@@ -109,15 +115,6 @@ object Motion {
             (initialState in listOf(Screen.MonthlyRecap, Screen.YearlyRecap))
 
         return when {
-            targetState == Screen.Detail ->
-                (fadeIn(animationSpec = tween(NavDuration, easing = NavEasing)) +
-                    scaleIn(initialScale = 0.95f, animationSpec = tween(NavDuration, easing = NavEasing)))
-                    .togetherWith(fadeOut(animationSpec = tween(ExitDuration, easing = FastOutLinearInEasing)))
-
-            initialState == Screen.Detail ->
-                fadeIn(animationSpec = tween(NavDuration, easing = NavEasing))
-                    .togetherWith(fadeOut(animationSpec = tween(ExitDuration, easing = FastOutLinearInEasing)))
-
             targetState == Screen.Memory ->
                 (slideInVertically(animationSpec = tween(NavDuration, easing = NavEasing)) { it } +
                     fadeIn(animationSpec = tween(NavDuration, easing = NavEasing)))

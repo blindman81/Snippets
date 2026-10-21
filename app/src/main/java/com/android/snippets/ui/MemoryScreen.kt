@@ -346,7 +346,7 @@ fun MemoryScreen(
                                 rotationZ = pageRotation
                             }
                             .then(
-                                if (photo.id == transitionTargetId && viewModel.currentScreen != Screen.Detail && sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                if (photo.id == transitionTargetId && sharedTransitionScope != null && animatedVisibilityScope != null) {
                                     with(sharedTransitionScope) {
                                         Modifier.sharedBounds(
                                             rememberSharedContentState(key = "memory_${photo.id}"),

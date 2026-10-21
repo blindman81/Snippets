@@ -36,7 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Detail, Memory, Settings, About, EmojiPicker, Filter, PhotosCarousel, Stats, MonthlyRecap, YearlyRecap }
+enum class Screen { Library, Memory, Settings, About, EmojiPicker, Filter, PhotosCarousel, Stats, MonthlyRecap, YearlyRecap }
 enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, MostStarred, LeastStarred }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
@@ -89,15 +89,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var currentScreen by mutableStateOf(Screen.Library)
     var previousScreen by mutableStateOf(Screen.Library)
         private set
-    var isSwipeDismissing by mutableStateOf(false)
-
-    
     var libraryCurrentTab by mutableStateOf("Library")
     val libraryListStates = androidx.compose.runtime.mutableStateMapOf<String, androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState>()
     
     var activePhotoId by mutableStateOf<String?>(null)
-    var detailReturnScreen by mutableStateOf(Screen.Library)
-    var detailReturnTab by mutableStateOf<String?>(null)
     var filterReturnScreen by mutableStateOf(Screen.Library)
     var rotatingSearchHint by mutableStateOf("Library")
         private set
@@ -217,16 +212,18 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var showTimeInMemories by mutableStateOf(false)
         private set
-    var expandPhotoNameIcon by mutableStateOf(false)
+    var expandLabelIcon by mutableStateOf(false)
         private set
-    var expandDayAndDateIcon by mutableStateOf(false)
+    var expandCalendarIcon by mutableStateOf(false)
         private set
+    var expandLocationIcon by mutableStateOf(false)
+        private set
+    val expandPhotoNameIcon: Boolean get() = expandLabelIcon
+    val expandDayAndDateIcon: Boolean get() = expandCalendarIcon
     var motionSensorForButtonRotation by mutableStateOf(true)
         private set
 
 
-    var customGridColumns by mutableStateOf<Int?>(null)
-        private set
     var autoBackupSchedule by mutableStateOf("Disabled")
         private set
     var showFilterSheet by mutableStateOf(false)
@@ -761,8 +758,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
         useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
         showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
-        expandPhotoNameIcon = prefs.getBoolean("expand_photo_name_icon", false)
-        expandDayAndDateIcon = prefs.getBoolean("expand_day_and_date_icon", false)
+        expandLabelIcon = prefs.getBoolean("expand_label_icon", prefs.getBoolean("expand_photo_name_icon", false))
+        expandCalendarIcon = prefs.getBoolean("expand_calendar_icon", prefs.getBoolean("expand_day_and_date_icon", false))
+        expandLocationIcon = prefs.getBoolean("expand_location_icon", false)
         motionSensorForButtonRotation = prefs.getBoolean("motion_sensor_button_rotation", true)
         com.android.snippets.ui.util.CookieTiltController.isGloballyEnabled = motionSensorForButtonRotation
 
@@ -776,10 +774,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         notificationReminderHour = prefs.getInt("notification_reminder_hour", 9)
         notificationReminderMinute = prefs.getInt("notification_reminder_minute", 0)
 
-        val savedGridCols = prefs.getInt("custom_grid_columns", -999)
-        customGridColumns = if (savedGridCols != -999) {
-            if (savedGridCols == -1 || savedGridCols == 0) 1 else savedGridCols.coerceIn(1, 3)
-        } else null
     }
 
     private fun savePhotos(): kotlinx.coroutines.Job {
@@ -1072,10 +1066,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
 
-    fun updateCustomGridColumns(columns: Int) {
-        customGridColumns = columns
-        prefs.edit().putInt("custom_grid_columns", columns).apply()
-    }
 
 
 
@@ -2187,14 +2177,29 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit().putBoolean("show_time_in_memories", show).apply()
     }
 
-    fun updateExpandPhotoNameIcon(expand: Boolean) {
-        expandPhotoNameIcon = expand
-        prefs.edit().putBoolean("expand_photo_name_icon", expand).apply()
+    fun updateExpandLabelIcon(expand: Boolean) {
+        expandLabelIcon = expand
+        prefs.edit()
+            .putBoolean("expand_label_icon", expand)
+            .putBoolean("expand_photo_name_icon", expand)
+            .apply()
     }
 
-    fun updateExpandDayAndDateIcon(expand: Boolean) {
-        expandDayAndDateIcon = expand
-        prefs.edit().putBoolean("expand_day_and_date_icon", expand).apply()
+    fun updateExpandPhotoNameIcon(expand: Boolean) = updateExpandLabelIcon(expand)
+
+    fun updateExpandCalendarIcon(expand: Boolean) {
+        expandCalendarIcon = expand
+        prefs.edit()
+            .putBoolean("expand_calendar_icon", expand)
+            .putBoolean("expand_day_and_date_icon", expand)
+            .apply()
+    }
+
+    fun updateExpandDayAndDateIcon(expand: Boolean) = updateExpandCalendarIcon(expand)
+
+    fun updateExpandLocationIcon(expand: Boolean) {
+        expandLocationIcon = expand
+        prefs.edit().putBoolean("expand_location_icon", expand).apply()
     }
 
     fun updateMotionSensorForButtonRotation(enabled: Boolean) {
@@ -2293,7 +2298,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun openDetail(id: String, tab: String? = null, overrideReturnScreen: Screen? = null) {
-        isSwipeDismissing = false
         activePhotoId = id
         previousScreen = currentScreen
         currentScreen = Screen.Library
@@ -2306,7 +2310,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     fun navigateBack() {
         when (currentScreen) {
-            Screen.Detail -> closeDetail()
             Screen.Memory,
             Screen.Settings,
             Screen.About,
