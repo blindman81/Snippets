@@ -3,10 +3,8 @@ package com.android.snippets.ui.components
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -32,8 +30,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.automirrored.outlined.Label
@@ -90,7 +86,7 @@ fun PhotoButtonGroup(
     primaryText: String? = null,
     contentDescription: String? = primaryText,
     isPrimaryActive: Boolean = false,
-    menuColumns: Int = 4,
+    menuColumns: Int = 2,
     buttonSize: Dp = 56.dp,
     gap: Dp = 1.dp,
     overlap: Dp = 4.dp,
@@ -106,11 +102,6 @@ fun PhotoButtonGroup(
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
-    val menuTransition = updateTransition(targetState = expanded, label = "buttonGroupMenu")
-    val menuAlpha by menuTransition.animateFloat(
-        transitionSpec = { tween(durationMillis = 180) },
-        label = "buttonGroupMenuAlpha"
-    ) { isExpanded -> if (isExpanded) 1f else 0f }
 
     val actualTrailingIcon = trailingIcon ?: if (expanded) trailingFilledIcon else trailingOutlinedIcon
 
@@ -220,7 +211,6 @@ fun PhotoButtonGroup(
 
     Box(modifier = modifier) {
         Row(
-            modifier = Modifier.align(Alignment.TopEnd),
             horizontalArrangement = Arrangement.spacedBy(gap),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -465,51 +455,55 @@ fun PhotoButtonGroup(
                         tint = if (enabled) animatedTrailingContentColor else animatedTrailingContentColor.copy(alpha = 0.38f)
                     )
                 }
-            }
-        }
 
-        // Button Group Menu - in the center of the photo
-        if (items.isNotEmpty() && (menuTransition.currentState || menuTransition.targetState)) {
-            Popup(
-                alignment = Alignment.Center,
-                onDismissRequest = { expanded = false },
-                properties = PopupProperties(focusable = true)
-            ) {
-                Box(modifier = Modifier.graphicsLayer { alpha = menuAlpha }) {
-                    BlurredSurface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        tonalElevation = 3.dp,
-                        shadowElevation = 3.dp
+                // Button Group Menu (Dropdown) - anchored to Trailing (More) Button, aligned and moved to the left
+                if (items.isNotEmpty()) {
+                    val menuWidth = (buttonSize * menuColumns) + (1.dp * (menuColumns - 1)) + 16.dp
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        offset = androidx.compose.ui.unit.DpOffset(x = buttonSize - menuWidth, y = 8.dp),
+                        containerColor = Color.Transparent,
+                        shadowElevation = 0.dp,
+                        tonalElevation = 0.dp,
+                        border = null,
+                        modifier = Modifier.background(Color.Transparent)
                     ) {
-                        val menuItems = items.map { item ->
-                            item.copy(
-                                onClick = item.onClick?.let { origClick ->
-                                    {
-                                        expanded = false
-                                        origClick()
+                        BlurredSurface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            tonalElevation = 3.dp,
+                            shadowElevation = 3.dp
+                        ) {
+                            val menuItems = items.map { item ->
+                                item.copy(
+                                    onClick = item.onClick?.let { origClick ->
+                                        {
+                                            expanded = false
+                                            origClick()
+                                        }
                                     }
-                                }
-                            )
-                        }
+                                )
+                            }
 
-                        Box(modifier = Modifier.padding(8.dp)) {
-                            CookieButtonGroup(
-                                selectedIndex = -1,
-                                items = menuItems,
-                                columns = menuColumns,
-                                cookieSize = buttonSize,
-                                overlap = -1.dp,
-                                rowSpacing = 1.dp,
-                                shape = shape,
-                                selectedContainerColor = selectedContainerColor,
-                                selectedContentColor = selectedContentColor,
-                                unselectedContainerColor = unselectedContainerColor,
-                                unselectedContentColor = unselectedContentColor,
-                                isSpinning = true,
-                                enableWiggle = true,
-                                wiggleNeighborOnToggleOn = true
-                            )
+                            Box(modifier = Modifier.padding(8.dp)) {
+                                CookieButtonGroup(
+                                    selectedIndex = -1,
+                                    items = menuItems,
+                                    columns = menuColumns,
+                                    cookieSize = buttonSize,
+                                    overlap = -1.dp,
+                                    rowSpacing = 1.dp,
+                                    shape = shape,
+                                    selectedContainerColor = selectedContainerColor,
+                                    selectedContentColor = selectedContentColor,
+                                    unselectedContainerColor = unselectedContainerColor,
+                                    unselectedContentColor = unselectedContentColor,
+                                    isSpinning = true,
+                                    enableWiggle = true,
+                                    wiggleNeighborOnToggleOn = true
+                                )
+                            }
                         }
                     }
                 }
@@ -609,7 +603,7 @@ fun CookieSplitButton(
     primaryText: String? = null,
     contentDescription: String? = primaryText,
     isPrimaryActive: Boolean = false,
-    menuColumns: Int = 4,
+    menuColumns: Int = 2,
     buttonSize: Dp = 56.dp,
     gap: Dp = 1.dp,
     overlap: Dp = 4.dp,
@@ -663,7 +657,7 @@ fun PhotoCookieSplitButton(
     primaryText: String? = null,
     contentDescription: String? = primaryText,
     isPrimaryActive: Boolean = false,
-    menuColumns: Int = 4,
+    menuColumns: Int = 2,
     buttonSize: Dp = 56.dp,
     gap: Dp = 1.dp,
     overlap: Dp = 4.dp,
@@ -705,7 +699,7 @@ fun PhotoCookieSplitButton(
 
 /**
  * Photo-specific overload of [PhotoButtonGroup].
- * Displays the primary Add Snippet action and the 8 photo actions (4 per row in 2 rows).
+ * Displays the primary Add Snippet action and the 8 photo actions (2 per row in 4 rows).
  */
 @Composable
 fun PhotoButtonGroup(
@@ -738,7 +732,7 @@ fun PhotoButtonGroup(
             onAdd()
         },
         isPrimaryActive = isPrimaryActive,
-        menuColumns = 4,
+        menuColumns = 2,
         buttonSize = buttonSize,
         modifier = modifier,
         items = run {
