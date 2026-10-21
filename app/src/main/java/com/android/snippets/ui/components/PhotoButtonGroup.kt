@@ -213,7 +213,7 @@ fun PhotoButtonGroup(
 
     Box(modifier = modifier) {
         Row(
-            modifier = Modifier.align(Alignment.TopEnd),
+            modifier = Modifier.align(Alignment.TopStart),
             horizontalArrangement = Arrangement.spacedBy(gap),
             verticalAlignment = Alignment.CenterVertically
         ) {
