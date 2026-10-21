@@ -734,7 +734,6 @@ fun LibraryScreen(
                                     lineLimits = TextFieldLineLimits.SingleLine,
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                     onKeyboardAction = {
-                                        viewModel.addRecentSearch(viewModel.searchQuery)
                                         isSearchOpen = false
                                         focusManager.clearFocus()
                                     },

@@ -94,13 +94,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     
     var activePhotoId by mutableStateOf<String?>(null)
     var filterReturnScreen by mutableStateOf(Screen.Library)
-    var rotatingSearchHint by mutableStateOf("Library")
-        private set
     var searchQuery by mutableStateOf("")
-    var isSearchViewOpen by mutableStateOf(false)
-    var recentSearches by mutableStateOf<List<String>>(emptyList())
-        private set
-    var showClearHistoryDialog by mutableStateOf(false)
     
     var isSearching by mutableStateOf(false)
         private set
@@ -110,35 +104,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var isAddingPhotos by mutableStateOf(false)
     var isCuratingMemories by mutableStateOf(false)
 
-    fun addRecentSearch(query: String) {
-        val trimmed = query.trim()
-        if (trimmed.isEmpty()) return
-        recentSearches = (listOf(trimmed) + recentSearches.filter { !it.equals(trimmed, ignoreCase = true) }).take(6)
-        saveRecentSearches()
-    }
-
-    fun removeRecentSearch(query: String) {
-        recentSearches = recentSearches.filter { !it.equals(query, ignoreCase = true) }
-        saveRecentSearches()
-    }
-
-    fun clearRecentSearches() {
-        recentSearches = emptyList()
-        saveRecentSearches()
-    }
-
-    private fun saveRecentSearches() {
-        val json = gson.toJson(recentSearches)
-        prefs.edit().putString("recent_searches_json", json).apply()
-    }
-
-    private fun loadRecentSearches() {
-        val json = prefs.getString("recent_searches_json", null)
-        if (json != null) {
-            val type = object : TypeToken<List<String>>() {}.type
-            recentSearches = gson.fromJson(json, type) ?: emptyList()
-        }
-    }
     var selectedFilterSnippets by mutableStateOf<List<String>>(emptyList())
 
     fun toggleFilterSnippet(snippet: String) {
@@ -232,9 +197,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var showCarouselsIn by mutableStateOf<Set<String>>(
         prefs.getStringSet("show_carousels_in", null) ?: emptySet()
     )
-        private set
-
-    var searchHintsByTap by mutableStateOf(false)
         private set
     
     var notificationReminderEnabled by mutableStateOf(false)
@@ -520,7 +482,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         loadSettingsState()
         loadAllData()
         pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
-        loadRecentSearches()
     }
 
     private fun loadAllData() {
@@ -769,7 +730,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         scheduleAutoBackup()
 
         showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
-        searchHintsByTap = prefs.getBoolean("search_hints_by_tap", false)
         notificationReminderEnabled = prefs.getBoolean("notification_reminder_enabled", false)
         notificationReminderHour = prefs.getInt("notification_reminder_hour", 9)
         notificationReminderMinute = prefs.getInt("notification_reminder_minute", 0)
@@ -2817,35 +2777,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }.distinct().sorted()
     }
 
-    val searchSuggestions: List<Pair<String, Boolean>> by derivedStateOf {
-        val query = searchQuery.trim()
-        if (query.isEmpty()) return@derivedStateOf emptyList()
-        
-        // For multi-part search, suggest for the last part
-        val parts = searchQuery.split(",")
-        val lastPart = parts.last().trim()
-        val prefix = if (parts.size > 1) {
-            searchQuery.substring(0, searchQuery.lastIndexOf(",") + 1) + " "
-        } else ""
-
-        if (lastPart.length < 2) return@derivedStateOf emptyList()
-        
-        val nonEmptyCollections = userCollections.filter { coll -> 
-            photos.any { it.collections.contains(coll) } 
-        }
-
-        val matchingCollections = nonEmptyCollections
-            .filter { it.contains(lastPart, ignoreCase = true) }
-            .map { (prefix + it) to true }
-            
-        val matchingSnippets = allUniqueSnippets
-            .filter { it.contains(lastPart, ignoreCase = true) }
-            .filter { snippet -> !userCollections.any { it.equals(snippet, ignoreCase = true) } }
-            .map { (prefix + it) to false }
-            
-        (matchingCollections + matchingSnippets).take(10)
-    }
-
     val filteredGroupedPhotos: Map<String, List<Photo>> by derivedStateOf {
         groupPhotosByDate(filteredPhotos, _displayMode.value, _photoSortType.value)
     }
@@ -2901,15 +2832,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             "Apartment" -> Icons.Default.Apartment
             else -> Icons.Default.Folder
         }
-    }
-
-    fun updateSearchHintsByTap(enabled: Boolean) {
-        searchHintsByTap = enabled
-        prefs.edit().putBoolean("search_hints_by_tap", enabled).apply()
-    }
-
-    private fun startHintRotation() {
-        // Disabled to prevent infinite background wakeups, CPU churn, and battery drain.
     }
 
     fun getSnippetColor(name: String): Int? {
@@ -3124,7 +3046,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     loadSettingsState()
                     loadAllData()
                     pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
-                    loadRecentSearches()
                     
                     Toast.makeText(context, "Backup file imported successfully!", Toast.LENGTH_LONG).show()
                 }

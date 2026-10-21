@@ -58,7 +58,6 @@ fun MonthlyRecapScreen(
                 onNavigationClick = onBack,
                 navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
                 leftAlignTitle = true,
-                showSearchIcon = false,
                 isScrolled = isScrolled
             )
         },

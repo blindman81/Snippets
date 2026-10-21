@@ -259,7 +259,6 @@ fun LicenseDialog(onDismiss: () -> Unit) {
                 )
             }
         },
-        shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     )
 }

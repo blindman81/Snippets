@@ -41,7 +41,6 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material.icons.automirrored.filled.Label
 import com.android.snippets.viewmodel.SnippetsViewModel
 
 import com.android.snippets.ui.theme.titleEmphasized
@@ -49,13 +48,6 @@ import com.android.snippets.ui.theme.titleEmphasized
 import com.android.snippets.ui.CardPosition
 import com.android.snippets.ui.SettingsCardItem
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import android.content.Intent
 import com.ln.android.snippets.R
@@ -63,14 +55,8 @@ import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.filled.History
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
@@ -525,20 +511,17 @@ fun FloatingTitlePill(
 fun MainTopBar(
     viewModel: SnippetsViewModel? = null,
     title: String? = null,
-    placeholder: String? = null,
     onNavigationClick: () -> Unit,
     navigationIcon: ImageVector = Icons.Default.Menu,
     isSpinning: Boolean = true,
     isScrolled: Boolean = false,
     showNavigationIcon: Boolean = true,
-    showSearchIcon: Boolean = true,
     leftAlignTitle: Boolean = true,
     titleIcon: ImageVector? = null,
     forceTransparentBackground: Boolean = false,
     showDividerOnScroll: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    val view = LocalView.current
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     
     val targetHeaderColor = if (forceTransparentBackground) {
@@ -640,24 +623,12 @@ fun MainTopBar(
                     }
                 }
                 
-                // Right actions (Search icon button followed by select/other actions)
+                // Right actions
                 Row(
                     modifier = Modifier.widthIn(min = 56.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (showSearchIcon && viewModel != null) {
-                        AnimatedCookieButton(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                viewModel.isSearchViewOpen = true
-                            },
-                            icon = Icons.Default.Search,
-                            contentDescription = "Search",
-                            isSpinning = isSpinning
-                        )
-                    }
-                    
                     if (actions != @Composable {}) {
                         Spacer(modifier = Modifier.width(8.dp))
                         actions()
@@ -683,289 +654,6 @@ fun MainTopBar(
                 )
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeTopAppBar(
-    title: String = "Library",
-    navigationIcon: @Composable () -> Unit = {
-        IconButton(onClick = {}) {
-            Icon(Icons.Default.Menu, contentDescription = "Menu")
-        }
-    },
-    actions: @Composable RowScope.() -> Unit = {
-        val view = LocalView.current
-        IconButton(
-            onClick = {
-                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-            }
-        ) {
-            Icon(Icons.Default.Search, contentDescription = "Search")
-        }
-    },
-    scrollBehavior: TopAppBarScrollBehavior? = null
-) {
-    TopAppBar(
-        windowInsets = WindowInsets(0, 0, 0, 0),
-        title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.ExtraBold
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        navigationIcon = navigationIcon,
-        actions = actions,
-        scrollBehavior = scrollBehavior,
-        modifier = Modifier.statusBarsPadding()
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-fun SearchViewOverlay(
-    viewModel: SnippetsViewModel,
-    placeholder: String?
-) {
-    val view = LocalView.current
-    val focusRequester = remember { FocusRequester() }
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    Dialog(
-        onDismissRequest = { viewModel.isSearchViewOpen = false },
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
-        )
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .statusBarsPadding()
-            ) {
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AnimatedCookieButton(
-                        onClick = { 
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            viewModel.isSearchViewOpen = false 
-                        },
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        size = 56.dp
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(64.dp) // Match Library height
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                            .padding(horizontal = 20.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            @Suppress("DEPRECATION")
-                            BasicTextField(
-                                value = viewModel.searchQuery,
-                                onValueChange = { viewModel.searchQuery = it },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .focusRequester(focusRequester),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 18.sp
-                                ),
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                singleLine = true,
-                                decorationBox = { innerTextField ->
-                                    Box(contentAlignment = Alignment.CenterStart) {
-                                        if (viewModel.searchQuery.isEmpty()) {
-                                            Text(
-                                                text = placeholder ?: "Search",
-                                                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                            )
-                                        }
-                                        innerTextField()
-                                    }
-                                },
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = {
-                                    viewModel.addRecentSearch(viewModel.searchQuery)
-                                    viewModel.isSearchViewOpen = false
-                                    focusManager.clearFocus()
-                                })
-                            )
-
-                            if (viewModel.searchQuery.isNotEmpty()) {
-                                IconButton(
-                                    onClick = { 
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                        viewModel.searchQuery = "" 
-                                    },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Close, 
-                                        contentDescription = "Clear",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    AnimatedCookieButton(
-                        onClick = { 
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.showClearHistoryDialog = true 
-                        },
-                        icon = Icons.Default.Delete,
-                        contentDescription = "Clear History",
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        size = 56.dp
-                    )
-                }
-
-                // Recent Searches or Suggestions
-                if (viewModel.searchQuery.isEmpty()) {
-                    Text(
-                        text = "RECENT SEARCHES",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp)
-                    )
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        viewModel.recentSearches.forEachIndexed { index, search ->
-                            val position = when {
-                                viewModel.recentSearches.size == 1 -> CardPosition.Single
-                                index == 0 -> CardPosition.First
-                                index == viewModel.recentSearches.size - 1 -> CardPosition.Last
-                                else -> CardPosition.Middle
-                            }
-                            
-                            SettingsCardItem(
-                                icon = Icons.Default.History,
-                                title = search,
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.searchQuery = search
-                                    viewModel.addRecentSearch(search)
-                                    viewModel.isSearchViewOpen = false
-                                },
-                                position = position,
-                                trailingContent = {
-                                    IconButton(
-                                        onClick = { 
-                                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                                            viewModel.removeRecentSearch(search) 
-                                        },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Close, 
-                                            contentDescription = "Remove", 
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }
-                } else {
-                    // Suggestions logic could go here if needed, but for now we'll just show the filtered results in the background
-                    // Actually, the user asked for suggestions when typing.
-                    if (viewModel.searchSuggestions.isNotEmpty()) {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                            contentPadding = PaddingValues(vertical = 8.dp)
-                        ) {
-                            itemsIndexed(viewModel.searchSuggestions) { index, (name, isCollection) ->
-                                val position = when {
-                                    viewModel.searchSuggestions.size == 1 -> CardPosition.Single
-                                    index == 0 -> CardPosition.First
-                                    index == viewModel.searchSuggestions.size - 1 -> CardPosition.Last
-                                    else -> CardPosition.Middle
-                                }
-                                
-                                SettingsCardItem(
-                                    icon = if (isCollection) Icons.Default.Folder else Icons.AutoMirrored.Filled.Label,
-                                    title = name,
-                                    onClick = {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                        viewModel.searchQuery = name
-                                        viewModel.addRecentSearch(name)
-                                        viewModel.isSearchViewOpen = false
-                                    },
-                                    position = position
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (viewModel.showClearHistoryDialog) {
-        BlurredAlertDialog(
-            onDismissRequest = { viewModel.showClearHistoryDialog = false },
-            onConfirm = {
-                viewModel.clearRecentSearches()
-                viewModel.showClearHistoryDialog = false
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-            },
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            title = { 
-                Text(
-                    "Clear search history?",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-                ) 
-            },
-            text = { 
-                Text(
-                    "This will remove all your recent searches.",
-                    style = MaterialTheme.typography.bodyLarge
-                ) 
-            }
-        )
     }
 }
 

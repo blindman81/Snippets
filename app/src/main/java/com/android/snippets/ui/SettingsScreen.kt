@@ -45,7 +45,6 @@ import androidx.compose.material.icons.filled.Info
 
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.outlined.DarkMode
@@ -780,7 +779,6 @@ fun AdvancedTimePickerDialog(
     BlurredAlertDialog(
         onDismissRequest = onDismiss,
         onConfirm = onConfirm,
-        shape = MaterialTheme.shapes.extraLarge,
         title = {
             Text(
                 text = title,

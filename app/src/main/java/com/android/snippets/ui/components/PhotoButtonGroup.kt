@@ -3,8 +3,10 @@ package com.android.snippets.ui.components
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -104,6 +106,11 @@ fun PhotoButtonGroup(
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
+    val menuTransition = updateTransition(targetState = expanded, label = "buttonGroupMenu")
+    val menuAlpha by menuTransition.animateFloat(
+        transitionSpec = { tween(durationMillis = 180) },
+        label = "buttonGroupMenuAlpha"
+    ) { isExpanded -> if (isExpanded) 1f else 0f }
 
     val actualTrailingIcon = trailingIcon ?: if (expanded) trailingFilledIcon else trailingOutlinedIcon
 
@@ -462,46 +469,48 @@ fun PhotoButtonGroup(
         }
 
         // Button Group Menu - in the center of the photo
-        if (items.isNotEmpty() && expanded) {
+        if (items.isNotEmpty() && (menuTransition.currentState || menuTransition.targetState)) {
             Popup(
                 alignment = Alignment.Center,
                 onDismissRequest = { expanded = false },
                 properties = PopupProperties(focusable = true)
             ) {
-                BlurredSurface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    tonalElevation = 3.dp,
-                    shadowElevation = 3.dp
-                ) {
-                    val menuItems = items.map { item ->
-                        item.copy(
-                            onClick = item.onClick?.let { origClick ->
-                                {
-                                    expanded = false
-                                    origClick()
+                Box(modifier = Modifier.graphicsLayer { alpha = menuAlpha }) {
+                    BlurredSurface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        tonalElevation = 3.dp,
+                        shadowElevation = 3.dp
+                    ) {
+                        val menuItems = items.map { item ->
+                            item.copy(
+                                onClick = item.onClick?.let { origClick ->
+                                    {
+                                        expanded = false
+                                        origClick()
+                                    }
                                 }
-                            }
-                        )
-                    }
+                            )
+                        }
 
-                    Box(modifier = Modifier.padding(8.dp)) {
-                        CookieButtonGroup(
-                            selectedIndex = -1,
-                            items = menuItems,
-                            columns = menuColumns,
-                            cookieSize = buttonSize,
-                            overlap = -1.dp,
-                            rowSpacing = 1.dp,
-                            shape = shape,
-                            selectedContainerColor = selectedContainerColor,
-                            selectedContentColor = selectedContentColor,
-                            unselectedContainerColor = unselectedContainerColor,
-                            unselectedContentColor = unselectedContentColor,
-                            isSpinning = true,
-                            enableWiggle = true,
-                            wiggleNeighborOnToggleOn = true
-                        )
+                        Box(modifier = Modifier.padding(8.dp)) {
+                            CookieButtonGroup(
+                                selectedIndex = -1,
+                                items = menuItems,
+                                columns = menuColumns,
+                                cookieSize = buttonSize,
+                                overlap = -1.dp,
+                                rowSpacing = 1.dp,
+                                shape = shape,
+                                selectedContainerColor = selectedContainerColor,
+                                selectedContentColor = selectedContentColor,
+                                unselectedContainerColor = unselectedContainerColor,
+                                unselectedContentColor = unselectedContentColor,
+                                isSpinning = true,
+                                enableWiggle = true,
+                                wiggleNeighborOnToggleOn = true
+                            )
+                        }
                     }
                 }
             }
