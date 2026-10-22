@@ -15,8 +15,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,7 +40,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.rounded.Tag
 import com.android.snippets.viewmodel.SnippetsViewModel
 
 import com.android.snippets.ui.theme.titleEmphasized
@@ -88,7 +88,7 @@ fun SelectionToolbarContent(
                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                 viewModel.clearSelection()
             },
-            icon = Icons.Default.Close,
+            icon = Icons.Rounded.Close,
             contentDescription = "Clear Selection",
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -153,7 +153,7 @@ fun SelectionToolbarContent(
                         viewModel.confirmBulkRatingApply()
                     }
                 },
-                icon = Icons.Default.Check,
+                icon = Icons.Rounded.Check,
                 contentDescription = "Confirm",
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -512,7 +512,7 @@ fun MainTopBar(
     viewModel: SnippetsViewModel? = null,
     title: String? = null,
     onNavigationClick: () -> Unit,
-    navigationIcon: ImageVector = Icons.Default.Menu,
+    navigationIcon: ImageVector = Icons.Rounded.Menu,
     isSpinning: Boolean = true,
     isScrolled: Boolean = false,
     showNavigationIcon: Boolean = true,
@@ -686,7 +686,7 @@ fun getStatsSubtext(photos: List<Photo>): String? {
 fun LargeMainTopBar(
     title: String,
     onNavigationClick: () -> Unit,
-    navigationIcon: ImageVector = Icons.AutoMirrored.Filled.ArrowBack,
+    navigationIcon: ImageVector = Icons.AutoMirrored.Rounded.ArrowBack,
     isSpinning: Boolean = true,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,

@@ -35,24 +35,24 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.LibraryAdd
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.ui.text.style.TextOverflow
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -229,10 +229,10 @@ fun MemoryMoreButton(
     onClick: () -> Unit
 ) {
     val view = LocalView.current
-    val isForwardArrow = icon == Icons.AutoMirrored.Filled.ArrowForward
-    val isBackArrow = icon == Icons.AutoMirrored.Filled.ArrowBack
-    val isDownArrow = icon == Icons.Default.KeyboardArrowDown
-    val isUpArrow = icon == Icons.Default.KeyboardArrowUp
+    val isForwardArrow = icon == Icons.AutoMirrored.Rounded.ArrowForward
+    val isBackArrow = icon == Icons.AutoMirrored.Rounded.ArrowBack
+    val isDownArrow = icon == Icons.Rounded.KeyboardArrowDown
+    val isUpArrow = icon == Icons.Rounded.KeyboardArrowUp
     val isDirectionalArrow = isForwardArrow || isBackArrow || isDownArrow || isUpArrow
 
     val animatedDirectionalRotation by androidx.compose.animation.core.animateFloatAsState(
@@ -716,7 +716,7 @@ fun PhotoMasonryItem(
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(
-                                                Icons.Default.Favorite,
+                                                Icons.Rounded.Favorite,
                                                 contentDescription = null,
                                                 tint = iconColor,
                                                 modifier = Modifier.size(12.dp)
@@ -735,7 +735,7 @@ fun PhotoMasonryItem(
 
                         if (!masonryLocationName.isNullOrBlank() && !isSelected) {
                             ExpandableCardPillIcon(
-                                icon = Icons.Default.LocationOn,
+                                icon = Icons.Rounded.LocationOn,
                                 text = masonryLocationName,
                                 contentDescription = "Photo location",
                                 iconColor = iconColor,
@@ -919,7 +919,7 @@ fun PhotoMasonryItem(
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
-                                            Icons.Default.Favorite,
+                                            Icons.Rounded.Favorite,
                                             contentDescription = null,
                                             tint = iconColor,
                                             modifier = Modifier.size(12.dp)
@@ -938,7 +938,7 @@ fun PhotoMasonryItem(
 
                     if (!masonryLocationName2.isNullOrBlank() && !isSelected) {
                         ExpandableCardPillIcon(
-                            icon = Icons.Default.LocationOn,
+                            icon = Icons.Rounded.LocationOn,
                             text = masonryLocationName2,
                             contentDescription = "Photo location",
                             iconColor = iconColor,
@@ -1419,7 +1419,7 @@ fun PhotoCard(
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(
-                                                imageVector = Icons.Default.Favorite,
+                                                imageVector = Icons.Rounded.Favorite,
                                                 contentDescription = "Favorite",
                                                 tint = iconColor,
                                                 modifier = Modifier.size(16.dp)
@@ -1438,7 +1438,7 @@ fun PhotoCard(
 
                         if (!locationName.isNullOrBlank() && circleBadgesAlpha > 0f) {
                             ExpandableCardPillIcon(
-                                icon = Icons.Default.LocationOn,
+                                icon = Icons.Rounded.LocationOn,
                                 text = locationName,
                                 contentDescription = "Photo location",
                                 iconColor = iconColor,
@@ -1454,9 +1454,11 @@ fun PhotoCard(
 
                         androidx.compose.animation.AnimatedVisibility(
                             visible = isExpanded,
-                            enter = fadeIn(animationSpec = tween(400)),
-                            exit = fadeOut(animationSpec = tween(300)),
-                            modifier = Modifier.fillMaxSize()
+                            enter = fadeIn(animationSpec = tween(400)) + androidx.compose.animation.scaleIn(initialScale = 0.85f, animationSpec = tween(400)),
+                            exit = fadeOut(animationSpec = tween(300)) + androidx.compose.animation.scaleOut(targetScale = 0.85f, animationSpec = tween(300)),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
                         ) {
                             PhotoButtonGroup(
                                 photo = photo,
@@ -1470,16 +1472,13 @@ fun PhotoCard(
                                 onSnippets = onViewSnippets,
                                 onDelete = onDeletePhoto,
                                 isPrimaryActive = isAddSnippetOpen,
-                                buttonSize = 56.dp,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp)
+                                buttonSize = 56.dp
                             )
                         }
 
                         if (!photo.name.isNullOrBlank() && circleBadgesAlpha > 0f) {
                             ExpandableCardPillIcon(
-                                icon = Icons.AutoMirrored.Filled.Label,
+                                icon = Icons.AutoMirrored.Rounded.Label,
                                 text = photo.name,
                                 contentDescription = "Photo name",
                                 iconColor = iconColor,
@@ -1497,7 +1496,7 @@ fun PhotoCard(
                                 SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date(photo.date))
                             }
                             ExpandableCardPillIcon(
-                                icon = Icons.Default.CalendarMonth,
+                                icon = Icons.Rounded.CalendarMonth,
                                 text = formattedDate,
                                 contentDescription = "Photo date",
                                 iconColor = iconColor,

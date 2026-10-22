@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui
+package com.android.snippets.ui
 import com.android.snippets.ui.components.*
 
 import androidx.compose.foundation.background
@@ -9,8 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -56,7 +56,7 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
     var selectedEmoji by remember(initialEmoji) { mutableStateOf(initialEmoji) }
 
     val icons = listOf(
-        "Landscape" to Icons.Default.Landscape,
+        "Landscape" to Icons.Rounded.Landscape,
         "Nature" to NatureIcon(),
         "Music" to MusicIcon(),
         "Camping" to CampingIcon(),
@@ -66,18 +66,18 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
         "Cloud" to CloudIcon(),
         "Rain" to RainIcon(),
         "Bird" to BirdIcon(),
-        "Person" to Icons.Default.Person,
-        "Group" to Icons.Default.Groups,
-        "LocalDrink" to Icons.Default.LocalDrink,
-        "Cookie" to Icons.Default.Cookie,
-        "Pets" to Icons.Default.Pets,
-        "Travel" to Icons.Default.Flight,
-        "Waves" to Icons.Default.Waves,
-        "Apartment" to Icons.Default.Apartment,
-        "Stadium" to Icons.Default.Stadium,
-        "Sailing" to Icons.Default.Sailing,
+        "Person" to Icons.Rounded.Person,
+        "Group" to Icons.Rounded.Groups,
+        "LocalDrink" to Icons.Rounded.LocalDrink,
+        "Cookie" to Icons.Rounded.Cookie,
+        "Pets" to Icons.Rounded.Pets,
+        "Travel" to Icons.Rounded.Flight,
+        "Waves" to Icons.Rounded.Waves,
+        "Apartment" to Icons.Rounded.Apartment,
+        "Stadium" to Icons.Rounded.Stadium,
+        "Sailing" to Icons.Rounded.Sailing,
         "Emoji Nature" to EmojiNatureIcon(),
-        "Favorite" to Icons.Default.Favorite
+        "Favorite" to Icons.Rounded.Favorite
     )
 
     Scaffold(
@@ -96,7 +96,7 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AddReaction,
+                        imageVector = Icons.Rounded.AddReaction,
                         contentDescription = null,
                         modifier = Modifier.size(32.dp),
                         tint = MaterialTheme.colorScheme.primary
@@ -138,7 +138,7 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
                                 viewModel.currentScreen = viewModel.previousScreen
 
                             },
-                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            icon = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
                             size = 56.dp,
                             isSpinning = false,
@@ -162,7 +162,7 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
                                     }
                                 }
                             },
-                            icon = Icons.Default.Check,
+                            icon = Icons.Rounded.Check,
                             contentDescription = "Confirm",
                             tooltip = "Done",
                             size = 56.dp,
@@ -215,7 +215,7 @@ fun EmojiPickerScreen(viewModel: SnippetsViewModel) {
                     // Icon inside the cookie
                     if (selectedEmoji.isEmpty()) {
                         Icon(
-                            imageVector = Icons.Default.AddReaction,
+                            imageVector = Icons.Rounded.AddReaction,
                             contentDescription = "Tap to select emoji",
                             modifier = Modifier.size(80.dp),
                             tint = Color.White

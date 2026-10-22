@@ -14,7 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -44,7 +44,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.PhotoMasonryItem
 import androidx.compose.foundation.lazy.LazyRow
@@ -126,7 +126,7 @@ fun MenuBottomSheet(
                                 modifier = Modifier.size(buttonSize)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(buttonSize * 0.5f))
+                                    Icon(Icons.Rounded.Menu, contentDescription = null, modifier = Modifier.size(buttonSize * 0.5f))
                                 }
                             }
 
@@ -167,7 +167,7 @@ fun MenuBottomSheet(
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     viewModel.navigateStats()
                                 },
-                                icon = Icons.Default.BarChart,
+                                icon = Icons.Rounded.BarChart,
                                 contentDescription = "Stats",
                                 tooltip = "Stats",
                                 size = buttonSize,
@@ -182,7 +182,7 @@ fun MenuBottomSheet(
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     viewModel.navigateSettings()
                                 },
-                                icon = Icons.Default.Settings,
+                                icon = Icons.Rounded.Settings,
                                 contentDescription = "Settings",
                                 tooltip = "Settings",
                                 size = buttonSize,
@@ -197,7 +197,7 @@ fun MenuBottomSheet(
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     viewModel.navigateAbout()
                                 },
-                                icon = Icons.Default.Info,
+                                icon = Icons.Rounded.Info,
                                 contentDescription = "About",
                                 tooltip = "About",
                                 size = buttonSize,
@@ -275,7 +275,7 @@ fun CollectionOptionsBottomSheet(
                             ),
                             contentPadding = PaddingValues(16.dp)
                         ) {
-                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
+                            Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Add photos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
@@ -296,7 +296,7 @@ fun CollectionOptionsBottomSheet(
                             ),
                             contentPadding = PaddingValues(16.dp)
                         ) {
-                            Icon(Icons.Default.Remove, contentDescription = null)
+                            Icon(Icons.Rounded.Remove, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Remove photos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
@@ -346,7 +346,7 @@ fun HistoryBottomSheet(
                                 modifier = Modifier.size(48.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(24.dp))
+                                    Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(24.dp))
                                 }
                             }
 
@@ -357,7 +357,7 @@ fun HistoryBottomSheet(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        imageVector = Icons.Default.HistoryToggleOff,
+                                        imageVector = Icons.Rounded.HistoryToggleOff,
                                         contentDescription = "No memories",
                                         modifier = Modifier.size(28.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -400,7 +400,7 @@ fun HistoryBottomSheet(
                                     modifier = Modifier.size(48.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(24.dp))
+                                        Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(24.dp))
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))

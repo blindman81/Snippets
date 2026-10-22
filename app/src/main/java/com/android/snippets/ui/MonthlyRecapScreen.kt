@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -56,7 +56,7 @@ fun MonthlyRecapScreen(
                 viewModel = viewModel,
                 title = title,
                 onNavigationClick = onBack,
-                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                 leftAlignTitle = true,
                 isScrolled = isScrolled
             )

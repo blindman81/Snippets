@@ -1,4 +1,4 @@
-﻿package com.android.snippets.ui.components
+package com.android.snippets.ui.components
 
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -24,8 +24,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -664,7 +664,7 @@ fun BlurredAlertDialog(
                         ) {
                             AnimatedCookieButton(
                                 onClick = { triggerDismiss() },
-                                icon = Icons.Default.Close,
+                                icon = Icons.Rounded.Close,
                                 contentDescription = "Close",
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -673,7 +673,7 @@ fun BlurredAlertDialog(
                             if (onConfirm != null) {
                                 AnimatedCookieButton(
                                     onClick = { triggerConfirm() },
-                                    icon = Icons.Default.Check,
+                                    icon = Icons.Rounded.Check,
                                     contentDescription = "Confirm",
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary,

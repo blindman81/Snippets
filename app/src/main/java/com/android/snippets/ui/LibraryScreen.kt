@@ -43,15 +43,15 @@ import com.android.snippets.viewmodel.Screen
 import com.android.snippets.model.Photo
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.TextSnippet
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.input.TextFieldLineLimits
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
@@ -111,12 +111,12 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AddReaction
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AddReaction
+import androidx.compose.material.icons.rounded.Remove
 import com.android.snippets.ui.components.BlurredSurface
 import com.android.snippets.ui.components.BlurredModalBottomSheet
 import com.android.snippets.ui.components.BlurredAlertDialog
@@ -576,7 +576,7 @@ fun LibraryScreen(
                                               allTabs.mapIndexed { tabIndex, tabName ->
                                                   val iconOrEmoji = when (tabName) {
                                                       "Library" -> CollectionsBookmarkIcon(filled = tabName == activeTabTarget)
-                                                      "Favorites" -> Icons.Default.Favorite
+                                                      "Favorites" -> Icons.Rounded.Favorite
                                                       else -> viewModel.getCollectionIcon(tabName)
                                                   }
                                                   val isSystem = tabName == "Library" || tabName == "Favorites"
@@ -594,7 +594,7 @@ fun LibraryScreen(
                                                               is androidx.compose.ui.graphics.vector.ImageVector -> Icon(iconOrEmoji, contentDescription = tabName, modifier = iconModifier.size(20.dp), tint = tint)
                                                               is Int -> Icon(painterResource(id = iconOrEmoji), contentDescription = tabName, modifier = iconModifier.size(20.dp), tint = tint)
                                                               is String -> Text(text = iconOrEmoji, fontSize = 16.sp, modifier = iconModifier)
-                                                              else -> Icon(Icons.Default.Folder, contentDescription = tabName, modifier = iconModifier.size(20.dp), tint = tint)
+                                                              else -> Icon(Icons.Rounded.Folder, contentDescription = tabName, modifier = iconModifier.size(20.dp), tint = tint)
                                                           }
                                                       }
                                                   )
@@ -696,7 +696,7 @@ fun LibraryScreen(
                                         isSearchOpen = false
                                         viewModel.searchQuery = ""
                                     },
-                                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
                                     contentDescription = "Close Search",
                                     tooltip = "Close",
                                     isSpinning = true,
@@ -758,7 +758,7 @@ fun LibraryScreen(
                                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                             viewModel.searchQuery = ""
                                         },
-                                        icon = Icons.Default.Close,
+                                        icon = Icons.Rounded.Close,
                                         contentDescription = "Clear",
                                         tooltip = "Clear",
                                         isSpinning = true,
@@ -782,7 +782,7 @@ fun LibraryScreen(
                                         showMenuPopup = !showMenuPopup
                                         showCollectionsPopup = false
                                     },
-                                    icon = Icons.Default.Menu,
+                                    icon = Icons.Rounded.Menu,
                                     contentDescription = "Menu",
                                     isSpinning = !isAnyPopupActive,
                                     size = 48.dp,
@@ -798,7 +798,7 @@ fun LibraryScreen(
                                         "Favorites" -> photo.isFavorite
                                         else -> photo.collections.contains(currentTab)
                                     }
-                                }) SearchSuccessIcon() else Icons.Default.Search
+                                }) SearchSuccessIcon() else Icons.Rounded.Search
                                 AnimatedCookieButton(
                                     onClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -833,7 +833,7 @@ fun LibraryScreen(
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                         viewModel.showHistoryBottomSheet = true
                                     },
-                                    icon = Icons.Default.History,
+                                    icon = Icons.Rounded.History,
                                     contentDescription = "History",
                                     isSpinning = !isAnyPopupActive,
                                     size = 48.dp,
@@ -864,7 +864,7 @@ fun LibraryScreen(
                                         viewModel.filteringCategory = activeTab
                                         viewModel.navigateFilter()
                                     },
-                                    icon = Icons.Default.FilterList,
+                                    icon = Icons.Rounded.FilterList,
                                     contentDescription = "Filters",
                                     isSpinning = !isAnyPopupActive,
                                     size = 48.dp,
@@ -914,7 +914,7 @@ fun LibraryScreen(
                                 }
                             }
                         },
-                        icon = Icons.Default.KeyboardArrowUp,
+                        icon = Icons.Rounded.KeyboardArrowUp,
                         contentDescription = "Scroll to top",
                         tooltip = "Scroll to top",
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -959,7 +959,7 @@ fun LibraryScreen(
                             val collection = longPressedCollection ?: ""
                             val iconOrEmoji = when (collection) {
                                 "Library" -> CollectionsBookmarkIcon(filled = true)
-                                "Favorites" -> Icons.Default.Favorite
+                                "Favorites" -> Icons.Rounded.Favorite
                                 else -> viewModel.getCollectionIcon(collection)
                             }
 
@@ -975,19 +975,19 @@ fun LibraryScreen(
                                 actions.map { action ->
                                     when (action) {
                                         "ADD" -> cookieButtonItem(
-                                            icon = Icons.Default.AddPhotoAlternate,
+                                            icon = Icons.Rounded.AddPhotoAlternate,
                                             contentDescription = "Add photos",
                                             tooltip = "Add photos",
                                             iconSize = 28.dp
                                         )
                                         "REMOVE" -> cookieButtonItem(
-                                            icon = Icons.Default.Remove,
+                                            icon = Icons.Rounded.Remove,
                                             contentDescription = "Remove photos",
                                             tooltip = "Remove photos",
                                             iconSize = 28.dp
                                         )
                                         "EDIT_EMOJI" -> cookieButtonItem(
-                                            icon = Icons.Default.AddReaction,
+                                            icon = Icons.Rounded.AddReaction,
                                             contentDescription = "Edit emoji",
                                             tooltip = "Edit emoji",
                                             iconSize = 28.dp
@@ -998,7 +998,7 @@ fun LibraryScreen(
                                             tooltip = "Delete",
                                             iconSize = 28.dp
                                         )
-                                        else -> cookieButtonItem(Icons.Default.MoreHoriz)
+                                        else -> cookieButtonItem(Icons.Rounded.MoreHoriz)
                                     }
                                 }
                             }
@@ -1020,11 +1020,11 @@ fun LibraryScreen(
                             }
                             val sortItems = remember(sortOptions) {
                                 listOf(
-                                    cookieButtonItem(Icons.Default.ArrowDownward, contentDescription = "Newest first", tooltip = "Newest first", iconSize = 22.dp),
-                                    cookieButtonItem(Icons.Default.ArrowUpward, contentDescription = "Oldest first", tooltip = "Oldest first", iconSize = 22.dp),
-                                    cookieButtonItem(Icons.AutoMirrored.Filled.TextSnippet, contentDescription = "Most snippets", tooltip = "Most snippets", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.Rounded.ArrowDownward, contentDescription = "Newest first", tooltip = "Newest first", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.Rounded.ArrowUpward, contentDescription = "Oldest first", tooltip = "Oldest first", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.AutoMirrored.Rounded.TextSnippet, contentDescription = "Most snippets", tooltip = "Most snippets", iconSize = 22.dp),
                                     cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Most starred", tooltip = "Most starred", iconSize = 22.dp),
-                                    cookieButtonItem(Icons.AutoMirrored.Filled.TextSnippet, contentDescription = "Least snippets", tooltip = "Least snippets", iconSize = 22.dp),
+                                    cookieButtonItem(Icons.AutoMirrored.Rounded.TextSnippet, contentDescription = "Least snippets", tooltip = "Least snippets", iconSize = 22.dp),
                                     cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Least starred", tooltip = "Least starred", iconSize = 22.dp)
                                 )
                             }
@@ -1068,7 +1068,7 @@ fun LibraryScreen(
                                                         Text(text = iconOrEmoji, fontSize = 20.sp)
                                                     }
                                                     else -> {
-                                                        Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(24.dp))
+                                                        Icon(Icons.Rounded.Folder, contentDescription = null, modifier = Modifier.size(24.dp))
                                                     }
                                                 }
                                             }
@@ -1262,7 +1262,7 @@ fun LibraryScreen(
                                                                     when (action) {
                                                                         "ADD" -> showPillInfo("Add photos") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.AddPhotoAlternate,
+                                                                                imageVector = Icons.Rounded.AddPhotoAlternate,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1270,7 +1270,7 @@ fun LibraryScreen(
                                                                         }
                                                                         "REMOVE" -> showPillInfo("Remove photos") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.Remove,
+                                                                                imageVector = Icons.Rounded.Remove,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1278,7 +1278,7 @@ fun LibraryScreen(
                                                                         }
                                                                         "EDIT_EMOJI" -> showPillInfo("Edit emoji") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.AddReaction,
+                                                                                imageVector = Icons.Rounded.AddReaction,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1332,7 +1332,7 @@ fun LibraryScreen(
                                                                     when (action) {
                                                                         "ADD" -> showPillInfo("Add photos") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.AddPhotoAlternate,
+                                                                                imageVector = Icons.Rounded.AddPhotoAlternate,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1340,7 +1340,7 @@ fun LibraryScreen(
                                                                         }
                                                                         "REMOVE" -> showPillInfo("Remove photos") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.Remove,
+                                                                                imageVector = Icons.Rounded.Remove,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1348,7 +1348,7 @@ fun LibraryScreen(
                                                                         }
                                                                         "EDIT_EMOJI" -> showPillInfo("Edit emoji") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.AddReaction,
+                                                                                imageVector = Icons.Rounded.AddReaction,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1400,7 +1400,7 @@ fun LibraryScreen(
                                                                     when (index) {
                                                                         0 -> showPillInfo("Newest first") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.ArrowDownward,
+                                                                                imageVector = Icons.Rounded.ArrowDownward,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1408,7 +1408,7 @@ fun LibraryScreen(
                                                                         }
                                                                         1 -> showPillInfo("Oldest first") {
                                                                             Icon(
-                                                                                imageVector = Icons.Default.ArrowUpward,
+                                                                                imageVector = Icons.Rounded.ArrowUpward,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1416,7 +1416,7 @@ fun LibraryScreen(
                                                                         }
                                                                         2 -> showPillInfo("Most snippets") {
                                                                             Icon(
-                                                                                imageVector = Icons.AutoMirrored.Filled.TextSnippet,
+                                                                                imageVector = Icons.AutoMirrored.Rounded.TextSnippet,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary
@@ -1432,7 +1432,7 @@ fun LibraryScreen(
                                                                         }
                                                                         4 -> showPillInfo("Least snippets") {
                                                                             Icon(
-                                                                                imageVector = Icons.AutoMirrored.Filled.TextSnippet,
+                                                                                imageVector = Icons.AutoMirrored.Rounded.TextSnippet,
                                                                                 contentDescription = null,
                                                                                 modifier = Modifier.size(16.dp),
                                                                                 tint = MaterialTheme.colorScheme.primary

@@ -11,18 +11,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
-import androidx.compose.material.icons.filled.SentimentSatisfied
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.SentimentSatisfiedAlt
+import androidx.compose.material.icons.rounded.SentimentSatisfied
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.automirrored.rounded.TextSnippet
 
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.ui.graphics.Color
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SnippetSortType
@@ -266,7 +266,7 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
             )
         },
         leadingIcon = if (isSelected) {
-            { Icon(Icons.Default.Check, null, modifier = Modifier.size(24.dp)) }
+            { Icon(Icons.Rounded.Check, null, modifier = Modifier.size(24.dp)) }
         } else null,
         shape = RoundedCornerShape(8.dp),
         colors = FilterChipDefaults.filterChipColors(
@@ -297,7 +297,7 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
     }
 
     val icon = when (type) {
-        SnippetSortType.Emoji -> Icons.Default.SentimentSatisfiedAlt
+        SnippetSortType.Emoji -> Icons.Rounded.SentimentSatisfiedAlt
         SnippetSortType.Emoticons -> ImageVector.Builder(
             name = "EmoticonSort",
             defaultWidth = 24.dp,
@@ -312,7 +312,7 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
                 )
             }
         }.build()
-        SnippetSortType.Favorites -> Icons.Default.Favorite
+        SnippetSortType.Favorites -> Icons.Rounded.Favorite
         SnippetSortType.AZ -> ImageVector.Builder(
             name = "AZSort",
             defaultWidth = 24.dp,
@@ -343,11 +343,11 @@ private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, 
         }.build()
         SnippetSortType.Year -> {
             if (isSelected) {
-                if (viewModel.isSortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward
-            } else Icons.Default.Style // Placeholder for sort
+                if (viewModel.isSortAscending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
+            } else Icons.Rounded.Style // Placeholder for sort
         }
-        SnippetSortType.New -> Icons.AutoMirrored.Filled.TextSnippet
-        SnippetSortType.Old -> Icons.AutoMirrored.Filled.TextSnippet
+        SnippetSortType.New -> Icons.AutoMirrored.Rounded.TextSnippet
+        SnippetSortType.Old -> Icons.AutoMirrored.Rounded.TextSnippet
     }
 
     SettingsCardItem(

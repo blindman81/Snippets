@@ -17,8 +17,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.TextSnippet
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -162,7 +162,7 @@ fun RateFoodDialog(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Remove,
+                            imageVector = Icons.Rounded.Remove,
                             contentDescription = "Decrease rating",
                             tint = if (rating > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                         )
@@ -219,7 +219,7 @@ fun RateFoodDialog(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
+                            imageVector = Icons.Rounded.Add,
                             contentDescription = "Increase rating",
                             tint = if (rating < 5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                         )
@@ -401,7 +401,7 @@ fun LocationLinkModal(
                                 }
                             }
                         }) {
-                            Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+                            Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste")
                         }
                     },
                     trailingIcon = if (linkValue.isNotEmpty()) {
@@ -410,7 +410,7 @@ fun LocationLinkModal(
                                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 linkValue = ""
                             }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                Icon(Icons.Rounded.Clear, contentDescription = "Clear")
                             }
                         }
                     } else null,
@@ -442,7 +442,7 @@ fun LocationLinkModal(
                                 },
                                 icon = {
                                     Icon(
-                                        imageVector = Icons.Default.Place,
+                                        imageVector = Icons.Rounded.Place,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -515,7 +515,7 @@ fun NamePhotoModal(
                                 }
                             }
                         }) {
-                            Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+                            Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste")
                         }
                     },
                     trailingIcon = if (nameValue.isNotEmpty()) {
@@ -527,7 +527,7 @@ fun NamePhotoModal(
                                 },
                                 modifier = Modifier.size(28.dp)
                             ) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                                Icon(Icons.Rounded.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp))
                             }
                         }
                     } else null,
@@ -613,7 +613,7 @@ fun SnippetsModal(
                                     onRemove(snippet)
                                     localSnippets = localSnippets - snippet
                                 }, modifier = Modifier.size(24.dp)) {
-                                    Icon(Icons.Default.Close, null, tint = textColor, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Rounded.Close, null, tint = textColor, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
@@ -688,7 +688,7 @@ fun AddSnippetsModal(
                                     modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(
-                                        Icons.Default.Clear,
+                                        Icons.Rounded.Clear,
                                         contentDescription = "Clear",
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -738,7 +738,7 @@ fun AddSnippetsModal(
                                 },
                                 icon = {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.TextSnippet,
+                                        imageVector = Icons.AutoMirrored.Rounded.TextSnippet,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )

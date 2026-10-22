@@ -14,14 +14,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.automirrored.outlined.Label
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.expandVertically
@@ -33,26 +33,26 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.FormatColorFill
+import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.FormatColorFill
 import androidx.compose.material.icons.outlined.FormatColorFill
-import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.outlined.CloudSync
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.rounded.Info
 
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Collections
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Keyboard
 
 import androidx.compose.material3.*
 import androidx.compose.material3.ButtonGroup
@@ -64,7 +64,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import com.android.snippets.ui.theme.GoogleSansFlexWide
 import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.components.LoadingIndicator
-import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,7 +78,7 @@ import android.view.HapticFeedbackConstants
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.ThemePreference
 import com.android.snippets.viewmodel.Screen
-import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -193,7 +193,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                         viewModel.navigateLibrary()
                     },
-                    navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                     isSpinning = !(showThemeDialog || showCanvasDialog)
                 )
             }
@@ -239,8 +239,8 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 val themeLabels = listOf("System", "Light", "Dark")
                 val themeIcons = listOf(
                     AndroidIcon(),
-                    if (viewModel.themePreference == ThemePreference.LIGHT) Icons.Default.LightMode else Icons.Outlined.LightMode,
-                    if (viewModel.themePreference == ThemePreference.DARK) Icons.Default.DarkMode else Icons.Outlined.DarkMode
+                    if (viewModel.themePreference == ThemePreference.LIGHT) Icons.Rounded.LightMode else Icons.Outlined.LightMode,
+                    if (viewModel.themePreference == ThemePreference.DARK) Icons.Rounded.DarkMode else Icons.Outlined.DarkMode
                 )
 
                 val selectedThemeIndex = themeOptions.indexOf(viewModel.themePreference).coerceAtLeast(0)
@@ -283,8 +283,8 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val dynamicColorsIcon = if (viewModel.useDynamicColors) Icons.Default.FormatColorFill else Icons.Outlined.FormatColorFill
-                val showTimeIcon = if (viewModel.showTimeInMemories) Icons.Default.Schedule else Icons.Outlined.Schedule
+                val dynamicColorsIcon = if (viewModel.useDynamicColors) Icons.Rounded.FormatColorFill else Icons.Outlined.FormatColorFill
+                val showTimeIcon = if (viewModel.showTimeInMemories) Icons.Rounded.Schedule else Icons.Outlined.Schedule
                 val motionModeIcon = MotionModeIcon()
 
                 val interfaceItems = listOf(
@@ -296,7 +296,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                         iconSize = 28.dp,
                         onClick = {
                             val next = !viewModel.useDynamicColors
-                            showButtonInfo("Dynamic colors", if (next) Icons.Default.FormatColorFill else Icons.Outlined.FormatColorFill)
+                            showButtonInfo("Dynamic colors", if (next) Icons.Rounded.FormatColorFill else Icons.Outlined.FormatColorFill)
                             viewModel.updateDynamicColors(next)
                         }
                     ),
@@ -308,7 +308,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                         iconSize = 28.dp,
                         onClick = {
                             val next = !viewModel.showTimeInMemories
-                            showButtonInfo("Show time in memories and saved photos", if (next) Icons.Default.Schedule else Icons.Outlined.Schedule)
+                            showButtonInfo("Show time in memories and saved photos", if (next) Icons.Rounded.Schedule else Icons.Outlined.Schedule)
                             viewModel.updateShowTimeInMemories(next)
                         }
                     ),
@@ -351,9 +351,9 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val expandLabelIcon = if (viewModel.expandLabelIcon) Icons.AutoMirrored.Filled.Label else Icons.AutoMirrored.Outlined.Label
-                val expandCalendarIcon = if (viewModel.expandCalendarIcon) Icons.Default.CalendarMonth else Icons.Outlined.CalendarMonth
-                val expandLocationIcon = if (viewModel.expandLocationIcon) Icons.Default.LocationOn else Icons.Outlined.LocationOn
+                val expandLabelIcon = if (viewModel.expandLabelIcon) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label
+                val expandCalendarIcon = if (viewModel.expandCalendarIcon) Icons.Rounded.CalendarMonth else Icons.Outlined.CalendarMonth
+                val expandLocationIcon = if (viewModel.expandLocationIcon) Icons.Rounded.LocationOn else Icons.Outlined.LocationOn
 
                 val expandItems = listOf(
                     cookieButtonItem(
@@ -364,7 +364,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                         iconSize = 28.dp,
                         onClick = {
                             val next = !viewModel.expandLabelIcon
-                            showButtonInfo("Expand label icon", if (next) Icons.AutoMirrored.Filled.Label else Icons.AutoMirrored.Outlined.Label)
+                            showButtonInfo("Expand label icon", if (next) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label)
                             viewModel.updateExpandLabelIcon(next)
                         }
                     ),
@@ -376,7 +376,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                         iconSize = 28.dp,
                         onClick = {
                             val next = !viewModel.expandCalendarIcon
-                            showButtonInfo("Expand calendar icon", if (next) Icons.Default.CalendarMonth else Icons.Outlined.CalendarMonth)
+                            showButtonInfo("Expand calendar icon", if (next) Icons.Rounded.CalendarMonth else Icons.Outlined.CalendarMonth)
                             viewModel.updateExpandCalendarIcon(next)
                         }
                     ),
@@ -388,7 +388,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                         iconSize = 28.dp,
                         onClick = {
                             val next = !viewModel.expandLocationIcon
-                            showButtonInfo("Expand location icon", if (next) Icons.Default.LocationOn else Icons.Outlined.LocationOn)
+                            showButtonInfo("Expand location icon", if (next) Icons.Rounded.LocationOn else Icons.Outlined.LocationOn)
                             viewModel.updateExpandLocationIcon(next)
                         }
                     )
@@ -442,7 +442,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 val importIcon = ImportSectionIcon()
 
                 val isAutoBackupOn = viewModel.autoBackupSchedule != "Disabled"
-                val autoBackupIcon = if (isAutoBackupOn) Icons.Default.CloudSync else Icons.Outlined.CloudSync
+                val autoBackupIcon = if (isAutoBackupOn) Icons.Rounded.CloudSync else Icons.Outlined.CloudSync
 
                 val actionItems = listOf(
                     cookieButtonItem(

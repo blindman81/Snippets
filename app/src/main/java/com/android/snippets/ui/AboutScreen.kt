@@ -12,18 +12,18 @@ import androidx.compose.ui.graphics.vector.path
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material.icons.filled.ContactMail
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ContactMail
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.ui.platform.LocalView
 import android.view.HapticFeedbackConstants
 import androidx.compose.material3.*
@@ -84,7 +84,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                         viewModel.navigateLibrary() 
                     },
-                    navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                     isSpinning = !(showMenu || showLicenses),
                     isScrolled = isScrolled,
                     leftAlignTitle = true,
@@ -92,7 +92,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                         Box {
                             AnimatedCookieButton(
                                 onClick = { showMenu = true },
-                                icon = Icons.Default.MoreVert,
+                                icon = Icons.Rounded.MoreVert,
                                 contentDescription = "More",
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -193,7 +193,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                             }
                         }
                     },
-                    icon = Icons.Default.ContactMail,
+                    icon = Icons.Rounded.ContactMail,
                     contentDescription = "Contact Mail",
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,

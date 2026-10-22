@@ -33,7 +33,7 @@ import kotlinx.coroutines.sync.withLock
 import android.widget.Toast
 import android.graphics.BitmapFactory
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class Screen { Library, Memory, Settings, About, EmojiPicker, Filter, PhotosCarousel, Stats, MonthlyRecap, YearlyRecap }
@@ -2813,24 +2813,24 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun getCollectionIcon(collection: String): Any {
-        if (collection == "Favorites") return Icons.Default.Favorite
-        val iconName = collectionIcons[collection] ?: return Icons.Default.Folder
+        if (collection == "Favorites") return Icons.Rounded.Favorite
+        val iconName = collectionIcons[collection] ?: return Icons.Rounded.Folder
         
         // If it's a single emoji or short string, return it as is
         if (iconName.length <= 4) return iconName
         
         return when (iconName) {
-            "Landscape" -> Icons.Default.Landscape
-            "Nature" -> Icons.Default.Nature
-            "Person" -> Icons.Default.Person
-            "Group" -> Icons.Default.Groups
-            "LocalDrink" -> Icons.Default.LocalDrink
-            "Cookie" -> Icons.Default.Cookie
-            "Pets" -> Icons.Default.Pets
-            "Travel" -> Icons.Default.Flight
-            "Waves" -> Icons.Default.Waves
-            "Apartment" -> Icons.Default.Apartment
-            else -> Icons.Default.Folder
+            "Landscape" -> Icons.Rounded.Landscape
+            "Nature" -> Icons.Rounded.Nature
+            "Person" -> Icons.Rounded.Person
+            "Group" -> Icons.Rounded.Groups
+            "LocalDrink" -> Icons.Rounded.LocalDrink
+            "Cookie" -> Icons.Rounded.Cookie
+            "Pets" -> Icons.Rounded.Pets
+            "Travel" -> Icons.Rounded.Flight
+            "Waves" -> Icons.Rounded.Waves
+            "Apartment" -> Icons.Rounded.Apartment
+            else -> Icons.Rounded.Folder
         }
     }
 

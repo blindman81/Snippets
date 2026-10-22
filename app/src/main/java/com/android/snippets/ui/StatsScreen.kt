@@ -8,9 +8,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.TextSnippet
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -147,7 +147,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     viewModel.navigateLibrary()
                 },
-                navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
+                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                 isSpinning = true,
                 isScrolled = scrollState.value > 0,
                 leftAlignTitle = true,
@@ -272,7 +272,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.Default.AutoAwesome,
+                            imageVector = Icons.Rounded.AutoAwesome,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -315,7 +315,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.Default.Favorite,
+                            imageVector = Icons.Rounded.Favorite,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -366,7 +366,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.Default.LocationOn,
+                            imageVector = Icons.Rounded.LocationOn,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -391,7 +391,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.Default.CalendarMonth,
+                            imageVector = Icons.Rounded.CalendarMonth,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -422,7 +422,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.TextSnippet,
+                            imageVector = Icons.AutoMirrored.Rounded.TextSnippet,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -447,7 +447,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.Default.Whatshot,
+                            imageVector = Icons.Rounded.Whatshot,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -478,7 +478,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.Default.VerticalAlignTop,
+                            imageVector = Icons.Rounded.VerticalAlignTop,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -503,7 +503,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.Default.VerticalAlignBottom,
+                            imageVector = Icons.Rounded.VerticalAlignBottom,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
@@ -620,7 +620,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                             },
                             pillContent = {
                                 Icon(
-                                    imageVector = Icons.Default.LocationOn,
+                                    imageVector = Icons.Rounded.LocationOn,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(13.dp)
@@ -649,7 +649,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                                 },
                                 pillContent = {
                                     Icon(
-                                        imageVector = Icons.Default.LocationOn,
+                                        imageVector = Icons.Rounded.LocationOn,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(13.dp)

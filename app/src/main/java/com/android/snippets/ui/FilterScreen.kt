@@ -5,11 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowDropUp
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.ArrowDropUp
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,10 +59,10 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
     }
 
     val currentSortArrow = when (viewModel.snippetSortType) {
-        SnippetSortType.Old -> Icons.Default.ArrowDownward
-        SnippetSortType.New -> Icons.Default.ArrowUpward
+        SnippetSortType.Old -> Icons.Rounded.ArrowDownward
+        SnippetSortType.New -> Icons.Rounded.ArrowUpward
         SnippetSortType.AZ, SnippetSortType.Month, SnippetSortType.Year -> {
-            if (viewModel.isSortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward
+            if (viewModel.isSortAscending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
         }
         else -> null
     }
@@ -79,7 +79,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
         // 1. new > old
         SortMenuItem(
             text = if (isNew) "new" else "old",
-            arrowIcon = if (isNew) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+            arrowIcon = if (isNew) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
             onToggleArrow = {
                 val next = !isNew
                 isNew = next
@@ -95,7 +95,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
         // 2. a-z > z-a
         SortMenuItem(
             text = if (azAscending) "a-z" else "z-a",
-            arrowIcon = if (azAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+            arrowIcon = if (azAscending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
             onToggleArrow = {
                 val next = !azAscending
                 azAscending = next
@@ -112,7 +112,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
         // 3. first month > last month
         SortMenuItem(
             text = if (monthAscending) "first month" else "last month",
-            arrowIcon = if (monthAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+            arrowIcon = if (monthAscending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
             onToggleArrow = {
                 val next = !monthAscending
                 monthAscending = next
@@ -129,7 +129,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
         // 4. first year > last year
         SortMenuItem(
             text = if (yearAscending) "first year" else "last year",
-            arrowIcon = if (yearAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+            arrowIcon = if (yearAscending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
             onToggleArrow = {
                 val next = !yearAscending
                 yearAscending = next
@@ -197,7 +197,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                 modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Rounded.FilterList, contentDescription = null, modifier = Modifier.size(24.dp))
                 }
             }
 
@@ -229,7 +229,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
                     },
                     trailingIcon = {
                         Icon(
-                            imageVector = if (expanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                            imageVector = if (expanded) Icons.Rounded.ArrowDropUp else Icons.Rounded.ArrowDropDown,
                             contentDescription = null,
                             modifier = Modifier.size(FilterChipDefaults.IconSize)
                         )

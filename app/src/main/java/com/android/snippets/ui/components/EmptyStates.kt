@@ -23,9 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.HeartBroken
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.rounded.HeartBroken
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.ui.res.vectorResource
 import com.android.snippets.ui.shapes.CookieShape
 @Composable
@@ -71,7 +71,7 @@ fun EmptyLibraryState() {
 @Composable
 fun EmptyFavoritesState() {
     PremiumEmptyState(
-        icon = Icons.Default.HeartBroken
+        icon = Icons.Rounded.HeartBroken
     )
 }
 

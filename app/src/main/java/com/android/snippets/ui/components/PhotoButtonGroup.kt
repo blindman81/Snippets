@@ -11,7 +11,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,14 +30,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.TextSnippet
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.TextSnippet
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -565,7 +565,7 @@ fun SplitButton(
                         shapes = trailingShapes
                     ) {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
+                            imageVector = Icons.Rounded.KeyboardArrowDown,
                             contentDescription = "More options",
                             modifier = Modifier.rotate(arrowRotation)
                         )
@@ -725,7 +725,7 @@ fun PhotoButtonGroup(
     val hasRating = photo.rating > 0
 
     PhotoButtonGroup(
-        primaryIcon = Icons.Default.Add,
+        primaryIcon = Icons.Rounded.Add,
         contentDescription = "Add snippets",
         onPrimaryClick = {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -765,7 +765,7 @@ fun PhotoButtonGroup(
                     onClick = onShare
                 ),
                 cookieButtonItem(
-                    icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     contentDescription = if (isFavorite) "Unfavorite" else "Favorite",
                     tooltip = if (isFavorite) "Unfavorite" else "Favorite",
                     isSelected = isFavorite,
@@ -773,7 +773,7 @@ fun PhotoButtonGroup(
                     onClick = onToggleFavorite
                 ),
                 cookieButtonItem(
-                    icon = if (hasName) Icons.AutoMirrored.Filled.Label else Icons.AutoMirrored.Outlined.Label,
+                    icon = if (hasName) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label,
                     contentDescription = if (hasName) "Rename photo" else "Name photo",
                     tooltip = if (hasName) "Rename photo" else "Name photo",
                     isSelected = hasName,
@@ -781,7 +781,7 @@ fun PhotoButtonGroup(
                     onClick = onNamePhotoClick
                 ),
                 cookieButtonItem(
-                    icon = if (hasLocation) Icons.Filled.Place else Icons.Outlined.Place,
+                    icon = if (hasLocation) Icons.Rounded.Place else Icons.Outlined.Place,
                     contentDescription = if (hasLocation) "Edit location link" else "Link to a place",
                     tooltip = if (hasLocation) "Edit location link" else "Link to a place",
                     isSelected = hasLocation,
@@ -825,7 +825,7 @@ fun PhotoButtonGroup(
                     onClick = onRate
                 ),
                 cookieButtonItem(
-                    icon = if (hasSnippets) Icons.AutoMirrored.Filled.TextSnippet else Icons.AutoMirrored.Outlined.TextSnippet,
+                    icon = if (hasSnippets) Icons.AutoMirrored.Rounded.TextSnippet else Icons.AutoMirrored.Outlined.TextSnippet,
                     contentDescription = "Snippets",
                     tooltip = "Snippets",
                     enabled = hasSnippets,

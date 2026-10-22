@@ -7,9 +7,9 @@ import androidx.compose.foundation.rememberScrollState
 
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.rounded.Favorite
 
 
 import androidx.compose.material3.*
@@ -78,7 +78,7 @@ fun PhotosCarouselScreen(viewModel: SnippetsViewModel) {
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                             viewModel.navigateSettings()
                         },
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        icon = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
                         isSpinning = true
                     )
@@ -138,7 +138,7 @@ fun PhotosCarouselScreen(viewModel: SnippetsViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         CollectionIcon(
-                            icon = Icons.Default.Favorite,
+                            icon = Icons.Rounded.Favorite,
                             modifier = Modifier.size(32.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )

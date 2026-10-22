@@ -18,8 +18,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.android.snippets.ui.shapes.CookieShape
@@ -509,7 +509,7 @@ fun MemoryScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Label,
+                                    imageVector = Icons.AutoMirrored.Rounded.Label,
                                     contentDescription = "Photo name",
                                     tint = Color.White,
                                     modifier = Modifier.size(12.dp)
@@ -542,7 +542,7 @@ fun MemoryScreen(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CalendarMonth,
+                            imageVector = Icons.Rounded.CalendarMonth,
                             contentDescription = "Date",
                             tint = Color.White,
                             modifier = Modifier.size(12.dp)
@@ -577,7 +577,7 @@ fun MemoryScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.LocationOn,
+                                    imageVector = Icons.Rounded.LocationOn,
                                     contentDescription = "Location",
                                     tint = Color.White,
                                     modifier = Modifier.size(12.dp)

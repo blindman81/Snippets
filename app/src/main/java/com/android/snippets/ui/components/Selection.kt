@@ -23,8 +23,8 @@ import androidx.compose.animation.*
 
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.BorderStroke
@@ -72,7 +72,7 @@ fun PremiumSwitch(
             label = "switch_icon_transition"
         ) { isChecked ->
             Icon(
-                imageVector = if (isChecked) Icons.Filled.Check else Icons.Filled.Close,
+                imageVector = if (isChecked) Icons.Rounded.Check else Icons.Rounded.Close,
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
                 tint = if (enabled) {
@@ -109,7 +109,7 @@ fun CookieCheckmark(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Default.Check,
+            imageVector = Icons.Rounded.Check,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
             tint = contentColor
