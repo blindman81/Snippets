@@ -551,27 +551,29 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 24.dp)
-                                .height(36.dp),
+                                .heightIn(min = 36.dp)
+                                .animateContentSize(),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         ) {
                             Row(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 14.dp),
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 currentInfo.icon()
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
                                     text = currentInfo.text,
+                                    modifier = Modifier.weight(1f),
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         fontWeight = FontWeight.Medium,
                                         fontFamily = GoogleSansFlexWide
                                     ),
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
