@@ -291,6 +291,7 @@ fun LocationLinkModal(
 
     BlurredAlertDialog(
         onDismissRequest = onDismiss,
+        moveUpOnKeyboardOverlap = true,
         onConfirm = {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
             val trimmedInput = linkValue.trim()
@@ -429,6 +430,7 @@ fun NamePhotoModal(
 
     BlurredAlertDialog(
         onDismissRequest = onDismiss,
+        moveUpOnKeyboardOverlap = true,
         onConfirm = {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
             onSave(nameValue.trim().takeIf { it.isNotBlank() })
@@ -600,6 +602,7 @@ fun AddSnippetsModal(
 
     BlurredAlertDialog(
         onDismissRequest = onClose,
+        moveUpOnKeyboardOverlap = true,
         onConfirm = {
             if (text.isNotBlank()) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)

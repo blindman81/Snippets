@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.coroutines.Job
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -31,13 +32,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -52,15 +47,6 @@ import kotlinx.coroutines.launch
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.ui.util.LocalTiltModalFocus
 import kotlin.math.roundToInt
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BottomSheetDefaults
@@ -78,6 +64,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,6 +73,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -265,6 +253,18 @@ fun BlurredModalBottomSheet(
         scrimAlpha.animateTo(1f, animationSpec = tween(durationMillis = 250))
     }
 
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
+    val hasPartiallyExpanded = sheetState.hasPartiallyExpandedState
+    val halfOffset = if (hasPartiallyExpanded) screenHeightPx * 0.5f else 0f
+    val dismissThreshold = with(density) { 140.dp.toPx() }
+    val dismissVelocityThreshold = with(density) { 1200.dp.toPx() }
+
+    var dragOffsetY by remember { mutableFloatStateOf(if (hasPartiallyExpanded) halfOffset else 0f) }
+    var settleJob by remember { mutableStateOf<Job?>(null) }
+    var childScrolledInGesture by remember { mutableStateOf(false) }
+
     fun triggerDismiss() {
         if (!isDismissing) {
             isDismissing = true
@@ -279,7 +279,82 @@ fun BlurredModalBottomSheet(
         }
     }
 
-    BackHandler(enabled = !isDismissing, onBack = { triggerDismiss() })
+    val motionScheme = MaterialTheme.motionScheme
+
+    fun settleSheet(velocityY: Float) {
+        settleJob?.cancel()
+        if (hasPartiallyExpanded) {
+            if (dragOffsetY < halfOffset) {
+                val target = when {
+                    velocityY < -600f -> 0f
+                    velocityY > 600f -> halfOffset
+                    dragOffsetY < halfOffset * 0.5f -> 0f
+                    else -> halfOffset
+                }
+                settleJob = coroutineScope.launch {
+                    animate(
+                        initialValue = dragOffsetY,
+                        targetValue = target,
+                        animationSpec = motionScheme.defaultSpatialSpec()
+                    ) { value, _ -> dragOffsetY = value }
+                }
+            } else {
+                val deltaFromHalf = dragOffsetY - halfOffset
+                if (deltaFromHalf > dismissThreshold || (deltaFromHalf > with(density) { 32.dp.toPx() } && velocityY > dismissVelocityThreshold)) {
+                    settleJob = coroutineScope.launch {
+                        animate(
+                            initialValue = dragOffsetY,
+                            targetValue = screenHeightPx,
+                            animationSpec = motionScheme.fastSpatialSpec()
+                        ) { value, _ -> dragOffsetY = value }
+                    }
+                    triggerDismiss()
+                } else {
+                    settleJob = coroutineScope.launch {
+                        animate(
+                            initialValue = dragOffsetY,
+                            targetValue = halfOffset,
+                            animationSpec = motionScheme.defaultSpatialSpec()
+                        ) { value, _ -> dragOffsetY = value }
+                    }
+                }
+            }
+        } else {
+            if (dragOffsetY > dismissThreshold || (dragOffsetY > with(density) { 32.dp.toPx() } && velocityY > dismissVelocityThreshold)) {
+                settleJob = coroutineScope.launch {
+                    animate(
+                        initialValue = dragOffsetY,
+                        targetValue = screenHeightPx,
+                        animationSpec = motionScheme.fastSpatialSpec()
+                    ) { value, _ -> dragOffsetY = value }
+                }
+                triggerDismiss()
+            } else {
+                settleJob = coroutineScope.launch {
+                    animate(
+                        initialValue = dragOffsetY,
+                        targetValue = 0f,
+                        animationSpec = motionScheme.defaultSpatialSpec()
+                    ) { value, _ -> dragOffsetY = value }
+                }
+            }
+        }
+    }
+
+    BackHandler(enabled = !isDismissing) {
+        if (hasPartiallyExpanded && dragOffsetY < halfOffset - 20f) {
+            settleJob?.cancel()
+            settleJob = coroutineScope.launch {
+                animate(
+                    initialValue = dragOffsetY,
+                    targetValue = halfOffset,
+                    animationSpec = motionScheme.defaultSpatialSpec()
+                ) { value, _ -> dragOffsetY = value }
+            }
+        } else {
+            triggerDismiss()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -299,8 +374,6 @@ fun BlurredModalBottomSheet(
                 )
         )
 
-        val motionScheme = MaterialTheme.motionScheme
-
         // Sheet content
         AnimatedVisibility(
             visibleState = visibleState,
@@ -314,13 +387,6 @@ fun BlurredModalBottomSheet(
             ),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            val density = LocalDensity.current
-            val dismissThreshold = with(density) { 140.dp.toPx() }
-            val dismissVelocityThreshold = with(density) { 1200.dp.toPx() }
-            var dragOffsetY by remember { mutableFloatStateOf(0f) }
-            var settleJob by remember { mutableStateOf<Job?>(null) }
-            var childScrolledInGesture by remember { mutableStateOf(false) }
-
             val nestedScrollConnection = remember {
                 object : NestedScrollConnection {
                     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -350,8 +416,7 @@ fun BlurredModalBottomSheet(
                             return Offset.Zero
                         }
 
-                        // If user scrolled the child list in this gesture, do not drag sheet on hitting top
-                        if (childScrolledInGesture) {
+                        if (childScrolledInGesture && !hasPartiallyExpanded) {
                             return Offset.Zero
                         }
 
@@ -369,19 +434,8 @@ fun BlurredModalBottomSheet(
                         childScrolledInGesture = false
 
                         if (dragOffsetY > 0f) {
-                            if (dragOffsetY > dismissThreshold || (dragOffsetY > with(density) { 32.dp.toPx() } && available.y > dismissVelocityThreshold)) {
-                                triggerDismiss()
-                                return available
-                            } else {
-                                settleJob = coroutineScope.launch {
-                                    animate(
-                                        initialValue = dragOffsetY,
-                                        targetValue = 0f,
-                                        animationSpec = motionScheme.defaultSpatialSpec()
-                                    ) { value, _ -> dragOffsetY = value }
-                                }
-                                return available
-                            }
+                            settleSheet(available.y)
+                            return available
                         }
                         return Velocity.Zero
                     }
@@ -389,19 +443,8 @@ fun BlurredModalBottomSheet(
                     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                         childScrolledInGesture = false
 
-                        // A child list completing its fling at the top should NEVER dismiss the sheet
                         if (dragOffsetY > 0f) {
-                            if (dragOffsetY > dismissThreshold) {
-                                triggerDismiss()
-                            } else {
-                                settleJob = coroutineScope.launch {
-                                    animate(
-                                        initialValue = dragOffsetY,
-                                        targetValue = 0f,
-                                        animationSpec = motionScheme.defaultSpatialSpec()
-                                    ) { value, _ -> dragOffsetY = value }
-                                }
-                            }
+                            settleSheet(available.y)
                         }
                         return Velocity.Zero
                     }
@@ -419,6 +462,7 @@ fun BlurredModalBottomSheet(
                 monetTintWeight = 0.0f,
                 modifier = modifier
                     .fillMaxWidth()
+                    .then(if (hasPartiallyExpanded) Modifier.fillMaxHeight() else Modifier)
                     .offset { IntOffset(0, dragOffsetY.roundToInt()) }
                     .nestedScroll(nestedScrollConnection)
                     .pointerInput(Unit) {
@@ -430,26 +474,10 @@ fun BlurredModalBottomSheet(
                             },
                             onDragEnd = {
                                 val velocity = velocityTracker.calculateVelocity().y
-                                if (dragOffsetY > dismissThreshold || (dragOffsetY > with(density) { 32.dp.toPx() } && velocity > dismissVelocityThreshold)) {
-                                    triggerDismiss()
-                                } else {
-                                    settleJob = coroutineScope.launch {
-                                        animate(
-                                            initialValue = dragOffsetY,
-                                            targetValue = 0f,
-                                            animationSpec = motionScheme.defaultSpatialSpec()
-                                        ) { value, _ -> dragOffsetY = value }
-                                    }
-                                }
+                                settleSheet(velocity)
                             },
                             onDragCancel = {
-                                settleJob = coroutineScope.launch {
-                                    animate(
-                                        initialValue = dragOffsetY,
-                                        targetValue = 0f,
-                                        animationSpec = motionScheme.defaultSpatialSpec()
-                                    ) { value, _ -> dragOffsetY = value }
-                                }
+                                settleSheet(0f)
                             },
                             onVerticalDrag = { change, dragAmount ->
                                 change.consume()
@@ -470,6 +498,7 @@ fun BlurredModalBottomSheet(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .then(if (hasPartiallyExpanded) Modifier.fillMaxHeight() else Modifier)
                         .windowInsetsPadding(contentWindowInsets().only(WindowInsetsSides.Bottom))
                 ) {
                     if (dragHandle != null) {
@@ -495,6 +524,41 @@ fun BlurredModalBottomSheet(
 }
 
 /**
+ * Calculates the vertical upward offset required when the soft keyboard overlaps
+ * with the bottom of a centered alert dialog.
+ *
+ * @param containerHeight The total height of the screen/container
+ * @param dialogHeight The height of the dialog card
+ * @param imeBottom The bottom inset of the keyboard in pixels
+ * @param statusBarTop The top inset of the status bar in pixels
+ * @param marginPx Safety margin in pixels between the dialog bottom and the keyboard
+ * @return The number of pixels to move the dialog up (>= 0)
+ */
+internal fun calculateKeyboardOverlapOffset(
+    containerHeight: Int,
+    dialogHeight: Int,
+    imeBottom: Int,
+    statusBarTop: Int,
+    marginPx: Int
+): Int {
+    if (imeBottom <= 0 || containerHeight <= 0 || dialogHeight <= 0) {
+        return 0
+    }
+
+    val defaultDialogBottom = (containerHeight + dialogHeight) / 2
+    val keyboardTop = containerHeight - imeBottom
+
+    val overlap = (defaultDialogBottom + marginPx) - keyboardTop
+    if (overlap <= 0) {
+        return 0
+    }
+
+    val defaultDialogTop = (containerHeight - dialogHeight) / 2
+    val maxMoveUp = (defaultDialogTop - (statusBarTop + marginPx)).coerceAtLeast(0)
+    return overlap.coerceAtMost(maxMoveUp)
+}
+
+/**
  * An AlertDialog replacement that renders as an in-Compose modal surface with genuine frosted glass
  * blur sampling from ambient HazeState, tinted with Material You Monet dynamic color.
  *
@@ -517,7 +581,8 @@ fun BlurredAlertDialog(
     textContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     tonalElevation: Dp = 6.dp,
     properties: DialogProperties = DialogProperties(),
-    hazeState: HazeState? = LocalHazeState.current
+    hazeState: HazeState? = LocalHazeState.current,
+    moveUpOnKeyboardOverlap: Boolean = true
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isDismissing by remember { mutableStateOf(false) }
@@ -525,6 +590,36 @@ fun BlurredAlertDialog(
         MutableTransitionState(false).apply { targetState = true }
     }
     val scrimAlpha = remember { Animatable(0f) }
+
+    var containerHeight by remember { mutableIntStateOf(0) }
+    var dialogHeight by remember { mutableIntStateOf(0) }
+
+    val imeInsets = WindowInsets.ime
+    val statusBarInsets = WindowInsets.statusBars
+
+    val keyboardOffsetModifier = if (moveUpOnKeyboardOverlap) {
+        Modifier.offset {
+            val imeBottom = imeInsets.getBottom(this)
+            val statusBarTop = statusBarInsets.getTop(this)
+            val marginPx = 16.dp.roundToPx()
+
+            val moveUp = calculateKeyboardOverlapOffset(
+                containerHeight = containerHeight,
+                dialogHeight = dialogHeight,
+                imeBottom = imeBottom,
+                statusBarTop = statusBarTop,
+                marginPx = marginPx
+            )
+
+            if (moveUp > 0) {
+                IntOffset(x = 0, y = -moveUp)
+            } else {
+                IntOffset.Zero
+            }
+        }
+    } else {
+        Modifier
+    }
 
     DisposableEffect(Unit) {
         com.android.snippets.ui.util.CookieTiltController.beginTiltModalFocus()
@@ -570,7 +665,8 @@ fun BlurredAlertDialog(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .zIndex(999f),
+            .zIndex(999f)
+            .onSizeChanged { containerHeight = it.height },
         contentAlignment = Alignment.Center
     ) {
         // Scrim backdrop
@@ -597,7 +693,8 @@ fun BlurredAlertDialog(
             exit = slideOutVertically(
                 targetOffsetY = { it },
                 animationSpec = motionScheme.fastSpatialSpec()
-            ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec())
+            ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
+            modifier = keyboardOffsetModifier
         ) {
             CompositionLocalProvider(
                 LocalTiltActive provides (!isDismissing),
@@ -612,6 +709,7 @@ fun BlurredAlertDialog(
                 monetTintWeight = 0.0f,
                 hazeState = hazeState,
                 modifier = modifier
+                    .onSizeChanged { dialogHeight = it.height }
                     .padding(horizontal = 24.dp)
                     .widthIn(min = 280.dp, max = 560.dp)
                     .clickable(
