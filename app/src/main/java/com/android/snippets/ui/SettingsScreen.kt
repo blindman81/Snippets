@@ -302,13 +302,13 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     ),
                     cookieButtonItem(
                         icon = showTimeIcon,
-                        contentDescription = "Show time in memories and saved photos",
-                        tooltip = "Show time in memories and saved photos",
+                        contentDescription = "Time in memories and saved photos",
+                        tooltip = "Time in memories and saved photos",
                         isSelected = viewModel.showTimeInMemories,
                         iconSize = 28.dp,
                         onClick = {
                             val next = !viewModel.showTimeInMemories
-                            showButtonInfo("Show time in memories and saved photos", if (next) Icons.Rounded.Schedule else Icons.Outlined.Schedule)
+                            showButtonInfo("Time in memories and saved photos", if (next) Icons.Rounded.Schedule else Icons.Outlined.Schedule)
                             viewModel.updateShowTimeInMemories(next)
                         }
                     ),
