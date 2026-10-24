@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,12 +25,11 @@ import com.android.snippets.viewmodel.SnippetsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilterScreen(viewModel: SnippetsViewModel) {
+fun FilterScreen(
+    viewModel: SnippetsViewModel,
+    modifier: Modifier = Modifier
+) {
     val view = LocalView.current
-
-    AppPredictiveBackHandler {
-        viewModel.closeFilter()
-    }
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -175,13 +173,9 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
         )
     )
 
-    val configuration = LocalConfiguration.current
-    val maxContentHeight = (configuration.screenHeightDp * 0.72f).dp
-
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
     ) {
         Row(
             modifier = Modifier
@@ -303,7 +297,7 @@ fun FilterScreen(viewModel: SnippetsViewModel) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = maxContentHeight)
+                .weight(1f, fill = false)
         ) {
             FilterSnippetContent(
                 viewModel = viewModel,

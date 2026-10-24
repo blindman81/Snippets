@@ -72,6 +72,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import com.android.snippets.ui.theme.GoogleSansFlexRound
+
 private val GrayscaleColorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,117 +97,166 @@ fun MenuBottomSheet(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Motion.ExpressiveSheetContent {
-                Box(
+                data class MenuItemInfo(
+                    val label: String,
+                    val icon: Any,
+                    val onClick: () -> Unit
+                )
+
+                val marqueeIcon = MarqueeSelectIcon()
+                val menuItems = remember(marqueeIcon) {
+                    listOf(
+                        MenuItemInfo(
+                            label = "Create",
+                            icon = com.ln.android.snippets.R.drawable.ic_create_new_folder,
+                            onClick = {
+                                onDismissRequest()
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                viewModel.navigateEmojiPicker(null)
+                            }
+                        ),
+                        MenuItemInfo(
+                            label = "Select",
+                            icon = marqueeIcon,
+                            onClick = {
+                                onDismissRequest()
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                viewModel.forceSelectionMode = true
+                            }
+                        ),
+                        MenuItemInfo(
+                            label = "Stats",
+                            icon = Icons.Rounded.BarChart,
+                            onClick = {
+                                onDismissRequest()
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                viewModel.navigateStats()
+                            }
+                        ),
+                        MenuItemInfo(
+                            label = "Settings",
+                            icon = Icons.Rounded.Settings,
+                            onClick = {
+                                onDismissRequest()
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                viewModel.navigateSettings()
+                            }
+                        ),
+                        MenuItemInfo(
+                            label = "About",
+                            icon = Icons.Rounded.Info,
+                            onClick = {
+                                onDismissRequest()
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                viewModel.navigateAbout()
+                            }
+                        )
+                    )
+                }
+
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .defaultMinSize(minHeight = 116.dp)
-                        .padding(top = 8.dp, bottom = 44.dp),
-                    contentAlignment = Alignment.CenterStart
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 22.dp, bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    BoxWithConstraints(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
+                    // Left column: Static Menu icon
+                    Surface(
+                        shape = com.android.snippets.ui.shapes.CookieShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(48.dp)
                     ) {
-                        val buttonSize = remember(maxWidth) {
-                            if (maxWidth < 312.dp) {
-                                ((maxWidth - 20.dp) / 6).coerceIn(40.dp, 48.dp)
-                            } else {
-                                48.dp
-                            }
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Menu,
+                                contentDescription = "Menu",
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
+                    }
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Static icon
-                            Surface(
-                                shape = com.android.snippets.ui.shapes.CookieShape,
-                                color = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(buttonSize)
+                    // Right column: Menu buttons (2 per row)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer { clip = false },
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        menuItems.chunked(2).forEach { rowItems ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .graphicsLayer { clip = false },
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.Top
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Rounded.Menu, contentDescription = null, modifier = Modifier.size(buttonSize * 0.5f))
+                                rowItems.forEach { item ->
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .graphicsLayer { clip = false }
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.zIndex(10f),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            when (val icon = item.icon) {
+                                                is androidx.compose.ui.graphics.vector.ImageVector -> AnimatedCookieButton(
+                                                    onClick = item.onClick,
+                                                    icon = icon,
+                                                    contentDescription = item.label,
+                                                    size = 84.dp,
+                                                    iconSize = 38.dp,
+                                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                )
+                                                is Int -> AnimatedCookieButton(
+                                                    onClick = item.onClick,
+                                                    icon = icon,
+                                                    contentDescription = item.label,
+                                                    size = 84.dp,
+                                                    iconSize = 38.dp,
+                                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                )
+                                            }
+                                        }
+
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .clickable { item.onClick() }
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = item.label,
+                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontFamily = GoogleSansFlexRound
+                                                    ),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                if (rowItems.size < 2) {
+                                    Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
-
-                            // 1. New Collection
-                            AnimatedCookieButton(
-                                onClick = {
-                                    onDismissRequest()
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.navigateEmojiPicker(null)
-                                },
-                                icon = com.ln.android.snippets.R.drawable.ic_create_new_folder,
-                                contentDescription = "New Collection",
-                                tooltip = "New Collection",
-                                size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-
-                            // 2. Select
-                            AnimatedCookieButton(
-                                onClick = {
-                                    onDismissRequest()
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.forceSelectionMode = true
-                                },
-                                icon = MarqueeSelectIcon(),
-                                contentDescription = "Select",
-                                tooltip = "Select",
-                                size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-
-                            // 3. Stats
-                            AnimatedCookieButton(
-                                onClick = {
-                                    onDismissRequest()
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.navigateStats()
-                                },
-                                icon = Icons.Rounded.BarChart,
-                                contentDescription = "Stats",
-                                tooltip = "Stats",
-                                size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-
-                            // 4. Settings
-                            AnimatedCookieButton(
-                                onClick = {
-                                    onDismissRequest()
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.navigateSettings()
-                                },
-                                icon = Icons.Rounded.Settings,
-                                contentDescription = "Settings",
-                                tooltip = "Settings",
-                                size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-
-                            // 5. About
-                            AnimatedCookieButton(
-                                onClick = {
-                                    onDismissRequest()
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    viewModel.navigateAbout()
-                                },
-                                icon = Icons.Rounded.Info,
-                                contentDescription = "About",
-                                tooltip = "About",
-                                size = buttonSize,
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
                         }
                     }
                 }
@@ -317,7 +370,7 @@ fun HistoryBottomSheet(
 ) {
     if (show) {
         val curated = remember(viewModel.curatedMemories) {
-            viewModel.curatedMemories.sortedByDescending { it.date }
+            viewModel.curatedMemories.sortedByDescending { it.date }.take(10)
         }
         BlurredModalBottomSheet(
             onDismissRequest = onDismissRequest,
@@ -325,17 +378,15 @@ fun HistoryBottomSheet(
         ) {
             Motion.ExpressiveSheetContent {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 116.dp)
-                        .padding(top = 8.dp, bottom = 36.dp),
-                    contentAlignment = Alignment.CenterStart
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.TopStart
                 ) {
                     if (curated.isEmpty()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
+                                .padding(horizontal = 24.dp)
+                                .padding(top = 22.dp, bottom = 24.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
@@ -366,13 +417,9 @@ fun HistoryBottomSheet(
                             }
                         }
                     } else {
-                        val lazyListState = rememberLazyListState()
                         val monthFormat = remember { java.text.SimpleDateFormat("MMM", java.util.Locale.getDefault()) }
                         val yearFormat = remember { java.text.SimpleDateFormat("yyyy", java.util.Locale.getDefault()) }
-                        val firstVisibleIndex by remember { derivedStateOf { lazyListState.firstVisibleItemIndex } }
-                        val currentPhoto = remember(curated, firstVisibleIndex) {
-                            curated.getOrNull(firstVisibleIndex) ?: curated.firstOrNull()
-                        }
+                        val currentPhoto = remember(curated) { curated.firstOrNull() }
                         val displayedMonth = remember(currentPhoto) {
                             currentPhoto?.let { monthFormat.format(java.util.Date(it.date)) } ?: ""
                         }
@@ -383,15 +430,16 @@ fun HistoryBottomSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 24.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                .padding(horizontal = 24.dp)
+                                .padding(top = 22.dp, bottom = 24.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             // Icon on top, month & year below icon
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.width(56.dp)
+                                verticalArrangement = Arrangement.Top,
+                                modifier = Modifier.width(48.dp)
                             ) {
                                 Surface(
                                     shape = com.android.snippets.ui.shapes.CookieShape,
@@ -403,12 +451,12 @@ fun HistoryBottomSheet(
                                         Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(24.dp))
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = displayedMonth,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
+                                        fontFamily = GoogleSansFlexRound
                                     ),
                                     color = MaterialTheme.colorScheme.primary,
                                     maxLines = 1,
@@ -418,7 +466,7 @@ fun HistoryBottomSheet(
                                     text = displayedYear,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlex
+                                        fontFamily = GoogleSansFlexRound
                                     ),
                                     color = MaterialTheme.colorScheme.primary,
                                     maxLines = 1,
@@ -426,46 +474,57 @@ fun HistoryBottomSheet(
                                 )
                             }
 
-                            // Static 84dp cookie9sided memory buttons in standard scrollable LazyRow
-                            LazyRow(
-                                state = lazyListState,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                contentPadding = PaddingValues(end = 24.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
+                            // 3 memories per row
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .graphicsLayer { clip = false },
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalAlignment = Alignment.Start
                             ) {
-                                itemsIndexed(curated, key = { _, photo -> photo.id }) { itemIndex, photo ->
-                                    Surface(
-                                        shape = com.android.snippets.ui.shapes.Cookie9Shape,
-                                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                curated.chunked(3).forEach { rowPhotos ->
+                                    Row(
                                         modifier = Modifier
-                                            .size(84.dp)
-                                            .clickable(
-                                                interactionSource = remember { MutableInteractionSource() },
-                                                indication = null,
-                                                onClick = {
-                                                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                                    viewModel.openMemory(curated, itemIndex)
-                                                }
-                                            )
+                                            .fillMaxWidth()
+                                            .graphicsLayer { clip = false },
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        verticalAlignment = Alignment.Top
                                     ) {
-                                        val context = LocalContext.current
-                                        val imageRequest = remember(photo.uriString) {
-                                            ImageRequest.Builder(context)
-                                                .data(photo.uriString)
-                                                .crossfade(true)
-                                                .memoryCacheKey(photo.uriString)
-                                                .build()
+                                        rowPhotos.forEach { photo ->
+                                            val itemIndex = curated.indexOf(photo)
+                                            Surface(
+                                                shape = com.android.snippets.ui.shapes.Cookie9Shape,
+                                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                modifier = Modifier
+                                                    .size(84.dp)
+                                                    .clickable(
+                                                        interactionSource = remember { MutableInteractionSource() },
+                                                        indication = null,
+                                                        onClick = {
+                                                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                                                            viewModel.openMemory(curated, itemIndex)
+                                                        }
+                                                    )
+                                            ) {
+                                                val context = LocalContext.current
+                                                val imageRequest = remember(photo.uriString) {
+                                                    ImageRequest.Builder(context)
+                                                        .data(photo.uriString)
+                                                        .crossfade(true)
+                                                        .memoryCacheKey(photo.uriString)
+                                                        .build()
+                                                }
+                                                AsyncImage(
+                                                    model = imageRequest,
+                                                    contentDescription = null,
+                                                    contentScale = ContentScale.Crop,
+                                                    colorFilter = if (photo.isViewed) GrayscaleColorFilter else null,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .then(if (photo.isViewed) Modifier.alpha(0.5f) else Modifier)
+                                                )
+                                            }
                                         }
-                                        AsyncImage(
-                                            model = imageRequest,
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            colorFilter = if (photo.isViewed) GrayscaleColorFilter else null,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .then(if (photo.isViewed) Modifier.alpha(0.5f) else Modifier)
-                                        )
                                     }
                                 }
                             }

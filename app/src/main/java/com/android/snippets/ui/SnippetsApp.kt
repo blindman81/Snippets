@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
+import androidx.compose.foundation.layout.fillMaxHeight
 import com.android.snippets.ui.components.BlurredModalBottomSheet
 import com.android.snippets.ui.components.BlurredAlertDialog
 import com.android.snippets.ui.components.DeleteConfirmationModal
@@ -317,7 +318,11 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     if (viewModel.showFilterSheet) {
         val filterSheetState = rememberBottomSheetState(
             initialValue = SheetValue.Hidden,
-            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+            enabledValues = setOf(
+                SheetValue.Hidden,
+                SheetValue.PartiallyExpanded,
+                SheetValue.Expanded
+            )
         )
         BlurredModalBottomSheet(
             onDismissRequest = { viewModel.closeFilter() },
@@ -325,12 +330,10 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             Motion.ExpressiveSheetContent {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                ) {
-                    FilterScreen(viewModel)
-                }
+                FilterScreen(
+                    viewModel = viewModel,
+                    modifier = Modifier.fillMaxHeight()
+                )
             }
         }
     }

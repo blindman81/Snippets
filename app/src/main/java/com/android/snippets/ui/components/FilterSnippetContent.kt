@@ -259,7 +259,7 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
             Text(
                 snippet,
                 style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
+                    fontFamily = if (isSelected) com.android.snippets.ui.theme.GoogleSansFlexWide else com.android.snippets.ui.theme.GoogleSansFlexRound
                 ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

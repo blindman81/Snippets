@@ -21,15 +21,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.android.snippets.ui.shapes.CookieShape
-import com.android.snippets.ui.theme.GoogleSansFlexWide
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.util.Motion
-import com.android.snippets.ui.util.VerticalScrollbar
 import com.android.snippets.viewmodel.PhotoSortType
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.ln.android.snippets.R
@@ -66,8 +70,9 @@ fun ManageCollectionBottomSheet(
         ) {
             Motion.ExpressiveSheetContent {
                 val managePagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
-                val managePage1ScrollState = rememberScrollState()
-                val managePage2ScrollState = rememberScrollState()
+                val density = LocalDensity.current
+                var page0Height by remember { mutableStateOf<Dp?>(null) }
+                var page1Height by remember { mutableStateOf<Dp?>(null) }
 
                 val iconOrEmoji = when (collection) {
                     "Library" -> CollectionsBookmarkIcon(filled = true)
@@ -79,7 +84,7 @@ fun ManageCollectionBottomSheet(
                     listOfNotNull(
                         ActionItemData(
                             id = "ADD",
-                            label = "Add photos",
+                            label = if (collection == "Library") "Add photo" else "Add photos",
                             icon = Icons.Rounded.AddPhotoAlternate,
                             onClick = {
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -99,7 +104,7 @@ fun ManageCollectionBottomSheet(
                         ) else null,
                         if (collection != "Library" && collection != "Favorites") ActionItemData(
                             id = "EDIT_EMOJI",
-                            label = "Add / edit emoji",
+                            label = "Edit emoji",
                             icon = Icons.Rounded.AddReaction,
                             onClick = {
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -125,8 +130,8 @@ fun ManageCollectionBottomSheet(
                 // Group 1: New. old
                 val newOldItems = remember {
                     listOf(
-                        cookieButtonItem(Icons.Rounded.ArrowDownward, contentDescription = "Newest first", tooltip = "Newest first", iconSize = 36.dp),
-                        cookieButtonItem(Icons.Rounded.ArrowUpward, contentDescription = "Oldest first", tooltip = "Oldest first", iconSize = 36.dp)
+                        cookieButtonItem(Icons.Rounded.ArrowDownward, contentDescription = "Newest first", iconSize = 36.dp),
+                        cookieButtonItem(Icons.Rounded.ArrowUpward, contentDescription = "Oldest first", iconSize = 36.dp)
                     )
                 }
                 val selectedNewOldIndex = when (currentSortType) {
@@ -138,8 +143,8 @@ fun ManageCollectionBottomSheet(
                 // Group 2: Most
                 val mostItems = remember {
                     listOf(
-                        cookieButtonItem(Icons.AutoMirrored.Rounded.TextSnippet, contentDescription = "Most snippets", tooltip = "Most snippets", iconSize = 36.dp),
-                        cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Most starred", tooltip = "Most starred", iconSize = 36.dp)
+                        cookieButtonItem(Icons.AutoMirrored.Rounded.TextSnippet, contentDescription = "Most snippets", iconSize = 36.dp),
+                        cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Most starred", iconSize = 36.dp)
                     )
                 }
                 val selectedMostIndex = when (currentSortType) {
@@ -151,8 +156,8 @@ fun ManageCollectionBottomSheet(
                 // Group 3: Least
                 val leastItems = remember {
                     listOf(
-                        cookieButtonItem(Icons.AutoMirrored.Rounded.TextSnippet, contentDescription = "Least snippets", tooltip = "Least snippets", iconSize = 36.dp),
-                        cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Least starred", tooltip = "Least starred", iconSize = 36.dp)
+                        cookieButtonItem(Icons.AutoMirrored.Rounded.TextSnippet, contentDescription = "Least snippets", iconSize = 36.dp),
+                        cookieButtonItem(R.drawable.ic_star_rating, contentDescription = "Least starred", iconSize = 36.dp)
                     )
                 }
                 val selectedLeastIndex = when (currentSortType) {
@@ -164,19 +169,16 @@ fun ManageCollectionBottomSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(240.dp)
                         .padding(horizontal = 24.dp)
-                        .padding(top = 8.dp, bottom = 20.dp),
+                        .padding(top = 22.dp, bottom = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    // Left Column: Collection icon, pagination dots, and vertical scrollbar
+                    // Left Column: Collection icon and pagination dots
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Top,
-                        modifier = Modifier
-                            .width(48.dp)
-                            .fillMaxHeight()
+                        modifier = Modifier.width(48.dp)
                     ) {
                         Surface(
                             shape = CookieShape,
@@ -199,7 +201,7 @@ fun ManageCollectionBottomSheet(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(26.dp))
 
                         // Spring physics M3 pagination dots
                         Row(
@@ -270,25 +272,33 @@ fun ManageCollectionBottomSheet(
                                 }
                             }
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        VerticalScrollbar(
-                            scrollState = if (managePagerState.currentPage == 0) managePage1ScrollState else managePage2ScrollState,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        )
+                    val currentHeight = when {
+                        page0Height != null && page1Height != null -> {
+                            val progress = (managePagerState.currentPage + managePagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+                            lerp(page0Height!!, page1Height!!, progress)
+                        }
+                        page0Height != null && managePagerState.currentPage == 0 -> page0Height
+                        page1Height != null && managePagerState.currentPage == 1 -> page1Height
+                        else -> null
                     }
 
                     // Horizontal Pager for Page 1 (Actions) and Page 2 (Sort)
                     HorizontalPager(
                         state = managePagerState,
-                        beyondViewportPageCount = 2,
+                        beyondViewportPageCount = 1,
                         pageSpacing = 16.dp,
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight(),
+                            .graphicsLayer { clip = false }
+                            .then(
+                                if (currentHeight != null) {
+                                    Modifier.height(currentHeight)
+                                } else {
+                                    Modifier
+                                }
+                            ),
                         verticalAlignment = Alignment.Top
                     ) { page ->
                         androidx.compose.runtime.CompositionLocalProvider(
@@ -299,78 +309,139 @@ fun ManageCollectionBottomSheet(
                         ) {
                             when (page) {
                                 0 -> {
-                                    // Page 1: Actions (Animated cookie buttons with pill below, vertical scroll)
+                                    // Page 1: Actions (Animated cookie buttons with pills)
                                     Column(
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .verticalScroll(managePage1ScrollState),
+                                            .fillMaxWidth()
+                                            .graphicsLayer { clip = false }
+                                            .onSizeChanged { size ->
+                                                if (size.height > 0) {
+                                                    with(density) { page0Height = size.height.toDp() }
+                                                }
+                                            },
                                         verticalArrangement = Arrangement.spacedBy(16.dp),
                                         horizontalAlignment = Alignment.Start
                                     ) {
                                         actions.chunked(2).forEach { rowActions ->
                                             Row(
-                                                modifier = Modifier.fillMaxWidth(),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .graphicsLayer { clip = false },
                                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                                 verticalAlignment = Alignment.Top
                                             ) {
                                                 rowActions.forEach { action ->
-                                                    when (val icon = action.icon) {
-                                                        is androidx.compose.ui.graphics.vector.ImageVector -> AnimatedCookieButton(
-                                                            onClick = action.onClick,
-                                                            icon = icon,
-                                                            contentDescription = action.label,
-                                                            tooltip = action.label,
-                                                            size = 84.dp,
-                                                            iconSize = 38.dp,
-                                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                        )
-                                                        is Int -> AnimatedCookieButton(
-                                                            onClick = action.onClick,
-                                                            icon = icon,
-                                                            contentDescription = action.label,
-                                                            tooltip = action.label,
-                                                            size = 84.dp,
-                                                            iconSize = 38.dp,
-                                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                        )
+                                                    Column(
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .graphicsLayer { clip = false }
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier.zIndex(10f),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            when (val icon = action.icon) {
+                                                                is androidx.compose.ui.graphics.vector.ImageVector -> AnimatedCookieButton(
+                                                                    onClick = action.onClick,
+                                                                    icon = icon,
+                                                                    contentDescription = action.label,
+                                                                    size = 84.dp,
+                                                                    iconSize = 38.dp,
+                                                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                )
+                                                                is Int -> AnimatedCookieButton(
+                                                                    onClick = action.onClick,
+                                                                    icon = icon,
+                                                                    contentDescription = action.label,
+                                                                    size = 84.dp,
+                                                                    iconSize = 38.dp,
+                                                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                                )
+                                                            }
+                                                        }
+
+                                                        Surface(
+                                                            shape = CircleShape,
+                                                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            modifier = Modifier
+                                                                .clip(CircleShape)
+                                                                .clickable { action.onClick() }
+                                                        ) {
+                                                            Box(
+                                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Text(
+                                                                    text = action.label,
+                                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        fontFamily = GoogleSansFlexRound
+                                                                    ),
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                            }
+                                                        }
                                                     }
+                                                }
+                                                if (rowActions.size < 2) {
+                                                    Spacer(modifier = Modifier.weight(1f))
                                                 }
                                             }
                                         }
                                     }
                                 }
                                 1 -> {
-                                    // Page 2: Sort button groups (84dp cookie buttons, 3 groups with pill labels, vertical scroll)
+                                    // Page 2: Sort button groups (84dp cookie buttons, 3 groups with pill labels)
                                     Column(
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .verticalScroll(managePage2ScrollState),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                                            .fillMaxWidth()
+                                            .graphicsLayer { clip = false }
+                                            .verticalScroll(rememberScrollState()),
+                                        verticalArrangement = Arrangement.Top,
                                         horizontalAlignment = Alignment.Start
                                     ) {
-                                        // Group 1: New. old
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .graphicsLayer { clip = false }
+                                                .onSizeChanged { size ->
+                                                    if (size.height > 0) {
+                                                        with(density) { page1Height = size.height.toDp() }
+                                                    }
+                                                },
+                                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                                            horizontalAlignment = Alignment.Start
+                                        ) {
+                                            // Group 1: New and Old
                                         Column(
                                             horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                                            modifier = Modifier.graphicsLayer { clip = false }
                                         ) {
-                                            CookieButtonGroup(
-                                                selectedIndex = selectedNewOldIndex,
-                                                onSelect = { index ->
-                                                    val option = if (index == 0) PhotoSortType.DateNewest else PhotoSortType.DateOldest
-                                                    onUpdateSort(option)
-                                                },
-                                                items = newOldItems,
-                                                columns = 1,
-                                                cookieSize = 84.dp,
-                                                overlap = 0.dp,
-                                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                                selectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                enableWiggle = true
-                                            )
+                                            Box(modifier = Modifier.zIndex(10f)) {
+                                                CookieButtonGroup(
+                                                    selectedIndex = selectedNewOldIndex,
+                                                    onSelect = { index ->
+                                                        val option = if (index == 0) PhotoSortType.DateNewest else PhotoSortType.DateOldest
+                                                        onUpdateSort(option)
+                                                    },
+                                                    items = newOldItems,
+                                                    columns = 1,
+                                                    cookieSize = 84.dp,
+                                                    overlap = 0.dp,
+                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                    selectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                    unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                    unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    enableWiggle = true
+                                                )
+                                            }
 
                                             Row(
                                                 modifier = Modifier.width(168.dp),
@@ -385,9 +456,11 @@ fun ManageCollectionBottomSheet(
                                                         shape = CircleShape,
                                                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
                                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier.clickable {
-                                                            onUpdateSort(PhotoSortType.DateNewest)
-                                                        }
+                                                        modifier = Modifier
+                                                            .clip(CircleShape)
+                                                            .clickable {
+                                                                onUpdateSort(PhotoSortType.DateNewest)
+                                                            }
                                                     ) {
                                                         Box(
                                                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
@@ -396,8 +469,8 @@ fun ManageCollectionBottomSheet(
                                                             Text(
                                                                 text = "New",
                                                                 style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = FontWeight.SemiBold,
-                                                                    fontFamily = GoogleSansFlexWide
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    fontFamily = GoogleSansFlexRound
                                                                 ),
                                                                 maxLines = 1,
                                                                 overflow = TextOverflow.Ellipsis
@@ -414,9 +487,11 @@ fun ManageCollectionBottomSheet(
                                                         shape = CircleShape,
                                                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
                                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier.clickable {
-                                                            onUpdateSort(PhotoSortType.DateOldest)
-                                                        }
+                                                        modifier = Modifier
+                                                            .clip(CircleShape)
+                                                            .clickable {
+                                                                onUpdateSort(PhotoSortType.DateOldest)
+                                                            }
                                                     ) {
                                                         Box(
                                                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
@@ -425,8 +500,8 @@ fun ManageCollectionBottomSheet(
                                                             Text(
                                                                 text = "Old",
                                                                 style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = FontWeight.SemiBold,
-                                                                    fontFamily = GoogleSansFlexWide
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    fontFamily = GoogleSansFlexRound
                                                                 ),
                                                                 maxLines = 1,
                                                                 overflow = TextOverflow.Ellipsis
@@ -440,24 +515,27 @@ fun ManageCollectionBottomSheet(
                                         // Group 2: Most
                                         Column(
                                             horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                                            modifier = Modifier.graphicsLayer { clip = false }
                                         ) {
-                                            CookieButtonGroup(
-                                                selectedIndex = selectedMostIndex,
-                                                onSelect = { index ->
-                                                    val option = if (index == 0) PhotoSortType.MostSnippets else PhotoSortType.MostStarred
-                                                    onUpdateSort(option)
-                                                },
-                                                items = mostItems,
-                                                columns = 1,
-                                                cookieSize = 84.dp,
-                                                overlap = 0.dp,
-                                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                                selectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                enableWiggle = true
-                                            )
+                                            Box(modifier = Modifier.zIndex(10f)) {
+                                                CookieButtonGroup(
+                                                    selectedIndex = selectedMostIndex,
+                                                    onSelect = { index ->
+                                                        val option = if (index == 0) PhotoSortType.MostSnippets else PhotoSortType.MostStarred
+                                                        onUpdateSort(option)
+                                                    },
+                                                    items = mostItems,
+                                                    columns = 1,
+                                                    cookieSize = 84.dp,
+                                                    overlap = 0.dp,
+                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                    selectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                    unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                    unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    enableWiggle = true
+                                                )
+                                            }
 
                                             Surface(
                                                 shape = CircleShape,
@@ -471,8 +549,8 @@ fun ManageCollectionBottomSheet(
                                                     Text(
                                                         text = "Most",
                                                         style = MaterialTheme.typography.labelMedium.copy(
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            fontFamily = GoogleSansFlexWide
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontFamily = GoogleSansFlexRound
                                                         ),
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis
@@ -484,24 +562,27 @@ fun ManageCollectionBottomSheet(
                                         // Group 3: Least
                                         Column(
                                             horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                                            modifier = Modifier.graphicsLayer { clip = false }
                                         ) {
-                                            CookieButtonGroup(
-                                                selectedIndex = selectedLeastIndex,
-                                                onSelect = { index ->
-                                                    val option = if (index == 0) PhotoSortType.LeastSnippets else PhotoSortType.LeastStarred
-                                                    onUpdateSort(option)
-                                                },
-                                                items = leastItems,
-                                                columns = 1,
-                                                cookieSize = 84.dp,
-                                                overlap = 0.dp,
-                                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                                selectedContentColor = MaterialTheme.colorScheme.onPrimary,
-                                                unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                enableWiggle = true
-                                            )
+                                            Box(modifier = Modifier.zIndex(10f)) {
+                                                CookieButtonGroup(
+                                                    selectedIndex = selectedLeastIndex,
+                                                    onSelect = { index ->
+                                                        val option = if (index == 0) PhotoSortType.LeastSnippets else PhotoSortType.LeastStarred
+                                                        onUpdateSort(option)
+                                                    },
+                                                    items = leastItems,
+                                                    columns = 1,
+                                                    cookieSize = 84.dp,
+                                                    overlap = 0.dp,
+                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                    selectedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                                    unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                    unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    enableWiggle = true
+                                                )
+                                            }
 
                                             Surface(
                                                 shape = CircleShape,
@@ -515,8 +596,8 @@ fun ManageCollectionBottomSheet(
                                                     Text(
                                                         text = "Least",
                                                         style = MaterialTheme.typography.labelMedium.copy(
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            fontFamily = GoogleSansFlexWide
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontFamily = GoogleSansFlexRound
                                                         ),
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis
@@ -533,4 +614,5 @@ fun ManageCollectionBottomSheet(
             }
         }
     }
+}
 }

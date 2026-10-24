@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.android.snippets.ui.shapes.CookieHoldMorphs
 import com.android.snippets.ui.shapes.CookieShape
 import com.android.snippets.ui.shapes.MorphSequenceShape
@@ -49,7 +50,8 @@ fun AnimatedCookieButton(
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
-    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    holdScale: Float = 1.45f
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -74,7 +76,8 @@ fun AnimatedCookieButton(
         iconSize = iconSize,
         isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
-        badge = badge
+        badge = badge,
+        holdScale = holdScale
     )
 }
 
@@ -97,7 +100,8 @@ fun AnimatedCookieButton(
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
-    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    holdScale: Float = 1.45f
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -122,7 +126,8 @@ fun AnimatedCookieButton(
         iconSize = iconSize,
         isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
-        badge = badge
+        badge = badge,
+        holdScale = holdScale
     )
 }
 
@@ -144,7 +149,8 @@ fun AnimatedCookieButton(
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
-    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    holdScale: Float = 1.45f
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -162,7 +168,8 @@ fun AnimatedCookieButton(
         iconSize = iconSize,
         isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
-        badge = badge
+        badge = badge,
+        holdScale = holdScale
     )
 }
 
@@ -184,7 +191,8 @@ private fun AnimatedCookieButtonImpl(
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
-    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    holdScale: Float = 1.45f
 ) {
     val view = LocalView.current
     var isHoldMorphing by remember { mutableStateOf(false) }
@@ -269,14 +277,18 @@ private fun AnimatedCookieButtonImpl(
     val scope = rememberCoroutineScope()
     var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
+    val isElevated = isMorphActive || isHolding || animScaleX.value > 1.01f || isTapped
+
     val buttonContent: @Composable (Modifier) -> Unit = { btnModifier ->
         Box(
             modifier = btnModifier
+                .zIndex(if (isElevated) 10f else 0f)
                 .size(size)
                 .graphicsLayer {
                     rotationZ = rotation.value + tiltAngle
                     scaleX = animScaleX.value
                     scaleY = animScaleY.value
+                    clip = false
                 }
                 .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
@@ -379,9 +391,10 @@ private fun AnimatedCookieButtonImpl(
     }
 
     val content = @Composable {
+        val elevatedModifier = modifier.zIndex(if (isElevated) 10f else 0f)
         if (badge != null) {
             Box(
-                modifier = modifier.size(size),
+                modifier = elevatedModifier.size(size),
                 contentAlignment = Alignment.Center
             ) {
                 buttonContent(Modifier)
@@ -400,7 +413,7 @@ private fun AnimatedCookieButtonImpl(
                 }
             }
         } else {
-            buttonContent(modifier)
+            buttonContent(elevatedModifier)
         }
     }
 
@@ -412,8 +425,8 @@ private fun AnimatedCookieButtonImpl(
             kotlinx.coroutines.delay(150L)
             if (!isHolding || isHoldCompleted) return@LaunchedEffect
             isHoldMorphing = true
-            launch { animScaleX.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
-            launch { animScaleY.animateTo(1.45f, animationSpec = Motion.BouncySpring) }
+            launch { animScaleX.animateTo(holdScale, animationSpec = Motion.BouncySpring) }
+            launch { animScaleY.animateTo(holdScale, animationSpec = Motion.BouncySpring) }
             launch { animIconScale.animateTo(0.5f, animationSpec = Motion.BouncySpring) }
         } else {
             isHoldMorphing = false
