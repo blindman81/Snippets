@@ -26,7 +26,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.exifinterface.media.ExifInterface
 import com.android.snippets.logic.MemoryWorker
-import com.android.snippets.logic.DailyReminderWorker
+import com.android.snippets.logic.MemoryManager
 import android.app.backup.BackupManager
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -48,27 +48,37 @@ enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, Fle
 class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
-        const val MEMORY_REMINDER_PREFIX = "memory_reminder_"
-        const val NEW_MEMORY_NOTIFICATION_DELAY_HOURS = 12L
-        const val VIEWED_MEMORY_VISIBLE_HOURS = 24L
-        const val RECENTLY_VIEWED_MEMORY_HOURS = 24L
-        const val VIEWED_MEMORY_RESET_DAYS = 3L
-        const val SURFACED_MEMORY_SPACING_HOURS = 3L
-        const val TEST_NOTIFICATION_DELAY_SECONDS = 5L
-        const val TEST_NOTIFICATION_PHOTO_ID = "test_notification"
-        const val DAILY_REMINDER_WORK_TAG = "daily_reminder_work"
+        const val MEMORY_REMINDER_PREFIX = MemoryManager.MEMORY_REMINDER_PREFIX
+        const val MEMORIES_PER_CYCLE = MemoryManager.MEMORIES_PER_CYCLE
+        const val CYCLE_MORNING_HOUR = MemoryManager.CYCLE_MORNING_HOUR
+        const val CYCLE_EVENING_HOUR = MemoryManager.CYCLE_EVENING_HOUR
+        const val CYCLE_WINDOW_HOURS = MemoryManager.CYCLE_WINDOW_HOURS
+        const val NEW_MEMORY_NOTIFICATION_DELAY_HOURS = MemoryManager.NEW_MEMORY_NOTIFICATION_DELAY_HOURS
+        const val VIEWED_MEMORY_VISIBLE_HOURS = MemoryManager.VIEWED_MEMORY_VISIBLE_HOURS
+        const val RECENTLY_VIEWED_MEMORY_HOURS = MemoryManager.RECENTLY_VIEWED_MEMORY_HOURS
+        const val VIEWED_MEMORY_RESET_DAYS = MemoryManager.VIEWED_MEMORY_RESET_DAYS
+        const val SURFACED_MEMORY_SPACING_HOURS = MemoryManager.SURFACED_MEMORY_SPACING_HOURS
+        const val TEST_NOTIFICATION_DELAY_SECONDS = MemoryManager.TEST_NOTIFICATION_DELAY_SECONDS
+        const val TEST_NOTIFICATION_PHOTO_ID = MemoryManager.TEST_NOTIFICATION_PHOTO_ID
 
-        val NEW_MEMORY_WAIT_MS: Long = TimeUnit.HOURS.toMillis(NEW_MEMORY_NOTIFICATION_DELAY_HOURS)
-        val VIEWED_MEMORY_VISIBLE_MS: Long = TimeUnit.HOURS.toMillis(VIEWED_MEMORY_VISIBLE_HOURS)
-        val RECENTLY_VIEWED_MEMORY_MS: Long = TimeUnit.HOURS.toMillis(RECENTLY_VIEWED_MEMORY_HOURS)
-        val VIEWED_MEMORY_RESET_MS: Long = TimeUnit.DAYS.toMillis(VIEWED_MEMORY_RESET_DAYS)
-        val SURFACED_MEMORY_SPACING_MS: Long = TimeUnit.HOURS.toMillis(SURFACED_MEMORY_SPACING_HOURS)
+        val NEW_MEMORY_WAIT_MS: Long get() = MemoryManager.NEW_MEMORY_WAIT_MS
+        val VIEWED_MEMORY_VISIBLE_MS: Long get() = MemoryManager.VIEWED_MEMORY_VISIBLE_MS
+        val RECENTLY_VIEWED_MEMORY_MS: Long get() = MemoryManager.RECENTLY_VIEWED_MEMORY_MS
+        val VIEWED_MEMORY_RESET_MS: Long get() = MemoryManager.VIEWED_MEMORY_RESET_MS
+        val SURFACED_MEMORY_SPACING_MS: Long get() = MemoryManager.SURFACED_MEMORY_SPACING_MS
+        val CYCLE_WINDOW_MS: Long get() = MemoryManager.CYCLE_WINDOW_MS
 
         val EMOTICONS_LIST: List<String> = listOf(
             ":)", ":(", ":D", ":P", ":O", ":-)", ":-(", ":-D", ":-P", ";)", ";D", 
             "^_^", ">_<", "o_o", "O_O", "-_-", "T_T", "8-)", "8)", ":3", "xD", "XD",
             ":' )", ":' (", ":v", ":/", ":\\", ">:)", ">:(", "O:)", "u_u"
         )
+
+        fun getCurrentCycleStart(now: Long = System.currentTimeMillis()): Long =
+            MemoryManager.getCurrentCycleStart(now)
+
+        fun getNextCycleStart(time: Long = System.currentTimeMillis()): Long =
+            MemoryManager.getNextCycleStart(time)
     }
 
     private val prefs = application.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
@@ -188,6 +198,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var motionSensorForButtonRotation by mutableStateOf(true)
         private set
 
+    var notificationReminderEnabled by mutableStateOf(false)
+        private set
+    var notificationReminderHour by mutableStateOf(9)
+        private set
+    var notificationReminderMinute by mutableStateOf(0)
+        private set
+
 
     var autoBackupSchedule by mutableStateOf("Disabled")
         private set
@@ -197,13 +214,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var showCarouselsIn by mutableStateOf<Set<String>>(
         prefs.getStringSet("show_carousels_in", null) ?: emptySet()
     )
-        private set
-    
-    var notificationReminderEnabled by mutableStateOf(false)
-        private set
-    var notificationReminderHour by mutableStateOf(9)
-        private set
-    var notificationReminderMinute by mutableStateOf(0)
         private set
     
     val separateCollectionSort = true
@@ -655,9 +665,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
                 reconcileSurfacedMemories()
                 reconcileMemoryNotifications()
-                if (notificationReminderEnabled) {
-                    cancelAllPerPhotoMemoryWorkers()
-                }
                 checkAndTriggerRecapOnLaunch()
             }
         }
@@ -774,227 +781,34 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun reconcileSurfacedMemories(now: Long = System.currentTimeMillis()) {
-        var changed = false
-        val scheduledNotifications = mutableListOf<Pair<String, Long>>()
-        val updatedPhotos = photos.map { photo ->
-            if (shouldResurfaceMemory(photo, now)) {
-                changed = true
-                photo.copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
-            } else photo
-        }.toMutableList()
-
-        // Count memories active for today
-        val activeCountToday = updatedPhotos.count { photo ->
-            photo.surfacedTime != 0L && photo.surfacedTime <= now && (now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS)
-        }
-
-        val limit = if (notificationReminderEnabled) 5 else 15
-        // If today has fewer than limit active memories, recycle expired memories so the queue refreshes for today
-        if (activeCountToday < limit) {
-            val needed = limit - activeCountToday
-            val expiredCandidates = updatedPhotos.filter { photo ->
-                photo.isLibraryUpload &&
-                photo.snippets.isNotEmpty() &&
-                photo.snippetsAddedTime != 0L &&
-                photo.surfacedTime != 0L &&
-                photo.surfacedTime <= now &&
-                (now - photo.surfacedTime >= VIEWED_MEMORY_VISIBLE_MS) &&
-                (!photo.isViewed || (now - photo.lastViewedTime >= VIEWED_MEMORY_VISIBLE_MS))
-            }.sortedBy { if (it.isViewed) it.lastViewedTime else it.surfacedTime }
-            .take(needed)
-
-            for (expired in expiredCandidates) {
-                val index = updatedPhotos.indexOfFirst { it.id == expired.id }
-                if (index != -1) {
-                    updatedPhotos[index] = updatedPhotos[index].copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
-                    changed = true
-                }
-            }
-        }
-
-        val assignedTimes = updatedPhotos.map { it.surfacedTime }.filter { it != 0L && it > now - VIEWED_MEMORY_VISIBLE_MS }
-
-        val queuedCandidates = updatedPhotos.filter { photo ->
-            photo.isLibraryUpload &&
-            photo.snippets.isNotEmpty() &&
-            photo.snippetsAddedTime != 0L &&
-            (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
-            photo.surfacedTime == 0L
-        }.sortedBy { it.snippetsAddedTime }
-
-        if (queuedCandidates.isNotEmpty()) {
-            val tempAssignedTimes = assignedTimes.toMutableList()
-            for (candidate in queuedCandidates) {
-                val targetTime = findNextAvailableSurfacedTime(candidate, now, tempAssignedTimes)
-                tempAssignedTimes.add(targetTime)
-
-                val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
-                if (index != -1) {
-                    updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = targetTime)
-                    scheduledNotifications.add(candidate.id to targetTime)
-                    changed = true
-                }
-            }
-        }
-
-        if (changed) {
-            photos = updatedPhotos
+        val result = MemoryManager.reconcileSurfacedMemories(photos, now)
+        if (result != null) {
+            photos = result.first
             savePhotos()
-            // When the daily reminder is on, the DailyReminderWorker posts a
-            // single summarised notification at the scheduled time. Individual
-            // per-photo workers must not be enqueued.
-            if (!notificationReminderEnabled) {
-                scheduledNotifications.forEach { (id, targetTime) ->
-                    val delayMs = maxOf(0L, targetTime - now)
-                    val photo = photos.find { it.id == id }
-                    val notificationType = if (photo?.isViewed == true) {
-                        MemoryWorker.TYPE_UPDATED
-                    } else if (photo != null && photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
-                        MemoryWorker.TYPE_RESURFACED
-                    } else {
-                        MemoryWorker.TYPE_NEW
-                    }
-                    scheduleMemoryNotification(
-                        photoId = id,
-                        delay = delayMs,
-                        delayUnit = TimeUnit.MILLISECONDS,
-                        notificationType = notificationType,
-                        policy = androidx.work.ExistingWorkPolicy.REPLACE,
-                        resetPostedState = true
-                    )
+            result.second.forEach { (id, targetTime) ->
+                val delayMs = maxOf(0L, targetTime - now)
+                val photo = photos.find { it.id == id }
+                val notificationType = if (photo?.isViewed == true) {
+                    MemoryWorker.TYPE_UPDATED
+                } else if (photo != null && photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
+                    MemoryWorker.TYPE_RESURFACED
+                } else {
+                    MemoryWorker.TYPE_NEW
                 }
+                scheduleMemoryNotification(
+                    photoId = id,
+                    delay = delayMs,
+                    delayUnit = TimeUnit.MILLISECONDS,
+                    notificationType = notificationType,
+                    policy = androidx.work.ExistingWorkPolicy.REPLACE,
+                    resetPostedState = true
+                )
             }
         }
-    }
-
-    private fun findNextAvailableSurfacedTime(photo: Photo, now: Long, assignedTimes: List<Long>): Long {
-        val earliestTime = photo.snippetsAddedTime + NEW_MEMORY_WAIT_MS
-
-        if (notificationReminderEnabled) {
-            val todayStart = getStartOfDay(now)
-            val calendar = Calendar.getInstance().apply { timeInMillis = maxOf(todayStart, getStartOfDay(earliestTime)) }
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            
-            while (calendar.timeInMillis < todayStart || calendar.timeInMillis + TimeUnit.DAYS.toMillis(1) <= earliestTime) {
-                calendar.add(Calendar.DAY_OF_YEAR, 1)
-            }
-            var candidateTime = calendar.timeInMillis
-            
-            val activeAssignedTimes = assignedTimes.toMutableList()
-            var attempts = 0
-            while (attempts < 1000) {
-                val dayStart = getStartOfDay(candidateTime)
-                val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
-                if (countOnDay >= 5) {
-                    calendar.timeInMillis = candidateTime
-                    calendar.add(Calendar.DAY_OF_YEAR, 1)
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.set(Calendar.MILLISECOND, 0)
-                    candidateTime = calendar.timeInMillis
-                    attempts++
-                    continue
-                }
-                break
-            }
-            return candidateTime
-        } else {
-            val todayStart = getStartOfDay(now)
-            var candidateTime = maxOf(todayStart, getStartOfDay(earliestTime))
-            if (earliestTime > now) {
-                candidateTime = maxOf(now, earliestTime)
-            }
-            candidateTime = adjustForQuietHours(candidateTime)
-
-            val activeAssignedTimes = assignedTimes.toMutableList()
-
-            var attempts = 0
-            while (attempts < 1000) {
-                val countInWindow = activeAssignedTimes.count { assigned ->
-                    val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
-                    diff < SURFACED_MEMORY_SPACING_MS
-                }
-                if (countInWindow >= 3) {
-                    val maxInWindow = activeAssignedTimes.filter { assigned ->
-                        val diff = if (assigned > candidateTime) assigned - candidateTime else candidateTime - assigned
-                        diff < SURFACED_MEMORY_SPACING_MS
-                    }.maxOrNull() ?: candidateTime
-                    candidateTime = maxInWindow + SURFACED_MEMORY_SPACING_MS
-                    candidateTime = adjustForQuietHours(candidateTime)
-                    attempts++
-                    continue
-                }
-
-                val dayStart = getStartOfDay(candidateTime)
-                val countOnDay = activeAssignedTimes.count { getStartOfDay(it) == dayStart }
-                if (countOnDay >= 15) {
-                    val calendar = Calendar.getInstance().apply { timeInMillis = candidateTime }
-                    calendar.add(Calendar.DAY_OF_YEAR, 1)
-                    calendar.set(Calendar.HOUR_OF_DAY, 9)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.set(Calendar.MILLISECOND, 0)
-                    candidateTime = calendar.timeInMillis
-                    candidateTime = adjustForQuietHours(candidateTime)
-                    attempts++
-                    continue
-                }
-
-                break
-            }
-            return candidateTime
-        }
-    }
-
-    private fun adjustForQuietHours(timeMs: Long): Long {
-        val calendar = Calendar.getInstance().apply { timeInMillis = timeMs }
-        val hour = calendar.get(Calendar.HOUR_OF_DAY)
-        if (hour >= 22) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
-            calendar.set(Calendar.HOUR_OF_DAY, 9)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            return calendar.timeInMillis
-        } else if (hour < 8) {
-            calendar.set(Calendar.HOUR_OF_DAY, 9)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            return calendar.timeInMillis
-        }
-        return timeMs
-    }
-
-    private fun getStartOfDay(timeMs: Long): Long {
-        val calendar = Calendar.getInstance().apply { timeInMillis = timeMs }
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.timeInMillis
     }
 
     private fun checkAndResetMemories() {
         reconcileSurfacedMemories()
-    }
-
-    private fun shouldResurfaceMemory(photo: Photo, now: Long): Boolean {
-        if (!photo.isLibraryUpload || photo.snippets.isEmpty() || photo.snippetsAddedTime == 0L) {
-            return false
-        }
-        if (photo.surfacedTime != 0L && photo.surfacedTime > now) {
-            return false
-        }
-        if (photo.isViewed) {
-            return now - photo.lastViewedTime >= VIEWED_MEMORY_RESET_MS
-        }
-        return photo.surfacedTime != 0L &&
-            now - photo.surfacedTime >= VIEWED_MEMORY_RESET_MS + VIEWED_MEMORY_VISIBLE_MS
     }
     private fun saveCollections() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -1020,6 +834,17 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun updateDynamicColors(use: Boolean) {
         useDynamicColors = use
         prefs.edit().putBoolean("use_dynamic_colors", use).apply()
+    }
+
+    fun updateNotificationReminder(enabled: Boolean, hour: Int, minute: Int) {
+        notificationReminderEnabled = enabled
+        notificationReminderHour = hour
+        notificationReminderMinute = minute
+        prefs.edit()
+            .putBoolean("notification_reminder_enabled", enabled)
+            .putInt("notification_reminder_hour", hour)
+            .putInt("notification_reminder_minute", minute)
+            .apply()
     }
 
 
@@ -1414,28 +1239,14 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun memoryReminderName(photoId: String) = "$MEMORY_REMINDER_PREFIX$photoId"
+    private fun memoryReminderName(photoId: String) = MemoryManager.memoryReminderName(photoId)
 
     private fun scheduleNewMemoryNotification(photoId: String) {
-        // When the daily reminder is on, the DailyReminderWorker delivers
-        // a single summarised notification at the scheduled time instead.
-        if (notificationReminderEnabled) return
-        scheduleMemoryNotification(
-            photoId = photoId,
-            delay = NEW_MEMORY_NOTIFICATION_DELAY_HOURS,
-            delayUnit = TimeUnit.HOURS,
-            notificationType = MemoryWorker.TYPE_NEW
-        )
+        MemoryManager.scheduleNewMemoryNotification(getApplication(), photoId)
     }
 
     private fun scheduleUpdatedMemoryNotification(photoId: String) {
-        if (notificationReminderEnabled) return
-        scheduleMemoryNotification(
-            photoId = photoId,
-            delay = NEW_MEMORY_NOTIFICATION_DELAY_HOURS,
-            delayUnit = TimeUnit.HOURS,
-            notificationType = MemoryWorker.TYPE_UPDATED
-        )
+        MemoryManager.scheduleUpdatedMemoryNotification(getApplication(), photoId)
     }
 
     private fun scheduleMemoryNotification(
@@ -1446,207 +1257,28 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         policy: androidx.work.ExistingWorkPolicy = androidx.work.ExistingWorkPolicy.REPLACE,
         resetPostedState: Boolean = true
     ) {
-        if (photoId.isBlank()) return
-        if (notificationReminderEnabled) return
-
-        if (resetPostedState) {
-            MemoryWorker.clearPostedNotificationState(getApplication(), photoId)
-        }
-        val reminderName = memoryReminderName(photoId)
-        val workRequestBuilder = OneTimeWorkRequestBuilder<MemoryWorker>()
-            .setInitialDelay(delay, delayUnit)
-            .setBackoffCriteria(
-                androidx.work.BackoffPolicy.LINEAR,
-                30,
-                TimeUnit.MINUTES
-            )
-            .setInputData(
-                androidx.work.workDataOf(
-                    MemoryWorker.INPUT_PHOTO_ID to photoId,
-                    MemoryWorker.INPUT_NOTIFICATION_TYPE to notificationType
-                )
-            )
-            .addTag(reminderName)
-
-        val workRequest = workRequestBuilder.build()
-
-        WorkManager.getInstance(getApplication()).enqueueUniqueWork(
-            reminderName,
-            policy,
-            workRequest
+        MemoryManager.scheduleMemoryNotification(
+            context = getApplication(),
+            photoId = photoId,
+            delay = delay,
+            delayUnit = delayUnit,
+            notificationType = notificationType,
+            policy = policy,
+            resetPostedState = resetPostedState
         )
     }
 
     private fun reconcileMemoryNotifications() {
-        // When the daily reminder is on, per-photo workers are not used;
-        // the DailyReminderWorker delivers a single summarised notification.
-        if (notificationReminderEnabled) return
-        val now = System.currentTimeMillis()
-        var changed = false
-        val updatedPhotos = photos.toMutableList()
-        val unpostedPhotos = updatedPhotos
-            .filter { !it.isViewed || it.snippetsAddedTime > it.lastViewedTime }
-            .filterNot { MemoryWorker.wasNotificationPosted(getApplication(), it.id) }
-            .filter { it.surfacedTime != 0L }
-            .sortedBy { it.surfacedTime }
-
-        val scheduledTimes = mutableListOf<Long>()
-        unpostedPhotos.forEach { photo ->
-            var candidateTime = maxOf(photo.surfacedTime, now)
-            candidateTime = adjustForQuietHours(candidateTime)
-            var attempts = 0
-            while (attempts < 1000) {
-                val countInWindow = scheduledTimes.count { scheduled ->
-                    val diff = if (scheduled > candidateTime) scheduled - candidateTime else candidateTime - scheduled
-                    diff < SURFACED_MEMORY_SPACING_MS
-                }
-                if (countInWindow >= 3) {
-                    val maxInWindow = scheduledTimes.filter { scheduled ->
-                        val diff = if (scheduled > candidateTime) scheduled - candidateTime else candidateTime - scheduled
-                        diff < SURFACED_MEMORY_SPACING_MS
-                    }.maxOrNull() ?: candidateTime
-                    candidateTime = maxInWindow + SURFACED_MEMORY_SPACING_MS
-                    candidateTime = adjustForQuietHours(candidateTime)
-                    attempts++
-                } else {
-                    break
-                }
-            }
-            scheduledTimes.add(candidateTime)
-
-            if (photo.surfacedTime != candidateTime) {
-                val index = updatedPhotos.indexOfFirst { it.id == photo.id }
-                if (index != -1) {
-                    updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = candidateTime)
-                    changed = true
-                }
-            }
-            val delayMs = maxOf(0L, candidateTime - now)
-
-            val notificationType = if (photo.isViewed) {
-                MemoryWorker.TYPE_UPDATED
-            } else if (photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
-                MemoryWorker.TYPE_RESURFACED
-            } else {
-                MemoryWorker.TYPE_NEW
-            }
-            scheduleMemoryNotification(
-                photoId = photo.id,
-                delay = delayMs,
-                delayUnit = TimeUnit.MILLISECONDS,
-                notificationType = notificationType,
-                policy = androidx.work.ExistingWorkPolicy.REPLACE,
-                resetPostedState = false
-            )
-        }
-        if (changed) {
-            photos = updatedPhotos
-            savePhotos()
-        }
+        MemoryManager.reconcileMemoryNotifications(getApplication(), photos)
     }
 
     private fun cancelMemoryNotification(photoId: String) {
-        if (photoId.isBlank()) return
-        val reminderName = memoryReminderName(photoId)
-        WorkManager.getInstance(getApplication()).cancelUniqueWork(reminderName)
-        WorkManager.getInstance(getApplication()).cancelAllWorkByTag(reminderName)
-        MemoryWorker.cancelPostedNotification(getApplication(), photoId)
-    }
-
-    fun updateNotificationReminder(enabled: Boolean, hour: Int, minute: Int) {
-        notificationReminderEnabled = enabled
-        notificationReminderHour = hour
-        notificationReminderMinute = minute
-
-        prefs.edit()
-            .putBoolean("notification_reminder_enabled", enabled)
-            .putInt("notification_reminder_hour", hour)
-            .putInt("notification_reminder_minute", minute)
-            .apply()
-
-        if (enabled) {
-            // Cancel all existing per-photo workers so they don't fire
-            // while the daily summary is in charge of delivery.
-            cancelAllPerPhotoMemoryWorkers()
-            scheduleDailyReminderWork(hour, minute)
-        } else {
-            cancelDailyReminderWork()
-        }
-
-        // Cancel and reset surfacedTime for all pending memory notifications
-        // so that they will be recalculated and rescheduled to the new time
-        val updatedPhotos = photos.map { photo ->
-            val hasNotificationBeenPosted = MemoryWorker.wasNotificationPosted(getApplication(), photo.id)
-            val isPending = !photo.isViewed || (photo.snippetsAddedTime > photo.lastViewedTime)
-            if (isPending && !hasNotificationBeenPosted && photo.surfacedTime != 0L) {
-                cancelMemoryNotification(photo.id)
-                photo.copy(surfacedTime = 0L)
-            } else {
-                photo
-            }
-        }
-        photos = updatedPhotos
-        savePhotos()
-
-        reconcileSurfacedMemories()
-        // reconcileMemoryNotifications is a no-op when the reminder is enabled,
-        // so calling it here is safe regardless of the new state.
-        reconcileMemoryNotifications()
-    }
-
-    private fun scheduleDailyReminderWork(hour: Int, minute: Int) {
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        if (calendar.timeInMillis <= System.currentTimeMillis()) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        val delay = calendar.timeInMillis - System.currentTimeMillis()
-
-        val workRequest = OneTimeWorkRequestBuilder<DailyReminderWorker>()
-            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-            .addTag(DAILY_REMINDER_WORK_TAG)
-            .build()
-
-        WorkManager.getInstance(getApplication()).enqueueUniqueWork(
-            DAILY_REMINDER_WORK_TAG,
-            androidx.work.ExistingWorkPolicy.REPLACE,
-            workRequest
-        )
-    }
-
-    private fun cancelDailyReminderWork() {
-        WorkManager.getInstance(getApplication()).cancelUniqueWork(DAILY_REMINDER_WORK_TAG)
-    }
-
-    /** Cancels every pending per-photo MemoryWorker job. Called when the
-     *  daily reminder is enabled so individual notifications no longer fire. */
-    private fun cancelAllPerPhotoMemoryWorkers() {
-        photos.forEach { photo ->
-            val reminderName = memoryReminderName(photo.id)
-            WorkManager.getInstance(getApplication()).cancelUniqueWork(reminderName)
-            WorkManager.getInstance(getApplication()).cancelAllWorkByTag(reminderName)
-        }
+        MemoryManager.cancelMemoryNotification(getApplication(), photoId)
     }
 
     fun testNotification() {
-        val photosWithSnippets = photos.filter { it.snippets.isNotEmpty() }
-        val testId = photosWithSnippets.firstOrNull()?.id ?: TEST_NOTIFICATION_PHOTO_ID
-        
-        val workRequest = OneTimeWorkRequestBuilder<MemoryWorker>()
-            .setInitialDelay(TEST_NOTIFICATION_DELAY_SECONDS, TimeUnit.SECONDS)
-            .setInputData(
-                androidx.work.workDataOf(
-                    MemoryWorker.INPUT_PHOTO_ID to testId,
-                    MemoryWorker.INPUT_NOTIFICATION_TYPE to MemoryWorker.TYPE_NEW
-                )
-            )
-            .build()
         requestNotificationPermission = true
-        WorkManager.getInstance(getApplication()).enqueue(workRequest)
+        MemoryManager.testNotification(getApplication(), photos)
     }
 
     private fun extractCaptureDate(uri: Uri): Long {
@@ -2100,6 +1732,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun confirmBulkLocationApply() {
         val location = pendingLocationToApply ?: return
         val target = location.trim()
+        val extractedName = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(target)
+            ?: if (!target.startsWith("http://", ignoreCase = true) && !target.startsWith("https://", ignoreCase = true)) target else null
+        val cleanName = extractedName?.let { com.android.snippets.ui.util.LocationUtils.cleanLocationName(it) }
         
         photos = photos.map { photo ->
             if (selectedPhotoIds.contains(photo.id)) {
@@ -2505,32 +2140,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     val activePhoto: Photo? get() = photos.find { it.id == activePhotoId }
 
     val curatedMemories: List<Photo> by derivedStateOf {
-        val now = System.currentTimeMillis()
-
-        photos.filter { photo ->
-            photo.isLibraryUpload &&
-            photo.snippets.isNotEmpty() &&
-            photo.snippetsAddedTime != 0L &&
-            (now - photo.snippetsAddedTime >= NEW_MEMORY_WAIT_MS) &&
-            photo.surfacedTime != 0L &&
-            photo.surfacedTime <= now &&
-            (now - photo.surfacedTime < VIEWED_MEMORY_VISIBLE_MS) &&
-            (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime || (now - photo.lastViewedTime < VIEWED_MEMORY_VISIBLE_MS))
-        }.sortedWith(
-            compareByDescending<Photo> {
-                !it.isViewed
-            }.thenByDescending {
-                it.isViewed && (now - it.lastViewedTime < RECENTLY_VIEWED_MEMORY_MS)
-            }.thenByDescending {
-                if (it.isViewed) it.lastViewedTime else it.surfacedTime
-            }
-        ).take(if (notificationReminderEnabled) 5 else 15)
-        .sortedByDescending { it.date }
+        MemoryManager.getCuratedMemories(photos)
     }
 
-
     val hasUnviewedMemories: Boolean by derivedStateOf {
-        curatedMemories.any { !it.isViewed }
+        MemoryManager.hasUnviewedMemories(curatedMemories)
     }
     
     val filteredPhotos: List<Photo> by derivedStateOf {

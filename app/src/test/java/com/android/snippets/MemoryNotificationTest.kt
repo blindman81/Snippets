@@ -196,4 +196,51 @@ class MemoryNotificationTest {
         MemoryWorker.isInMemoryScreen = false
         org.junit.Assert.assertFalse(MemoryWorker.isInMemoryScreen)
     }
+
+    @Test
+    fun testCycleCalculationsFor9AmAnd9Pm() {
+        // Oct 18, 2026 at 10:30 AM (should belong to 9:00 AM cycle today)
+        val calMorning = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 18, 10, 30, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val morningCycleStart = com.android.snippets.viewmodel.SnippetsViewModel.getCurrentCycleStart(calMorning.timeInMillis)
+        val expectedMorningStart = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 18, 9, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(expectedMorningStart.timeInMillis, morningCycleStart)
+
+        // Next cycle from 10:30 AM should be 9:00 PM today
+        val nextCycleFromMorning = com.android.snippets.viewmodel.SnippetsViewModel.getNextCycleStart(calMorning.timeInMillis)
+        val expectedEveningStart = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 18, 21, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(expectedEveningStart.timeInMillis, nextCycleFromMorning)
+
+        // Oct 18, 2026 at 11:15 PM (should belong to 9:00 PM cycle today)
+        val calNight = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 18, 23, 15, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val nightCycleStart = com.android.snippets.viewmodel.SnippetsViewModel.getCurrentCycleStart(calNight.timeInMillis)
+        assertEquals(expectedEveningStart.timeInMillis, nightCycleStart)
+
+        // Next cycle from 11:15 PM should be 9:00 AM tomorrow
+        val nextCycleFromNight = com.android.snippets.viewmodel.SnippetsViewModel.getNextCycleStart(calNight.timeInMillis)
+        val expectedTomorrowMorning = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 19, 9, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(expectedTomorrowMorning.timeInMillis, nextCycleFromNight)
+    }
+
+    @Test
+    fun testCycleConstants() {
+        assertEquals(5, com.android.snippets.viewmodel.SnippetsViewModel.MEMORIES_PER_CYCLE)
+        assertEquals(9, com.android.snippets.viewmodel.SnippetsViewModel.CYCLE_MORNING_HOUR)
+        assertEquals(21, com.android.snippets.viewmodel.SnippetsViewModel.CYCLE_EVENING_HOUR)
+        assertEquals(12L, com.android.snippets.viewmodel.SnippetsViewModel.CYCLE_WINDOW_HOURS)
+    }
 }

@@ -97,8 +97,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
 
 private data class PillInfo(
     val text: String,
@@ -140,7 +138,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
     var showThemeDialog by remember { mutableStateOf(false) }
     var showCanvasDialog by remember { mutableStateOf(false) }
     var showAutoBackupDialog by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
 
     var activeInfo by remember { mutableStateOf<PillInfo?>(null) }
     var displayedInfo by remember { mutableStateOf<PillInfo?>(null) }
@@ -446,17 +443,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
 
                 val actionItems = listOf(
                     cookieButtonItem(
-                        icon = com.ln.android.snippets.R.drawable.ic_daily_reminder,
-                        contentDescription = "Schedule memory notifications",
-                        tooltip = "Schedule memory notifications",
-                        isSelected = viewModel.notificationReminderEnabled,
-                        iconSize = 28.dp,
-                        onClick = {
-                            showButtonInfo("Schedule memory notifications", com.ln.android.snippets.R.drawable.ic_daily_reminder)
-                            showTimePicker = true
-                        }
-                    ),
-                    cookieButtonItem(
                         icon = backupIcon,
                         contentDescription = "Export",
                         tooltip = "Export",
@@ -597,62 +583,6 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
              }
          )
      }
-
-     if (showTimePicker) {
-         val context = LocalContext.current
-         val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
-         val timePickerState = rememberTimePickerState(
-             initialHour = viewModel.notificationReminderHour,
-             initialMinute = viewModel.notificationReminderMinute,
-             is24Hour = is24Hour
-         )
-         var reminderEnabled by remember(showTimePicker) { mutableStateOf(viewModel.notificationReminderEnabled) }
-
-         AdvancedTimePickerDialog(
-             title = "Select time",
-             onDismiss = { showTimePicker = false },
-             onConfirm = {
-                 showTimePicker = false
-                 viewModel.updateNotificationReminder(
-                     enabled = reminderEnabled,
-                     hour = timePickerState.hour,
-                     minute = timePickerState.minute
-                 )
-             },
-             toggle = {
-                 Row(
-                     modifier = Modifier
-                         .fillMaxWidth()
-                         .padding(top = 16.dp, start = 4.dp, end = 4.dp),
-                     verticalAlignment = Alignment.CenterVertically,
-                     horizontalArrangement = Arrangement.SpaceBetween
-                 ) {
-                     Text(
-                         text = "Enable reminder",
-                         style = MaterialTheme.typography.bodyMedium.copy(
-                             fontFamily = GoogleSansFlexRound,
-                             fontWeight = FontWeight.Bold
-                         ),
-                         color = MaterialTheme.colorScheme.onSurface
-                     )
-                     AnimatedCookieButton(
-                         onClick = {
-                             reminderEnabled = !reminderEnabled
-                         },
-                         icon = com.ln.android.snippets.R.drawable.ic_daily_reminder,
-                         contentDescription = if (reminderEnabled) "Disable reminder" else "Enable reminder",
-                         tooltip = if (reminderEnabled) "Disable reminder" else "Enable reminder",
-                         containerColor = if (reminderEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                         contentColor = if (reminderEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-                         size = 48.dp,
-                         iconSize = 24.dp,
-                         isSpinning = true
-                     )
-                 }
-             },
-             content = { CustomTimePicker(state = timePickerState) }
-         )
-     }
     }
 }
 
@@ -766,39 +696,6 @@ private fun ButtonGroupScope.themeToggleableItem(
                     state.dismiss()
                 }
             )
-        }
-    )
-}
-
-@Composable
-fun AdvancedTimePickerDialog(
-    title: String = "Select time",
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    toggle: @Composable () -> Unit = {},
-    content: @Composable () -> Unit,
-) {
-    BlurredAlertDialog(
-        onDismissRequest = onDismiss,
-        onConfirm = onConfirm,
-        title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = GoogleSansFlexRound
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                content()
-                toggle()
-            }
         }
     )
 }
