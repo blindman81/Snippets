@@ -105,6 +105,7 @@ fun LibraryModalsHost(
             LocationLinkModal(
                 initialLink = currentModalPhoto.locationLink,
                 suggestions = viewModel.allUniqueLocations,
+                locationNames = viewModel.locationNameMap,
                 onDismiss = onCloseLinkModal,
                 onSave = { link, name ->
                     viewModel.updateLocationLink(currentModalPhoto.id, link.takeIf { it.isNotBlank() }, name)

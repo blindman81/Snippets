@@ -235,7 +235,8 @@ fun LocationLinkModal(
     initialLink: String?,
     suggestions: List<String>,
     onDismiss: () -> Unit,
-    onSave: (String, String?) -> Unit
+    onSave: (String, String?) -> Unit,
+    locationNames: Map<String, String> = emptyMap()
 ) {
     val view = LocalView.current
     val context = LocalContext.current
@@ -244,87 +245,21 @@ fun LocationLinkModal(
     val resolvedNames = remember { mutableStateMapOf<String, String>() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(suggestions) {
+    LaunchedEffect(suggestions, locationNames) {
+        resolvedNames.putAll(locationNames)
+
         suggestions.forEach { suggestion ->
-            if (suggestion.startsWith("http")) {
+            if (resolvedNames[suggestion] != null) return@forEach
+
+            if (suggestion.startsWith("http://", ignoreCase = true) || suggestion.startsWith("https://", ignoreCase = true)) {
                 val localName = LocationUtils.extractPlaceNameFromLink(suggestion)
                 if (localName != null) {
                     resolvedNames[suggestion] = LocationUtils.cleanLocationName(localName)
                 } else {
                     coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        var connection: java.net.HttpURLConnection? = null
-                        try {
-                            var currentUrl = suggestion
-                            var redirects = 0
-                            while (redirects < 5) {
-                                val url = java.net.URL(currentUrl)
-                                connection = url.openConnection() as java.net.HttpURLConnection
-                                connection.instanceFollowRedirects = false
-                                connection.connectTimeout = 3000
-                                connection.readTimeout = 3000
-                                connection.requestMethod = "HEAD"
-                                val responseCode = connection.responseCode
-                                if (responseCode in 300..399) {
-                                    val loc = connection.getHeaderField("Location")
-                                    if (!loc.isNullOrBlank()) {
-                                        currentUrl = if (loc.startsWith("http")) loc else {
-                                            val baseUri = android.net.Uri.parse(currentUrl)
-                                            baseUri.buildUpon().path(loc).build().toString()
-                                        }
-                                        redirects++
-                                    } else {
-                                        break
-                                    }
-                                } else {
-                                    break
-                                }
-                            }
-                            connection?.disconnect()
-                            connection = null
-
-                            val name = LocationUtils.extractPlaceNameFromLink(currentUrl)
-                            if (name != null) {
-                                resolvedNames[suggestion] = LocationUtils.cleanLocationName(name)
-                            }
-                        } catch (e: Exception) {
-                            try {
-                                var currentUrl = suggestion
-                                var redirects = 0
-                                while (redirects < 5) {
-                                    val url = java.net.URL(currentUrl)
-                                    connection = url.openConnection() as java.net.HttpURLConnection
-                                    connection.instanceFollowRedirects = false
-                                    connection.connectTimeout = 3000
-                                    connection.readTimeout = 3000
-                                    connection.requestMethod = "GET"
-                                    val responseCode = connection.responseCode
-                                    if (responseCode in 300..399) {
-                                        val loc = connection.getHeaderField("Location")
-                                        if (!loc.isNullOrBlank()) {
-                                            currentUrl = if (loc.startsWith("http")) loc else {
-                                                val baseUri = android.net.Uri.parse(currentUrl)
-                                                baseUri.buildUpon().path(loc).build().toString()
-                                            }
-                                            redirects++
-                                        } else {
-                                            break
-                                        }
-                                    } else {
-                                        break
-                                    }
-                                }
-                                connection?.disconnect()
-                                connection = null
-
-                                val name = LocationUtils.extractPlaceNameFromLink(currentUrl)
-                                if (name != null) {
-                                    resolvedNames[suggestion] = LocationUtils.cleanLocationName(name)
-                                }
-                            } catch (ex: Exception) {
-                                // ignore
-                            }
-                        } finally {
-                            connection?.disconnect()
+                        val name = LocationUtils.resolveUrlLocation(suggestion)
+                        if (name != null) {
+                            resolvedNames[suggestion] = LocationUtils.cleanLocationName(name)
                         }
                     }
                 }
@@ -335,19 +270,22 @@ fun LocationLinkModal(
     }
 
     val filteredSuggestions = remember(linkValue, suggestions, resolvedNames.toMap()) {
-        val baseList = if (initialLink != null) {
-            suggestions.filter { it != initialLink }
+        val baseList = if (!initialLink.isNullOrBlank()) {
+            suggestions.filter { it.trim().trimEnd('/') != initialLink.trim().trimEnd('/') }
         } else {
             suggestions
         }
 
         if (linkValue.isBlank()) {
-            baseList.take(8)
+            baseList
         } else {
+            val query = linkValue.trim()
             baseList.filter { suggestion ->
-                val displayName = resolvedNames[suggestion] ?: LocationUtils.extractPlaceNameFromLink(suggestion) ?: LocationUtils.cleanLocationName(suggestion)
-                displayName.contains(linkValue, ignoreCase = true) || suggestion.contains(linkValue, ignoreCase = true)
-            }.take(8)
+                val displayName = resolvedNames[suggestion]
+                    ?: LocationUtils.extractPlaceNameFromLink(suggestion)
+                    ?: LocationUtils.cleanLocationName(suggestion)
+                displayName.contains(query, ignoreCase = true) || suggestion.contains(query, ignoreCase = true)
+            }
         }
     }
 
@@ -355,9 +293,19 @@ fun LocationLinkModal(
         onDismissRequest = onDismiss,
         onConfirm = {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-            val name = resolvedNames[linkValue] ?: LocationUtils.extractPlaceNameFromLink(linkValue) ?: LocationUtils.cleanLocationName(linkValue)
-            val finalName = if (name.startsWith("http")) null else LocationUtils.cleanLocationName(name)
-            onSave(linkValue, finalName)
+            val trimmedInput = linkValue.trim()
+            val urlRegex = Regex("""https?://\S+""", RegexOption.IGNORE_CASE)
+            val foundUrl = urlRegex.find(trimmedInput)?.value
+            val targetLink = foundUrl ?: trimmedInput
+
+            val rawName = resolvedNames[targetLink]
+                ?: resolvedNames[trimmedInput]
+                ?: LocationUtils.extractPlaceNameFromLink(trimmedInput)
+                ?: LocationUtils.extractPlaceNameFromLink(targetLink)
+                ?: if (!targetLink.startsWith("http://", ignoreCase = true) && !targetLink.startsWith("https://", ignoreCase = true)) targetLink else null
+
+            val finalName = rawName?.let { LocationUtils.cleanLocationName(it) }?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
+            onSave(targetLink, finalName)
         },
         title = {
             Text(
@@ -395,9 +343,14 @@ fun LocationLinkModal(
                                         sysClipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
                                     }
                                 if (!textToPaste.isNullOrBlank()) {
-                                    val urlRegex = Regex("""https?://\S+""")
+                                    val urlRegex = Regex("""https?://\S+""", RegexOption.IGNORE_CASE)
                                     val extractedUrl = urlRegex.find(textToPaste)?.value
-                                    linkValue = extractedUrl ?: textToPaste.trim()
+                                    val extractedName = LocationUtils.extractPlaceNameFromLink(textToPaste)
+                                    val targetLink = extractedUrl ?: textToPaste.trim()
+                                    linkValue = targetLink
+                                    if (extractedName != null) {
+                                        resolvedNames[targetLink] = LocationUtils.cleanLocationName(extractedName)
+                                    }
                                 }
                             }
                         }) {

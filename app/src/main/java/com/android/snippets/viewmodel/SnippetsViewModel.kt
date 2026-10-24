@@ -1740,7 +1740,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             if (selectedPhotoIds.contains(photo.id)) {
                 photo.copy(
                     locationLink = target,
-                    locationName = null
+                    locationName = cleanName ?: photo.locationName
                 )
             } else photo
         }
@@ -2385,10 +2385,70 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    val locationNameMap: Map<String, String> by derivedStateOf {
+        val map = mutableMapOf<String, String>()
+        photos.forEach { p ->
+            val link = p.locationLink?.trim()?.takeIf { it.isNotBlank() }
+            val name = p.locationName?.trim()?.takeIf { it.isNotBlank() }
+                ?: link?.let { com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(it) }
+            if (link != null && name != null) {
+                val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(name)
+                if (clean.isNotBlank()) {
+                    map[link] = clean
+                }
+            }
+        }
+        map
+    }
+
     val allUniqueLocations: List<String> by derivedStateOf {
-        photos.mapNotNull { photo ->
-            photo.locationLink?.takeIf { it.isNotBlank() } ?: photo.locationName?.takeIf { it.isNotBlank() }
-        }.distinct().sorted()
+        val nameToLink = mutableMapOf<String, String>()
+        photos.forEach { p ->
+            val link = p.locationLink?.trim()?.takeIf { it.isNotBlank() }
+            val name = p.locationName?.trim()?.takeIf { it.isNotBlank() }
+                ?: link?.let { com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(it) }
+            if (link != null && name != null) {
+                val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(name)
+                if (clean.isNotBlank()) {
+                    nameToLink.putIfAbsent(clean.lowercase(), link)
+                }
+            }
+        }
+
+        val counts = mutableMapOf<String, Int>()
+        photos.forEach { p ->
+            val link = p.locationLink?.trim()?.takeIf { it.isNotBlank() }
+            val rawName = p.locationName?.trim()?.takeIf { it.isNotBlank() }
+            val cleanName = rawName?.let { com.android.snippets.ui.util.LocationUtils.cleanLocationName(it) }
+
+            val key = when {
+                link != null -> link
+                cleanName != null -> nameToLink[cleanName.lowercase()] ?: cleanName
+                else -> null
+            }
+
+            if (!key.isNullOrBlank()) {
+                counts[key] = (counts[key] ?: 0) + 1
+            }
+        }
+
+        photos.forEach { p ->
+            val rawName = p.locationName?.trim()?.takeIf { it.isNotBlank() }
+            if (rawName != null) {
+                val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(rawName)
+                val key = nameToLink[clean.lowercase()] ?: clean
+                if (key.isNotBlank() && !counts.containsKey(key)) {
+                    counts[key] = 1
+                }
+            }
+        }
+
+        counts.entries
+            .sortedWith(
+                compareByDescending<Map.Entry<String, Int>> { it.value }
+                    .thenBy { it.key.lowercase() }
+            )
+            .map { it.key }
     }
 
     val filteredGroupedPhotos: Map<String, List<Photo>> by derivedStateOf {
