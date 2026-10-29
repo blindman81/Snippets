@@ -116,6 +116,7 @@ fun LibraryScreen(
 
     val currentTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
 
+    var isFabVisible by remember { mutableStateOf(true) }
     var isFirstTabLoad by remember { mutableStateOf(true) }
     LaunchedEffect(currentTab) {
         viewModel.libraryCurrentTab = currentTab
@@ -125,6 +126,7 @@ fun LibraryScreen(
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             viewModel.carouselLazyListState.scrollToItem(0)
         }
+        isFabVisible = true
     }
 
     val flatPhotosRaw = viewModel.filteredPhotos
@@ -152,7 +154,6 @@ fun LibraryScreen(
         }
     }
 
-    var isFabVisible by remember { mutableStateOf(true) }
     val nestedScrollConnection = remember(isAnyPopupActive) {
         object : NestedScrollConnection {
             private var scrollBuffer = 0f
@@ -195,21 +196,51 @@ fun LibraryScreen(
 
     val currentGridState = listStates[currentTab] ?: listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
 
-    val isScrolled by remember(currentTab, currentGridState) {
+    val isCurrentTabScrolled by remember(currentTab, currentGridState) {
         derivedStateOf {
             currentGridState.firstVisibleItemIndex > 0 || currentGridState.firstVisibleItemScrollOffset > 10
         }
     }
 
-    LaunchedEffect(isScrolled) {
-        if (!isScrolled) {
+    val isHeaderScrolled by remember(pagerState, pageTabs, listStates) {
+        derivedStateOf {
+            if (pagerState.isScrollInProgress) {
+                val offset = pagerState.currentPageOffsetFraction
+                val visiblePages = buildList {
+                    add(pagerState.currentPage)
+                    add(pagerState.settledPage)
+                    add(pagerState.targetPage)
+                    if (kotlin.math.abs(offset) > 0.0001f) {
+                        if (offset > 0f) {
+                            add(pagerState.currentPage + 1)
+                        } else {
+                            add(pagerState.currentPage - 1)
+                        }
+                    }
+                }.filter { it in 0 until pageTabs.size }.distinct()
+
+                visiblePages.any { pageIndex ->
+                    val tabName = pageTabs.getOrNull(pageIndex) ?: return@any false
+                    val state = listStates[tabName] ?: return@any false
+                    state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 10
+                }
+            } else {
+                val tabName = pageTabs.getOrNull(pagerState.currentPage) ?: return@derivedStateOf false
+                val state = listStates[tabName] ?: return@derivedStateOf false
+                state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 10
+            }
+        }
+    }
+
+    LaunchedEffect(isHeaderScrolled) {
+        if (!isHeaderScrolled) {
             isFabVisible = true
         }
     }
 
     val cookieNavBarOffset by animateDpAsState(
-        targetValue = if (isScrolled) (-280).dp else 0.dp,
-        animationSpec = if (!isScrolled) {
+        targetValue = if (isHeaderScrolled) (-280).dp else 0.dp,
+        animationSpec = if (!isHeaderScrolled) {
             Motion.NavBarEnterSpring
         } else {
             Motion.NavBarExitSpring
@@ -218,8 +249,8 @@ fun LibraryScreen(
     )
 
     val cookieNavBarAlpha by animateFloatAsState(
-        targetValue = if (isScrolled) 0f else 1f,
-        animationSpec = if (!isScrolled) {
+        targetValue = if (isHeaderScrolled) 0f else 1f,
+        animationSpec = if (!isHeaderScrolled) {
             spring(stiffness = Spring.StiffnessMediumLow)
         } else {
             MaterialTheme.motionScheme.defaultEffectsSpec()
@@ -273,7 +304,7 @@ fun LibraryScreen(
                             )
 
                             val statusBarBlurAlpha by animateFloatAsState(
-                                targetValue = if (isScrolled) 1f else 0f,
+                                targetValue = if (isHeaderScrolled) 1f else 0f,
                                 animationSpec = tween(durationMillis = 300),
                                 label = "status_bar_blur_alpha"
                             )
@@ -417,7 +448,7 @@ fun LibraryScreen(
                                 isSearchOpen = isSearchOpen,
                                 onSearchOpenChange = { isOpen -> isSearchOpen = isOpen },
                                 searchFocusRequester = searchFocusRequester,
-                                isScrolled = isScrolled,
+                                isScrolled = isCurrentTabScrolled,
                                 isAnyPopupActive = isAnyPopupActive,
                                 cookieToolbarOffset = cookieToolbarOffset,
                                 cookieToolbarScale = cookieToolbarScale,
@@ -504,7 +535,7 @@ fun LibraryScreen(
 
                             // 8. Scroll to Top Floating Button
                             AnimatedVisibility(
-                                visible = isScrolled && !viewModel.isSelectionMode && !isSearchOpen && !isAnyPopupActive,
+                                visible = isCurrentTabScrolled && !pagerState.isScrollInProgress && !viewModel.isSelectionMode && !isSearchOpen && !isAnyPopupActive,
                                 enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
                                         scaleIn(
                                             initialScale = 0.8f,
