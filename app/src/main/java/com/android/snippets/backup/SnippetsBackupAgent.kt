@@ -46,7 +46,36 @@ class SnippetsBackupAgent : BackupAgent() {
             }
         }
 
-        // 2. Back up shared preferences
+        // 2. Back up Room database
+        // Keep this in sync with SnippetsDatabase's Room database name.
+        val dbFile = getDatabasePath("snippets_database.db")
+        if (dbFile.exists()) {
+            Log.d(TAG, "D2D transfer: Backing up database: ${dbFile.absolutePath}")
+            try {
+                fullBackupFile(dbFile, data)
+                val wal = File(dbFile.parentFile, "${dbFile.name}-wal")
+                if (wal.exists()) fullBackupFile(wal, data)
+                val shm = File(dbFile.parentFile, "${dbFile.name}-shm")
+                if (shm.exists()) fullBackupFile(shm, data)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error backing up database files", e)
+            }
+        }
+
+        // 3. Back up DataStore preferences
+        val datastoreDir = File(filesDir, "datastore")
+        if (datastoreDir.exists() && datastoreDir.isDirectory) {
+            datastoreDir.listFiles()?.forEach { dsFile ->
+                Log.d(TAG, "D2D transfer: Backing up datastore: ${dsFile.absolutePath}")
+                try {
+                    fullBackupFile(dsFile, data)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error backing up datastore file ${dsFile.name}", e)
+                }
+            }
+        }
+
+        // 4. Back up legacy shared preferences
         val sharedPrefsFile = File(dataDir, "shared_prefs/snippets_prefs.xml")
         if (sharedPrefsFile.exists()) {
             Log.d(TAG, "D2D transfer: Backing up shared preferences: ${sharedPrefsFile.absolutePath}")

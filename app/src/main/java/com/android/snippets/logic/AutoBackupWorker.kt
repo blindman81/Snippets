@@ -5,11 +5,18 @@ import android.os.Environment
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonArray
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
+import com.android.snippets.data.toPhoto
+import com.android.snippets.data.preferences.UserPreferencesRepository
+import com.android.snippets.model.Photo
+import kotlinx.coroutines.flow.first
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Calendar
@@ -18,11 +25,17 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
     companion object {
         const val TAG = "AutoBackupWorker"
 
+        private val json = Json {
+            prettyPrint = true
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+
         fun hasNewChanges(existing: JsonObject, current: JsonObject): Boolean {
-            val allKeys = (existing.keySet() + current.keySet()) - "exportedAt"
+            val allKeys = (existing.keys + current.keys) - "exportedAt"
             for (key in allKeys) {
-                val existingElem = existing.get(key)
-                val currentElem = current.get(key)
+                val existingElem = existing[key]
+                val currentElem = current[key]
                 if (existingElem != currentElem) {
                     return true
                 }
@@ -40,50 +53,63 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
             return otherFiles.filter { it.isFile }.maxByOrNull { it.lastModified() }
         }
 
-        fun buildBackupData(context: Context, gson: Gson = Gson()): JsonObject {
-            return JsonObject().apply {
-                addProperty("version", 2)
+        suspend fun buildBackupData(context: Context): JsonObject {
+            val db = com.android.snippets.data.SnippetsDatabase.getInstance(context)
+            val roomPhotos = try {
+                db.photoDao().getAllPhotosSync().map { it.toPhoto() }
+            } catch (e: Exception) {
+                emptyList()
+            }
+            val roomCollections = try {
+                db.collectionDao().getAllCollectionsSync()
+            } catch (e: Exception) {
+                emptyList()
+            }
 
-                fun addJsonFileIfExists(key: String, fileName: String) {
-                    val file = File(context.filesDir, fileName)
-                    if (file.exists()) {
-                        try {
-                            val elem = gson.fromJson(file.readText(), JsonElement::class.java)
-                            add(key, elem)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error reading $fileName for auto backup", e)
-                        }
-                    }
+            val collectionNames = roomCollections.map { it.name }
+            val collectionIcons = roomCollections.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()
+
+            val prefs = UserPreferencesRepository(context).userPreferencesFlow.first()
+            val snippetFirstSeenTimes: Map<String, Long> = try {
+                json.decodeFromString(prefs.snippetFirstSeenJson)
+            } catch (_: Exception) {
+                emptyMap()
+            }
+
+            return buildJsonObject {
+                put("version", 2)
+                put("photos", json.encodeToJsonElement(roomPhotos))
+                put("collections", json.encodeToJsonElement(collectionNames))
+                put("collectionIcons", json.encodeToJsonElement(collectionIcons))
+                put("snippetFirstSeenTimes", json.encodeToJsonElement(snippetFirstSeenTimes))
+
+                putJsonObject("settings") {
+                    put("theme_preference", prefs.themePreference)
+                    put("use_dynamic_colors", prefs.useDynamicColors)
+                    put("expand_label_icon", prefs.expandLabelIcon)
+                    put("expand_calendar_icon", prefs.expandCalendarIcon)
+                    put("expand_location_icon", prefs.expandLocationIcon)
+                    put("auto_backup_schedule", prefs.autoBackupSchedule)
+                    put("notification_reminder_enabled", prefs.notificationReminderEnabled)
+                    put("notification_reminder_hour", prefs.notificationReminderHour)
+                    put("notification_reminder_minute", prefs.notificationReminderMinute)
+                    put("snippet_sort_type", prefs.snippetSortType)
+                    put("is_sort_ascending", prefs.isSortAscending)
+                    put("selected_filter_snippets", json.encodeToJsonElement(prefs.selectedFilterSnippets.sorted()))
+                    put("display_mode", prefs.displayMode)
+                    put("collection_display_modes_json", prefs.collectionDisplayModesJson)
+                    put("photo_sort_type", prefs.photoSortType)
+                    put("collection_photo_sort_types_json", prefs.collectionPhotoSortTypesJson)
+                    put("last_seen_yearly_recap_year", prefs.lastSeenYearlyRecapYear)
+                    put("last_seen_monthly_recap_period", prefs.lastSeenMonthlyRecapPeriod)
                 }
-
-                addJsonFileIfExists("photos", "photos_v2.json")
-                addJsonFileIfExists("collections", "collections_v2.json")
-                addJsonFileIfExists("collectionIcons", "collection_icons_v2.json")
-                addJsonFileIfExists("snippetFirstSeenTimes", "snippet_first_seen_v1.json")
-
-                val prefs = context.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
-                val prefsObj = JsonObject().apply {
-                    prefs.all.toSortedMap().forEach { (key, value) ->
-                        when (value) {
-                            is Boolean -> addProperty(key, value)
-                            is Number -> addProperty(key, value)
-                            is String -> addProperty(key, value)
-                            is Set<*> -> {
-                                val arr = JsonArray()
-                                value.filterIsInstance<String>().sorted().forEach { item -> arr.add(item) }
-                                add(key, arr)
-                            }
-                        }
-                    }
-                }
-                add("settings", prefsObj)
             }
         }
     }
 
     override suspend fun doWork(): Result {
-        val prefs = applicationContext.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
-        val schedule = prefs.getString("auto_backup_schedule", "Disabled") ?: "Disabled"
+        val schedule = UserPreferencesRepository(applicationContext)
+            .userPreferencesFlow.first().autoBackupSchedule
         Log.d(TAG, "AutoBackupWorker triggered. Schedule: $schedule")
 
         if (schedule == "Disabled") {
@@ -117,19 +143,18 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
     }
 
-    private fun performBackup(suffix: String): Boolean {
+    private suspend fun performBackup(suffix: String): Boolean {
         val backupDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SnippetsBackups")
         if (!backupDir.exists()) backupDir.mkdirs()
 
         val backupFile = File(backupDir, "snippets_backup_auto_$suffix.json")
-        val gson = Gson()
-        val currentBackupData = buildBackupData(applicationContext, gson)
+        val currentBackupData = buildBackupData(applicationContext)
 
         val referenceFile = getReferenceBackupFile(backupDir, suffix)
         if (referenceFile != null && referenceFile.exists()) {
             try {
-                val existingJson = gson.fromJson(referenceFile.readText(), JsonObject::class.java)
-                if (existingJson != null && !hasNewChanges(existingJson, currentBackupData)) {
+                val existingJson: JsonObject = json.decodeFromString(referenceFile.readText())
+                if (!hasNewChanges(existingJson, currentBackupData)) {
                     Log.d(TAG, "No new changes detected compared to ${referenceFile.name}. Skipping auto backup.")
                     return false
                 }
@@ -139,12 +164,13 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
 
         Log.d(TAG, "New changes detected or no existing backup. Creating auto backup file: ${backupFile.absolutePath}")
-        val backupJsonObj = currentBackupData.deepCopy().apply {
-            addProperty("exportedAt", System.currentTimeMillis())
+        val backupJsonObj = buildJsonObject {
+            currentBackupData.forEach { (k, v) -> put(k, v) }
+            put("exportedAt", System.currentTimeMillis())
         }
 
         FileOutputStream(backupFile).use { outputStream ->
-            outputStream.write(gson.toJson(backupJsonObj).toByteArray(Charsets.UTF_8))
+            outputStream.write(json.encodeToString(backupJsonObj).toByteArray(Charsets.UTF_8))
         }
         Log.d(TAG, "Auto backup completed successfully.")
         return true

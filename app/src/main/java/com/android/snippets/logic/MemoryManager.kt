@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit
 object MemoryManager {
     const val MEMORY_REMINDER_PREFIX = "memory_reminder_"
     const val MEMORIES_PER_CYCLE = 5
+    const val HISTORY_MEMORIES_LIMIT = 10
     const val CYCLE_MORNING_HOUR = 9
     const val CYCLE_EVENING_HOUR = 21
     const val CYCLE_WINDOW_HOURS = 12L
@@ -22,6 +23,7 @@ object MemoryManager {
     const val SURFACED_MEMORY_SPACING_HOURS = 3L
     const val TEST_NOTIFICATION_DELAY_SECONDS = 5L
     const val TEST_NOTIFICATION_PHOTO_ID = "test_notification"
+    const val CYCLE_WORK_NAME = "memory_cycle_work"
 
     val CYCLE_WINDOW_MS: Long = TimeUnit.HOURS.toMillis(CYCLE_WINDOW_HOURS)
     val NEW_MEMORY_WAIT_MS: Long = TimeUnit.HOURS.toMillis(NEW_MEMORY_NOTIFICATION_DELAY_HOURS)
@@ -80,6 +82,20 @@ object MemoryManager {
         }
     }
 
+    fun getPreviousCycleStart(now: Long = System.currentTimeMillis()): Long {
+        val current = getCurrentCycleStart(now)
+        val cal = Calendar.getInstance().apply { timeInMillis = current }
+        val hour = cal.get(Calendar.HOUR_OF_DAY)
+        return if (hour == CYCLE_MORNING_HOUR) {
+            cal.add(Calendar.DAY_OF_YEAR, -1)
+            cal.set(Calendar.HOUR_OF_DAY, CYCLE_EVENING_HOUR)
+            cal.timeInMillis
+        } else {
+            cal.set(Calendar.HOUR_OF_DAY, CYCLE_MORNING_HOUR)
+            cal.timeInMillis
+        }
+    }
+
     fun shouldResurfaceMemory(photo: Photo, now: Long = System.currentTimeMillis()): Boolean {
         if (!photo.isLibraryUpload || photo.snippets.isEmpty() || photo.snippetsAddedTime == 0L) {
             return false
@@ -87,11 +103,10 @@ object MemoryManager {
         if (photo.surfacedTime != 0L && photo.surfacedTime > now) {
             return false
         }
-        if (photo.isViewed) {
+        if (photo.isViewed && photo.lastViewedTime > 0L) {
             return now - photo.lastViewedTime >= VIEWED_MEMORY_RESET_MS
         }
-        return photo.surfacedTime != 0L &&
-                now - photo.surfacedTime >= VIEWED_MEMORY_RESET_MS + VIEWED_MEMORY_VISIBLE_MS
+        return false
     }
 
     fun reconcileSurfacedMemories(
@@ -101,99 +116,73 @@ object MemoryManager {
         var changed = false
         val scheduledNotifications = mutableListOf<Pair<String, Long>>()
         val currentCycleStart = getCurrentCycleStart(now)
+        val previousCycleStart = getPreviousCycleStart(now)
 
         val updatedPhotos = photos.map { photo ->
-            if (shouldResurfaceMemory(photo, now)) {
+            if (shouldResurfaceMemory(photo, now) || (photo.isViewed && photo.snippetsAddedTime > photo.lastViewedTime)) {
                 changed = true
                 photo.copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
             } else photo
         }.toMutableList()
 
-        // Count memories active in the current cycle
-        val activeCountInCycle = updatedPhotos.count { photo ->
+        // 1. Current cycle allocation: ensure up to 5 memories are active
+        val currentCycleCount = updatedPhotos.count { photo ->
             photo.isLibraryUpload &&
                     photo.snippets.isNotEmpty() &&
-                    photo.surfacedTime != 0L &&
-                    photo.surfacedTime <= now &&
-                    (now - photo.surfacedTime < CYCLE_WINDOW_MS)
+                    photo.surfacedTime == currentCycleStart
         }
-
-        val limit = MEMORIES_PER_CYCLE
-        if (activeCountInCycle < limit) {
-            val needed = limit - activeCountInCycle
-
-            // 1. Fresh unviewed photos (newly taken / added photos)
-            val freshCandidates = updatedPhotos.filter { photo ->
+        if (currentCycleCount < MEMORIES_PER_CYCLE) {
+            val neededCurrent = MEMORIES_PER_CYCLE - currentCycleCount
+            val freshCurrent = updatedPhotos.filter { photo ->
                 photo.isLibraryUpload &&
                         photo.snippets.isNotEmpty() &&
                         photo.snippetsAddedTime != 0L &&
                         !photo.isViewed &&
                         photo.surfacedTime == 0L
-            }.sortedByDescending { it.snippetsAddedTime }
+            }.sortedByDescending { it.snippetsAddedTime }.take(neededCurrent)
 
-            val chosenFresh = freshCandidates.take(needed)
-            for (candidate in chosenFresh) {
+            for (candidate in freshCurrent) {
                 val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
                 if (index != -1) {
                     updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = currentCycleStart)
-                    scheduledNotifications.add(candidate.id to currentCycleStart)
-                    changed = true
-                }
-            }
-
-            val remainingNeeded = needed - chosenFresh.size
-            if (remainingNeeded > 0) {
-                // 2. Photos with snippets updated after being viewed
-                val updatedSnippetCandidates = updatedPhotos.filter { photo ->
-                    photo.isLibraryUpload &&
-                            photo.snippets.isNotEmpty() &&
-                            photo.snippetsAddedTime != 0L &&
-                            photo.snippetsAddedTime > photo.lastViewedTime &&
-                            photo.surfacedTime == 0L
-                }.sortedByDescending { it.snippetsAddedTime }
-
-                val chosenUpdated = updatedSnippetCandidates.take(remainingNeeded)
-                for (candidate in chosenUpdated) {
-                    val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
-                    if (index != -1) {
-                        updatedPhotos[index] = updatedPhotos[index].copy(isViewed = false, surfacedTime = currentCycleStart)
+                    if (currentCycleStart > now) {
                         scheduledNotifications.add(candidate.id to currentCycleStart)
-                        changed = true
                     }
-                }
-
-                val stillNeeded = remainingNeeded - chosenUpdated.size
-                if (stillNeeded > 0) {
-                    // 3. Recycle expired memories to fill remaining slots
-                    val expiredCandidates = updatedPhotos.filter { photo ->
-                        photo.isLibraryUpload &&
-                                photo.snippets.isNotEmpty() &&
-                                photo.snippetsAddedTime != 0L &&
-                                photo.surfacedTime != 0L &&
-                                photo.surfacedTime <= now &&
-                                (now - photo.surfacedTime >= CYCLE_WINDOW_MS) &&
-                                (!photo.isViewed || (now - photo.lastViewedTime >= CYCLE_WINDOW_MS))
-                    }.sortedBy { if (it.isViewed) it.lastViewedTime else it.surfacedTime }
-                        .take(stillNeeded)
-
-                    for (expired in expiredCandidates) {
-                        val index = updatedPhotos.indexOfFirst { it.id == expired.id }
-                        if (index != -1) {
-                            updatedPhotos[index] = updatedPhotos[index].copy(isViewed = false, lastViewedTime = 0L, surfacedTime = currentCycleStart)
-                            scheduledNotifications.add(expired.id to currentCycleStart)
-                            changed = true
-                        }
-                    }
+                    changed = true
                 }
             }
         }
 
-        // Queue remaining unscheduled candidates into future cycles (9 am / 9 pm)
+        // 2. Previous cycle allocation: ensure previous cycle has up to 5 memories so the sheet has up to 10
+        val previousCycleCount = updatedPhotos.count { photo ->
+            photo.isLibraryUpload &&
+                    photo.snippets.isNotEmpty() &&
+                    photo.surfacedTime == previousCycleStart
+        }
+        if (previousCycleCount < MEMORIES_PER_CYCLE) {
+            val neededPrevious = MEMORIES_PER_CYCLE - previousCycleCount
+            val freshPrevious = updatedPhotos.filter { photo ->
+                photo.isLibraryUpload &&
+                        photo.snippets.isNotEmpty() &&
+                        photo.snippetsAddedTime != 0L &&
+                        !photo.isViewed &&
+                        photo.surfacedTime == 0L
+            }.sortedByDescending { it.snippetsAddedTime }.take(neededPrevious)
+
+            for (candidate in freshPrevious) {
+                val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
+                if (index != -1) {
+                    updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = previousCycleStart)
+                    changed = true
+                }
+            }
+        }
+
+        // 3. Future queue: all remaining unallocated photos queue for upcoming cycles (9 AM / 9 PM)
         val remainingQueued = updatedPhotos.filter { photo ->
             photo.isLibraryUpload &&
                     photo.snippets.isNotEmpty() &&
                     photo.snippetsAddedTime != 0L &&
-                    (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime) &&
                     photo.surfacedTime == 0L
         }.sortedByDescending { it.snippetsAddedTime }
 
@@ -201,14 +190,16 @@ object MemoryManager {
             var nextCycle = getNextCycleStart(now)
             var countInNextCycle = updatedPhotos.count { it.surfacedTime == nextCycle }
             for (candidate in remainingQueued) {
-                if (countInNextCycle >= limit) {
+                if (countInNextCycle >= MEMORIES_PER_CYCLE) {
                     nextCycle = getNextCycleStart(nextCycle)
                     countInNextCycle = updatedPhotos.count { it.surfacedTime == nextCycle }
                 }
                 val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
                 if (index != -1) {
                     updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = nextCycle)
-                    scheduledNotifications.add(candidate.id to nextCycle)
+                    if (nextCycle > now) {
+                        scheduledNotifications.add(candidate.id to nextCycle)
+                    }
                     countInNextCycle++
                     changed = true
                 }
@@ -219,24 +210,33 @@ object MemoryManager {
     }
 
     fun getCuratedMemories(photos: List<Photo>, now: Long = System.currentTimeMillis()): List<Photo> {
+        val currentCycleStart = getCurrentCycleStart(now)
         return photos.filter { photo ->
             photo.isLibraryUpload &&
                     photo.snippets.isNotEmpty() &&
                     photo.snippetsAddedTime != 0L &&
                     photo.surfacedTime != 0L &&
                     photo.surfacedTime <= now &&
-                    (now - photo.surfacedTime < CYCLE_WINDOW_MS) &&
-                    (!photo.isViewed || photo.snippetsAddedTime > photo.lastViewedTime || (now - photo.lastViewedTime < CYCLE_WINDOW_MS))
+                    (photo.surfacedTime == currentCycleStart || (now - photo.surfacedTime < CYCLE_WINDOW_MS))
+        }.sortedByDescending { it.date }
+            .take(MEMORIES_PER_CYCLE)
+    }
+
+    fun getHistoryMemories(
+        photos: List<Photo>,
+        now: Long = System.currentTimeMillis(),
+        limit: Int = HISTORY_MEMORIES_LIMIT
+    ): List<Photo> {
+        return photos.filter { photo ->
+            photo.isLibraryUpload &&
+                    photo.snippets.isNotEmpty() &&
+                    photo.snippetsAddedTime != 0L &&
+                    photo.surfacedTime != 0L &&
+                    photo.surfacedTime <= now
         }.sortedWith(
-            compareByDescending<Photo> {
-                !it.isViewed
-            }.thenByDescending {
-                it.isViewed && (now - it.lastViewedTime < CYCLE_WINDOW_MS)
-            }.thenByDescending {
-                if (it.isViewed) it.lastViewedTime else it.surfacedTime
-            }
-        ).take(MEMORIES_PER_CYCLE)
-            .sortedByDescending { it.date }
+            compareByDescending<Photo> { it.surfacedTime }
+                .thenByDescending { it.date }
+        ).take(limit)
     }
 
     fun hasUnviewedMemories(curated: List<Photo>): Boolean {
@@ -284,26 +284,6 @@ object MemoryManager {
         )
     }
 
-    fun scheduleNewMemoryNotification(context: Context, photoId: String) {
-        scheduleMemoryNotification(
-            context = context,
-            photoId = photoId,
-            delay = NEW_MEMORY_NOTIFICATION_DELAY_HOURS,
-            delayUnit = TimeUnit.HOURS,
-            notificationType = MemoryWorker.TYPE_NEW
-        )
-    }
-
-    fun scheduleUpdatedMemoryNotification(context: Context, photoId: String) {
-        scheduleMemoryNotification(
-            context = context,
-            photoId = photoId,
-            delay = NEW_MEMORY_NOTIFICATION_DELAY_HOURS,
-            delayUnit = TimeUnit.HOURS,
-            notificationType = MemoryWorker.TYPE_UPDATED
-        )
-    }
-
     fun cancelMemoryNotification(context: Context, photoId: String) {
         if (photoId.isBlank()) return
         val reminderName = memoryReminderName(photoId)
@@ -312,36 +292,44 @@ object MemoryManager {
         MemoryWorker.cancelPostedNotification(context, photoId)
     }
 
+    fun scheduleNextCycleWork(context: Context) {
+        val now = System.currentTimeMillis()
+        val nextCycle = getNextCycleStart(now)
+        val delay = maxOf(0L, nextCycle - now)
+
+        // Cancel any legacy per-photo work requests to prevent arbitrary fire times
+        try {
+            WorkManager.getInstance(context).cancelAllWorkByTag(MEMORY_REMINDER_PREFIX)
+            WorkManager.getInstance(context).cancelUniqueWork("daily_reminder_work")
+            val allPhotos = MemoryWorker.loadAllPhotos(context)
+            for (p in allPhotos) {
+                val reminderName = memoryReminderName(p.id)
+                WorkManager.getInstance(context).cancelUniqueWork(reminderName)
+                WorkManager.getInstance(context).cancelAllWorkByTag(reminderName)
+            }
+            WorkManager.getInstance(context).pruneWork()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        val workRequest = OneTimeWorkRequestBuilder<MemoryWorker>()
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .setInputData(workDataOf(MemoryWorker.INPUT_IS_CYCLE_TRIGGER to true))
+            .addTag(CYCLE_WORK_NAME)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            CYCLE_WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
+    }
+
     fun reconcileMemoryNotifications(
         context: Context,
         photos: List<Photo>
     ) {
-        val now = System.currentTimeMillis()
-        val unpostedPhotos = photos
-            .filter { !it.isViewed || it.snippetsAddedTime > it.lastViewedTime }
-            .filterNot { MemoryWorker.wasNotificationPosted(context, it.id) }
-            .filter { it.surfacedTime != 0L }
-            .sortedBy { it.surfacedTime }
-
-        unpostedPhotos.forEach { photo ->
-            val delayMs = maxOf(0L, photo.surfacedTime - now)
-            val notificationType = if (photo.isViewed) {
-                MemoryWorker.TYPE_UPDATED
-            } else if (photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
-                MemoryWorker.TYPE_RESURFACED
-            } else {
-                MemoryWorker.TYPE_NEW
-            }
-            scheduleMemoryNotification(
-                context = context,
-                photoId = photo.id,
-                delay = delayMs,
-                delayUnit = TimeUnit.MILLISECONDS,
-                notificationType = notificationType,
-                policy = ExistingWorkPolicy.REPLACE,
-                resetPostedState = false
-            )
-        }
+        scheduleNextCycleWork(context)
     }
 
     fun testNotification(context: Context, photos: List<Photo>) {
