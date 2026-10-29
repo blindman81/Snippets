@@ -1,5 +1,7 @@
 package com.android.snippets.ui
 import com.android.snippets.ui.components.*
+import com.ln.android.snippets.R
+import androidx.compose.ui.res.vectorResource
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
@@ -34,8 +36,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.FormatColorFill
 import androidx.compose.material.icons.outlined.FormatColorFill
@@ -82,12 +82,14 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import com.android.snippets.ui.components.PremiumSwitch
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.vector.ImageVector
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -98,20 +100,158 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalContext
 
-private data class PillInfo(
-    val text: String,
-    val icon: @Composable () -> Unit,
-    val id: Long = System.currentTimeMillis()
+private data class SettingItemData(
+    val title: String,
+    val icon: ImageVector,
+    val isSelected: Boolean? = null,
+    val isDoubleLine: Boolean = false,
+    val useMarquee: Boolean = false,
+    val onClick: () -> Unit
 )
+
+@Composable
+private fun SettingItemView(
+    item: SettingItemData,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier.zIndex(10f),
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedCookieButton(
+                onClick = item.onClick,
+                icon = item.icon,
+                contentDescription = item.title.replace("\n", " "),
+                isSelected = item.isSelected,
+                size = 84.dp,
+                iconSize = 38.dp
+            )
+        }
+
+        SettingItemPill(
+            title = item.title,
+            isDoubleLine = item.isDoubleLine,
+            useMarquee = item.useMarquee
+        )
+    }
+}
+
+@Composable
+private fun SettingItemPill(
+    title: String,
+    isDoubleLine: Boolean = false,
+    useMarquee: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val pillModifier = if (isDoubleLine) {
+        modifier
+            .widthIn(min = 64.dp, max = 104.dp)
+            .height(48.dp)
+    } else {
+        modifier
+            .widthIn(min = 60.dp, max = 104.dp)
+    }
+
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = pillModifier
+    ) {
+        Box(
+            modifier = if (isDoubleLine) {
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            } else {
+                Modifier
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                    .clipToBounds()
+            },
+            contentAlignment = Alignment.Center
+        ) {
+            if (useMarquee) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = GoogleSansFlexRound
+                    ),
+                    maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.basicMarquee(
+                        iterations = Int.MAX_VALUE
+                    )
+                )
+            } else if (isDoubleLine) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = GoogleSansFlexRound,
+                        lineHeight = 14.sp
+                    ),
+                    maxLines = 2,
+                    softWrap = true,
+                    textAlign = TextAlign.Center,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = GoogleSansFlexRound
+                    ),
+                    maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Center,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsRow(
+    items: List<SettingItemData>,
+    modifier: Modifier = Modifier,
+    columns: Int = items.size
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.Top
+    ) {
+        items.forEach { item ->
+            key(item.title) {
+                SettingItemView(
+                    item = item,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        if (items.size < columns) {
+            repeat(columns - items.size) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(viewModel: SnippetsViewModel) {
-    AppPredictiveBackHandler {
-        viewModel.navigateLibrary()
-    }
     val view = LocalView.current
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
@@ -128,53 +268,9 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
             viewModel.importBackupFromFile(context, uri)
         }
     }
-    val systemDarkTheme = isSystemInDarkTheme()
-    val useDarkTheme = when (viewModel.themePreference) {
-        ThemePreference.SYSTEM -> systemDarkTheme
-        ThemePreference.LIGHT -> false
-        ThemePreference.DARK -> true
-    }
     
-    var showThemeDialog by remember { mutableStateOf(false) }
-    var showCanvasDialog by remember { mutableStateOf(false) }
     var showAutoBackupDialog by remember { mutableStateOf(false) }
-
-    var activeInfo by remember { mutableStateOf<PillInfo?>(null) }
-    var displayedInfo by remember { mutableStateOf<PillInfo?>(null) }
-    var infoJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-
-    fun showButtonInfo(name: String, icon: @Composable () -> Unit) {
-        infoJob?.cancel()
-        val info = PillInfo(name, icon, System.currentTimeMillis())
-        displayedInfo = info
-        activeInfo = info
-        infoJob = scope.launch {
-            kotlinx.coroutines.delay(3500)
-            activeInfo = null
-        }
-    }
-
-    fun showButtonInfo(name: String, iconVector: androidx.compose.ui.graphics.vector.ImageVector) {
-        showButtonInfo(name) {
-            Icon(
-                imageVector = iconVector,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-
-    fun showButtonInfo(name: String, iconRes: Int) {
-        showButtonInfo(name) {
-            Icon(
-                painter = androidx.compose.ui.res.painterResource(id = iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
+    val scrollState = rememberScrollState()
 
     val hazeState = LocalHazeState.current ?: rememberHazeState()
 
@@ -184,14 +280,17 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.surface,
             topBar = {
-                LargeMainTopBar(
+                MainTopBar(
                     title = "Settings",
                     onNavigationClick = { 
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                         viewModel.navigateLibrary()
                     },
                     navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
-                    isSpinning = !(showThemeDialog || showCanvasDialog)
+                    isSpinning = !showAutoBackupDialog,
+                    isScrolled = scrollState.value > 0,
+                    leftAlignTitle = true,
+                    showDividerOnScroll = false
                 )
             }
         ) { padding ->
@@ -203,386 +302,185 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 0.dp
             ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Interface Section Header
-                Row(
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .fillMaxSize()
+                        .padding(bottom = padding.calculateBottomPadding())
+                        .verticalScroll(scrollState),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Top
                 ) {
-                    ShapedSectionHeader(icon = MobileSectionIcon())
-                    Text(
-                        text = "Interface",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                    Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                val themeOptions = listOf(ThemePreference.SYSTEM, ThemePreference.LIGHT, ThemePreference.DARK)
-                val themeLabels = listOf("System", "Light", "Dark")
-                val themeIcons = listOf(
-                    AndroidIcon(),
-                    if (viewModel.themePreference == ThemePreference.LIGHT) Icons.Rounded.LightMode else Icons.Outlined.LightMode,
-                    if (viewModel.themePreference == ThemePreference.DARK) Icons.Rounded.DarkMode else Icons.Outlined.DarkMode
-                )
-
-                val selectedThemeIndex = themeOptions.indexOf(viewModel.themePreference).coerceAtLeast(0)
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        modifier = Modifier.wrapContentWidth()
+                    // Interface Section Header
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(modifier = Modifier.padding(6.dp)) {
-                            CookieButtonGroup(
-                                selectedIndex = selectedThemeIndex,
-                                onSelect = { index ->
-                                    val option = themeOptions[index]
-                                    if (viewModel.themePreference != option) {
-                                        viewModel.updateThemePreference(option)
-                                    }
-                                },
-                                onItemClick = { index ->
-                                    showButtonInfo(themeLabels[index], themeIcons[index])
-                                },
-                                icons = themeIcons,
-                                contentDescriptions = themeLabels,
-                                tooltips = themeLabels,
-                                columns = 1,
-                                cookieSize = 72.dp,
-                                iconSize = 28.dp,
-                                overlap = 0.dp,
-                                horizontalAlignment = Alignment.Start
-                            )
-                        }
+                        ShapedSectionHeader(icon = ImageVector.vectorResource(R.drawable.ic_mobile_section))
+                        Text(
+                            text = "Interface",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                val dynamicColorsIcon = if (viewModel.useDynamicColors) Icons.Rounded.FormatColorFill else Icons.Outlined.FormatColorFill
-                val showTimeIcon = if (viewModel.showTimeInMemories) Icons.Rounded.Schedule else Icons.Outlined.Schedule
-                val motionModeIcon = MotionModeIcon()
+                    val androidIcon = ImageVector.vectorResource(R.drawable.ic_android_logo)
+                    val themeItems = remember(viewModel.themePreference, androidIcon) {
+                        listOf(
+                            SettingItemData(
+                                title = "System",
+                                icon = androidIcon,
+                                isSelected = viewModel.themePreference == ThemePreference.SYSTEM,
+                                onClick = { viewModel.updateThemePreference(ThemePreference.SYSTEM) }
+                            ),
+                            SettingItemData(
+                                title = "Light",
+                                icon = if (viewModel.themePreference == ThemePreference.LIGHT) Icons.Rounded.LightMode else Icons.Outlined.LightMode,
+                                isSelected = viewModel.themePreference == ThemePreference.LIGHT,
+                                onClick = { viewModel.updateThemePreference(ThemePreference.LIGHT) }
+                            ),
+                            SettingItemData(
+                                title = "Dark",
+                                icon = if (viewModel.themePreference == ThemePreference.DARK) Icons.Rounded.DarkMode else Icons.Outlined.DarkMode,
+                                isSelected = viewModel.themePreference == ThemePreference.DARK,
+                                onClick = { viewModel.updateThemePreference(ThemePreference.DARK) }
+                            )
+                        )
+                    }
 
-                val interfaceItems = listOf(
-                    cookieButtonItem(
-                        icon = dynamicColorsIcon,
-                        contentDescription = "Dynamic colors",
-                        tooltip = "Dynamic colors",
-                        isSelected = viewModel.useDynamicColors,
-                        iconSize = 28.dp,
-                        onClick = {
-                            val next = !viewModel.useDynamicColors
-                            showButtonInfo("Dynamic colors", if (next) Icons.Rounded.FormatColorFill else Icons.Outlined.FormatColorFill)
-                            viewModel.updateDynamicColors(next)
-                        }
-                    ),
-                    cookieButtonItem(
-                        icon = showTimeIcon,
-                        contentDescription = "Time in memories and saved photos",
-                        tooltip = "Time in memories and saved photos",
-                        isSelected = viewModel.showTimeInMemories,
-                        iconSize = 28.dp,
-                        onClick = {
-                            val next = !viewModel.showTimeInMemories
-                            showButtonInfo("Time in memories and saved photos", if (next) Icons.Rounded.Schedule else Icons.Outlined.Schedule)
-                            viewModel.updateShowTimeInMemories(next)
-                        }
-                    ),
-                    cookieButtonItem(
-                        icon = motionModeIcon,
-                        contentDescription = "Motion sensor for button rotation",
-                        tooltip = "Motion sensor for button rotation",
-                        isSelected = viewModel.motionSensorForButtonRotation,
-                        iconSize = 28.dp,
-                        onClick = {
-                            showButtonInfo("Motion sensor for button rotation", motionModeIcon)
-                            viewModel.updateMotionSensorForButtonRotation(!viewModel.motionSensorForButtonRotation)
-                        }
-                    )
-                )
+                    SettingsRow(items = themeItems)
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        modifier = Modifier.wrapContentWidth()
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    val dynamicColorsIcon = if (viewModel.useDynamicColors) Icons.Rounded.FormatColorFill else Icons.Outlined.FormatColorFill
+                    val expandLabelIcon = if (viewModel.expandLabelIcon) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label
+                    val expandCalendarIcon = if (viewModel.expandCalendarIcon) Icons.Rounded.CalendarMonth else Icons.Outlined.CalendarMonth
+                    val expandLocationIcon = if (viewModel.expandLocationIcon) Icons.Rounded.LocationOn else Icons.Outlined.LocationOn
+
+                    val interfaceRow1Items = remember(
+                        viewModel.useDynamicColors,
+                        viewModel.expandLabelIcon,
+                        viewModel.expandCalendarIcon,
+                        dynamicColorsIcon,
+                        expandLabelIcon,
+                        expandCalendarIcon
                     ) {
-                        Box(modifier = Modifier.padding(6.dp)) {
-                            CookieButtonGroup(
-                                items = interfaceItems,
-                                columns = 1,
-                                cookieSize = 72.dp,
-                                overlap = 0.dp,
-                                horizontalAlignment = Alignment.Start,
-                                wiggleNeighborOnToggleOn = true
+                        listOf(
+                            SettingItemData(
+                                title = "Dynamic\ncolors",
+                                icon = dynamicColorsIcon,
+                                isSelected = viewModel.useDynamicColors,
+                                isDoubleLine = true,
+                                onClick = { viewModel.updateDynamicColors(!viewModel.useDynamicColors) }
+                            ),
+                            SettingItemData(
+                                title = "Expand\nlabel icon",
+                                icon = expandLabelIcon,
+                                isSelected = viewModel.expandLabelIcon,
+                                isDoubleLine = true,
+                                onClick = { viewModel.updateExpandLabelIcon(!viewModel.expandLabelIcon) }
+                            ),
+                            SettingItemData(
+                                title = "Expand\ncalendar icon",
+                                icon = expandCalendarIcon,
+                                isSelected = viewModel.expandCalendarIcon,
+                                isDoubleLine = true,
+                                onClick = { viewModel.updateExpandCalendarIcon(!viewModel.expandCalendarIcon) }
                             )
-                        }
+                        )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    val interfaceRow2Items = remember(viewModel.expandLocationIcon, expandLocationIcon) {
+                        listOf(
+                            SettingItemData(
+                                title = "Expand\nlocation icon",
+                                icon = expandLocationIcon,
+                                isSelected = viewModel.expandLocationIcon,
+                                isDoubleLine = true,
+                                onClick = { viewModel.updateExpandLocationIcon(!viewModel.expandLocationIcon) }
+                            )
+                        )
+                    }
 
-                val expandLabelIcon = if (viewModel.expandLabelIcon) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label
-                val expandCalendarIcon = if (viewModel.expandCalendarIcon) Icons.Rounded.CalendarMonth else Icons.Outlined.CalendarMonth
-                val expandLocationIcon = if (viewModel.expandLocationIcon) Icons.Rounded.LocationOn else Icons.Outlined.LocationOn
+                    SettingsRow(items = interfaceRow1Items)
 
-                val expandItems = listOf(
-                    cookieButtonItem(
-                        icon = expandLabelIcon,
-                        contentDescription = "Expand label icon",
-                        tooltip = "Expand label icon",
-                        isSelected = viewModel.expandLabelIcon,
-                        iconSize = 28.dp,
-                        onClick = {
-                            val next = !viewModel.expandLabelIcon
-                            showButtonInfo("Expand label icon", if (next) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label)
-                            viewModel.updateExpandLabelIcon(next)
-                        }
-                    ),
-                    cookieButtonItem(
-                        icon = expandCalendarIcon,
-                        contentDescription = "Expand calendar icon",
-                        tooltip = "Expand calendar icon",
-                        isSelected = viewModel.expandCalendarIcon,
-                        iconSize = 28.dp,
-                        onClick = {
-                            val next = !viewModel.expandCalendarIcon
-                            showButtonInfo("Expand calendar icon", if (next) Icons.Rounded.CalendarMonth else Icons.Outlined.CalendarMonth)
-                            viewModel.updateExpandCalendarIcon(next)
-                        }
-                    ),
-                    cookieButtonItem(
-                        icon = expandLocationIcon,
-                        contentDescription = "Expand location icon",
-                        tooltip = "Expand location icon",
-                        isSelected = viewModel.expandLocationIcon,
-                        iconSize = 28.dp,
-                        onClick = {
-                            val next = !viewModel.expandLocationIcon
-                            showButtonInfo("Expand location icon", if (next) Icons.Rounded.LocationOn else Icons.Outlined.LocationOn)
-                            viewModel.updateExpandLocationIcon(next)
-                        }
-                    )
-                )
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        modifier = Modifier.wrapContentWidth()
+                    SettingsRow(items = interfaceRow2Items, columns = 3)
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // Actions Section Header
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(modifier = Modifier.padding(6.dp)) {
-                            CookieButtonGroup(
-                                items = expandItems,
-                                columns = 1,
-                                cookieSize = 72.dp,
-                                overlap = 0.dp,
-                                horizontalAlignment = Alignment.Start,
-                                wiggleNeighborOnToggleOn = true
+                        ShapedSectionHeader(icon = ImageVector.vectorResource(R.drawable.ic_more_section))
+                        Text(
+                            text = "Actions",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val isAutoBackupOn = viewModel.autoBackupSchedule != "Disabled"
+                    val autoBackupIcon = if (isAutoBackupOn) Icons.Rounded.CloudSync else Icons.Outlined.CloudSync
+
+                    val backupIcon = ImageVector.vectorResource(R.drawable.ic_backup_section)
+                    val importIcon = ImageVector.vectorResource(R.drawable.ic_import_section)
+                    val actionItems = remember(isAutoBackupOn, backupIcon, importIcon) {
+                        listOf(
+                            SettingItemData(
+                                title = "Export",
+                                icon = backupIcon,
+                                isSelected = null,
+                                onClick = { exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.json") }
+                            ),
+                            SettingItemData(
+                                title = "Import",
+                                icon = importIcon,
+                                isSelected = null,
+                                onClick = { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*")) }
+                            ),
+                            SettingItemData(
+                                title = "Auto backup",
+                                icon = autoBackupIcon,
+                                isSelected = isAutoBackupOn,
+                                onClick = { showAutoBackupDialog = true }
                             )
-                        }
+                        )
                     }
+
+                    SettingsRow(items = actionItems)
+
+                    Spacer(modifier = Modifier.height(36.dp))
                 }
-
-                Spacer(modifier = Modifier.height(28.dp))
-
-                // Actions Section Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ShapedSectionHeader(icon = MoreSectionIcon())
-                    Text(
-                        text = "Actions",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                val backupIcon = BackupSectionIcon()
-                val importIcon = ImportSectionIcon()
-
-                val isAutoBackupOn = viewModel.autoBackupSchedule != "Disabled"
-                val autoBackupIcon = if (isAutoBackupOn) Icons.Rounded.CloudSync else Icons.Outlined.CloudSync
-
-                val actionItems = listOf(
-                    cookieButtonItem(
-                        icon = backupIcon,
-                        contentDescription = "Export",
-                        tooltip = "Export",
-                        isSelected = false,
-                        iconSize = 28.dp,
-                        onClick = {
-                            showButtonInfo("Export", backupIcon)
-                            exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.json")
-                        }
-                    ),
-                    cookieButtonItem(
-                        icon = importIcon,
-                        contentDescription = "Import",
-                        tooltip = "Import",
-                        isSelected = false,
-                        iconSize = 28.dp,
-                        onClick = {
-                            showButtonInfo("Import", importIcon)
-                            importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*"))
-                        }
-                    ),
-                    cookieButtonItem(
-                        icon = autoBackupIcon,
-                        contentDescription = "Auto backup",
-                        tooltip = "Auto backup",
-                        isSelected = isAutoBackupOn,
-                        iconSize = 28.dp,
-                        onClick = {
-                            showButtonInfo("Auto backup", autoBackupIcon)
-                            showAutoBackupDialog = true
-                        }
-                    )
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        modifier = Modifier.wrapContentWidth()
-                    ) {
-                        Box(modifier = Modifier.padding(6.dp)) {
-                            CookieButtonGroup(
-                                items = actionItems,
-                                columns = 1,
-                                cookieSize = 72.dp,
-                                overlap = 0.dp,
-                                horizontalAlignment = Alignment.Start,
-                                enableWiggle = false
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                AnimatedVisibility(
-                    visible = activeInfo != null,
-                    enter = slideInVertically(
-                        initialOffsetY = { -it },
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ) + expandVertically(
-                        expandFrom = Alignment.Top,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ) + fadeIn(animationSpec = tween(200)),
-                    exit = slideOutVertically(
-                        targetOffsetY = { -it },
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ) + shrinkVertically(
-                        shrinkTowards = Alignment.Top,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ) + fadeOut(animationSpec = tween(200))
-                ) {
-                    displayedInfo?.let { currentInfo ->
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp)
-                                .heightIn(min = 36.dp)
-                                .animateContentSize(),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                currentInfo.icon()
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = currentInfo.text,
-                                    modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.Medium,
-                                        fontFamily = GoogleSansFlexWide
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
-
-
-                Spacer(modifier = Modifier.height(32.dp))
             }
         }
-    }
 
-     if (showAutoBackupDialog) {
-         AutoBackupScheduleDialog(
-             currentSchedule = viewModel.autoBackupSchedule,
-             onDismiss = { showAutoBackupDialog = false },
-             onConfirm = { selected ->
-                 viewModel.updateAutoBackupSchedule(selected)
-                 showAutoBackupDialog = false
-             }
-         )
-     }
+        if (showAutoBackupDialog) {
+            AutoBackupScheduleDialog(
+                currentSchedule = viewModel.autoBackupSchedule,
+                onDismiss = { showAutoBackupDialog = false },
+                onConfirm = { selected ->
+                    viewModel.updateAutoBackupSchedule(selected)
+                    showAutoBackupDialog = false
+                }
+            )
+        }
     }
 }
 

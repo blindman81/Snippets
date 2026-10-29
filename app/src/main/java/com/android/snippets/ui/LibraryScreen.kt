@@ -1,6 +1,7 @@
 package com.android.snippets.ui
 
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -25,6 +26,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.*
 import com.android.snippets.ui.util.Motion
@@ -71,10 +73,9 @@ fun LibraryScreen(
 
     val isBackHandlerEnabled = showAddModal || showSnippetsModal || showDeleteModal ||
             showRateModal || showLinkModal || showNameModal || (viewModel.activePhotoId != null) ||
-            isSearchOpen || viewModel.isSelectionMode || viewModel.showHistoryBottomSheet ||
-            showMenuPopup || (longPressedCollection != null) || (deletingCollection != null)
+            isSearchOpen || viewModel.isSelectionMode || (deletingCollection != null)
 
-    AppPredictiveBackHandler(enabled = isBackHandlerEnabled) {
+    BackHandler(enabled = isBackHandlerEnabled) {
         if (showAddModal) {
             showAddModal = false
         } else if (showSnippetsModal) {
@@ -94,12 +95,6 @@ fun LibraryScreen(
             viewModel.searchQuery = ""
         } else if (viewModel.isSelectionMode) {
             viewModel.clearSelection()
-        } else if (viewModel.showHistoryBottomSheet) {
-            viewModel.showHistoryBottomSheet = false
-        } else if (showMenuPopup) {
-            showMenuPopup = false
-        } else if (longPressedCollection != null) {
-            longPressedCollection = null
         } else if (deletingCollection != null) {
             deletingCollection = null
         }
@@ -109,7 +104,7 @@ fun LibraryScreen(
             showRateModal || showLinkModal || showNameModal ||
             viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal ||
             viewModel.showCreateDialog || showMenuPopup || isSearchOpen ||
-            viewModel.showHistoryBottomSheet || (longPressedCollection != null) || (deletingCollection != null)
+            (longPressedCollection != null) || (deletingCollection != null) || viewModel.showFilterSheet
 
     val pageTabs = remember(viewModel.userCollections) {
         listOf("Library", "Favorites") + viewModel.userCollections
@@ -128,6 +123,7 @@ fun LibraryScreen(
             isFirstTabLoad = false
         } else {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            viewModel.carouselLazyListState.scrollToItem(0)
         }
     }
 
@@ -157,10 +153,11 @@ fun LibraryScreen(
     }
 
     var isFabVisible by remember { mutableStateOf(true) }
-    val nestedScrollConnection = remember {
+    val nestedScrollConnection = remember(isAnyPopupActive) {
         object : NestedScrollConnection {
             private var scrollBuffer = 0f
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (isAnyPopupActive) return Offset.Zero
                 scrollBuffer += available.y
                 if (scrollBuffer < -20f) {
                     if (isFabVisible) isFabVisible = false
@@ -174,7 +171,7 @@ fun LibraryScreen(
         }
     }
 
-    val isCookieToolbarVisible = viewModel.isSelectionMode || isFabVisible
+    val isCookieToolbarVisible = viewModel.isSelectionMode || isFabVisible || isAnyPopupActive
 
     val cookieToolbarOffset by animateDpAsState(
         targetValue = if (isCookieToolbarVisible) 0.dp else 200.dp,
@@ -211,7 +208,7 @@ fun LibraryScreen(
     }
 
     val cookieNavBarOffset by animateDpAsState(
-        targetValue = if (isScrolled) (-100).dp else 0.dp,
+        targetValue = if (isScrolled) (-280).dp else 0.dp,
         animationSpec = if (!isScrolled) {
             Motion.NavBarEnterSpring
         } else {
@@ -258,7 +255,22 @@ fun LibraryScreen(
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                            val topGridPadding = statusBarTop + 72.dp
+                            val currentTabMemories = remember(viewModel.historyMemories, currentTab) {
+                                when (currentTab) {
+                                    "Library" -> viewModel.historyMemories
+                                    "Favorites" -> viewModel.historyMemories.filter { it.isFavorite }
+                                    else -> viewModel.historyMemories.filter { it.collections.contains(currentTab) }
+                                }
+                            }
+                            val hasTabMemories = currentTabMemories.isNotEmpty()
+                            val topGridPadding by animateDpAsState(
+                                targetValue = if (hasTabMemories) statusBarTop + 176.dp else statusBarTop + 72.dp,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
+                                label = "top_grid_padding"
+                            )
 
                             val statusBarBlurAlpha by animateFloatAsState(
                                 targetValue = if (isScrolled) 1f else 0f,
@@ -318,8 +330,17 @@ fun LibraryScreen(
                                     if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
                                 },
                                 onAddSnippet = { photo ->
-                                    modalPhoto = photo
-                                    showAddModal = true
+                                    viewModel.requestAddSnippet(
+                                        photo = photo,
+                                        onShowNameModal = {
+                                            modalPhoto = it
+                                            showNameModal = true
+                                        },
+                                        onShowAddModal = {
+                                            modalPhoto = it
+                                            showAddModal = true
+                                        }
+                                    )
                                 },
                                 onNamePhoto = { photo ->
                                     modalPhoto = photo
@@ -352,25 +373,44 @@ fun LibraryScreen(
                                 modifier = Modifier.align(Alignment.TopCenter)
                             )
 
-                            // 3. Cookie Nav Bar
-                            LibraryNavBar(
-                                allTabs = pageTabs,
-                                activeTabTarget = activeTabTarget,
-                                currentTab = currentTab,
-                                pageTabs = pageTabs,
-                                pagerState = pagerState,
-                                viewModel = viewModel,
-                                tabRowScrollState = tabRowScrollState,
-                                tabPositions = tabPositions,
-                                tabWidths = tabWidths,
-                                statusBarTop = statusBarTop,
-                                cookieNavBarOffset = cookieNavBarOffset,
-                                cookieNavBarAlpha = cookieNavBarAlpha,
-                                modifier = Modifier.align(Alignment.TopStart)
-                            )
+                            // 3. Cookie Nav Bar & Memories Carousel
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .fillMaxWidth()
+                                    .graphicsLayer {
+                                        translationY = cookieNavBarOffset.toPx()
+                                        alpha = cookieNavBarAlpha
+                                        clip = false
+                                    }
+                            ) {
+                                LibraryNavBar(
+                                    allTabs = pageTabs,
+                                    activeTabTarget = activeTabTarget,
+                                    currentTab = currentTab,
+                                    pageTabs = pageTabs,
+                                    pagerState = pagerState,
+                                    viewModel = viewModel,
+                                    tabRowScrollState = tabRowScrollState,
+                                    tabPositions = tabPositions,
+                                    tabWidths = tabWidths,
+                                    statusBarTop = statusBarTop,
+                                    cookieNavBarOffset = 0.dp,
+                                    cookieNavBarAlpha = 1f,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                MemoriesCarousel(
+                                    currentTab = currentTab,
+                                    viewModel = viewModel,
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
 
                             // 4. Floating Cookie Toolbar
-                            LibraryToolbar(
+                            CookieToolbar(
                                 viewModel = viewModel,
                                 currentTab = currentTab,
                                 flatPhotosRaw = flatPhotosRaw,
@@ -381,45 +421,90 @@ fun LibraryScreen(
                                 isAnyPopupActive = isAnyPopupActive,
                                 cookieToolbarOffset = cookieToolbarOffset,
                                 cookieToolbarScale = cookieToolbarScale,
+                                isMenuOpen = showMenuPopup,
+                                isManageOpen = longPressedCollection != null,
+                                isFilterOpen = viewModel.showFilterSheet,
                                 onMenuClick = {
-                                    showMenuPopup = !showMenuPopup
+                                    if (showMenuPopup) {
+                                        showMenuPopup = false
+                                    } else {
+                                        longPressedCollection = null
+                                        viewModel.closeFilter()
+                                        showMenuPopup = true
+                                    }
                                 },
                                 onManageClick = {
-                                    val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
-                                    longPressedCollection = activeTab
-                                },
-                                onHistoryClick = {
-                                    viewModel.showHistoryBottomSheet = true
+                                    if (longPressedCollection != null) {
+                                        longPressedCollection = null
+                                    } else {
+                                        showMenuPopup = false
+                                        viewModel.closeFilter()
+                                        val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
+                                        longPressedCollection = activeTab
+                                    }
                                 },
                                 onFilterClick = {
-                                    val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
-                                    viewModel.filteringCategory = activeTab
-                                    viewModel.navigateFilter()
+                                    if (viewModel.showFilterSheet) {
+                                        viewModel.closeFilter()
+                                    } else {
+                                        showMenuPopup = false
+                                        longPressedCollection = null
+                                        val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
+                                        viewModel.filteringCategory = activeTab
+                                        viewModel.navigateFilter()
+                                    }
                                 },
                                 onBulkDeleteClick = {
                                     viewModel.showBulkDeleteModal = true
                                 },
-                                modifier = Modifier.align(Alignment.BottomCenter)
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .zIndex(25f)
                             )
 
-                            // 5. Menu & History Bottom Sheets
-                            MenuBottomSheet(
+                            // 5. Menu Floating Sheet
+                            MenuFloatingSheet(
                                 show = showMenuPopup,
                                 onDismissRequest = { showMenuPopup = false },
                                 viewModel = viewModel,
                                 view = view
                             )
 
-                            HistoryBottomSheet(
-                                show = viewModel.showHistoryBottomSheet,
-                                onDismissRequest = { viewModel.showHistoryBottomSheet = false },
+                            // 6. Manage Collection Floating Sheet
+                            ManageFloatingSheet(
+                                collection = longPressedCollection,
+                                currentTab = currentTab,
                                 viewModel = viewModel,
-                                view = view
+                                isDeletingCollection = deletingCollection != null,
+                                onDismissRequest = { longPressedCollection = null },
+                                onAddPhotos = onAddPhotos,
+                                onStartDeleteCollection = { col: String ->
+                                    deletingCollection = col
+                                    longPressedCollection = null
+                                }
                             )
 
-                            // 6. Scroll to Top Floating Button
+                            // 7. Filter Floating Sheet
+                            FloatingSheet(
+                                visible = viewModel.showFilterSheet,
+                                onDismissRequest = { viewModel.closeFilter() },
+                                modifier = Modifier.padding(top = (topGridPadding - 65.dp).coerceAtLeast(0.dp)),
+                                sheetModifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp)
+                                    .widthIn(max = 428.dp)
+                                    .fillMaxHeight(),
+                                contentPadding = PaddingValues(top = 10.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+                            ) {
+                                FilterFloatingSheet(
+                                    viewModel = viewModel,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            // 8. Scroll to Top Floating Button
                             AnimatedVisibility(
-                                visible = isScrolled && !viewModel.isSelectionMode && !isSearchOpen,
+                                visible = isScrolled && !viewModel.isSelectionMode && !isSearchOpen && !isAnyPopupActive,
                                 enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
                                         scaleIn(
                                             initialScale = 0.8f,
@@ -463,33 +548,7 @@ fun LibraryScreen(
                                 )
                             }
 
-                            // 7. Manage Collection Bottom Sheet
-                            longPressedCollection?.let { collection ->
-                                ManageCollectionBottomSheet(
-                                    collection = collection,
-                                    currentTab = currentTab,
-                                    viewModel = viewModel,
-                                    isDeletingCollection = deletingCollection != null,
-                                    onDismissRequest = { longPressedCollection = null },
-                                    onAddPhotos = onAddPhotos,
-                                    onStartDeleteCollection = { col ->
-                                        deletingCollection = col
-                                        longPressedCollection = null
-                                    },
-                                    onUpdateSort = { option ->
-                                        val col = longPressedCollection ?: currentTab
-                                        viewModel.activePhotoId = null
-                                        if (viewModel.getPhotoSortTypeFor(col) != option) {
-                                            viewModel.setPhotoSortTypeFor(col, option)
-                                        }
-                                        listStates[col]?.let { state ->
-                                            scope.launch { state.scrollToItem(0) }
-                                        }
-                                    }
-                                )
-                            }
-
-                            // 8. Photo & Collection Modals
+                            // 9. Photo & Collection Modals
                             LibraryModalsHost(
                                 viewModel = viewModel,
                                 deletingCollection = deletingCollection,

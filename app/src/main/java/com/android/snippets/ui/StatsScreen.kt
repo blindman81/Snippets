@@ -39,9 +39,6 @@ import java.util.Locale
  */
 @Composable
 fun StatsScreen(viewModel: SnippetsViewModel) {
-    AppPredictiveBackHandler {
-        viewModel.navigateLibrary()
-    }
     val view = LocalView.current
     val scrollState = rememberScrollState()
 

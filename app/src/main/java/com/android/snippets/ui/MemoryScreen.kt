@@ -3,6 +3,7 @@ package com.android.snippets.ui
 import android.os.Build
 import androidx.compose.ui.graphics.blur.BlurRadiusSpec
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 import kotlinx.coroutines.flow.first
 import androidx.compose.animation.*
@@ -62,6 +63,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.android.snippets.ui.util.rotateWithBounds
 import com.android.snippets.ui.theme.*
 import androidx.compose.ui.res.painterResource
@@ -87,13 +89,12 @@ fun MemoryScreen(
     val pagerState = rememberPagerState(initialPage = initialPage) {
         photoList.size + 2 // [Close, Photos..., Close]
     }
-    AppPredictiveBackHandler {
-        photoList.getOrNull(pagerState.currentPage - 1)?.let {
-            viewModel.onMemoryViewed(it.id)
+    val transitionTargetId by remember {
+        derivedStateOf {
+            val targetIndex = (pagerState.currentPage - 1).coerceIn(0, (photoList.size - 1).coerceAtLeast(0))
+            photoList.getOrNull(targetIndex)?.id
         }
-        viewModel.navigateLibrary()
     }
-    val transitionTargetId by remember { derivedStateOf { photoList.getOrNull(pagerState.currentPage - 1)?.id } }
 
     val targetPage = (viewModel.currentMemoryIndex + 1).coerceIn(1, (photoList.size).coerceAtLeast(1))
     LaunchedEffect(targetPage, photoList) {
@@ -104,9 +105,15 @@ fun MemoryScreen(
     
     // Sync pager state back to ViewModel and handle swipe-to-close
     LaunchedEffect(pagerState.currentPage, photoList) {
-        if (photoList.isNotEmpty() && (pagerState.currentPage == 0 || pagerState.currentPage == photoList.size + 1)) {
-            // Immediate transition trigger
-            viewModel.navigateLibrary()
+        if (photoList.isNotEmpty()) {
+            if (pagerState.currentPage == 0 || pagerState.currentPage == photoList.size + 1) {
+                viewModel.navigateLibrary()
+            } else {
+                val index = pagerState.currentPage - 1
+                if (index in photoList.indices) {
+                    viewModel.currentMemoryIndex = index
+                }
+            }
         }
     }
 
@@ -148,6 +155,10 @@ fun MemoryScreen(
         onDispose {
             MemoryWorker.isInMemoryScreen = false
             MemoryWorker.cancelSummaryNotification(context)
+            val photoList = viewModel.activeMemoriesSnapshot.ifEmpty { viewModel.curatedMemories }
+            photoList.getOrNull(viewModel.currentMemoryIndex)?.let {
+                viewModel.onMemoryViewed(it.id)
+            }
         }
     }
 
@@ -159,10 +170,23 @@ fun MemoryScreen(
         label = "uiAlpha"
     )
 
+    // State for enter transition settling so rotation/timer wait until open
+    var isOpening by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(400)
+        isOpening = false
+    }
+
+    val isOpeningTransition = isOpening ||
+        (animatedVisibilityScope?.transition?.currentState != EnterExitState.Visible)
+
     // State for long-press hold detection to freeze spin & pause timer
     var isPressed by remember { mutableStateOf(false) }
     val isScrolling = pagerState.isScrollInProgress || abs(pagerState.currentPageOffsetFraction) > 0.005f
-    val shouldAnimateSpin = !isPressed && !isScrolling
+    val isClosing = viewModel.currentScreen != Screen.Memory ||
+        pagerState.targetPage == 0 ||
+        pagerState.targetPage == photoList.size + 1
+    val shouldAnimateSpin = !isPressed && !isScrolling && !isClosing && !isOpeningTransition
 
     var rotationAngle by remember { mutableFloatStateOf(0f) }
 
@@ -187,16 +211,16 @@ fun MemoryScreen(
     var wavePhase by remember { mutableFloatStateOf(0f) }
 
     // Story Progress Timer and Auto-Advance Loop bound to settledPage to prevent mid-animation cancellation
-    LaunchedEffect(pagerState.settledPage, isPressed, isScrolling) {
+    LaunchedEffect(pagerState.settledPage, isPressed, isScrolling, isClosing, isOpeningTransition) {
         val activeSettled = pagerState.settledPage
-        if (activeSettled >= 1 && activeSettled <= photoList.size && !isScrolling) {
+        if (activeSettled >= 1 && activeSettled <= photoList.size && !isScrolling && !isClosing && !isOpeningTransition) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             currentMemoryProgress = 0f
 
             var lastTime = 0L
-            while (currentMemoryProgress < 1f) {
+            while (currentMemoryProgress < 1f && !isClosing && !isOpeningTransition) {
                 withFrameNanos { frameTime ->
-                    if (!isPressed && !isScrolling) {
+                    if (!isPressed && !isScrolling && !isClosing && !isOpeningTransition) {
                         if (lastTime != 0L) {
                             val deltaNano = frameTime - lastTime
                             val deltaSec = (deltaNano / 1_000_000_000f).coerceAtMost(0.05f)
@@ -207,7 +231,7 @@ fun MemoryScreen(
                     lastTime = frameTime
                 }
             }
-            if (currentMemoryProgress >= 1f) {
+            if (currentMemoryProgress >= 1f && !isClosing && !isOpeningTransition) {
                 snapshotFlow { pagerState.isScrollInProgress }
                     .first { !it }
                 coroutineScope.launch {
@@ -328,7 +352,7 @@ fun MemoryScreen(
                     Spacer(modifier = Modifier.height(140.dp))
 
                     val isCurrent = pageIndex == pagerState.currentPage && !isScrolling
-                    val pageRotation = if (isCurrent) rotationAngle else 0f
+                    val pageRotation = if (isCurrent && !isClosing && !isOpeningTransition) rotationAngle else 0f
 
                     Card(
                         onClick = {
@@ -336,30 +360,48 @@ fun MemoryScreen(
                             viewModel.openDetail(photo.id)
                         },
                         shape = CookieShape,
-                        border = BorderStroke(4.dp, Color.White),
+                        border = BorderStroke(3.dp, MaterialTheme.colorScheme.primary),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 24.dp)
                             .aspectRatio(1f)
-                            .graphicsLayer {
-                                rotationZ = pageRotation
-                            }
                             .then(
                                 if (photo.id == transitionTargetId && sharedTransitionScope != null && animatedVisibilityScope != null) {
                                     with(sharedTransitionScope) {
                                         Modifier.sharedBounds(
                                             rememberSharedContentState(key = "memory_${photo.id}"),
                                             animatedVisibilityScope = animatedVisibilityScope,
-                                            boundsTransform = { _, _ -> spring(dampingRatio = 0.8f, stiffness = 500f) },
-                                            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Crop)
+                                            boundsTransform = { _, _ ->
+                                                spring(
+                                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
+                                                )
+                                            },
+                                            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Crop),
+                                            clipInOverlayDuringTransition = OverlayClip(CookieShape)
                                         )
                                     }
                                 } else Modifier
                             )
+                            .graphicsLayer {
+                                rotationZ = pageRotation
+                            }
+                            .clip(CookieShape)
                     ) {
+                        val imageRequest = remember(photo.uriString) {
+                            ImageRequest.Builder(context)
+                                .data(photo.uriString)
+                                .crossfade(false)
+                                .memoryCacheKey(photo.uriString)
+                                .placeholderMemoryCacheKey(photo.uriString)
+                                .build()
+                        }
                         AsyncImage(
-                            model = photo.uriString,
+                            model = imageRequest,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             onSuccess = { state ->
@@ -458,7 +500,7 @@ fun MemoryScreen(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_star_rating),
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.fillMaxSize()
                     )
                     Text(
@@ -467,7 +509,7 @@ fun MemoryScreen(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold
                         ),
-                        color = Color(0xFF1F1F1F),
+                        color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(top = 1.dp)
                     )
                 }
@@ -483,7 +525,7 @@ fun MemoryScreen(
                 val dateString = if (photo != null) {
                     val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
                     val timeFormat = if (is24Hour) "HH:mm" else "h:mm a"
-                    val pattern = if (viewModel.showTimeInMemories) "EEE, d MMM • $timeFormat" else "EEE, d MMM"
+                    val pattern = "EEE, d MMM • $timeFormat"
                     SimpleDateFormat(pattern, Locale.getDefault()).format(Date(photo.date))
                 } else ""
                 val locationText = if (photo != null) {
@@ -498,9 +540,9 @@ fun MemoryScreen(
                 ) {
                     if (photoName != null) {
                         Surface(
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                            color = Color.White.copy(alpha = 0.25f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                             modifier = Modifier.height(24.dp)
                         ) {
                             Row(
@@ -511,7 +553,7 @@ fun MemoryScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Rounded.Label,
                                     contentDescription = "Photo name",
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
@@ -520,7 +562,7 @@ fun MemoryScreen(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold
                                     ),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
@@ -531,9 +573,9 @@ fun MemoryScreen(
 
                 // Center: Calendar month icon and day, date month and time in pill
                 Surface(
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                    color = Color.White.copy(alpha = 0.25f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                     modifier = Modifier.height(24.dp)
                 ) {
                     Row(
@@ -544,7 +586,7 @@ fun MemoryScreen(
                         Icon(
                             imageVector = Icons.Rounded.CalendarMonth,
                             contentDescription = "Date",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
@@ -553,23 +595,25 @@ fun MemoryScreen(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             ),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1
                         )
                     }
                 }
 
-                // Right: Location on icon to show location
+                // Right: Location on icon to show location (2dp gap from calendar pill)
                 Box(
                     modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.CenterEnd
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     if (!locationText.isNullOrBlank()) {
                         Surface(
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                            color = Color.White.copy(alpha = 0.25f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
-                            modifier = Modifier.height(24.dp)
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                            modifier = Modifier
+                                .padding(start = 2.dp)
+                                .height(24.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -579,7 +623,7 @@ fun MemoryScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.LocationOn,
                                     contentDescription = "Location",
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
@@ -588,7 +632,7 @@ fun MemoryScreen(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold
                                     ),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
@@ -609,6 +653,9 @@ fun MemoryStoryProgressBar(
     wavePhase: Float,
     modifier: Modifier = Modifier
 ) {
+    val activeColor = MaterialTheme.colorScheme.primary
+    val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -634,9 +681,9 @@ fun MemoryStoryProgressBar(
 
                 if (!isActive) {
                     // Inactive or completed memory segments
-                    val trackColor = if (i < currentIndex) Color.White else Color.White.copy(alpha = 0.35f)
+                    val segmentColor = if (i < currentIndex) activeColor else trackColor
                     drawRoundRect(
-                        color = trackColor,
+                        color = segmentColor,
                         size = size,
                         cornerRadius = CornerRadius(cornerRadius, cornerRadius)
                     )
@@ -648,7 +695,7 @@ fun MemoryStoryProgressBar(
                     // Draw background track ONLY for the remaining upcoming portion so no flat bar appears behind the squiggly wave
                     if (remainingWidth > 0f) {
                         drawRoundRect(
-                            color = Color.White.copy(alpha = 0.35f),
+                            color = trackColor,
                             topLeft = androidx.compose.ui.geometry.Offset(activeWidth, 0f),
                             size = Size(remainingWidth, height),
                             cornerRadius = CornerRadius(cornerRadius, cornerRadius)
@@ -675,14 +722,14 @@ fun MemoryStoryProgressBar(
                         }
                         drawPath(
                             path = path,
-                            color = Color.White,
+                            color = activeColor,
                             style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
                         )
                     } else {
                         // Flattened state
                         if (activeWidth > 0f) {
                             drawRoundRect(
-                                color = Color.White,
+                                color = activeColor,
                                 size = Size(activeWidth, height),
                                 cornerRadius = CornerRadius(cornerRadius, cornerRadius)
                             )
@@ -692,7 +739,7 @@ fun MemoryStoryProgressBar(
 
                 // 4dp circle stop indicator at the end of the last memory's progress bar
                 if (i == count - 1) {
-                    val dotColor = if (i <= currentIndex) Color.White else Color.White.copy(alpha = 0.6f)
+                    val dotColor = if (i <= currentIndex) activeColor else trackColor
                     drawCircle(
                         color = dotColor,
                         radius = 2.dp.toPx(),
@@ -761,7 +808,7 @@ fun FloatingSnippet(
         2, 3 -> MaterialTheme.typography.titleLarge.copy(fontSize = (18 * finalScaling).sp, fontWeight = FontWeight.Bold)
         else -> MaterialTheme.typography.labelLarge.copy(fontSize = (14 * finalScaling).sp, fontWeight = FontWeight.Normal)
     }
-    val textStyle = com.android.snippets.ui.getSnippetTextStyle(
+    val textStyle = com.android.snippets.ui.theme.getSnippetTextStyle(
         base = baseStyle,
         isCloud = true
     )

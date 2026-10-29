@@ -52,9 +52,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(viewModel: SnippetsViewModel) {
-    AppPredictiveBackHandler {
-        viewModel.navigateLibrary()
-    }
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
@@ -159,14 +156,14 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                     Text(
                         text = "Lakshmi Narayana",
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.ExtraBold
+                            fontWeight = FontWeight.SemiBold
                         ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
                 Text(
-                    text = "UI and UX design by me, code by agentic tools.",
+                    text = "UI and UX design ideas by me, code by agentic tools.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -230,17 +227,22 @@ fun LicenseDialog(onDismiss: () -> Unit) {
                 LicenseItem(
                     name = "Android Jetpack & Jetpack Compose",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2018-2025 The Android Open Source Project"
+                    copyright = "Copyright (c) 2018-2026 The Android Open Source Project"
                 )
                 LicenseItem(
                     name = "Material Components for Android",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2018-2025 The Android Open Source Project"
+                    copyright = "Copyright (c) 2018-2026 The Android Open Source Project"
                 )
                 LicenseItem(
-                    name = "Kotlin & Kotlin Coroutines",
+                    name = "Kotlin, Kotlin Coroutines & Serialization",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2010-2025 JetBrains s.r.o. and Kotlin Programming Language contributors"
+                    copyright = "Copyright (c) 2010-2026 JetBrains s.r.o. and Kotlin Programming Language contributors"
+                )
+                LicenseItem(
+                    name = "Dagger Hilt",
+                    license = "Apache License 2.0",
+                    copyright = "Copyright (c) 2012-2026 The Dagger Authors"
                 )
                 LicenseItem(
                     name = "Coil",
@@ -250,12 +252,12 @@ fun LicenseDialog(onDismiss: () -> Unit) {
                 LicenseItem(
                     name = "Haze",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2023-2025 Chris Banes"
+                    copyright = "Copyright (c) 2023-2026 Chris Banes"
                 )
                 LicenseItem(
-                    name = "Gson",
+                    name = "Kotlinx Serialization",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2008 Google Inc."
+                    copyright = "Copyright (c) 2017-2026 JetBrains s.r.o."
                 )
             }
         },
