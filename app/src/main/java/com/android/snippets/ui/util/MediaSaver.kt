@@ -248,7 +248,7 @@ object MediaSaver {
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 16f // 4.dp equivalent
-            color = colorScheme.primary.toArgb()
+            color = Color.WHITE
         }
         canvas.drawPath(photoPath, borderPaint)
 
