@@ -1,10 +1,14 @@
 package com.android.snippets.ui.util
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
 import android.view.Surface
@@ -49,6 +53,9 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
     private val _rawTiltAngle = mutableFloatStateOf(0f)
     val rawTiltAngle: State<Float> = _rawTiltAngle
 
+    private val _isBatterySaverOrLow = mutableStateOf(false)
+    val isBatterySaverOrLow: State<Boolean> = _isBatterySaverOrLow
+
     private val _isGloballyEnabled = mutableStateOf(true)
     var isGloballyEnabled: Boolean
         get() = _isGloballyEnabled.value
@@ -68,6 +75,69 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
     private const val TILT_SENSITIVITY_DIVISOR = 5.0f
     private const val DEADBAND_THRESHOLD = 1.2f
 
+    private var isReceiverRegistered = false
+
+    private val batteryAndPowerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            updateListeningState()
+        }
+    }
+
+    private fun registerBatteryReceiver() {
+        if (isReceiverRegistered) return
+        val ctx = appContext ?: return
+        try {
+            val filter = IntentFilter().apply {
+                addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+                addAction(Intent.ACTION_BATTERY_CHANGED)
+                addAction(Intent.ACTION_BATTERY_LOW)
+                addAction(Intent.ACTION_BATTERY_OKAY)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ctx.registerReceiver(batteryAndPowerReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                ctx.registerReceiver(batteryAndPowerReceiver, filter)
+            }
+            isReceiverRegistered = true
+        } catch (_: Exception) {}
+    }
+
+    private fun unregisterBatteryReceiver() {
+        if (!isReceiverRegistered) return
+        val ctx = appContext ?: return
+        try {
+            ctx.unregisterReceiver(batteryAndPowerReceiver)
+        } catch (_: Exception) {}
+        isReceiverRegistered = false
+    }
+
+    fun isBatterySaverOrLowBattery(): Boolean {
+        val pm = powerManager
+        if (pm?.isPowerSaveMode == true) return true
+
+        val ctx = appContext ?: return false
+        val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        if (bm != null) {
+            val capacity = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            if (capacity in 0..20) {
+                return true
+            }
+        }
+        try {
+            val batteryIntent = ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            if (batteryIntent != null) {
+                val level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                if (level >= 0 && scale > 0) {
+                    val pct = (level * 100f) / scale
+                    if (pct <= 20f) return true
+                }
+            }
+        } catch (_: Exception) {}
+
+        return false
+    }
+
     fun initialize(context: Context) {
         if (appContext != null) return
         val app = context.applicationContext
@@ -76,6 +146,7 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
         powerManager = app.getSystemService(Context.POWER_SERVICE) as? PowerManager
         sensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GRAVITY)
             ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        _isBatterySaverOrLow.value = isBatterySaverOrLowBattery()
     }
 
     private var activeTiltModalCount by mutableIntStateOf(0)
@@ -92,6 +163,7 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
 
     fun subscribe(lifecycleOwner: LifecycleOwner?) {
         subscriberCount++
+        registerBatteryReceiver()
         lifecycleOwner?.lifecycle?.addObserver(this)
         if (lifecycleOwner != null && lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
             isResumed = true
@@ -101,6 +173,9 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
 
     fun unsubscribe(lifecycleOwner: LifecycleOwner?) {
         subscriberCount = maxOf(0, subscriberCount - 1)
+        if (subscriberCount == 0) {
+            unregisterBatteryReceiver()
+        }
         lifecycleOwner?.lifecycle?.removeObserver(this)
         updateListeningState()
     }
@@ -116,9 +191,9 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
     }
 
     private fun updateListeningState() {
-        val pm = powerManager
-        val isPowerSave = pm?.isPowerSaveMode == true
-        val shouldListen = isGloballyEnabled && subscriberCount > 0 && isResumed && !isPowerSave && sensor != null
+        val lowOrSave = isBatterySaverOrLowBattery()
+        _isBatterySaverOrLow.value = lowOrSave
+        val shouldListen = isGloballyEnabled && subscriberCount > 0 && isResumed && !lowOrSave && sensor != null
 
         if (shouldListen && !isListening) {
             sensor?.let {
@@ -140,7 +215,7 @@ object CookieTiltController : SensorEventListener, DefaultLifecycleObserver {
     override fun onSensorChanged(event: SensorEvent) {
         if (!isListening) return
 
-        if (powerManager?.isPowerSaveMode == true) {
+        if (isBatterySaverOrLowBattery()) {
             updateListeningState()
             return
         }
@@ -226,8 +301,11 @@ fun rememberCookieTilt(enabled: Boolean): State<Float> {
     val isModalTiltFocus = LocalTiltModalFocus.current
     val lifecycleOwner = remember(context) { context.findLifecycleOwner() }
 
+    val isBatteryLowOrPowerSave = CookieTiltController.isBatterySaverOrLow.value
+
     val effectiveEnabled = enabled &&
         CookieTiltController.isGloballyEnabled &&
+        !isBatteryLowOrPowerSave &&
         (!CookieTiltController.hasTiltModalFocus || isModalTiltFocus) &&
         windowInfo.isWindowFocused &&
         isTiltActive

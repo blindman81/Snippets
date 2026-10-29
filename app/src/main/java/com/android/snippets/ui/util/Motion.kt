@@ -82,7 +82,7 @@ object Motion {
         tween(durationMillis = 600, easing = FastOutSlowInEasing)
     }
 
-    fun wiggleSpec(direction: Float = 1f, amplitude: Float = 8f): KeyframesSpec<Float> = keyframes {
+    fun wiggleSpec(direction: Float = 1f, amplitude: Float = 14f): KeyframesSpec<Float> = keyframes {
         durationMillis = 400
         0f at 0
         (amplitude * direction) at 60 using FastOutSlowInEasing
@@ -111,7 +111,7 @@ object Motion {
 
     fun screenTransition(initialState: Screen, targetState: Screen, motionScheme: androidx.compose.material3.MotionScheme): ContentTransform {
         val isNavigatingBack = targetState == Screen.Library ||
-            (initialState in listOf(Screen.EmojiPicker, Screen.PhotosCarousel) && targetState == Screen.Settings) ||
+            (initialState == Screen.EmojiPicker && targetState == Screen.Settings) ||
             (initialState in listOf(Screen.MonthlyRecap, Screen.YearlyRecap))
 
         return when {

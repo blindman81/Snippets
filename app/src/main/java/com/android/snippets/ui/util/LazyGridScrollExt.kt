@@ -4,13 +4,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
-import androidx.compose.runtime.Composable
-
-data class SortPillInfo(
-    val text: String,
-    val icon: @Composable () -> Unit,
-    val timestamp: Long = System.currentTimeMillis()
-)
 
 suspend fun LazyStaggeredGridState.smoothScrollToItemSlow(
     targetIndex: Int,

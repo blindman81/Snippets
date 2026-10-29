@@ -89,10 +89,4 @@ object DistributionMath {
         return 1.1f
     }
 
-    /**
-     * Determines the scaling factor for snippets in the grid layout.
-     */
-    fun getGridScalingFactor(totalCount: Int): Float {
-        return 0.72f
-    }
 }

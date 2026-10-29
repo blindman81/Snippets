@@ -21,6 +21,7 @@ import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.Dispatchers
 import com.android.snippets.ui.shapes.CookiePolygon
 import com.android.snippets.ui.shapes.AppShape
+import com.android.snippets.ui.theme.getAppColorScheme
 import com.android.snippets.ui.theme.getSnippetBackgroundColorInt
 import com.android.snippets.ui.theme.getSnippetTextColorInt
 import kotlinx.coroutines.withContext
@@ -69,7 +70,7 @@ object MediaSaver {
         }
     }
 
-    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, locationText: String? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveSnippetToGallery(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = true, locationText: String? = null): Boolean = withContext(Dispatchers.IO) {
         try {
             val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, appShape, showTime, locationText) ?: return@withContext false
             
@@ -133,7 +134,7 @@ object MediaSaver {
         }
     }
 
-    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, locationText: String? = null): Uri? = withContext(Dispatchers.IO) {
+    suspend fun getShareableUri(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean = false, bgColor: Int = Color.WHITE, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = true, locationText: String? = null): Uri? = withContext(Dispatchers.IO) {
         try {
             val bitmap = createSnippetBitmap(context, photo, snippets, isDark, bgColor, appShape, showTime, locationText) ?: return@withContext null
             
@@ -164,11 +165,12 @@ object MediaSaver {
         }
     }
 
-    private suspend fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = false, overrideLocationText: String? = null): Bitmap? {
+    private suspend fun createSnippetBitmap(context: Context, photo: Photo, snippets: List<String>, isDark: Boolean, bgColor: Int, appShape: AppShape = AppShape.COOKIE_9_SIDED, showTime: Boolean = true, overrideLocationText: String? = null): Bitmap? {
         val width = 1440
         val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        val colorScheme = getAppColorScheme(context, isDark)
         
         val photoBitmap = runCoil(context, photo.uri)
 
@@ -246,7 +248,7 @@ object MediaSaver {
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 16f // 4.dp equivalent
-            color = Color.WHITE
+            color = colorScheme.primary.toArgb()
         }
         canvas.drawPath(photoPath, borderPaint)
 
@@ -275,12 +277,12 @@ object MediaSaver {
             if (starDrawable != null) {
                 starDrawable.setBounds(starLeft.toInt(), starTop.toInt(), (starLeft + starSize).toInt(), (starTop + starSize).toInt())
                 val tintedDrawable = starDrawable.mutate()
-                androidx.core.graphics.drawable.DrawableCompat.setTint(tintedDrawable, Color.WHITE)
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tintedDrawable, colorScheme.primary.toArgb())
                 tintedDrawable.draw(canvas)
 
                 // Draw the rating number inside the star
                 val ratingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.parseColor("#1F1F1F")
+                    color = colorScheme.onPrimary.toArgb()
                     textSize = 10f * scaleFactor
                     textAlign = Paint.Align.CENTER
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -296,20 +298,20 @@ object MediaSaver {
         val pillRadius = pillH / 2f
 
         val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            alpha = (255 * 0.25f).toInt()
+            color = colorScheme.surfaceContainer.toArgb()
+            alpha = (255 * 0.75f).toInt()
             style = Paint.Style.FILL
         }
         val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            alpha = (255 * 0.4f).toInt()
+            color = colorScheme.outlineVariant.toArgb()
+            alpha = (255 * 0.5f).toInt()
             style = Paint.Style.STROKE
             strokeWidth = 2.5f
         }
 
         // --- Center: Calendar month icon and day, date month and time in pill ---
         val datePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
+            color = colorScheme.onSurface.toArgb()
             alpha = 240
             textSize = 26f
             typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -332,7 +334,7 @@ object MediaSaver {
         if (calDrawable != null) {
             calDrawable.setBounds(calIconX.toInt(), calIconY.toInt(), (calIconX + calIconSize).toInt(), (calIconY + calIconSize).toInt())
             val tinted = calDrawable.mutate()
-            androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
+            androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, colorScheme.primary.toArgb())
             tinted.draw(canvas)
         }
         val dateTextY = headerCenterY - ((datePaint.descent() + datePaint.ascent()) / 2f)
@@ -342,7 +344,7 @@ object MediaSaver {
         // --- Left: Label icon and Photo name ---
         if (!photoName.isNullOrBlank()) {
             val namePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
+                color = colorScheme.onSurface.toArgb()
                 alpha = 240
                 textSize = 26f
                 typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -370,7 +372,7 @@ object MediaSaver {
             if (labelDrawable != null) {
                 labelDrawable.setBounds(iconX.toInt(), iconY.toInt(), (iconX + labelIconSize).toInt(), (iconY + labelIconSize).toInt())
                 val tinted = labelDrawable.mutate()
-                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, colorScheme.primary.toArgb())
                 tinted.draw(canvas)
             }
             val textY = headerCenterY - ((namePaint.descent() + namePaint.ascent()) / 2f)
@@ -378,10 +380,10 @@ object MediaSaver {
             canvas.drawText(ellipsizedName, iconX + labelIconSize + itemSpacing, textY, namePaint)
         }
 
-        // --- Right: Location on icon to show location ---
+        // --- Right: Location on icon to show location (2dp gap from calendar pill) ---
         if (!locationText.isNullOrBlank()) {
             val locTextPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
+                color = colorScheme.onSurface.toArgb()
                 alpha = 240
                 textSize = 26f
                 typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -389,15 +391,17 @@ object MediaSaver {
             val locIconSize = 28f
             val itemSpacing = 10f
             val horizontalPadding = 20f
+            val gapFromCalendar = 2f * (width / 360f) // 2dp in px
 
-            val maxRightPillWidth = (width - paddingX - (centerPillLeft + centerPillW + 16f)).coerceAtLeast(100f)
+            val locPillLeft = centerPillRect.right + gapFromCalendar
+            val maxRightPillWidth = (width - paddingX - locPillLeft).coerceAtLeast(10f)
             val maxTextWidth = (maxRightPillWidth - horizontalPadding * 2 - locIconSize - itemSpacing).coerceAtLeast(10f)
             val ellipsizedLoc = android.text.TextUtils.ellipsize(locationText, locTextPaint, maxTextWidth, android.text.TextUtils.TruncateAt.END).toString()
             val textWidth = locTextPaint.measureText(ellipsizedLoc)
 
             val pillW = horizontalPadding * 2 + locIconSize + itemSpacing + textWidth
-            val pillRight = width - paddingX
-            val pillLeft = pillRight - pillW
+            val pillLeft = locPillLeft
+            val pillRight = pillLeft + pillW
             val pillTop = headerCenterY - (pillH / 2f)
             val pillRect = RectF(pillLeft, pillTop, pillRight, pillTop + pillH)
 
@@ -410,7 +414,7 @@ object MediaSaver {
             if (locDrawable != null) {
                 locDrawable.setBounds(iconX.toInt(), iconY.toInt(), (iconX + locIconSize).toInt(), (iconY + locIconSize).toInt())
                 val tinted = locDrawable.mutate()
-                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, colorScheme.primary.toArgb())
                 tinted.draw(canvas)
             }
             val textY = headerCenterY - ((locTextPaint.descent() + locTextPaint.ascent()) / 2f)
@@ -581,138 +585,6 @@ object MediaSaver {
         }
     }
 
-    private fun createBlurredBackground(src: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
-        val srcWidth = src.width.toFloat()
-        val srcHeight = src.height.toFloat()
-        // Downsample directly to 20% to avoid allocating an 8.3MB intermediate bitmap
-        val blurW = (targetWidth * 0.20f).toInt().coerceAtLeast(16)
-        val blurH = (targetHeight * 0.20f).toInt().coerceAtLeast(16)
-        val scaleX = blurW / srcWidth
-        val scaleY = blurH / srcHeight
-        val scale = maxOf(scaleX, scaleY) * 1.08f
-        val scaledW = (srcWidth * scale).toInt().coerceAtLeast(1)
-        val scaledH = (srcHeight * scale).toInt().coerceAtLeast(1)
-        
-        val downscaled = Bitmap.createBitmap(blurW, blurH, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(downscaled)
-        val matrix = android.graphics.Matrix()
-        matrix.postScale(scale, scale)
-        matrix.postTranslate((blurW - scaledW) * 0.5f, (blurH - scaledH) * 0.5f)
-        canvas.drawBitmap(src, matrix, null)
-        
-        // Multi-pass Gaussian blur:
-        // Lighter blur for the top (matching startRadius = 4.dp in MemoryScreen)
-        val lightBlurred = gaussianBlur(downscaled, 4, 3)
-        // Deeper blur for the bottom (matching endRadius = 24.dp in MemoryScreen)
-        val deepBlurred = gaussianBlur(downscaled, 14, 3)
-        downscaled.recycle()
-        
-        // Composite vertical progressive gradient blur matching MemoryScreen's BlurRadiusSpec.verticalGradient
-        val composite = Bitmap.createBitmap(blurW, blurH, Bitmap.Config.ARGB_8888)
-        val compCanvas = Canvas(composite)
-        compCanvas.drawBitmap(lightBlurred, 0f, 0f, null)
-        
-        val gradientPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(
-                0f, 0f, 0f, blurH.toFloat(),
-                Color.TRANSPARENT, Color.BLACK,
-                Shader.TileMode.CLAMP
-            )
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-        }
-        val deepCanvas = Canvas(deepBlurred)
-        deepCanvas.drawRect(0f, 0f, blurW.toFloat(), blurH.toFloat(), gradientPaint)
-        
-        compCanvas.drawBitmap(deepBlurred, 0f, 0f, null)
-        lightBlurred.recycle()
-        deepBlurred.recycle()
-        
-        val blurredFull = Bitmap.createScaledBitmap(composite, targetWidth, targetHeight, true)
-        composite.recycle()
-        return blurredFull
-    }
-
-    private fun gaussianBlur(src: Bitmap, range: Int, passes: Int = 3): Bitmap {
-        var current = src
-        var isFirst = true
-        repeat(passes) {
-            val next = boxBlur(current, range)
-            if (!isFirst) current.recycle()
-            isFirst = false
-            current = next
-        }
-        return current
-    }
-
-    private fun boxBlur(src: Bitmap, range: Int): Bitmap {
-        val width = src.width
-        val height = src.height
-        val pixels = IntArray(width * height)
-        src.getPixels(pixels, 0, width, 0, 0, width, height)
-        
-        val size = range * 2 + 1
-        val newPixels = IntArray(width * height)
-        
-        // Horizontal pass
-        for (y in 0 until height) {
-            val offset = y * width
-            var rSum = 0
-            var gSum = 0
-            var bSum = 0
-            
-            for (i in -range..range) {
-                val x = i.coerceIn(0, width - 1)
-                val pixel = pixels[offset + x]
-                rSum += Color.red(pixel)
-                gSum += Color.green(pixel)
-                bSum += Color.blue(pixel)
-            }
-            
-            for (x in 0 until width) {
-                newPixels[offset + x] = Color.rgb(rSum / size, gSum / size, bSum / size)
-                
-                val prevX = (x - range).coerceIn(0, width - 1)
-                val nextX = (x + range + 1).coerceIn(0, width - 1)
-                val prevPixel = pixels[offset + prevX]
-                val nextPixel = pixels[offset + nextX]
-                
-                rSum += Color.red(nextPixel) - Color.red(prevPixel)
-                gSum += Color.green(nextPixel) - Color.green(prevPixel)
-                bSum += Color.blue(nextPixel) - Color.blue(prevPixel)
-            }
-        }
-        
-        // Vertical pass
-        val finalPixels = IntArray(width * height)
-        for (x in 0 until width) {
-            var rSum = 0
-            var gSum = 0
-            var bSum = 0
-            
-            for (i in -range..range) {
-                val y = i.coerceIn(0, height - 1)
-                val pixel = newPixels[y * width + x]
-                rSum += Color.red(pixel)
-                gSum += Color.green(pixel)
-                bSum += Color.blue(pixel)
-            }
-            
-            for (y in 0 until height) {
-                finalPixels[y * width + x] = Color.rgb(rSum / size, gSum / size, bSum / size)
-                
-                val prevY = (y - range).coerceIn(0, height - 1)
-                val nextY = (y + range + 1).coerceIn(0, height - 1)
-                val prevPixel = newPixels[prevY * width + x]
-                val nextPixel = newPixels[nextY * width + x]
-                
-                rSum += Color.red(nextPixel) - Color.red(prevPixel)
-                gSum += Color.green(nextPixel) - Color.green(prevPixel)
-                bSum += Color.blue(nextPixel) - Color.blue(prevPixel)
-            }
-        }
-        
-        val dest = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        dest.setPixels(finalPixels, 0, width, 0, 0, width, height)
-        return dest
-    }
+    private fun createBlurredBackground(src: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap =
+        BitmapBlurHelper.createBlurredBackground(src, targetWidth, targetHeight)
 }
