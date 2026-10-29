@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import dagger.hilt.android.HiltAndroidApp
 
 import coil.ImageLoader
 import coil.ImageLoaderFactory
@@ -13,16 +14,18 @@ import coil.imageLoader
 import coil.memory.MemoryCache
 import coil.util.DebugLogger
 
+@HiltAndroidApp
 class SnippetsApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
     }
 
+    @Suppress("DEPRECATION")
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         try {
-            if (level >= TRIM_MEMORY_BACKGROUND || level >= TRIM_MEMORY_UI_HIDDEN) {
+            if (level >= TRIM_MEMORY_BACKGROUND || level >= TRIM_MEMORY_UI_HIDDEN || level >= TRIM_MEMORY_RUNNING_LOW) {
                 imageLoader.memoryCache?.clear()
             }
         } catch (_: Exception) {
@@ -41,17 +44,18 @@ class SnippetsApplication : Application(), ImageLoaderFactory {
         return ImageLoader.Builder(this)
             .memoryCache {
                 MemoryCache.Builder(this)
-                    .maxSizePercent(0.25) // Use up to 25% of the app's available memory.
+                    .maxSizePercent(0.08)
+                    .strongReferencesEnabled(true)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(this.cacheDir.resolve("image_cache"))
-                    .maxSizePercent(0.02) // Use 2% of the disk or 50MB, whichever is smaller
+                    .maxSizePercent(0.02)
                     .build()
             }
-            .crossfade(true) // Smooth UI transitions
-            // .logger(DebugLogger()) // Enable for debugging
+            .allowHardware(true)
+            .crossfade(true)
             .build()
     }
 
