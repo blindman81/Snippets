@@ -360,7 +360,7 @@ fun MemoryScreen(
                             viewModel.openDetail(photo.id)
                         },
                         shape = CookieShape,
-                        border = BorderStroke(3.dp, MaterialTheme.colorScheme.primary),
+                        border = BorderStroke(4.dp, Color.White),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         ),
@@ -653,9 +653,6 @@ fun MemoryStoryProgressBar(
     wavePhase: Float,
     modifier: Modifier = Modifier
 ) {
-    val activeColor = MaterialTheme.colorScheme.primary
-    val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
-
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -681,9 +678,9 @@ fun MemoryStoryProgressBar(
 
                 if (!isActive) {
                     // Inactive or completed memory segments
-                    val segmentColor = if (i < currentIndex) activeColor else trackColor
+                    val trackColor = if (i < currentIndex) Color.White else Color.White.copy(alpha = 0.35f)
                     drawRoundRect(
-                        color = segmentColor,
+                        color = trackColor,
                         size = size,
                         cornerRadius = CornerRadius(cornerRadius, cornerRadius)
                     )
@@ -695,7 +692,7 @@ fun MemoryStoryProgressBar(
                     // Draw background track ONLY for the remaining upcoming portion so no flat bar appears behind the squiggly wave
                     if (remainingWidth > 0f) {
                         drawRoundRect(
-                            color = trackColor,
+                            color = Color.White.copy(alpha = 0.35f),
                             topLeft = androidx.compose.ui.geometry.Offset(activeWidth, 0f),
                             size = Size(remainingWidth, height),
                             cornerRadius = CornerRadius(cornerRadius, cornerRadius)
@@ -722,14 +719,14 @@ fun MemoryStoryProgressBar(
                         }
                         drawPath(
                             path = path,
-                            color = activeColor,
+                            color = Color.White,
                             style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
                         )
                     } else {
                         // Flattened state
                         if (activeWidth > 0f) {
                             drawRoundRect(
-                                color = activeColor,
+                                color = Color.White,
                                 size = Size(activeWidth, height),
                                 cornerRadius = CornerRadius(cornerRadius, cornerRadius)
                             )
@@ -739,7 +736,7 @@ fun MemoryStoryProgressBar(
 
                 // 4dp circle stop indicator at the end of the last memory's progress bar
                 if (i == count - 1) {
-                    val dotColor = if (i <= currentIndex) activeColor else trackColor
+                    val dotColor = if (i <= currentIndex) Color.White else Color.White.copy(alpha = 0.6f)
                     drawCircle(
                         color = dotColor,
                         radius = 2.dp.toPx(),
