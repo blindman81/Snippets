@@ -1,6 +1,6 @@
 package com.android.snippets.ui.components
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,18 +36,20 @@ fun MainTopBar(
 ) {
     val focusManager = LocalFocusManager.current
     
-    val targetHeaderColor = if (forceTransparentBackground) {
-        Color.Transparent
-    } else if (isScrolled) {
-        MaterialTheme.colorScheme.surfaceContainer
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-    val headerColor by animateColorAsState(
-        targetValue = targetHeaderColor,
+    val scrollProgress by animateFloatAsState(
+        targetValue = if (isScrolled) 1f else 0f,
         animationSpec = tween(250),
-        label = "headerColor"
+        label = "headerScrollProgress"
     )
+    val headerColor = if (forceTransparentBackground) {
+        Color.Transparent
+    } else {
+        lerp(
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.surfaceContainer,
+            scrollProgress
+        )
+    }
     
     Surface(
         modifier = Modifier.fillMaxWidth(),

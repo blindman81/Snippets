@@ -1,7 +1,6 @@
 package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
@@ -270,24 +270,21 @@ private fun AnimatedCookieButtonImpl(
     val isActive = (isHolding && !isHoldCompleted) || (isTapped && !isCallerPrimary)
     val isPrimary = isActive || isCallerPrimary
 
-    val targetContainer = if (isPrimary) MaterialTheme.colorScheme.primary else containerColor
-    val targetContent = if (isPrimary) MaterialTheme.colorScheme.onPrimary else contentColor
-
-    val animatedContainerColor by animateColorAsState(
-        targetValue = targetContainer,
-        animationSpec = tween(durationMillis = 200),
-        label = "cookie_button_container_color"
-    )
-    val animatedContentColor by animateColorAsState(
-        targetValue = targetContent,
-        animationSpec = tween(durationMillis = 200),
-        label = "cookie_button_content_color"
-    )
-
     val primaryAlpha by animateFloatAsState(
         targetValue = if (isPrimary) 1f else 0f,
         animationSpec = tween(durationMillis = 200),
         label = "cookie_button_primary_alpha"
+    )
+
+    val animatedContainerColor = lerp(
+        containerColor,
+        MaterialTheme.colorScheme.primary,
+        primaryAlpha
+    )
+    val animatedContentColor = lerp(
+        contentColor,
+        MaterialTheme.colorScheme.onPrimary,
+        primaryAlpha
     )
 
     val tiltAngle = com.android.snippets.ui.util.rememberCookieTilt(enabled = enableTilt && enabled && isPrimary)
