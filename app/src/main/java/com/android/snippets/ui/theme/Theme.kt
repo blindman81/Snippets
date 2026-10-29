@@ -117,7 +117,6 @@ fun SnippetsTheme(
         outlineVariant = originalColorScheme.outlineVariant
     )
 
-
     MaterialTheme(
         colorScheme = sanitizedColorScheme,
         typography = Typography,
@@ -125,4 +124,16 @@ fun SnippetsTheme(
         motionScheme = MotionScheme.expressive(),
         content = content
     )
+}
+
+fun getAppColorScheme(context: android.content.Context, isDark: Boolean = false): ColorScheme {
+    val prefs = context.getSharedPreferences("snippets_prefs", android.content.Context.MODE_PRIVATE)
+    val useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
+    return when {
+        useDynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        isDark -> OrangeDarkColorScheme
+        else -> OrangeLightColorScheme
+    }
 }

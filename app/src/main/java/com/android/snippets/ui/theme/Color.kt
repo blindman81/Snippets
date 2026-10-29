@@ -97,29 +97,9 @@ fun rememberSnippetTextColor(): Color {
 }
 
 fun getSnippetBackgroundColorInt(context: android.content.Context, isDark: Boolean = false): Int {
-    val prefs = context.getSharedPreferences("snippets_prefs", android.content.Context.MODE_PRIVATE)
-    val useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
-    if (useDynamicColors && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        val scheme = if (isDark) {
-            androidx.compose.material3.dynamicDarkColorScheme(context)
-        } else {
-            androidx.compose.material3.dynamicLightColorScheme(context)
-        }
-        return scheme.primaryContainer.toArgb()
-    }
-    return (if (isDark) OrangePrimaryContainerDark else OrangePrimaryContainer).toArgb()
+    return getAppColorScheme(context, isDark).primaryContainer.toArgb()
 }
 
 fun getSnippetTextColorInt(context: android.content.Context, isDark: Boolean = false): Int {
-    val prefs = context.getSharedPreferences("snippets_prefs", android.content.Context.MODE_PRIVATE)
-    val useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
-    if (useDynamicColors && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        val scheme = if (isDark) {
-            androidx.compose.material3.dynamicDarkColorScheme(context)
-        } else {
-            androidx.compose.material3.dynamicLightColorScheme(context)
-        }
-        return scheme.onPrimaryContainer.toArgb()
-    }
-    return (if (isDark) OrangeOnPrimaryContainerDark else OrangeOnPrimaryContainer).toArgb()
+    return getAppColorScheme(context, isDark).onPrimaryContainer.toArgb()
 }

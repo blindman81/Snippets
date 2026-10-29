@@ -34,11 +34,6 @@ val CookiePolygon: RoundedPolygon = MaterialShapes.Cookie9Sided
 val CookieShape = RoundedPolygonShape(CookiePolygon)
 val Cookie9Shape: Shape = CookieShape
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-val Cookie12Polygon: RoundedPolygon = MaterialShapes.Cookie12Sided
-
-val Cookie12Shape: Shape = RoundedPolygonShape(Cookie12Polygon)
-
 class RoundedPolygonShape(
     val polygon: RoundedPolygon
 ) : Shape {

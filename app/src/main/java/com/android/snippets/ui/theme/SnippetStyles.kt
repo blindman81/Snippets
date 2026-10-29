@@ -1,4 +1,4 @@
-package com.android.snippets.ui
+package com.android.snippets.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.PlatformTextStyle
