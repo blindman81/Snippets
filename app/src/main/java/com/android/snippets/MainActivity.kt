@@ -33,16 +33,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import com.android.snippets.ui.components.LoadingIndicator
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 
 
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val viewModel: SnippetsViewModel by viewModels()
     private var pendingNotificationPhotoId by mutableStateOf<String?>(null)
     private var pendingNotificationToken by mutableStateOf(0L)
     private var pendingSharedImageUri by mutableStateOf<android.net.Uri?>(null)
     private var pendingSharedText by mutableStateOf<String?>(null)
+    private var pendingSharedLocationName by mutableStateOf<String?>(null)
     private var pendingShareToken by mutableStateOf(0L)
     private var pendingHistoryIntentToken by mutableStateOf(0L)
 
@@ -81,9 +84,11 @@ class MainActivity : ComponentActivity() {
                 ?: intent.getStringExtra(android.content.Intent.EXTRA_SUBJECT)
                 ?: intent.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)?.toString()
             val extractedUrl = extractUrlOnly(rawText)
+            val extractedPlace = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(rawText, this)
             if (uri != null) {
                 pendingSharedImageUri = uri
-                pendingSharedText = extractedUrl
+                pendingSharedText = extractedUrl ?: rawText
+                pendingSharedLocationName = extractedPlace
                 pendingShareToken = System.currentTimeMillis()
             }
             intent.action = null
@@ -188,15 +193,17 @@ class MainActivity : ComponentActivity() {
                             val shareToken = pendingShareToken
                             val sharedUri = pendingSharedImageUri
                             val sharedLink = pendingSharedText
+                            val sharedName = pendingSharedLocationName
                             androidx.compose.runtime.LaunchedEffect(shareToken, viewModel.isInitialLoading) {
                                 if (!viewModel.isInitialLoading && shareToken != 0L && sharedUri != null) {
-                                    viewModel.addPhotoToLibrary(sharedUri, locationLink = sharedLink)
+                                    viewModel.addPhotoToLibrary(sharedUri, locationLink = sharedLink, locationName = sharedName)
                                     viewModel.currentScreen = com.android.snippets.viewmodel.Screen.Library
                                     viewModel.libraryCurrentTab = "Library"
                                     
                                     pendingShareToken = 0L
                                     pendingSharedImageUri = null
                                     pendingSharedText = null
+                                    pendingSharedLocationName = null
                                 }
                             }
 
@@ -204,7 +211,7 @@ class MainActivity : ComponentActivity() {
                             androidx.compose.runtime.LaunchedEffect(historyToken, viewModel.isInitialLoading) {
                                 if (!viewModel.isInitialLoading && historyToken != 0L) {
                                     viewModel.currentScreen = com.android.snippets.viewmodel.Screen.Library
-                                    viewModel.showHistoryBottomSheet = true
+                                    viewModel.libraryCurrentTab = "Library"
                                     pendingHistoryIntentToken = 0L
                                 }
                             }

@@ -2,7 +2,6 @@ package com.android.snippets.ui
 
 import kotlinx.coroutines.launch
 
-import androidx.activity.BackEventCompat
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
@@ -13,10 +12,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
 import androidx.compose.foundation.layout.fillMaxHeight
-import com.android.snippets.ui.components.BlurredModalBottomSheet
 import com.android.snippets.ui.components.BlurredAlertDialog
 import com.android.snippets.ui.components.DeleteConfirmationModal
 import com.android.snippets.ui.components.LocalHazeState
+import com.android.snippets.ui.components.SnippetsSnackbarEffect
+import com.android.snippets.ui.components.SnippetsSnackbarHost
 import dev.chrisbanes.haze.HazeState
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -40,19 +40,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.ui.graphics.TransformOrigin
 import com.android.snippets.ui.util.Motion
 import com.android.snippets.ui.util.LocalTiltActive
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavDestination.Companion.hasRoute
+import com.android.snippets.navigation.LibraryRoute
+import com.android.snippets.navigation.MemoryRoute
+import com.android.snippets.navigation.SettingsRoute
+import com.android.snippets.navigation.AboutRoute
+import com.android.snippets.navigation.EmojiPickerRoute
+import com.android.snippets.navigation.StatsRoute
+import com.android.snippets.navigation.MonthlyRecapRoute
+import com.android.snippets.navigation.YearlyRecapRoute
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) {
     val view = androidx.compose.ui.platform.LocalView.current
     val scope = rememberCoroutineScope()
+    val navController = rememberNavController()
 
     var pendingCollectionForPicker by remember { mutableStateOf<String?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         uri?.let {
             val pendingColl = pendingCollectionForPicker
@@ -82,52 +97,108 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
 
     val snackbarHostState = remember { SnackbarHostState() }
     val motionScheme = MaterialTheme.motionScheme
-    val predictiveBackProgress = remember { Animatable(0f) }
-    var predictiveBackEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
-    val predictiveBackMotionController = remember {
-        PredictiveBackMotionController(
-            progress = predictiveBackProgress,
-            onEdgeChanged = { edge -> predictiveBackEdge = edge }
-        )
-    }
-    val predictiveBackEnabled = viewModel.currentScreen != Screen.Library
-    var isNavigatingBackFromGesture by remember { mutableStateOf(false) }
+    val isOverlayShowing = viewModel.showBulkDeleteModal || viewModel.showFilterSheet || viewModel.isAddingPhotos || viewModel.isBusy || viewModel.isCuratingMemories
 
-    LaunchedEffect(viewModel.currentScreen) {
-        if (isNavigatingBackFromGesture) {
-            isNavigatingBackFromGesture = false
-        }
-    }
-
-    LaunchedEffect(viewModel.snackbarMessage) {
-        viewModel.snackbarMessage?.let { message ->
-            scope.launch {
-                val result = snackbarHostState.showSnackbar(
-                    message = message,
-                    actionLabel = viewModel.snackbarActionLabel,
-                    duration = SnackbarDuration.Short
-                )
-                if (result == SnackbarResult.ActionPerformed) {
-                    viewModel.onSnackbarAction?.invoke()
-                }
-                viewModel.snackbarMessage = null
-                viewModel.snackbarActionLabel = null
-                viewModel.onSnackbarAction = null
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    LaunchedEffect(currentBackStackEntry) {
+        currentBackStackEntry?.destination?.let { dest ->
+            val screen = when {
+                dest.hasRoute<LibraryRoute>() -> Screen.Library
+                dest.hasRoute<MemoryRoute>() -> Screen.Memory
+                dest.hasRoute<SettingsRoute>() -> Screen.Settings
+                dest.hasRoute<AboutRoute>() -> Screen.About
+                dest.hasRoute<EmojiPickerRoute>() -> Screen.EmojiPicker
+                dest.hasRoute<StatsRoute>() -> Screen.Stats
+                dest.hasRoute<MonthlyRecapRoute>() -> Screen.MonthlyRecap
+                dest.hasRoute<YearlyRecapRoute>() -> Screen.YearlyRecap
+                else -> null
+            }
+            if (screen != null && viewModel.currentScreen != screen) {
+                viewModel.currentScreen = screen
             }
         }
     }
 
+    LaunchedEffect(viewModel.currentScreen) {
+        val dest = navController.currentBackStackEntry?.destination
+        when (viewModel.currentScreen) {
+            Screen.Library -> {
+                if (dest?.hasRoute<LibraryRoute>() != true) {
+                    if (!navController.popBackStack<LibraryRoute>(inclusive = false)) {
+                        navController.navigate(LibraryRoute) {
+                            popUpTo<LibraryRoute> { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    }
+                }
+            }
+            Screen.Memory -> {
+                if (dest?.hasRoute<MemoryRoute>() != true) {
+                    navController.navigate(MemoryRoute()) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            Screen.Settings -> {
+                if (dest?.hasRoute<SettingsRoute>() != true) {
+                    navController.navigate(SettingsRoute) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            Screen.About -> {
+                if (dest?.hasRoute<AboutRoute>() != true) {
+                    navController.navigate(AboutRoute) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            Screen.EmojiPicker -> {
+                if (dest?.hasRoute<EmojiPickerRoute>() != true) {
+                    navController.navigate(EmojiPickerRoute(viewModel.editingCollectionIcon)) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            Screen.Stats -> {
+                if (dest?.hasRoute<StatsRoute>() != true) {
+                    navController.navigate(StatsRoute) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            Screen.MonthlyRecap -> {
+                if (dest?.hasRoute<MonthlyRecapRoute>() != true) {
+                    navController.navigate(MonthlyRecapRoute()) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+            Screen.YearlyRecap -> {
+                if (dest?.hasRoute<YearlyRecapRoute>() != true) {
+                    navController.navigate(YearlyRecapRoute()) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
+
+    SnippetsSnackbarEffect(
+        viewModel = viewModel,
+        snackbarHostState = snackbarHostState
+    )
+
     LaunchedEffect(viewModel.pendingAddPhotoIntentToken) {
         if (viewModel.pendingAddPhotoIntentToken != 0L) {
             viewModel.pendingFavoriteIntent = false
-            photoPickerLauncher.launch("image/*")
+            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             viewModel.pendingAddPhotoIntentToken = 0L
         }
     }
 
     val rootHazeState = remember { HazeState() }
     CompositionLocalProvider(
-        LocalPredictiveBackMotionController provides predictiveBackMotionController,
         LocalHazeState provides rootHazeState
     ) {
         Box(
@@ -142,25 +213,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
 
         @OptIn(ExperimentalSharedTransitionApi::class)
         SharedTransitionLayout {
-            val isGestureActive = predictiveBackProgress.value > 0f
-
-            val transition = androidx.compose.animation.core.updateTransition(
-                targetState = viewModel.currentScreen,
-                label = "screen_transition"
-            )
-            
-            val backScreen = if (isGestureActive) {
-                when (viewModel.currentScreen) {
-                    Screen.Library -> null
-                    Screen.Memory, Screen.Settings, Screen.About, Screen.Stats -> Screen.Library
-                    Screen.EmojiPicker, Screen.MonthlyRecap, Screen.YearlyRecap -> viewModel.previousScreen
-                    Screen.PhotosCarousel -> Screen.Settings
-                    else -> null
-                }
-            } else {
-                null
-            }
-
             val isOverlayShowing = viewModel.showBulkDeleteModal || viewModel.showFilterSheet || viewModel.isAddingPhotos || viewModel.isBusy || viewModel.isCuratingMemories
 
             @Composable
@@ -183,7 +235,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                                             "Library" -> {
                                                 viewModel.pendingFavoriteIntent = false
                                                 pendingCollectionForPicker = null
-                                                photoPickerLauncher.launch("image/*")
+                                                photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                                             }
                                             "Favorites" -> viewModel.startCollectionAssignment("Favorites")
                                             else -> viewModel.startCollectionAssignment(tab)
@@ -199,97 +251,107 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             Screen.About -> AboutScreen(viewModel)
                             Screen.Settings -> SettingsScreen(viewModel)
                             Screen.EmojiPicker -> EmojiPickerScreen(viewModel)
-
-                            Screen.PhotosCarousel -> PhotosCarouselScreen(viewModel)
                             Screen.Stats -> StatsScreen(viewModel)
                             Screen.MonthlyRecap, Screen.YearlyRecap -> MonthlyRecapScreen(viewModel = viewModel)
-                            else -> Box(Modifier.fillMaxSize())
                         }
                     }
                 }
             }
 
-            // 1. Underlay container (only rendered when backScreen is not null)
-            if (backScreen != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            if (isGestureActive) {
-                                val progress = predictiveBackProgress.value
-                                val scale = 0.96f + (0.04f * progress)
-                                scaleX = scale
-                                scaleY = scale
-                            }
-                        }
-                ) {
-                    RenderScreenContent(backScreen, null)
-                }
-            }
-
-            // 2. Foreground container (scales/translates during the gesture)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        if (isGestureActive) {
-                            val progress = predictiveBackProgress.value
-                            val edgeDirection = when (predictiveBackEdge) {
-                                BackEventCompat.EDGE_RIGHT -> -1f
-                                else -> 1f
-                            }
-                            translationX = edgeDirection * size.width * 0.12f * progress
-                            scaleX = 1f - (0.08f * progress)
-                            scaleY = 1f - (0.08f * progress)
-                            clip = true
-                            shape = RoundedCornerShape(32.dp * progress)
-                        }
-                    }
+                    .background(MaterialTheme.colorScheme.background)
             ) {
-                transition.AnimatedContent(
-                    transitionSpec = {
-                        if (isNavigatingBackFromGesture) {
-                            fadeIn(tween(0)) togetherWith fadeOut(tween(0))
-                        } else {
-                            Motion.screenTransition(initialState, targetState, motionScheme)
-                        }
+                NavHost(
+                    navController = navController,
+                    startDestination = LibraryRoute,
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = {
+                        fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) +
+                            scaleIn(initialScale = 0.92f, animationSpec = tween(350, easing = FastOutSlowInEasing))
                     },
-                    modifier = Modifier.fillMaxSize()
-                ) { screen ->
-                    val isScreenActive = (viewModel.currentScreen == screen) && !isOverlayShowing
-                    CompositionLocalProvider(LocalTiltActive provides isScreenActive) {
-                        RenderScreenContent(screen, this)
+                    exitTransition = {
+                        fadeOut(animationSpec = tween(250, easing = FastOutSlowInEasing)) +
+                            scaleOut(targetScale = 0.95f, animationSpec = tween(250, easing = FastOutSlowInEasing))
+                    },
+                    popEnterTransition = {
+                        fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) +
+                            scaleIn(initialScale = 0.92f, animationSpec = tween(350, easing = FastOutSlowInEasing))
+                    },
+                    popExitTransition = {
+                        fadeOut(animationSpec = tween(250, easing = FastOutSlowInEasing)) +
+                            scaleOut(
+                                targetScale = 0.90f,
+                                transformOrigin = TransformOrigin(pivotFractionX = 0.5f, pivotFractionY = 0.5f),
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            )
+                    }
+                ) {
+                    composable<LibraryRoute>(
+                        popEnterTransition = {
+                            if (initialState.destination.hasRoute<MemoryRoute>()) {
+                                fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing))
+                            } else {
+                                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) +
+                                    scaleIn(initialScale = 0.92f, animationSpec = tween(350, easing = FastOutSlowInEasing))
+                            }
+                        },
+                        exitTransition = {
+                            if (targetState.destination.hasRoute<MemoryRoute>()) {
+                                fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing))
+                            } else {
+                                fadeOut(animationSpec = tween(250, easing = FastOutSlowInEasing)) +
+                                    scaleOut(targetScale = 0.95f, animationSpec = tween(250, easing = FastOutSlowInEasing))
+                            }
+                        }
+                    ) {
+                        RenderScreenContent(Screen.Library, this)
+                    }
+                    composable<MemoryRoute>(
+                        enterTransition = { fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) },
+                        exitTransition = { fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing)) },
+                        popEnterTransition = { fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) },
+                        popExitTransition = {
+                            fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing)) +
+                                scaleOut(
+                                    targetScale = 0.90f,
+                                    transformOrigin = TransformOrigin(pivotFractionX = 0.5f, pivotFractionY = 0.5f),
+                                    animationSpec = tween(380, easing = FastOutSlowInEasing)
+                                )
+                        }
+                    ) {
+                        RenderScreenContent(Screen.Memory, this)
+                    }
+                    composable<SettingsRoute> {
+                        RenderScreenContent(Screen.Settings, this)
+                    }
+                    composable<AboutRoute> {
+                        RenderScreenContent(Screen.About, this)
+                    }
+                    composable<EmojiPickerRoute> {
+                        RenderScreenContent(Screen.EmojiPicker, this)
+                    }
+                    composable<StatsRoute> {
+                        RenderScreenContent(Screen.Stats, this)
+                    }
+                    composable<MonthlyRecapRoute> {
+                        RenderScreenContent(Screen.MonthlyRecap, this)
+                    }
+                    composable<YearlyRecapRoute> {
+                        RenderScreenContent(Screen.YearlyRecap, this)
                     }
                 }
             }
         }
 
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 16.dp),
-                snackbar = { snackbarData ->
-                    val dismissState = rememberSwipeToDismissBoxState()
-                    LaunchedEffect(dismissState.currentValue) {
-                        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
-                            snackbarData.dismiss()
-                        }
-                    }
-                    SwipeToDismissBox(
-                        state = dismissState,
-                        backgroundContent = {},
-                        content = {
-                            Snackbar(snackbarData = snackbarData)
-                        }
-                    )
-                }
-            )
-
-        AppPredictiveBackHandler(enabled = predictiveBackEnabled) {
-            viewModel.navigateBack()
-        }
+        SnippetsSnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp)
+        )
 
         if (viewModel.showBulkDeleteModal) {
             DeleteConfirmationModal(
@@ -314,30 +376,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     if (viewModel.isCuratingMemories) {
         com.android.snippets.ui.components.BusyOverlay()
     }
-
-    if (viewModel.showFilterSheet) {
-        val filterSheetState = rememberBottomSheetState(
-            initialValue = SheetValue.Hidden,
-            enabledValues = setOf(
-                SheetValue.Hidden,
-                SheetValue.PartiallyExpanded,
-                SheetValue.Expanded
-            )
-        )
-        BlurredModalBottomSheet(
-            onDismissRequest = { viewModel.closeFilter() },
-            sheetState = filterSheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ) {
-            Motion.ExpressiveSheetContent {
-                FilterScreen(
-                    viewModel = viewModel,
-                    modifier = Modifier.fillMaxHeight()
-                )
-            }
-        }
-    }
-
 
         }
         }

@@ -7,14 +7,21 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.snippets.data.backup.SnippetsBackupManager
+import com.android.snippets.logic.SearchDirective
+import com.android.snippets.logic.ParsedSearchQuery
+import com.android.snippets.logic.SearchQueryParser
+import com.android.snippets.logic.SnippetStyleHelper
+import com.android.snippets.ui.util.PhotoCardExporter
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.util.MediaSaver
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Calendar
@@ -32,22 +39,76 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import android.widget.Toast
 import android.graphics.BitmapFactory
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import com.android.snippets.data.DatabasePreloader
+import com.android.snippets.data.toEntity
+import com.android.snippets.data.toPhoto
+import com.android.snippets.data.preferences.UserPreferencesRepository
+import com.android.snippets.data.repository.PhotoRepository
+import com.android.snippets.data.repository.CollectionRepository
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.room.withTransaction
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.first
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Memory, Settings, About, EmojiPicker, Filter, PhotosCarousel, Stats, MonthlyRecap, YearlyRecap }
-enum class SnippetSortType { New, Old, AZ, Month, Year, Emoji, Emoticons, Favorites }
+enum class Screen { Library, Memory, Settings, About, EmojiPicker, Stats, MonthlyRecap, YearlyRecap }
+enum class SnippetSortType { New, Old, Emoji, AZ, Emoticons }
 enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, MostStarred, LeastStarred }
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
 
 enum class DisplayMode { Day, Week, Month }
 enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, FlexHeavy, FlexWide, FlexSlant, FlexGrade, Flex }
 
+typealias SearchDirective = com.android.snippets.logic.SearchDirective
+typealias ParsedSearchQuery = com.android.snippets.logic.ParsedSearchQuery
 
-class SnippetsViewModel(application: Application) : AndroidViewModel(application) {
+
+@HiltViewModel
+class SnippetsViewModel @Inject constructor(
+    application: Application,
+    val photoRepository: PhotoRepository,
+    val collectionRepository: CollectionRepository,
+    val userPreferencesRepository: UserPreferencesRepository,
+    private val backupManager: SnippetsBackupManager
+) : AndroidViewModel(application) {
 
     companion object {
+        fun matchSearchDirective(rawToken: String): SearchDirective? =
+            SearchQueryParser.matchSearchDirective(rawToken)
+
+        fun parseSearchQuery(query: String): ParsedSearchQuery =
+            SearchQueryParser.parseSearchQuery(query)
+
+        const val SNACKBAR_NAME_PHOTO_FIRST = "Name the photo first!"
+        const val SNACKBAR_ACTION_OPEN = "Open"
+
+        fun validateAndExecuteAddSnippet(
+            photo: Photo,
+            showSnackbar: (message: String, actionLabel: String?, onAction: (() -> Unit)?) -> Unit,
+            onShowNameModal: (Photo) -> Unit,
+            onShowAddModal: (Photo) -> Unit
+        ) {
+            if (photo.name.isNullOrBlank()) {
+                showSnackbar(
+                    SNACKBAR_NAME_PHOTO_FIRST,
+                    SNACKBAR_ACTION_OPEN
+                ) {
+                    onShowNameModal(photo)
+                }
+            } else {
+                onShowAddModal(photo)
+            }
+        }
+
         const val MEMORY_REMINDER_PREFIX = MemoryManager.MEMORY_REMINDER_PREFIX
         const val MEMORIES_PER_CYCLE = MemoryManager.MEMORIES_PER_CYCLE
         const val CYCLE_MORNING_HOUR = MemoryManager.CYCLE_MORNING_HOUR
@@ -68,11 +129,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val SURFACED_MEMORY_SPACING_MS: Long get() = MemoryManager.SURFACED_MEMORY_SPACING_MS
         val CYCLE_WINDOW_MS: Long get() = MemoryManager.CYCLE_WINDOW_MS
 
-        val EMOTICONS_LIST: List<String> = listOf(
-            ":)", ":(", ":D", ":P", ":O", ":-)", ":-(", ":-D", ":-P", ";)", ";D", 
-            "^_^", ">_<", "o_o", "O_O", "-_-", "T_T", "8-)", "8)", ":3", "xD", "XD",
-            ":' )", ":' (", ":v", ":/", ":\\", ">:)", ">:(", "O:)", "u_u"
-        )
+                val EMOTICONS_LIST: List<String> get() = SnippetStyleHelper.EMOTICONS_LIST
 
         fun getCurrentCycleStart(now: Long = System.currentTimeMillis()): Long =
             MemoryManager.getCurrentCycleStart(now)
@@ -81,8 +138,21 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             MemoryManager.getNextCycleStart(time)
     }
 
-    private val prefs = application.getSharedPreferences("snippets_prefs", Context.MODE_PRIVATE)
-    private val gson = Gson()
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
+    val photosFlow: StateFlow<List<Photo>> = photoRepository.allPhotosFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    val collectionsFlow: StateFlow<List<com.android.snippets.data.CollectionEntity>> = collectionRepository.allCollectionsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     var photos by mutableStateOf<List<Photo>>(emptyList())
         private set
@@ -101,9 +171,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var libraryCurrentTab by mutableStateOf("Library")
     val libraryListStates = androidx.compose.runtime.mutableStateMapOf<String, androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState>()
+    val carouselLazyListState = androidx.compose.foundation.lazy.LazyListState()
     
     var activePhotoId by mutableStateOf<String?>(null)
-    var filterReturnScreen by mutableStateOf(Screen.Library)
     var searchQuery by mutableStateOf("")
     
     var isSearching by mutableStateOf(false)
@@ -116,9 +186,21 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     var selectedFilterSnippets by mutableStateOf<List<String>>(emptyList())
 
+    fun scrollToTop() {
+        viewModelScope.launch {
+            libraryListStates.values.forEach { state ->
+                try {
+                    state.scrollToItem(0)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     fun toggleFilterSnippet(snippet: String) {
-        if (selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }) {
+        val wasSelected = selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
+        if (wasSelected) {
             selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
+            scrollToTop()
         } else {
             if (selectedFilterSnippets.size >= 6) {
                 showSnackbar("Upto 6 Chips!")
@@ -129,25 +211,31 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         saveFilterState()
     }
 
+    fun clearFilterSnippets() {
+        val hadFilters = selectedFilterSnippets.isNotEmpty()
+        selectedFilterSnippets = emptyList()
+        if (hadFilters) {
+            scrollToTop()
+        }
+        saveFilterState()
+    }
+
+    fun getMatchingSnippetsCount(photo: Photo): Int {
+        return if (selectedFilterSnippets.isNotEmpty()) {
+            photo.snippets.count { s -> selectedFilterSnippets.any { it.equals(s, ignoreCase = true) } }
+        } else {
+            photo.snippets.size
+        }
+    }
+
     var activeCollection by mutableStateOf<String?>(null)
     var currentMemoryIndex by mutableStateOf(0)
     var activeMemoriesSnapshot by mutableStateOf<List<Photo>>(emptyList())
     var showCreateDialog by mutableStateOf(false)
-    var showHistoryBottomSheet by mutableStateOf(false)
     var editingCollectionIcon by mutableStateOf<String?>(null)
     var collectionIcons by mutableStateOf<Map<String, String>>(emptyMap())
     var focusCreateCollection by mutableStateOf(false)
     var memoriesPage by androidx.compose.runtime.mutableIntStateOf(0)
-    var pinnedCollections by mutableStateOf<Set<String>>(emptySet())
-        private set
-    
-    var snippetColors by mutableStateOf<Map<String, Int>>(emptyMap())
-        private set
-    
-    var snippetStyles by mutableStateOf<Map<String, SnippetStyle>>(emptyMap())
-        private set
-
-
 
     var snippetFirstSeenTimes by mutableStateOf<Map<String, Long>>(emptyMap())
         private set
@@ -162,16 +250,43 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var isYearlyRecap by mutableStateOf(false)
         private set
+    var recapMonth by mutableStateOf(Calendar.getInstance().get(Calendar.MONTH))
+    var recapYear by mutableStateOf(Calendar.getInstance().get(Calendar.YEAR))
+    var lastSeenYearlyRecapYear by androidx.compose.runtime.mutableIntStateOf(-1)
+        private set
+    var lastSeenMonthlyRecapPeriod by mutableStateOf("")
+        private set
 
     // Snackbar State
     var snackbarMessage by mutableStateOf<String?>(null)
     var snackbarActionLabel by mutableStateOf<String?>(null)
     var onSnackbarAction by mutableStateOf<(() -> Unit)?>(null)
+    var snackbarToken by mutableLongStateOf(0L)
 
     fun showSnackbar(message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
         snackbarMessage = message
         snackbarActionLabel = actionLabel
         onSnackbarAction = onAction
+        snackbarToken++
+    }
+
+    fun requestAddSnippet(
+        photo: Photo,
+        onShowNameModal: (Photo) -> Unit,
+        onShowAddModal: (Photo) -> Unit
+    ) {
+        val targetPhoto = photos.find { it.id == photo.id } ?: photo
+        validateAndExecuteAddSnippet(
+            photo = targetPhoto,
+            showSnackbar = { message, actionLabel, onAction ->
+                showSnackbar(message, actionLabel, onAction)
+            },
+            onShowNameModal = { p ->
+                val latest = photos.find { it.id == p.id } ?: p
+                onShowNameModal(latest)
+            },
+            onShowAddModal = onShowAddModal
+        )
     }
 
     // Original collections order
@@ -185,17 +300,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         private set
     var useDynamicColors by mutableStateOf(true)
         private set
-    var showTimeInMemories by mutableStateOf(false)
-        private set
     var expandLabelIcon by mutableStateOf(false)
         private set
     var expandCalendarIcon by mutableStateOf(false)
         private set
     var expandLocationIcon by mutableStateOf(false)
-        private set
-    val expandPhotoNameIcon: Boolean get() = expandLabelIcon
-    val expandDayAndDateIcon: Boolean get() = expandCalendarIcon
-    var motionSensorForButtonRotation by mutableStateOf(true)
         private set
 
     var notificationReminderEnabled by mutableStateOf(false)
@@ -211,14 +320,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     var showFilterSheet by mutableStateOf(false)
 
 
-    var showCarouselsIn by mutableStateOf<Set<String>>(
-        prefs.getStringSet("show_carousels_in", null) ?: emptySet()
-    )
-        private set
-    
     val separateCollectionSort = true
     
-    private val collectionIconsFile = File(application.filesDir, "collection_icons_v2.json")
     
     fun navigateEmojiPicker(collection: String? = null) {
         editingCollectionIcon = collection
@@ -228,29 +331,17 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
 
-    fun navigatePhotosCarousel() {
-        previousScreen = currentScreen
-        currentScreen = Screen.PhotosCarousel
-    }
-
-
-
 
 
     
     fun updateCollectionIcon(collection: String, iconOrEmoji: String) {
         collectionIcons = collectionIcons + (collection to iconOrEmoji)
-        saveCollectionIcons()
-    }
-    
-    private fun saveCollectionIcons() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                collectionIconsFile.bufferedWriter().use { writer ->
-                    gson.toJson(collectionIcons, writer)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            val existing = collectionRepository.getCollectionByName(collection)
+            if (existing != null) {
+                collectionRepository.updateCollection(existing.copy(icon = iconOrEmoji))
+            } else {
+                collectionRepository.insertCollection(com.android.snippets.data.CollectionEntity(name = collection, icon = iconOrEmoji))
             }
         }
     }
@@ -267,65 +358,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
     val isSelectionMode: Boolean
-        get() = forceSelectionMode || selectedPhotoIds.isNotEmpty() || pendingCollectionAssignment != null || pendingCollectionRemoval != null || pendingSnippetToApply != null || pendingLocationToApply != null || pendingRatingToApply != 0
+        get() = forceSelectionMode || selectedPhotoIds.isNotEmpty() || pendingCollectionAssignment != null || pendingCollectionRemoval != null
 
     var pendingCollectionAssignment by mutableStateOf<String?>(null)
         private set
     var pendingCollectionRemoval by mutableStateOf<String?>(null)
         private set
 
-    var showCountsIn by mutableStateOf<Set<String>>(
-        prefs.getStringSet("show_counts_in", null) ?: setOf("Favorites")
-    )
-    
-    fun toggleCountVisibility(name: String) {
-        showCountsIn = if (showCountsIn.contains(name)) {
-            showCountsIn - name
-        } else {
-            showCountsIn + name
-        }
-        prefs.edit().putStringSet("show_counts_in", showCountsIn).apply()
-    }
-
-
-
-    fun toggleCarouselVisibility(name: String) {
-        showCarouselsIn = if (showCarouselsIn.contains(name)) {
-            showCarouselsIn - name
-        } else {
-            showCarouselsIn + name
-        }
-        prefs.edit().putStringSet("show_carousels_in", showCarouselsIn).apply()
-    }
-
-    private val categoryCounts by derivedStateOf {
-        val counts = HashMap<String, Int>(userCollections.size + 2)
-        counts["Library"] = photos.size
-        var favoritesCount = 0
-        
-        val pList = photos
-        for (i in pList.indices) {
-            val photo = pList[i]
-            if (photo.isFavorite) favoritesCount++
-            val cols = photo.collections
-            for (j in cols.indices) {
-                val col = cols[j]
-                counts[col] = (counts[col] ?: 0) + 1
-            }
-        }
-        
-        counts["Favorites"] = favoritesCount
-        val uCols = userCollections
-        for (i in uCols.indices) {
-            val col = uCols[i]
-            if (!counts.containsKey(col)) counts[col] = 0
-        }
-        counts
-    }
-
-    fun getCountFor(name: String): Int {
-        return categoryCounts[name] ?: 0
-    }
 
     fun startCollectionAssignment(collection: String) {
         pendingCollectionAssignment = collection
@@ -404,11 +443,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
     var showBulkAddToCollectionDialog by mutableStateOf(false)
     var showBulkDeleteModal by mutableStateOf(false)
-    var pendingAddSnippetOnImport by mutableStateOf(false)
-    var pendingOpenAddSnippetDialog by mutableStateOf(false)
-    var pendingSnippetToApply by mutableStateOf<String?>(null)
-    var pendingLocationToApply by mutableStateOf<String?>(null)
-    var pendingRatingToApply by mutableStateOf(0)
 
     private var _snippetSortType = mutableStateOf(SnippetSortType.New)
     var snippetSortType: SnippetSortType
@@ -437,12 +471,20 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     
     var searchDisplayMode by mutableStateOf(DisplayMode.Day)
-    
+
+    val parsedSearchQuery: ParsedSearchQuery by derivedStateOf {
+        parseSearchQuery(searchQuery)
+    }
+
+    val currentSearchSortType: PhotoSortType? by derivedStateOf {
+        parsedSearchQuery.directives.lastOrNull()?.sortType
+    }
+
     private var _photoSortType = mutableStateOf(PhotoSortType.DateNewest)
     private var _collectionPhotoSortTypes = mutableStateOf<Map<String, PhotoSortType>>(emptyMap())
     
     var photoSortType: PhotoSortType
-        get() = _photoSortType.value
+        get() = currentSearchSortType ?: _photoSortType.value
         set(value) {
             _photoSortType.value = value
             libraryListStates["Library"] = androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState()
@@ -450,6 +492,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
         
     fun getPhotoSortTypeFor(tabName: String): PhotoSortType {
+        currentSearchSortType?.let { return it }
         if (tabName == "Library") return _photoSortType.value
         return _collectionPhotoSortTypes.value[tabName] ?: PhotoSortType.DateNewest
     }
@@ -475,76 +518,137 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
     
+    val pagedPhotos: Flow<PagingData<com.android.snippets.data.PhotoEntity>> = Pager(
+        config = PagingConfig(pageSize = 30, enablePlaceholders = false)
+    ) {
+        photoRepository.getPagingPhotos()
+    }.flow
+
     // State to track if the next added photo should be a favorite
     var pendingFavoriteIntent by mutableStateOf(false)
     var pendingAddPhotoIntentToken by mutableStateOf(0L)
 
     private val storageMutex = Mutex()
 
-    private val photosFile = File(application.filesDir, "photos_v2.json")
-    private val collectionsFile = File(application.filesDir, "collections_v2.json")
-    private val snippetColorsFile = File(application.filesDir, "snippet_colors_v2.json")
-    private val snippetStylesFile = File(application.filesDir, "snippet_styles_v2.json")
-    private val snippetFirstSeenFile = File(application.filesDir, "snippet_first_seen_v1.json")
-
     init {
-        loadFilterState()
-        loadSettingsState()
+        viewModelScope.launch {
+            userPreferencesRepository.userPreferencesFlow.collect { userPrefs ->
+                themePreference = try { ThemePreference.valueOf(userPrefs.themePreference) } catch (e: Exception) { ThemePreference.SYSTEM }
+                useDynamicColors = userPrefs.useDynamicColors
+                expandLabelIcon = userPrefs.expandLabelIcon
+                expandCalendarIcon = userPrefs.expandCalendarIcon
+                expandLocationIcon = userPrefs.expandLocationIcon
+                notificationReminderEnabled = userPrefs.notificationReminderEnabled
+                notificationReminderHour = userPrefs.notificationReminderHour
+                notificationReminderMinute = userPrefs.notificationReminderMinute
+                lastSeenYearlyRecapYear = userPrefs.lastSeenYearlyRecapYear
+                lastSeenMonthlyRecapPeriod = userPrefs.lastSeenMonthlyRecapPeriod
+                _snippetSortType.value = try { SnippetSortType.valueOf(userPrefs.snippetSortType) } catch (e: Exception) { SnippetSortType.New }
+                _isSortAscending.value = userPrefs.isSortAscending
+                selectedFilterSnippets = userPrefs.selectedFilterSnippets.toList()
+                _displayMode.value = try { DisplayMode.valueOf(userPrefs.displayMode) } catch (e: Exception) { DisplayMode.Day }
+                _photoSortType.value = try { PhotoSortType.valueOf(userPrefs.photoSortType) } catch (e: Exception) { PhotoSortType.DateNewest }
+
+                if (userPrefs.collectionDisplayModesJson.isNotBlank() && userPrefs.collectionDisplayModesJson != "{}") {
+                    _collectionDisplayModes.value = try { json.decodeFromString(userPrefs.collectionDisplayModesJson) } catch (e: Exception) { emptyMap() }
+                }
+                if (userPrefs.collectionPhotoSortTypesJson.isNotBlank() && userPrefs.collectionPhotoSortTypesJson != "{}") {
+                    _collectionPhotoSortTypes.value = try { json.decodeFromString(userPrefs.collectionPhotoSortTypesJson) } catch (e: Exception) { emptyMap() }
+                }
+
+                if (autoBackupSchedule != userPrefs.autoBackupSchedule) {
+                    autoBackupSchedule = userPrefs.autoBackupSchedule
+                    scheduleAutoBackup()
+                }
+            }
+        }
+        observeRepositoryFlows()
         loadAllData()
-        pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
+    }
+
+    private fun observeRepositoryFlows() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            collectionRepository.allCollectionsFlow.collect { entities ->
+                val names = entities.sortedBy { it.orderIndex }.map { it.name }
+                val icons = entities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (userCollections != names) {
+                        userCollections = names
+                    }
+                    if (collectionIcons != icons) {
+                        collectionIcons = icons
+                    }
+                }
+            }
+        }
+
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            photoRepository.allPhotosFlow.collect { roomPhotos ->
+                if (storageMutex.isLocked) return@collect
+                val processedPhotos = roomPhotos.map { p ->
+                    val (widthPx, heightPx) = if (p.widthPx > 0 && p.heightPx > 0) {
+                        p.widthPx to p.heightPx
+                    } else {
+                        extractImageDimensions(Uri.parse(p.uriString))
+                    }
+                    Photo(
+                        id = p.id,
+                        uriString = p.uriString,
+                        date = p.date,
+                        snippets = p.snippets ?: emptyList(),
+                        isViewed = p.isViewed,
+                        lastViewedTime = p.lastViewedTime,
+                        snippetsAddedTime = if (p.snippetsAddedTime != 0L) p.snippetsAddedTime else (if ((p.snippets ?: emptyList()).isNotEmpty()) p.date else 0L),
+                        surfacedTime = p.surfacedTime,
+                        isFavorite = p.isFavorite,
+                        isLibraryUpload = p.isLibraryUpload,
+                        collections = p.collections ?: emptyList(),
+                        widthPx = widthPx,
+                        heightPx = heightPx,
+                        isPublic = p.isPublic,
+                        locationLink = p.locationLink,
+                        locationName = p.locationName,
+                        rating = p.rating,
+                        name = p.name
+                    )
+                }.sortedByDescending { it.date }
+
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (photos != processedPhotos) {
+                        photos = processedPhotos
+                        val rebuiltFirstSeen = rebuildSnippetFirstSeenTimes(processedPhotos)
+                        snippetFirstSeenTimes = rebuiltFirstSeen
+                    }
+                }
+            }
+        }
     }
 
     private fun loadAllData() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            // Migration check: If new files don't exist, try loading from SharedPreferences
-            if (!photosFile.exists() && prefs.contains("photos_json")) {
-                migrateFromPrefs()
+            try {
+                DatabasePreloader.preloadIfNecessary(getApplication(), photoRepository, collectionRepository)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
 
-            val loadedPhotos = try {
-                if (photosFile.exists()) {
-                    val json = photosFile.readText()
-                    val jsonArray = gson.fromJson(json, com.google.gson.JsonArray::class.java)
-                    val result = mutableListOf<Photo>()
-                    jsonArray.forEach { element ->
-                        try {
-                            val photo = gson.fromJson(element, Photo::class.java)
-                            result.add(photo)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            // Skip corrupted individual photo
-                        }
-                    }
-                    result
-                } else emptyList()
+            val roomPhotos = try {
+                photoRepository.getAllPhotos()
             } catch (e: Exception) {
                 e.printStackTrace()
                 emptyList()
             }
 
-            val loadedCollections = try {
-                if (collectionsFile.exists()) {
-                    val collJson = collectionsFile.readText()
-                    val type = object : TypeToken<List<String>>() {}.type
-                    gson.fromJson<List<String>>(collJson, type) ?: emptyList()
-                } else emptyList()
+            val collectionEntities = try {
+                collectionRepository.getAllCollections()
             } catch (e: Exception) {
                 e.printStackTrace()
                 emptyList()
             }
+            val roomCollections = collectionEntities.map { it.name }
+            val loadedIcons = collectionEntities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()
 
-            val loadedIcons = try {
-                if (collectionIconsFile.exists()) {
-                    val iconJson = collectionIconsFile.readText()
-                    val type = object : TypeToken<Map<String, String>>() {}.type
-                    gson.fromJson<Map<String, String>>(iconJson, type) ?: emptyMap()
-                } else emptyMap()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                emptyMap()
-            }
-
-            val processedPhotos = loadedPhotos.map { p ->
+            val processedPhotos = roomPhotos.map { p ->
                 val (widthPx, heightPx) = if (p.widthPx > 0 && p.heightPx > 0) {
                     p.widthPx to p.heightPx
                 } else {
@@ -572,37 +676,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 )
             }.sortedByDescending { it.date }
 
-            val loadedColors = emptyMap<String, Int>()
-            try {
-                if (snippetColorsFile.exists()) {
-                    snippetColorsFile.delete()
-                }
-                val legacyColors = File(getApplication<Application>().filesDir, "snippet_colors.json")
-                if (legacyColors.exists()) {
-                    legacyColors.delete()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            val loadedStyles = emptyMap<String, SnippetStyle>()
-            try {
-                if (snippetStylesFile.exists()) {
-                    snippetStylesFile.delete()
-                }
-                val legacyStyles = File(getApplication<Application>().filesDir, "snippet_styles.json")
-                if (legacyStyles.exists()) {
-                    legacyStyles.delete()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
             val loadedFirstSeen = try {
-                if (snippetFirstSeenFile.exists()) {
-                    val json = snippetFirstSeenFile.readText()
-                    val type = object : TypeToken<Map<String, Long>>() {}.type
-                    gson.fromJson<Map<String, Long>>(json, type) ?: emptyMap()
+                val currentPrefs = userPreferencesRepository.userPreferencesFlow.first()
+                if (currentPrefs.snippetFirstSeenJson.isNotBlank() && currentPrefs.snippetFirstSeenJson != "{}") {
+                    json.decodeFromString<Map<String, Long>>(currentPrefs.snippetFirstSeenJson)
                 } else emptyMap()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -616,10 +693,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 photos = processedPhotos
-                userCollections = loadedCollections
+                userCollections = roomCollections
                 collectionIcons = loadedIcons
-                snippetColors = loadedColors
-                snippetStyles = loadedStyles
                 snippetFirstSeenTimes = mergedFirstSeen
 
                 // Auto-heal any photos that were previously stored with a temporary content:// URI in a single batch
@@ -642,6 +717,32 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                         if (changed) {
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                 photos = updatedList
+                            }
+                            savePhotos()
+                        }
+                    }
+
+                    // Background resolution for photos with location link but missing place name
+                    val needsLocationResolution = photos.filter { !it.locationLink.isNullOrBlank() && it.locationName.isNullOrBlank() }
+                    if (needsLocationResolution.isNotEmpty()) {
+                        var locationChanged = false
+                        val currentPhotos = photos.toMutableList()
+                        needsLocationResolution.forEach { p ->
+                            val link = p.locationLink ?: return@forEach
+                            val name = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(link, getApplication())
+                                ?: com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(link, getApplication())
+                            if (!name.isNullOrBlank()) {
+                                val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(name)
+                                val idx = currentPhotos.indexOfFirst { it.id == p.id }
+                                if (idx != -1 && currentPhotos[idx].locationName.isNullOrBlank()) {
+                                    currentPhotos[idx] = currentPhotos[idx].copy(locationName = clean)
+                                    locationChanged = true
+                                }
+                            }
+                        }
+                        if (locationChanged) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                photos = currentPhotos
                             }
                             savePhotos()
                         }
@@ -670,77 +771,18 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun migrateFromPrefs() {
-        try {
-            val json = prefs.getString("photos_json", null)
-            if (json != null) photosFile.writeText(json)
-            val collJson = prefs.getString("collections_json", null)
-            if (collJson != null) collectionsFile.writeText(collJson)
-            
-            // Clear old prefs after successful migration
-            prefs.edit().remove("photos_json").remove("collections_json").apply()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
     private fun saveFilterState() {
-        prefs.edit()
-            .putString("snippet_sort_type", snippetSortType.name)
-            .putBoolean("is_sort_ascending", isSortAscending)
-            .putStringSet("selected_filter_snippets", selectedFilterSnippets.toSet())
-            .putString("display_mode", _displayMode.value.name)
-            .putString("collection_display_modes_json", gson.toJson(_collectionDisplayModes.value))
-            .putString("photo_sort_type", _photoSortType.value.name)
-            .putString("collection_photo_sort_types_json", gson.toJson(_collectionPhotoSortTypes.value))
-            .apply()
-    }
-
-    private fun loadFilterState() {
-        val sortName = prefs.getString("snippet_sort_type", SnippetSortType.New.name)
-        _snippetSortType.value = try { SnippetSortType.valueOf(sortName!!) } catch(e: Exception) { SnippetSortType.New }
-        _isSortAscending.value = prefs.getBoolean("is_sort_ascending", true)
-        selectedFilterSnippets = prefs.getStringSet("selected_filter_snippets", emptySet())?.toList() ?: emptyList()
-        
-        val displayModeName = prefs.getString("display_mode", DisplayMode.Day.name)
-        _displayMode.value = try { DisplayMode.valueOf(displayModeName!!) } catch(e: Exception) { DisplayMode.Day }
-        
-        val collDisplayModesJson = prefs.getString("collection_display_modes_json", null)
-        if (collDisplayModesJson != null) {
-            val type = object : TypeToken<Map<String, DisplayMode>>() {}.type
-            _collectionDisplayModes.value = try { gson.fromJson(collDisplayModesJson, type) } catch(e: Exception) { emptyMap() }
+        viewModelScope.launch {
+            userPreferencesRepository.updateFilterState(
+                snippetSortType = snippetSortType.name,
+                isSortAscending = isSortAscending,
+                selectedFilterSnippets = selectedFilterSnippets.toSet(),
+                displayMode = _displayMode.value.name,
+                collectionDisplayModesJson = json.encodeToString(_collectionDisplayModes.value),
+                photoSortType = _photoSortType.value.name,
+                collectionPhotoSortTypesJson = json.encodeToString(_collectionPhotoSortTypes.value)
+            )
         }
-        
-        val sortTypeName = prefs.getString("photo_sort_type", PhotoSortType.DateNewest.name)
-        _photoSortType.value = try { PhotoSortType.valueOf(sortTypeName!!) } catch(e: Exception) { PhotoSortType.DateNewest }
-        
-        val collSortTypesJson = prefs.getString("collection_photo_sort_types_json", null)
-        if (collSortTypesJson != null) {
-            val type = object : TypeToken<Map<String, PhotoSortType>>() {}.type
-            _collectionPhotoSortTypes.value = try { gson.fromJson(collSortTypesJson, type) } catch(e: Exception) { emptyMap() }
-        }
-    }
-
-    private fun loadSettingsState() {
-        val savedThemePreference = prefs.getString("theme_preference", ThemePreference.SYSTEM.name)
-        themePreference = try { ThemePreference.valueOf(savedThemePreference!!) } catch (e: Exception) { ThemePreference.SYSTEM }
-        useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
-        showTimeInMemories = prefs.getBoolean("show_time_in_memories", false)
-        expandLabelIcon = prefs.getBoolean("expand_label_icon", prefs.getBoolean("expand_photo_name_icon", false))
-        expandCalendarIcon = prefs.getBoolean("expand_calendar_icon", prefs.getBoolean("expand_day_and_date_icon", false))
-        expandLocationIcon = prefs.getBoolean("expand_location_icon", false)
-        motionSensorForButtonRotation = prefs.getBoolean("motion_sensor_button_rotation", true)
-        com.android.snippets.ui.util.CookieTiltController.isGloballyEnabled = motionSensorForButtonRotation
-
-
-        autoBackupSchedule = prefs.getString("auto_backup_schedule", "Disabled") ?: "Disabled"
-        scheduleAutoBackup()
-
-        showCarouselsIn = prefs.getStringSet("show_carousels_in", null) ?: emptySet()
-        notificationReminderEnabled = prefs.getBoolean("notification_reminder_enabled", false)
-        notificationReminderHour = prefs.getInt("notification_reminder_hour", 9)
-        notificationReminderMinute = prefs.getInt("notification_reminder_minute", 0)
-
     }
 
     private fun savePhotos(): kotlinx.coroutines.Job {
@@ -749,9 +791,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
                 storageMutex.withLock {
                     try {
-                        photosFile.bufferedWriter().use { writer ->
-                            gson.toJson(snapshot, writer)
+                        val currentDb = photoRepository.getAllPhotos()
+                        val currentIds = snapshot.map { it.id }.toSet()
+                        val deletedEntities = currentDb.filter { it.id !in currentIds }
+                        if (deletedEntities.isNotEmpty()) {
+                            photoRepository.deletePhotos(deletedEntities)
                         }
+                        photoRepository.insertPhotos(snapshot)
                         BackupManager(getApplication()).dataChanged()
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -785,38 +831,31 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         if (result != null) {
             photos = result.first
             savePhotos()
-            result.second.forEach { (id, targetTime) ->
-                val delayMs = maxOf(0L, targetTime - now)
-                val photo = photos.find { it.id == id }
-                val notificationType = if (photo?.isViewed == true) {
-                    MemoryWorker.TYPE_UPDATED
-                } else if (photo != null && photo.snippetsAddedTime > photo.lastViewedTime && photo.lastViewedTime != 0L) {
-                    MemoryWorker.TYPE_RESURFACED
-                } else {
-                    MemoryWorker.TYPE_NEW
-                }
-                scheduleMemoryNotification(
-                    photoId = id,
-                    delay = delayMs,
-                    delayUnit = TimeUnit.MILLISECONDS,
-                    notificationType = notificationType,
-                    policy = androidx.work.ExistingWorkPolicy.REPLACE,
-                    resetPostedState = true
-                )
-            }
+            MemoryManager.scheduleNextCycleWork(getApplication())
         }
     }
 
-    private fun checkAndResetMemories() {
-        reconcileSurfacedMemories()
-    }
     private fun saveCollections() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             storageMutex.withLock {
                 try {
-                    collectionsFile.bufferedWriter().use { writer ->
-                        gson.toJson(userCollections, writer)
+                    val currentCols = collectionRepository.getAllCollections()
+                    val userColSet = userCollections.toSet()
+                    val deletedCols = currentCols.filter { it.name !in userColSet }
+                    if (deletedCols.isNotEmpty()) {
+                        deletedCols.forEach { collectionRepository.deleteCollection(it) }
                     }
+                    collectionRepository.insertCollections(
+                        userCollections.mapIndexed { idx, name ->
+                            val existing = currentCols.find { it.name == name }
+                            com.android.snippets.data.CollectionEntity(
+                                name = name,
+                                icon = collectionIcons[name] ?: existing?.icon,
+                                orderIndex = idx,
+                                isPinned = existing?.isPinned ?: false
+                            )
+                        }
+                    )
                     BackupManager(getApplication()).dataChanged()
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -828,23 +867,25 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     // Settings Setters
     fun updateThemePreference(pref: ThemePreference) {
         themePreference = pref
-        prefs.edit().putString("theme_preference", pref.name).apply()
+        viewModelScope.launch {
+            userPreferencesRepository.updateThemePreference(pref.name)
+        }
     }
 
     fun updateDynamicColors(use: Boolean) {
         useDynamicColors = use
-        prefs.edit().putBoolean("use_dynamic_colors", use).apply()
+        viewModelScope.launch {
+            userPreferencesRepository.updateUseDynamicColors(use)
+        }
     }
 
     fun updateNotificationReminder(enabled: Boolean, hour: Int, minute: Int) {
         notificationReminderEnabled = enabled
         notificationReminderHour = hour
         notificationReminderMinute = minute
-        prefs.edit()
-            .putBoolean("notification_reminder_enabled", enabled)
-            .putInt("notification_reminder_hour", hour)
-            .putInt("notification_reminder_minute", minute)
-            .apply()
+        viewModelScope.launch {
+            userPreferencesRepository.updateNotificationReminder(enabled, hour, minute)
+        }
     }
 
 
@@ -854,17 +895,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
 
-    fun addPhoto(uri: Uri, isFavorite: Boolean = false, locationLink: String? = null) {
+    fun addPhoto(uri: Uri, isFavorite: Boolean = false, locationLink: String? = null, locationName: String? = null) {
         isAddingPhotos = true
-        val targetSnippet = pendingSnippetToApply
-        val targetLocation = locationLink ?: pendingLocationToApply
-        val targetRating = pendingRatingToApply
-        val shouldOpenDialog = pendingAddSnippetOnImport
-        // Reset immediately
-        pendingSnippetToApply = null
-        pendingLocationToApply = null
-        pendingRatingToApply = 0
-        pendingAddSnippetOnImport = false
+        val targetLocation = locationLink?.trim()?.takeIf { it.isNotBlank() }
+        val immediateName = locationName?.trim()?.takeIf { it.isNotBlank() }
+            ?: targetLocation?.let { com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(it, getApplication()) }
 
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -891,31 +926,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                                 heightPx = newH
                             )
                         }
-                        if (!targetSnippet.isNullOrBlank()) {
-                            val trimmed = targetSnippet.trim()
-                            if (duplicate.snippets.size < 6 && !duplicate.snippets.contains(trimmed)) {
-                                val now = System.currentTimeMillis()
-                                val isFirstSeen = !snippetFirstSeenTimes.containsKey(trimmed)
-                                if (isFirstSeen) {
-                                    snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
-                                    saveSnippetFirstSeenTimes()
-                                }
-                                updatedPhoto = updatedPhoto.copy(
-                                    snippets = (updatedPhoto.snippets + trimmed).distinct(),
-                                    snippetsAddedTime = now
-                                )
-                            }
-                        }
                         
                         if (!targetLocation.isNullOrBlank()) {
                             updatedPhoto = updatedPhoto.copy(
-                                locationLink = targetLocation.trim()
-                            )
-                        }
-                        
-                        if (targetRating in 1..5) {
-                            updatedPhoto = updatedPhoto.copy(
-                                rating = targetRating
+                                locationLink = targetLocation,
+                                locationName = immediateName ?: updatedPhoto.locationName
                             )
                         }
                         
@@ -926,57 +941,71 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                             savePhotos()
                         }
 
-                        if (shouldOpenDialog) {
-                            pendingOpenAddSnippetDialog = true
-                            openDetail(duplicate.id, tab = "Library", overrideReturnScreen = Screen.Library)
-                        } else if (!targetSnippet.isNullOrBlank() || !targetLocation.isNullOrBlank() || targetRating != 0) {
+                        if (!targetLocation.isNullOrBlank()) {
                             openDetail(duplicate.id, tab = "Library", overrideReturnScreen = Screen.Library)
                         }
 
                         isAddingPhotos = false
+                    }
+
+                    if (!targetLocation.isNullOrBlank() && immediateName == null && (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
+                        val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(targetLocation, getApplication())
+                        if (!resolved.isNullOrBlank()) {
+                            val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                photos = photos.map {
+                                    if (it.id == duplicate.id && it.locationName.isNullOrBlank()) {
+                                        it.copy(locationName = clean)
+                                    } else it
+                                }
+                                savePhotos()
+                            }
+                        }
                     }
                     return@launch
                 }
 
                 val internalUri = saveToInternalStorage(uri) ?: uri.toString()
                 val (widthPx, heightPx) = extractImageDimensions(Uri.parse(internalUri))
-                val initialSnippets = if (!targetSnippet.isNullOrBlank()) listOf(targetSnippet.trim()) else emptyList()
-                val now = System.currentTimeMillis()
-
-                if (!targetSnippet.isNullOrBlank()) {
-                    val trimmed = targetSnippet.trim()
-                    val isFirstSeen = !snippetFirstSeenTimes.containsKey(trimmed)
-                    if (isFirstSeen) {
-                        snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
-                        saveSnippetFirstSeenTimes()
-                    }
-                }
 
                 val newPhoto = Photo(
                     uriString = internalUri,
                     date = captureDate,
-                    snippets = initialSnippets,
-                    snippetsAddedTime = if (initialSnippets.isNotEmpty()) now else 0L,
+                    snippets = emptyList(),
+                    snippetsAddedTime = 0L,
                     isFavorite = isFavorite,
                     isLibraryUpload = true,
                     widthPx = widthPx,
                     heightPx = heightPx,
-                    locationLink = targetLocation?.trim(),
-                    rating = targetRating
+                    locationLink = targetLocation,
+                    locationName = immediateName,
+                    rating = 0
                 )
                 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     photos = (listOf(newPhoto) + photos).sortedByDescending { it.date }
                     savePhotos()
 
-                    if (shouldOpenDialog) {
-                        pendingOpenAddSnippetDialog = true
-                        openDetail(newPhoto.id, tab = "Library", overrideReturnScreen = Screen.Library)
-                    } else if (!targetSnippet.isNullOrBlank() || !targetLocation.isNullOrBlank() || targetRating != 0) {
+                    if (!targetLocation.isNullOrBlank()) {
                         openDetail(newPhoto.id, tab = "Library", overrideReturnScreen = Screen.Library)
                     }
 
                     isAddingPhotos = false
+                }
+
+                if (!targetLocation.isNullOrBlank() && immediateName == null && (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
+                    val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(targetLocation, getApplication())
+                    if (!resolved.isNullOrBlank()) {
+                        val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            photos = photos.map {
+                                if (it.id == newPhoto.id && it.locationName.isNullOrBlank()) {
+                                    it.copy(locationName = clean)
+                                } else it
+                            }
+                            savePhotos()
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -986,13 +1015,16 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun addPhotoToLibrary(uri: Uri, locationLink: String? = null) {
-        addPhoto(uri = uri, locationLink = locationLink)
+    fun addPhotoToLibrary(uri: Uri, locationLink: String? = null, locationName: String? = null) {
+        addPhoto(uri = uri, locationLink = locationLink, locationName = locationName)
     }
 
-    fun addPhotoToCollection(uri: Uri, collection: String, locationLink: String? = null) {
+    fun addPhotoToCollection(uri: Uri, collection: String, locationLink: String? = null, locationName: String? = null) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val captureDate = extractCaptureDate(uri)
+            val targetLocation = locationLink?.trim()?.takeIf { it.isNotBlank() }
+            val immediateName = locationName?.trim()?.takeIf { it.isNotBlank() }
+                ?: targetLocation?.let { com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(it, getApplication()) }
             
             val duplicate = photos.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
             if (duplicate != null) {
@@ -1005,8 +1037,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                     if (!duplicate.collections.contains(collection)) {
                         updatedPhoto = updatedPhoto.copy(collections = duplicate.collections + collection)
                     }
-                    if (!locationLink.isNullOrBlank() && updatedPhoto.locationLink.isNullOrBlank()) {
-                        updatedPhoto = updatedPhoto.copy(locationLink = locationLink)
+                    if (!targetLocation.isNullOrBlank() && updatedPhoto.locationLink.isNullOrBlank()) {
+                        updatedPhoto = updatedPhoto.copy(
+                            locationLink = targetLocation,
+                            locationName = immediateName ?: updatedPhoto.locationName
+                        )
                     }
                     if (healedUri != null) {
                         // Extract dimensions from the healed internal file
@@ -1024,6 +1059,21 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                         savePhotos()
                     }
                 }
+
+                if (!targetLocation.isNullOrBlank() && immediateName == null && (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
+                    val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(targetLocation, getApplication())
+                    if (!resolved.isNullOrBlank()) {
+                        val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            photos = photos.map {
+                                if (it.id == duplicate.id && it.locationName.isNullOrBlank()) {
+                                    it.copy(locationName = clean)
+                                } else it
+                            }
+                            savePhotos()
+                        }
+                    }
+                }
                 return@launch
             }
 
@@ -1037,12 +1087,28 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 isLibraryUpload = true,
                 widthPx = widthPx,
                 heightPx = heightPx,
-                locationLink = locationLink.takeIf { !it.isNullOrBlank() }
+                locationLink = targetLocation,
+                locationName = immediateName
             )
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 photos = (listOf(newPhoto) + photos).sortedByDescending { it.date }
                 savePhotos()
+            }
+
+            if (!targetLocation.isNullOrBlank() && immediateName == null && (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
+                val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(targetLocation, getApplication())
+                if (!resolved.isNullOrBlank()) {
+                    val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        photos = photos.map {
+                            if (it.id == newPhoto.id && it.locationName.isNullOrBlank()) {
+                                it.copy(locationName = clean)
+                            } else it
+                        }
+                        savePhotos()
+                    }
+                }
             }
         }
     }
@@ -1075,198 +1141,52 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
 
-    fun createCollection(name: String, openAfterCreate: Boolean = true) {
-        val trimmed = name.trim()
-        if (trimmed.isNotBlank() && userCollections.none { it.equals(trimmed, ignoreCase = true) }) {
-            userCollections = userCollections + trimmed
-
-            
+    fun createCollection(collection: String, openAfterCreate: Boolean = true) {
+        val emoji = collection.trim()
+        if (emoji.isNotBlank() && userCollections.none { it.equals(emoji, ignoreCase = true) }) {
+            userCollections = userCollections + emoji
             saveCollections()
             if (openAfterCreate) {
-                libraryCurrentTab = trimmed
+                libraryCurrentTab = emoji
                 navigateLibrary()
             }
         }
     }
 
+    fun deleteCollection(collection: String) {
+        if (collection.isBlank()) return
 
-    fun deleteCollection(name: String) {
-        val trimmedName = name.trim()
-        if (trimmedName.isBlank()) return
-
-        userCollections = userCollections.filter { it != trimmedName }
-        pinnedCollections = pinnedCollections - trimmedName
+        userCollections = userCollections.filter { it != collection }
         
         // Cleanup per-collection settings
-        _collectionDisplayModes.value = _collectionDisplayModes.value - trimmedName
-        _collectionPhotoSortTypes.value = _collectionPhotoSortTypes.value - trimmedName
+        _collectionDisplayModes.value = _collectionDisplayModes.value - collection
+        _collectionPhotoSortTypes.value = _collectionPhotoSortTypes.value - collection
         
         saveCollections()
         saveFilterState()
-        prefs.edit().putStringSet("pinned_collections", pinnedCollections).apply()
-        collectionIcons = collectionIcons - trimmedName
-        saveCollectionIcons()
-        showCountsIn = showCountsIn - trimmedName
-        prefs.edit().putStringSet("show_counts_in", showCountsIn).apply()
-        showCarouselsIn = showCarouselsIn - trimmedName
-        prefs.edit().putStringSet("show_carousels_in", showCarouselsIn).apply()
-        saveCollections()
+        collectionIcons = collectionIcons - collection
 
         var photosChanged = false
         photos = photos.map { photo ->
-            if (photo.collections.contains(trimmedName)) {
+            if (photo.collections.contains(collection)) {
                 photosChanged = true
-                photo.copy(collections = photo.collections - trimmedName)
+                photo.copy(collections = photo.collections - collection)
             } else photo
         }
         if (photosChanged) savePhotos()
 
-        if (activeCollection == trimmedName) {
+        if (activeCollection == collection) {
             navigateLibrary()
         }
-        if (pendingCollectionAssignment == trimmedName) {
+        if (pendingCollectionAssignment == collection) {
             pendingCollectionAssignment = null
         }
-    }
-
-    fun togglePinCollection(name: String) {
-        val isCurrentlyPinned = pinnedCollections.contains(name)
-        pinnedCollections = if (isCurrentlyPinned) {
-            pinnedCollections - name
-        } else {
-            if (pinnedCollections.size >= 3) {
-                showSnackbar("Upto 3 pins!")
-                return
-            }
-            pinnedCollections + name
-        }
-        prefs.edit().putStringSet("pinned_collections", pinnedCollections).apply()
-    }
-
-    fun renameCollection(oldName: String, newName: String) {
-        val trimmedOldName = oldName.trim()
-        val trimmedNewName = newName.trim()
-
-        if (trimmedOldName.isBlank() || trimmedNewName.isBlank() || trimmedOldName == trimmedNewName) return
-        if (userCollections.any { it.equals(trimmedNewName, ignoreCase = true) && it != trimmedOldName }) return
-
-        userCollections = userCollections.map { collection ->
-            if (collection == trimmedOldName) trimmedNewName else collection
-        }
-        saveCollections()
-
-        photos = photos.map { photo ->
-            if (photo.snippets.any { it == trimmedOldName } || photo.collections.any { it == trimmedOldName }) {
-                photo.copy(
-                    snippets = photo.snippets.map { snippet ->
-                        if (snippet == trimmedOldName) trimmedNewName else snippet
-                    },
-                    collections = photo.collections.map { collection ->
-                        if (collection == trimmedOldName) trimmedNewName else collection
-                    }.distinct()
-                )
-            } else {
-                photo
-            }
-        }
-        savePhotos()
-
-        if (collectionIcons.containsKey(trimmedOldName)) {
-            val icon = collectionIcons[trimmedOldName]
-            collectionIcons = collectionIcons - trimmedOldName
-            if (icon != null) collectionIcons = collectionIcons + (trimmedNewName to icon)
-            saveCollectionIcons()
-        }
-        if (pinnedCollections.contains(trimmedOldName)) {
-            pinnedCollections = pinnedCollections - trimmedOldName + trimmedNewName
-            prefs.edit().putStringSet("pinned_collections", pinnedCollections).apply()
-        }
-        if (showCountsIn.contains(trimmedOldName)) {
-            showCountsIn = showCountsIn - trimmedOldName + trimmedNewName
-            prefs.edit().putStringSet("show_counts_in", showCountsIn).apply()
-        }
-        if (showCarouselsIn.contains(trimmedOldName)) {
-            showCarouselsIn = showCarouselsIn - trimmedOldName + trimmedNewName
-            prefs.edit().putStringSet("show_carousels_in", showCarouselsIn).apply()
-        }
-
-        if (activeCollection == trimmedOldName) {
-            activeCollection = trimmedNewName
-        }
-        if (pendingCollectionAssignment == trimmedOldName) {
-            pendingCollectionAssignment = trimmedNewName
-        }
-        if (selectedFilterSnippets.contains(trimmedOldName)) {
-            selectedFilterSnippets = selectedFilterSnippets.map { if (it == trimmedOldName) trimmedNewName else it }
+        if (selectedFilterSnippets.contains(collection)) {
+            selectedFilterSnippets = selectedFilterSnippets.filter { it != collection }
             saveFilterState()
         }
     }
 
-    fun swapCollections(fromIndex: Int, toIndex: Int) {
-        if (fromIndex in userCollections.indices && toIndex in userCollections.indices) {
-            val newList = userCollections.toMutableList()
-            val temp = newList[fromIndex]
-            newList[fromIndex] = newList[toIndex]
-            newList[toIndex] = temp
-            userCollections = newList
-            saveCollections()
-        }
-    }
-
-    fun moveCollectionLeft(name: String) {
-        val trimmed = name.trim()
-        val index = userCollections.indexOf(trimmed)
-        if (index > 0) {
-            val newList = userCollections.toMutableList()
-            val temp = newList[index - 1]
-            newList[index - 1] = newList[index]
-            newList[index] = temp
-            userCollections = newList
-            saveCollections()
-        }
-    }
-
-    fun moveCollectionRight(name: String) {
-        val trimmed = name.trim()
-        val index = userCollections.indexOf(trimmed)
-        if (index != -1 && index < userCollections.size - 1) {
-            val newList = userCollections.toMutableList()
-            val temp = newList[index + 1]
-            newList[index + 1] = newList[index]
-            newList[index] = temp
-            userCollections = newList
-            saveCollections()
-        }
-    }
-
-    private fun memoryReminderName(photoId: String) = MemoryManager.memoryReminderName(photoId)
-
-    private fun scheduleNewMemoryNotification(photoId: String) {
-        MemoryManager.scheduleNewMemoryNotification(getApplication(), photoId)
-    }
-
-    private fun scheduleUpdatedMemoryNotification(photoId: String) {
-        MemoryManager.scheduleUpdatedMemoryNotification(getApplication(), photoId)
-    }
-
-    private fun scheduleMemoryNotification(
-        photoId: String,
-        delay: Long,
-        delayUnit: TimeUnit = TimeUnit.HOURS,
-        notificationType: String = MemoryWorker.TYPE_NEW,
-        policy: androidx.work.ExistingWorkPolicy = androidx.work.ExistingWorkPolicy.REPLACE,
-        resetPostedState: Boolean = true
-    ) {
-        MemoryManager.scheduleMemoryNotification(
-            context = getApplication(),
-            photoId = photoId,
-            delay = delay,
-            delayUnit = delayUnit,
-            notificationType = notificationType,
-            policy = policy,
-            resetPostedState = resetPostedState
-        )
-    }
 
     private fun reconcileMemoryNotifications() {
         MemoryManager.reconcileMemoryNotifications(getApplication(), photos)
@@ -1487,10 +1407,31 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun updateLocationLink(photoId: String, link: String?, name: String? = null) {
+        val trimmedLink = link?.trim()?.takeIf { it.isNotBlank() }
+        val immediateName = name?.trim()?.takeIf { it.isNotBlank() }
+            ?: trimmedLink?.let { com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(it, getApplication()) }
+
         photos = photos.map {
-            if (it.id == photoId) it.copy(locationLink = link, locationName = name) else it
+            if (it.id == photoId) it.copy(locationLink = trimmedLink, locationName = immediateName) else it
         }
         savePhotos()
+
+        if (trimmedLink != null && immediateName == null && (trimmedLink.startsWith("http://", ignoreCase = true) || trimmedLink.startsWith("https://", ignoreCase = true))) {
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(trimmedLink, getApplication())
+                if (!resolved.isNullOrBlank()) {
+                    val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        photos = photos.map {
+                            if (it.id == photoId && it.locationName.isNullOrBlank()) {
+                                it.copy(locationName = clean)
+                            } else it
+                        }
+                        savePhotos()
+                    }
+                }
+            }
+        }
     }
 
     fun updatePhotoName(photoId: String, name: String?) {
@@ -1534,9 +1475,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         selectedPhotoIds = emptySet()
         pendingCollectionAssignment = null
         pendingCollectionRemoval = null
-        pendingSnippetToApply = null
-        pendingLocationToApply = null
-        pendingRatingToApply = 0
         forceSelectionMode = false
     }
 
@@ -1692,143 +1630,38 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         clearSelection()
     }
 
-    fun confirmBulkSnippetApply() {
-        val snippet = pendingSnippetToApply ?: return
-        val trimmed = snippet.trim()
-        val now = System.currentTimeMillis()
-        if (!snippetFirstSeenTimes.containsKey(trimmed)) {
-            snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmed to now)
-            saveSnippetFirstSeenTimes()
-        }
-
-        var skippedCount = 0
-        photos = photos.map { photo ->
-            if (selectedPhotoIds.contains(photo.id)) {
-                if (photo.snippets.size >= 6 && !photo.snippets.contains(trimmed)) {
-                    skippedCount++
-                    photo
-                } else {
-                    val updatedSnippets = (photo.snippets + trimmed).distinct()
-                    photo.copy(
-                        snippets = updatedSnippets,
-                        snippetsAddedTime = now,
-                        surfacedTime = 0L
-                    )
-                }
-            } else photo
-        }
-        savePhotos()
-        reconcileSurfacedMemories()
-
-        val count = selectedPhotoIds.size
-        if (skippedCount > 0) {
-            showSnackbar("Added '$trimmed' to selected photos ($skippedCount skipped because they reached the limit of 6 snippets)")
-        } else {
-            showSnackbar("Added '$trimmed' to $count photos")
-        }
-        clearSelection()
-    }
-
-    fun confirmBulkLocationApply() {
-        val location = pendingLocationToApply ?: return
-        val target = location.trim()
-        val extractedName = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(target)
-            ?: if (!target.startsWith("http://", ignoreCase = true) && !target.startsWith("https://", ignoreCase = true)) target else null
-        val cleanName = extractedName?.let { com.android.snippets.ui.util.LocationUtils.cleanLocationName(it) }
-        
-        photos = photos.map { photo ->
-            if (selectedPhotoIds.contains(photo.id)) {
-                photo.copy(
-                    locationLink = target,
-                    locationName = cleanName ?: photo.locationName
-                )
-            } else photo
-        }
-        savePhotos()
-        
-        val count = selectedPhotoIds.size
-        showSnackbar("Set location to '$target' for $count photos")
-        clearSelection()
-    }
-
-    fun confirmBulkRatingApply() {
-        val targetRating = pendingRatingToApply
-        if (targetRating !in 1..5) return
-        
-        photos = photos.map { photo ->
-            if (selectedPhotoIds.contains(photo.id)) {
-                photo.copy(rating = targetRating)
-            } else photo
-        }
-        savePhotos()
-        
-        val count = selectedPhotoIds.size
-        showSnackbar("Set rating to $targetRating ${if (targetRating == 1) "star" else "stars"} for $count photos")
-        clearSelection()
-    }
-
-    fun updateShowTimeInMemories(show: Boolean) {
-        showTimeInMemories = show
-        prefs.edit().putBoolean("show_time_in_memories", show).apply()
-    }
-
     fun updateExpandLabelIcon(expand: Boolean) {
         expandLabelIcon = expand
-        prefs.edit()
-            .putBoolean("expand_label_icon", expand)
-            .putBoolean("expand_photo_name_icon", expand)
-            .apply()
+        viewModelScope.launch {
+            userPreferencesRepository.updateExpandLabelIcon(expand)
+        }
     }
-
-    fun updateExpandPhotoNameIcon(expand: Boolean) = updateExpandLabelIcon(expand)
 
     fun updateExpandCalendarIcon(expand: Boolean) {
         expandCalendarIcon = expand
-        prefs.edit()
-            .putBoolean("expand_calendar_icon", expand)
-            .putBoolean("expand_day_and_date_icon", expand)
-            .apply()
+        viewModelScope.launch {
+            userPreferencesRepository.updateExpandCalendarIcon(expand)
+        }
     }
-
-    fun updateExpandDayAndDateIcon(expand: Boolean) = updateExpandCalendarIcon(expand)
 
     fun updateExpandLocationIcon(expand: Boolean) {
         expandLocationIcon = expand
-        prefs.edit().putBoolean("expand_location_icon", expand).apply()
+        viewModelScope.launch {
+            userPreferencesRepository.updateExpandLocationIcon(expand)
+        }
     }
-
-    fun updateMotionSensorForButtonRotation(enabled: Boolean) {
-        motionSensorForButtonRotation = enabled
-        com.android.snippets.ui.util.CookieTiltController.isGloballyEnabled = enabled
-        prefs.edit().putBoolean("motion_sensor_button_rotation", enabled).apply()
-    }
-
 
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
-            val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
-            val success = MediaSaver.saveSnippetToGallery(context, photo, pureSnippets, isDark, bgColor, showTime = showTimeInMemories, locationText = locationText)
-            if (success) {
-                android.widget.Toast.makeText(context, "Downloaded to Gallery", android.widget.Toast.LENGTH_SHORT).show()
-            }
+            PhotoCardExporter.downloadPhotoCard(context, photo, pureSnippets, isDark, bgColor)
         }
     }
 
     fun sharePhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
             val pureSnippets = getPureSnippets(photo)
-            val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
-            val uri = MediaSaver.getShareableUri(context, photo, pureSnippets, isDark, bgColor, showTime = showTimeInMemories, locationText = locationText)
-            if (uri != null) {
-                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                    type = "image/jpeg"
-                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                    clipData = android.content.ClipData.newRawUri("", uri)
-                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(android.content.Intent.createChooser(intent, "Share Snippets"))
-            }
+            PhotoCardExporter.sharePhotoCard(context, photo, pureSnippets, isDark, bgColor)
         }
     }
 
@@ -1836,62 +1669,19 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         if (selectedPhotoIds.isEmpty()) return
         
         viewModelScope.launch {
-            android.widget.Toast.makeText(context, "Preparing shared snippets...", android.widget.Toast.LENGTH_SHORT).show()
-            val uris = mutableListOf<android.net.Uri>()
-            
             val isDarkTheme = when (themePreference) {
                 ThemePreference.LIGHT -> false
                 ThemePreference.DARK -> true
                 ThemePreference.SYSTEM -> (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
             }
-            selectedPhotoIds.forEach { photoId ->
-                val photo = photos.find { it.id == photoId }
-                if (photo != null) {
-                    val pureSnippets = getPureSnippets(photo)
-                    val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
-                    val uri = MediaSaver.getShareableUri(
-                        context = context,
-                        photo = photo,
-                        snippets = pureSnippets,
-                        isDark = isDarkTheme,
-                        bgColor = if (isDarkTheme) android.graphics.Color.BLACK else android.graphics.Color.WHITE,
-                        showTime = showTimeInMemories,
-                        locationText = locationText
-                    )
-                    if (uri != null) {
-                        uris.add(uri)
-                    }
-                }
+            val photosToShare = selectedPhotoIds.mapNotNull { photoId ->
+                photos.find { it.id == photoId }?.let { it to getPureSnippets(it) }
             }
-            
-            if (uris.isNotEmpty()) {
-                val intent = if (uris.size == 1) {
-                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                        type = "image/jpeg"
-                        putExtra(android.content.Intent.EXTRA_STREAM, uris.first())
-                        clipData = android.content.ClipData.newRawUri("", uris.first())
-                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                } else {
-                    android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
-                        type = "image/jpeg"
-                        putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, java.util.ArrayList(uris))
-                        val clipDataItems = android.content.ClipData.newRawUri("", uris.first())
-                        for (i in 1 until uris.size) {
-                            clipDataItems.addItem(android.content.ClipData.Item(uris[i]))
-                        }
-                        clipData = clipDataItems
-                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                }
-                context.startActivity(android.content.Intent.createChooser(intent, "Share Snippets"))
+            if (PhotoCardExporter.shareMultipleCards(context, photosToShare, isDarkTheme)) {
                 clearSelection()
-            } else {
-                android.widget.Toast.makeText(context, "Failed to prepare share images", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
-
     fun openDetail(id: String, tab: String? = null, overrideReturnScreen: Screen? = null) {
         activePhotoId = id
         previousScreen = currentScreen
@@ -1910,12 +1700,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             Screen.About,
             Screen.Stats -> navigateLibrary()
             Screen.EmojiPicker,
-            Screen.PhotosCarousel,
             Screen.MonthlyRecap,
             Screen.YearlyRecap -> {
                 currentScreen = previousScreen
             }
-            Screen.Filter,
             Screen.Library -> {
                 if (activePhotoId != null) {
                     activePhotoId = null
@@ -1924,9 +1712,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun dismissRecapPhoto(photoId: String) {
-        recapPhotos = recapPhotos.filter { it.id != photoId }
-    }
 
     fun getPhotosForPeriod(month: Int?, year: Int): List<Photo> {
         val matched = photos.filter { photo ->
@@ -1975,6 +1760,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         isYearlyRecap = false
         recapTitle = "This $monthName"
         recapPhotos = getPhotosForPeriod(month = targetMonth, year = targetYear)
+        recapMonth = targetMonth
+        recapYear = targetYear
         previousScreen = currentScreen
         currentScreen = Screen.MonthlyRecap
     }
@@ -1986,6 +1773,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         isYearlyRecap = true
         recapTitle = "This $targetYear"
         recapPhotos = getPhotosForPeriod(month = null, year = targetYear)
+        recapYear = targetYear
         previousScreen = currentScreen
         currentScreen = Screen.YearlyRecap
     }
@@ -1995,15 +1783,16 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         val dayOfMonth = now.get(Calendar.DAY_OF_MONTH)
         val dayOfYear = now.get(Calendar.DAY_OF_YEAR)
         val currentYear = now.get(Calendar.YEAR)
-        val currentMonth = now.get(Calendar.MONTH)
 
         if (dayOfYear == 1) {
-            val lastSeenYearly = prefs.getInt("last_seen_yearly_recap_year", -1)
             val targetYear = currentYear - 1
-            if (lastSeenYearly != targetYear) {
+            if (lastSeenYearlyRecapYear != targetYear) {
                 val yearlyPhotos = getPhotosForPeriod(month = null, year = targetYear)
                 if (yearlyPhotos.isNotEmpty()) {
-                    prefs.edit().putInt("last_seen_yearly_recap_year", targetYear).apply()
+                    lastSeenYearlyRecapYear = targetYear
+                    viewModelScope.launch {
+                        userPreferencesRepository.updateLastSeenYearlyRecapYear(targetYear)
+                    }
                     triggerYearlyRecap(targetYear)
                 }
             }
@@ -2012,11 +1801,13 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             val targetMonth = prevCal.get(Calendar.MONTH)
             val targetYear = prevCal.get(Calendar.YEAR)
             val recapKey = "${targetYear}_${targetMonth}"
-            val lastSeenKey = prefs.getString("last_seen_monthly_recap_period", "")
-            if (lastSeenKey != recapKey) {
+            if (lastSeenMonthlyRecapPeriod != recapKey) {
                 val monthlyPhotos = getPhotosForPeriod(month = targetMonth, year = targetYear)
                 if (monthlyPhotos.isNotEmpty()) {
-                    prefs.edit().putString("last_seen_monthly_recap_period", recapKey).apply()
+                    lastSeenMonthlyRecapPeriod = recapKey
+                    viewModelScope.launch {
+                        userPreferencesRepository.updateLastSeenMonthlyRecapPeriod(recapKey)
+                    }
                     triggerMonthlyRecap(targetMonth, targetYear)
                 }
             }
@@ -2059,10 +1850,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         previousScreen = currentScreen
         currentScreen = Screen.Stats
         activePhotoId = null
-    }
-
-    fun navigateCollections(focusCreate: Boolean = false) {
-        navigateEmojiPicker(null)
     }
 
 
@@ -2126,15 +1913,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
         // Immediately cancel the posted notification and clear its posted state
         MemoryWorker.cancelPostedNotification(getApplication(), id)
-
-        scheduleMemoryNotification(
-            photoId = id,
-            delay = VIEWED_MEMORY_RESET_MS,
-            delayUnit = TimeUnit.MILLISECONDS,
-            notificationType = MemoryWorker.TYPE_RESURFACED,
-            policy = androidx.work.ExistingWorkPolicy.REPLACE,
-            resetPostedState = false
-        )
     }
 
     val activePhoto: Photo? get() = photos.find { it.id == activePhotoId }
@@ -2143,81 +1921,96 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         MemoryManager.getCuratedMemories(photos)
     }
 
+    val historyMemories: List<Photo> by derivedStateOf {
+        MemoryManager.getHistoryMemories(photos)
+    }
+
     val hasUnviewedMemories: Boolean by derivedStateOf {
         MemoryManager.hasUnviewedMemories(curatedMemories)
     }
     
     val filteredPhotos: List<Photo> by derivedStateOf {
-        val query = searchQuery.trim()
-        val queryParts = if (query.contains(",")) {
-            query.split(",").map { it.trim() }.filter { it.isNotBlank() }
-        } else if (query.isNotBlank()) {
-            listOf(query)
-        } else {
-            emptyList()
-        }
+        val parsed = parsedSearchQuery
+        val textTokens = parsed.textTokens
+        val directives = parsed.directives
+        val hasSearchCriteria = textTokens.isNotEmpty() || directives.isNotEmpty()
 
-        val baseList = if (queryParts.isEmpty() && selectedFilterSnippets.isEmpty()) photos
-        else photos.filter { photo ->
-            var dateObj: java.util.Date? = null
-            var dayName: String? = null
-            var monthName: String? = null
-            var yearName: String? = null
-            var weekName: String? = null
-            var fullDate: String? = null
-            
-            // All query parts must match (AND logic)
-            val matchesQuery = queryParts.isNotEmpty() && queryParts.all { part ->
-                val isNegationQuery = part.startsWith("not ", ignoreCase = true) || part.equals("not", ignoreCase = true)
-                
-                photo.snippets.any { s ->
-                    val index = s.indexOf(part, ignoreCase = true)
-                    if (index == -1) return@any false
-                    
-                    // SMART: If we matched "sweet" inside "not sweet", and we didn't search for "not", skip it
-                    val isPrecededByNot = s.startsWith("not ", ignoreCase = true) && !isNegationQuery
-                    !isPrecededByNot
-                } ||
-                photo.collections.any { it.contains(part, ignoreCase = true) } ||
-                (photo.name?.contains(part, ignoreCase = true) == true) ||
-                run {
-                    if (dateObj == null) {
-                        dateObj = java.util.Date(photo.date)
-                        dayName = dayOfWeekFormat.format(dateObj)
-                        monthName = monthDateFormat.format(dateObj)
-                        yearName = yearDateFormat.format(dateObj)
-                        weekName = weekDateFormat.format(dateObj)
-                        fullDate = groupDateFormat.format(dateObj)
+        val baseList = if (!hasSearchCriteria && selectedFilterSnippets.isEmpty()) {
+            photos
+        } else {
+            photos.filter { photo ->
+                var dateObj: java.util.Date? = null
+                var dayName: String? = null
+                var monthName: String? = null
+                var yearName: String? = null
+                var weekName: String? = null
+                var fullDate: String? = null
+
+                // 1. Text criteria: All textTokens must match (AND logic)
+                val matchesText = textTokens.isEmpty() || textTokens.all { part ->
+                    val isNegationQuery = part.startsWith("not ", ignoreCase = true) || part.equals("not", ignoreCase = true)
+
+                    photo.snippets.any { s ->
+                        val index = s.indexOf(part, ignoreCase = true)
+                        if (index == -1) return@any false
+
+                        // SMART: If we matched "sweet" inside "not sweet", and we didn't search for "not", skip it
+                        val isPrecededByNot = s.startsWith("not ", ignoreCase = true) && !isNegationQuery
+                        !isPrecededByNot
+                    } ||
+                    photo.collections.any { it.contains(part, ignoreCase = true) } ||
+                    (photo.name?.contains(part, ignoreCase = true) == true) ||
+                    run {
+                        if (dateObj == null) {
+                            dateObj = java.util.Date(photo.date)
+                            dayName = dayOfWeekFormat.format(dateObj)
+                            monthName = monthDateFormat.format(dateObj)
+                            yearName = yearDateFormat.format(dateObj)
+                            weekName = weekDateFormat.format(dateObj)
+                            fullDate = groupDateFormat.format(dateObj)
+                        }
+                        dayName!!.contains(part, ignoreCase = true) ||
+                        monthName!!.contains(part, ignoreCase = true) ||
+                        yearName!!.contains(part, ignoreCase = true) ||
+                        weekName!!.contains(part, ignoreCase = true) ||
+                        fullDate!!.contains(part, ignoreCase = true)
                     }
-                    dayName!!.contains(part, ignoreCase = true) ||
-                    monthName!!.contains(part, ignoreCase = true) ||
-                    yearName!!.contains(part, ignoreCase = true) ||
-                    weekName!!.contains(part, ignoreCase = true) ||
-                    fullDate!!.contains(part, ignoreCase = true)
+                }
+
+                // 2. Directives criteria: All directives must match (AND logic)
+                val matchesDirectives = directives.all { directive ->
+                    when (directive) {
+                        is SearchDirective.Old, is SearchDirective.New -> true
+                        is SearchDirective.MostSnippets, is SearchDirective.LeastSnippets, is SearchDirective.Snippets -> photo.snippets.isNotEmpty()
+                        is SearchDirective.MostStars, is SearchDirective.LeastStars, is SearchDirective.Stars -> photo.rating > 0
+                        is SearchDirective.StarRating -> photo.rating == directive.rating
+                    }
+                }
+
+                val matchesSearch = hasSearchCriteria && matchesText && matchesDirectives
+
+                val matchesChips = selectedFilterSnippets.isNotEmpty() && selectedFilterSnippets.any { chip ->
+                    photo.snippets.any { it.equals(chip, ignoreCase = true) }
+                }
+
+                if (hasSearchCriteria && selectedFilterSnippets.isNotEmpty()) {
+                    matchesSearch || matchesChips // Union of search and filters
+                } else if (hasSearchCriteria) {
+                    matchesSearch
+                } else {
+                    matchesChips
                 }
             }
-
-            val matchesChips = selectedFilterSnippets.isNotEmpty() && selectedFilterSnippets.any { chip ->
-                photo.snippets.any { it.equals(chip, ignoreCase = true) }
-            }
-
-            if (queryParts.isNotEmpty() && selectedFilterSnippets.isNotEmpty()) {
-                matchesQuery || matchesChips // Union of search and filters
-            } else if (queryParts.isNotEmpty()) {
-                matchesQuery
-            } else {
-                matchesChips
-            }
         }
-        
+
         // Smart grouping: Auto-switch searchDisplayMode based on the FIRST matching date-part
-        if (queryParts.isNotEmpty()) {
+        if (textTokens.isNotEmpty()) {
             val months = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
-            
-            queryParts.forEach { part ->
+
+            textTokens.forEach { part ->
                 val isMonth = months.any { it.startsWith(part, ignoreCase = true) }
                 val isWeek = part.startsWith("Week", ignoreCase = true)
-                
+
                 if (isMonth || isWeek) {
                     searchDisplayMode = when {
                         isMonth -> DisplayMode.Month
@@ -2228,15 +2021,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
                 }
             }
         }
-        
-        when (photoSortType) {
-            PhotoSortType.DateNewest -> baseList.sortedByDescending { it.date }
-            PhotoSortType.DateOldest -> baseList.sortedBy { it.date }
-            PhotoSortType.MostSnippets -> baseList.sortedWith(compareByDescending<Photo> { it.snippets.size }.thenByDescending { it.date })
-            PhotoSortType.LeastSnippets -> baseList.sortedWith(compareBy<Photo> { it.snippets.size }.thenByDescending { it.date })
-            PhotoSortType.MostStarred -> baseList.sortedWith(compareByDescending<Photo> { it.rating }.thenByDescending { it.date })
-            PhotoSortType.LeastStarred -> baseList.sortedWith(compareBy<Photo> { it.rating }.thenByDescending { it.date })
-        }
+
+        val effectiveSort = currentSearchSortType ?: photoSortType
+        sortPhotos(baseList, effectiveSort)
     }
 
     private val groupDateFormat = java.text.SimpleDateFormat("EEE, d MMM", Locale.getDefault())
@@ -2311,17 +2098,9 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         groupPhotosByDate(photos)
     }
 
-    fun containsEmoji(s: String): Boolean {
-        var i = 0
-        while (i < s.length) {
-            val cp = s.codePointAt(i)
-            if (cp in 0x1F300..0x1F9FF || cp in 0x1F600..0x1F64F || cp in 0x1F680..0x1F6FF || cp in 0x1F1E6..0x1F1FF) return true
-            i += Character.charCount(cp)
-        }
-        return false
-    }
+        fun containsEmoji(s: String): Boolean = SnippetStyleHelper.containsEmoji(s)
 
-    fun containsEmoticon(s: String): Boolean = EMOTICONS_LIST.any { s.contains(it) }
+    fun containsEmoticon(s: String): Boolean = SnippetStyleHelper.containsEmoticon(s)
 
     val favoritesUniqueSnippets: List<String> by derivedStateOf {
         val set = LinkedHashSet<String>()
@@ -2336,18 +2115,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         set.toList()
     }
 
-    fun getCollectionUniqueSnippets(collection: String): List<String> {
-        val set = LinkedHashSet<String>()
-        val pList = photos
-        for (i in pList.indices) {
-            val p = pList[i]
-            if (p.collections.contains(collection)) {
-                val snips = p.snippets
-                for (j in snips.indices) set.add(snips[j])
-            }
-        }
-        return set.toList()
-    }
 
     val allUniqueSnippets: List<String> by derivedStateOf {
         val baseSnippets = LinkedHashSet<String>()
@@ -2358,17 +2125,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
 
         val filtered = when (snippetSortType) {
-            SnippetSortType.Favorites -> {
-                val favSnippets = HashSet<String>()
-                for (i in pList.indices) {
-                    val p = pList[i]
-                    if (p.isFavorite) {
-                        val snips = p.snippets
-                        for (j in snips.indices) favSnippets.add(snips[j])
-                    }
-                }
-                baseSnippets.filter { it in favSnippets }
-            }
             SnippetSortType.Emoji -> baseSnippets.filter { containsEmoji(it) }
             SnippetSortType.Emoticons -> baseSnippets.filter { containsEmoticon(it) }
             else -> baseSnippets.toList()
@@ -2377,11 +2133,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         when (snippetSortType) {
             SnippetSortType.New -> filtered.sortedByDescending { snippetFirstSeenTimes[it] ?: 0L }
             SnippetSortType.Old -> filtered.sortedBy { snippetFirstSeenTimes[it] ?: 0L }
-            SnippetSortType.Month, SnippetSortType.Year -> if (isSortAscending) filtered.sortedBy { snippetFirstSeenTimes[it] ?: 0L } 
-                                                           else filtered.sortedByDescending { snippetFirstSeenTimes[it] ?: 0L }
-            SnippetSortType.AZ -> if (isSortAscending) filtered.sortedWith(String.CASE_INSENSITIVE_ORDER) 
-                                 else filtered.sortedWith(String.CASE_INSENSITIVE_ORDER.reversed())
-            SnippetSortType.Emoji, SnippetSortType.Emoticons, SnippetSortType.Favorites -> filtered.sorted()
+            SnippetSortType.AZ -> filtered.sortedWith(String.CASE_INSENSITIVE_ORDER)
+            SnippetSortType.Emoji, SnippetSortType.Emoticons -> filtered.sorted()
         }
     }
 
@@ -2477,7 +2230,7 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     val filteredFavoritesPhotos: Map<String, List<Photo>> by derivedStateOf {
         val source = filteredPhotos.filter { it.isFavorite }
         // Favorites uses Library defaults (as per "leave favorites out" preference)
-        groupPhotosByDate(source, _displayMode.value, _photoSortType.value)
+        groupPhotosByDate(source, _displayMode.value, getPhotoSortTypeFor("Favorites"))
     }
 
     fun getPureSnippets(photo: Photo): List<String> {
@@ -2508,10 +2261,6 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun getSnippetColor(name: String): Int? {
-        return null
-    }
-
     fun getSnippetFirstSeenTime(name: String): Long? {
         return snippetFirstSeenTimes[name.trim()]
     }
@@ -2525,8 +2274,8 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     private fun saveSnippetFirstSeenTimes() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val json = gson.toJson(snippetFirstSeenTimes)
-                snippetFirstSeenFile.writeText(json)
+                val jsonStr = json.encodeToString(snippetFirstSeenTimes)
+                userPreferencesRepository.updateSnippetFirstSeenJson(jsonStr)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -2536,123 +2285,18 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
 
 
 
-
-    fun generateBackupJson(): String {
-        val prettyGson = com.google.gson.GsonBuilder().setPrettyPrinting().create()
-        val backupJsonObj = com.google.gson.JsonObject().apply {
-            addProperty("version", 2)
-            addProperty("exportedAt", System.currentTimeMillis())
-
-            fun addJsonFileOrMemory(key: String, file: File, fallbackObject: Any) {
-                if (file.exists()) {
-                    try {
-                        val elem = gson.fromJson(file.readText(), com.google.gson.JsonElement::class.java)
-                        add(key, elem)
-                    } catch (e: Exception) {
-                        add(key, gson.toJsonTree(fallbackObject))
-                    }
-                } else {
-                    add(key, gson.toJsonTree(fallbackObject))
-                }
-            }
-
-            addJsonFileOrMemory("photos", photosFile, photos)
-            addJsonFileOrMemory("collections", collectionsFile, userCollections)
-            addJsonFileOrMemory("collectionIcons", collectionIconsFile, collectionIcons)
-            addJsonFileOrMemory("snippetFirstSeenTimes", snippetFirstSeenFile, snippetFirstSeenTimes)
-
-            val prefsObj = com.google.gson.JsonObject().apply {
-                prefs.all.toSortedMap().forEach { (key, value) ->
-                    when (value) {
-                        is Boolean -> addProperty(key, value)
-                        is Number -> addProperty(key, value)
-                        is String -> addProperty(key, value)
-                        is Set<*> -> {
-                            val arr = com.google.gson.JsonArray()
-                            value.filterIsInstance<String>().sorted().forEach { item -> arr.add(item) }
-                            add(key, arr)
-                        }
-                    }
-                }
-            }
-            add("settings", prefsObj)
-        }
-        return prettyGson.toJson(backupJsonObj)
-    }
-
-    fun restoreFromJsonString(jsonString: String) {
-        val rootElement = gson.fromJson(jsonString, com.google.gson.JsonElement::class.java)
-        if (rootElement.isJsonObject) {
-            val rootObj = rootElement.asJsonObject
-
-            if (rootObj.has("photos")) {
-                val photosElem = rootObj.get("photos")
-                photosFile.writeText(gson.toJson(photosElem))
-            }
-
-            if (rootObj.has("collections")) {
-                val collElem = rootObj.get("collections")
-                collectionsFile.writeText(gson.toJson(collElem))
-            }
-
-            if (rootObj.has("collectionIcons")) {
-                val iconsElem = rootObj.get("collectionIcons")
-                collectionIconsFile.writeText(gson.toJson(iconsElem))
-            }
-
-            try {
-                if (snippetColorsFile.exists()) snippetColorsFile.delete()
-                if (snippetStylesFile.exists()) snippetStylesFile.delete()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            if (rootObj.has("snippetFirstSeenTimes")) {
-                val firstSeenElem = rootObj.get("snippetFirstSeenTimes")
-                snippetFirstSeenFile.writeText(gson.toJson(firstSeenElem))
-            }
-
-            if (rootObj.has("settings") && rootObj.get("settings").isJsonObject) {
-                val settingsObj = rootObj.getAsJsonObject("settings")
-                val editor = prefs.edit()
-                settingsObj.entrySet().forEach { (key, elem) ->
-                    if (elem.isJsonPrimitive) {
-                        val prim = elem.asJsonPrimitive
-                        if (prim.isBoolean) {
-                            editor.putBoolean(key, prim.asBoolean)
-                        } else if (prim.isNumber) {
-                            val numStr = prim.asString
-                            if (numStr.contains(".")) {
-                                editor.putFloat(key, prim.asFloat)
-                            } else {
-                                try {
-                                    editor.putInt(key, prim.asInt)
-                                } catch (e: Exception) {
-                                    editor.putLong(key, prim.asLong)
-                                }
-                            }
-                        } else if (prim.isString) {
-                            editor.putString(key, prim.asString)
-                        }
-                    } else if (elem.isJsonArray) {
-                        val set = elem.asJsonArray.mapNotNull { if (it.isJsonPrimitive && it.asJsonPrimitive.isString) it.asString else null }.toSet()
-                        editor.putStringSet(key, set)
-                    }
-                }
-                editor.apply()
-            }
-        } else if (rootElement.isJsonArray) {
-            photosFile.writeText(jsonString)
-        }
-    }
 
     fun exportBackupToFile(context: Context, uri: Uri) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    val jsonString = generateBackupJson()
-                    outputStream.write(jsonString.toByteArray(Charsets.UTF_8))
-                }
+                backupManager.exportBackup(
+                    context = context,
+                    uri = uri,
+                    photos = photos,
+                    userCollections = userCollections,
+                    collectionIcons = collectionIcons,
+                    snippetFirstSeenTimes = snippetFirstSeenTimes
+                )
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(context, "Backup file exported successfully!", Toast.LENGTH_LONG).show()
                 }
@@ -2668,59 +2312,10 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
     fun importBackupFromFile(context: Context, uri: Uri) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                    ?: throw java.io.IOException("Unable to open input stream")
-
-                var isZip = false
-                try {
-                    java.util.zip.ZipInputStream(bytes.inputStream()).use { zipIn ->
-                        val entry = zipIn.nextEntry
-                        if (entry != null) {
-                            isZip = true
-                            var currEntry: java.util.zip.ZipEntry? = entry
-                            while (currEntry != null) {
-                                val name = currEntry.name
-                                if (name.startsWith("photos/")) {
-                                    val photosDir = File(context.filesDir, "photos")
-                                    if (!photosDir.exists()) photosDir.mkdirs()
-                                    val photoName = name.substringAfter("photos/")
-                                    if (photoName.isNotEmpty()) {
-                                        val photoFile = File(photosDir, photoName)
-                                        FileOutputStream(photoFile).use { output -> zipIn.copyTo(output) }
-                                    }
-                                } else if (name.startsWith("shared_prefs/")) {
-                                    val sharedPrefsDir = File(context.dataDir, "shared_prefs")
-                                    if (!sharedPrefsDir.exists()) sharedPrefsDir.mkdirs()
-                                    val prefsName = name.substringAfter("shared_prefs/")
-                                    if (prefsName.isNotEmpty()) {
-                                        val prefsFile = File(sharedPrefsDir, prefsName)
-                                        FileOutputStream(prefsFile).use { output -> zipIn.copyTo(output) }
-                                    }
-                                } else {
-                                    val file = File(context.filesDir, name)
-                                    FileOutputStream(file).use { output -> zipIn.copyTo(output) }
-                                }
-                                zipIn.closeEntry()
-                                currEntry = zipIn.nextEntry
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    isZip = false
-                }
-
-                if (!isZip) {
-                    val jsonString = String(bytes, Charsets.UTF_8)
-                    restoreFromJsonString(jsonString)
-                }
-
+                backupManager.importBackup(context, uri)
                 // Force reload all settings and data
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    loadFilterState()
-                    loadSettingsState()
                     loadAllData()
-                    pinnedCollections = prefs.getStringSet("pinned_collections", emptySet()) ?: emptySet()
-                    
                     Toast.makeText(context, "Backup file imported successfully!", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
@@ -2731,10 +2326,11 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
-
     fun updateAutoBackupSchedule(schedule: String) {
         autoBackupSchedule = schedule
-        prefs.edit().putString("auto_backup_schedule", schedule).apply()
+        viewModelScope.launch {
+            userPreferencesRepository.updateAutoBackupSchedule(schedule)
+        }
         scheduleAutoBackup()
     }
 
@@ -2763,29 +2359,4 @@ class SnippetsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun getLatestAutoBackupFile(): java.io.File? {
-        val backupDir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "SnippetsBackups")
-        if (!backupDir.exists() || !backupDir.isDirectory) return null
-        
-        val files = backupDir.listFiles { _, name ->
-            name.startsWith("snippets_backup_auto_") && (name.endsWith(".json") || name.endsWith(".zip"))
-        } ?: return null
-        
-        return files.maxByOrNull { it.lastModified() }
-    }
-
-    fun hasLatestAutoBackup(): Boolean {
-        val file = getLatestAutoBackupFile()
-        return file != null && file.exists()
-    }
-
-    fun restoreLatestAutoBackup(context: Context) {
-        val latestFile = getLatestAutoBackupFile()
-        if (latestFile == null || !latestFile.exists()) {
-            Toast.makeText(context, "No auto backup file found in Downloads/SnippetsBackups/", Toast.LENGTH_LONG).show()
-            return
-        }
-        
-        importBackupFromFile(context, Uri.fromFile(latestFile))
-    }
 }
