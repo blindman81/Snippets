@@ -26,6 +26,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.ln.android.snippets.R
 import com.android.snippets.viewmodel.SnippetsViewModel
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeProgressive
@@ -86,8 +89,8 @@ fun LibraryNavBar(
     tabPositions: MutableMap<String, Float>,
     tabWidths: MutableMap<String, Float>,
     statusBarTop: Dp,
-    cookieNavBarOffset: Dp,
-    cookieNavBarAlpha: Float,
+    cookieNavBarOffset: Dp = 0.dp,
+    cookieNavBarAlpha: Float = 1f,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -100,21 +103,25 @@ fun LibraryNavBar(
             .graphicsLayer {
                 translationY = cookieNavBarOffset.toPx()
                 alpha = cookieNavBarAlpha
+                clip = false
             },
         contentAlignment = Alignment.CenterStart
     ) {
         Row(
             modifier = Modifier
-                .wrapContentWidth()
+                .fillMaxWidth()
                 .horizontalScroll(tabRowScrollState)
-                .padding(horizontal = 16.dp),
+                .graphicsLayer { clip = false }
+                .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val cookieNavBarItems = remember(allTabs, activeTabTarget) {
+            val libraryFilled = ImageVector.vectorResource(R.drawable.ic_collections_bookmark_filled)
+            val libraryOutlined = ImageVector.vectorResource(R.drawable.ic_collections_bookmark_outlined)
+            val cookieNavBarItems = remember(allTabs, activeTabTarget, libraryFilled, libraryOutlined) {
                 allTabs.mapIndexed { _, tabName ->
                     val iconOrEmoji = when (tabName) {
-                        "Library" -> CollectionsBookmarkIcon(filled = tabName == activeTabTarget)
+                        "Library" -> if (tabName == activeTabTarget) libraryFilled else libraryOutlined
                         "Favorites" -> Icons.Rounded.Favorite
                         else -> viewModel.getCollectionIcon(tabName)
                     }
@@ -161,7 +168,7 @@ fun LibraryNavBar(
 
             val selectedTabIndex = allTabs.indexOf(activeTabTarget).coerceAtLeast(0)
 
-            CookieButtonGroup(
+            CookieNavBar(
                 selectedIndex = selectedTabIndex,
                 onSelect = selectTab@{ index ->
                     val tabName = allTabs.getOrNull(index) ?: return@selectTab
@@ -169,6 +176,9 @@ fun LibraryNavBar(
                     if (pageIndex != -1) {
                         if (tabName == currentTab) {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            scope.launch {
+                                viewModel.carouselLazyListState.animateScrollToItem(0)
+                            }
                         } else {
                             scope.launch {
                                 val current = pagerState.currentPage
@@ -187,8 +197,11 @@ fun LibraryNavBar(
                 selectedContentColor = MaterialTheme.colorScheme.onPrimary,
                 unselectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                 unselectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                isOnBlurredSurface = true,
                 enableWiggle = true
             )
+
+            Spacer(modifier = Modifier.width(16.dp))
         }
     }
 }

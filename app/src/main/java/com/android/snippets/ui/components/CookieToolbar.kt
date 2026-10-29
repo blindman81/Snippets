@@ -24,21 +24,119 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.snippets.model.Photo
+import com.android.snippets.ui.util.LocalTiltActive
+import com.android.snippets.ui.util.LocalTiltModalFocus
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.ln.android.snippets.R
 
+@Composable
+fun SelectionToolbarContent(
+    viewModel: SnippetsViewModel,
+    onDeleteClick: () -> Unit,
+    isSpinning: Boolean = true,
+    isScrolled: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val view = LocalView.current
+    val context = LocalContext.current
+
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        AnimatedCookieButton(
+            onClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                viewModel.clearSelection()
+            },
+            icon = Icons.Rounded.Close,
+            contentDescription = "Clear Selection",
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            size = 44.dp,
+            isSpinning = isSpinning
+        )
+
+        val textToShow = when {
+            viewModel.pendingCollectionAssignment != null -> "Add photos"
+            viewModel.pendingCollectionRemoval != null -> "Remove photos"
+            else -> ""
+        }
+        if (textToShow.isNotEmpty()) {
+            Text(
+                text = textToShow,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        } else {
+            AnimatedCookieButton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    viewModel.shareSelectedPhotos(context)
+                },
+                icon = R.drawable.ic_share,
+                contentDescription = "Share Selection",
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                size = 44.dp,
+                isSpinning = isSpinning
+            )
+        }
+
+        if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null) {
+            AnimatedCookieButton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    if (viewModel.pendingCollectionAssignment != null) {
+                        viewModel.confirmCollectionAssignment()
+                    } else if (viewModel.pendingCollectionRemoval != null) {
+                        viewModel.confirmCollectionRemoval()
+                    }
+                },
+                icon = Icons.Rounded.Check,
+                contentDescription = "Confirm",
+                isSelected = true,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                size = 44.dp,
+                isSpinning = isSpinning
+            )
+        } else {
+            AnimatedCookieButton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                    onDeleteClick()
+                },
+                icon = R.drawable.ic_delete,
+                contentDescription = "Delete",
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                size = 44.dp,
+                isSpinning = isSpinning
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun LibraryToolbar(
+fun CookieToolbar(
     viewModel: SnippetsViewModel,
     currentTab: String,
     flatPhotosRaw: List<Photo>,
@@ -49,9 +147,11 @@ fun LibraryToolbar(
     isAnyPopupActive: Boolean,
     cookieToolbarOffset: Dp,
     cookieToolbarScale: Float,
+    isMenuOpen: Boolean = false,
+    isManageOpen: Boolean = false,
+    isFilterOpen: Boolean = false,
     onMenuClick: () -> Unit,
     onManageClick: () -> Unit,
-    onHistoryClick: () -> Unit,
     onFilterClick: () -> Unit,
     onBulkDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -59,25 +159,29 @@ fun LibraryToolbar(
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
 
-    BlurredSurface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shadowElevation = 8.dp,
-        tonalElevation = 0.dp,
-        modifier = modifier
-            .safeDrawingPadding()
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            .widthIn(max = 500.dp)
-            .fillMaxWidth()
-            .height(84.dp)
-            .graphicsLayer {
-                translationY = cookieToolbarOffset.toPx()
-                scaleX = cookieToolbarScale
-                scaleY = cookieToolbarScale
-                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
-            }
+    CompositionLocalProvider(
+        LocalTiltActive provides true,
+        LocalTiltModalFocus provides true
     ) {
+        BlurredSurface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shadowElevation = 8.dp,
+            tonalElevation = 0.dp,
+            modifier = modifier
+                .safeDrawingPadding()
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                .widthIn(max = 320.dp)
+                .fillMaxWidth()
+                .height(84.dp)
+                .graphicsLayer {
+                    translationY = cookieToolbarOffset.toPx()
+                    scaleX = cookieToolbarScale
+                    scaleY = cookieToolbarScale
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+                }
+        ) {
         val motionScheme = MaterialTheme.motionScheme
         AnimatedContent(
             targetState = when {
@@ -161,7 +265,7 @@ fun LibraryToolbar(
                             Box(contentAlignment = Alignment.CenterStart) {
                                 if (viewModel.searchQuery.isEmpty()) {
                                     Text(
-                                        text = "Search...",
+                                        text = "Search",
                                         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -193,7 +297,7 @@ fun LibraryToolbar(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -204,11 +308,10 @@ fun LibraryToolbar(
                             onMenuClick()
                         },
                         icon = Icons.Rounded.Menu,
-                        contentDescription = "Menu",
-                        isSpinning = !isAnyPopupActive,
-                        size = 48.dp,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        closeIcon = Icons.Rounded.Close,
+                        isOpen = isMenuOpen,
+                        contentDescription = if (isMenuOpen) "Close Menu" else "Menu",
+                        size = 48.dp
                     )
 
                     // Search
@@ -219,7 +322,7 @@ fun LibraryToolbar(
                             "Favorites" -> photo.isFavorite
                             else -> photo.collections.contains(currentTab)
                         }
-                    }) SearchSuccessIcon() else Icons.Rounded.Search
+                    }) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
                     AnimatedCookieButton(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -227,6 +330,7 @@ fun LibraryToolbar(
                         },
                         icon = searchIcon,
                         contentDescription = "Search",
+                        isSelected = isSearchActive,
                         isSpinning = !isAnyPopupActive,
                         size = 48.dp,
                         containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
@@ -239,58 +343,32 @@ fun LibraryToolbar(
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             onManageClick()
                         },
-                        icon = ImageVector.vectorResource(id = R.drawable.ic_folder_managed),
-                        contentDescription = "Manage",
-                        isSpinning = !isAnyPopupActive,
-                        size = 48.dp,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-
-                    // History
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onHistoryClick()
-                        },
-                        icon = Icons.Rounded.History,
-                        contentDescription = "History",
-                        isSpinning = !isAnyPopupActive,
-                        size = 48.dp,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        badge = {
-                            // Unviewed-memories indicator dot
-                            if (viewModel.hasUnviewedMemories) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .offset(x = (-4).dp, y = 4.dp)
-                                        .size(8.dp)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.tertiary,
-                                            shape = CircleShape
-                                        )
-                                )
-                            }
-                        }
+                        icon = R.drawable.ic_folder_managed,
+                        closeIcon = Icons.Rounded.Close,
+                        isOpen = isManageOpen,
+                        contentDescription = if (isManageOpen) "Close Manage" else "Manage",
+                        size = 48.dp
                     )
 
                     // Filters
+                    val hasFilterSnippets = viewModel.selectedFilterSnippets.isNotEmpty()
+                    val isFilterHighlighted = isFilterOpen || hasFilterSnippets
+                    val filterContentDescription = if (isFilterOpen) "Close Filters" else "Filters"
                     AnimatedCookieButton(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             onFilterClick()
                         },
                         icon = Icons.Rounded.FilterList,
-                        contentDescription = "Filters",
-                        isSpinning = !isAnyPopupActive,
-                        size = 48.dp,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        closeIcon = Icons.Rounded.Close,
+                        isOpen = isFilterOpen,
+                        isSelected = isFilterHighlighted,
+                        contentDescription = filterContentDescription,
+                        size = 48.dp
                     )
                 }
             }
         }
     }
+}
 }

@@ -31,6 +31,29 @@ import com.android.snippets.ui.shapes.CookieShape
 import com.android.snippets.ui.shapes.MorphSequenceShape
 import com.android.snippets.ui.util.Motion
 
+@Composable
+private fun RenderIcon(
+    icon: Any,
+    modifier: Modifier,
+    tint: Color,
+    contentDescription: String?
+) {
+    when (icon) {
+        is ImageVector -> Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = modifier,
+            tint = tint
+        )
+        is Int -> Icon(
+            painter = androidx.compose.ui.res.painterResource(id = icon),
+            contentDescription = contentDescription,
+            modifier = modifier,
+            tint = tint
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnimatedCookieButton(
@@ -39,8 +62,9 @@ fun AnimatedCookieButton(
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
     tooltip: String? = null,
-    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
-    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    isSelected: Boolean? = null,
+    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
     size: androidx.compose.ui.unit.Dp = 56.dp,
     shape: androidx.compose.ui.graphics.Shape = CookieShape,
     isSpinning: Boolean = true,
@@ -51,7 +75,9 @@ fun AnimatedCookieButton(
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
-    holdScale: Float = 1.45f
+    holdScale: Float = 1.45f,
+    closeIcon: Any? = null,
+    isOpen: Boolean = false
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -65,6 +91,7 @@ fun AnimatedCookieButton(
         },
         modifier = modifier,
         tooltip = tooltip,
+        isSelected = isSelected,
         containerColor = containerColor,
         contentColor = contentColor,
         size = size,
@@ -77,7 +104,9 @@ fun AnimatedCookieButton(
         isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
         badge = badge,
-        holdScale = holdScale
+        holdScale = holdScale,
+        closeIcon = closeIcon,
+        isOpen = isOpen
     )
 }
 
@@ -89,8 +118,9 @@ fun AnimatedCookieButton(
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
     tooltip: String? = null,
-    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
-    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    isSelected: Boolean? = null,
+    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
     size: androidx.compose.ui.unit.Dp = 56.dp,
     shape: androidx.compose.ui.graphics.Shape = CookieShape,
     isSpinning: Boolean = true,
@@ -101,7 +131,9 @@ fun AnimatedCookieButton(
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
-    holdScale: Float = 1.45f
+    holdScale: Float = 1.45f,
+    closeIcon: Any? = null,
+    isOpen: Boolean = false
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -115,6 +147,7 @@ fun AnimatedCookieButton(
         },
         modifier = modifier,
         tooltip = tooltip,
+        isSelected = isSelected,
         containerColor = containerColor,
         contentColor = contentColor,
         size = size,
@@ -127,7 +160,9 @@ fun AnimatedCookieButton(
         isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
         badge = badge,
-        holdScale = holdScale
+        holdScale = holdScale,
+        closeIcon = closeIcon,
+        isOpen = isOpen
     )
 }
 
@@ -138,8 +173,9 @@ fun AnimatedCookieButton(
     iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
     modifier: Modifier = Modifier,
     tooltip: String? = null,
-    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
-    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    isSelected: Boolean? = null,
+    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
     size: androidx.compose.ui.unit.Dp = 56.dp,
     shape: androidx.compose.ui.graphics.Shape = CookieShape,
     isSpinning: Boolean = true,
@@ -150,13 +186,16 @@ fun AnimatedCookieButton(
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
-    holdScale: Float = 1.45f
+    holdScale: Float = 1.45f,
+    closeIcon: Any? = null,
+    isOpen: Boolean = false
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
         iconContent = iconContent,
         modifier = modifier,
         tooltip = tooltip,
+        isSelected = isSelected,
         containerColor = containerColor,
         contentColor = contentColor,
         size = size,
@@ -169,7 +208,9 @@ fun AnimatedCookieButton(
         isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
         badge = badge,
-        holdScale = holdScale
+        holdScale = holdScale,
+        closeIcon = closeIcon,
+        isOpen = isOpen
     )
 }
 
@@ -180,6 +221,7 @@ private fun AnimatedCookieButtonImpl(
     iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
     modifier: Modifier = Modifier,
     tooltip: String? = null,
+    isSelected: Boolean? = null,
     containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     size: androidx.compose.ui.unit.Dp = 56.dp,
@@ -192,7 +234,9 @@ private fun AnimatedCookieButtonImpl(
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
-    holdScale: Float = 1.45f
+    holdScale: Float = 1.45f,
+    closeIcon: Any? = null,
+    isOpen: Boolean = false
 ) {
     val view = LocalView.current
     var isHoldMorphing by remember { mutableStateOf(false) }
@@ -210,11 +254,23 @@ private fun AnimatedCookieButtonImpl(
     val settleRotation = remember { Animatable(0f) }
     var isSettling by remember { mutableStateOf(false) }
 
-    val isCallerPrimary = containerColor == MaterialTheme.colorScheme.primary
-    val isActive = (isHolding && !isHoldCompleted) || isTapped
+    val openProgress by animateFloatAsState(
+        targetValue = if (isOpen) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "cookie_button_open_progress"
+    )
+
+    val isCallerPrimary = if (isSelected != null) {
+        isSelected
+    } else if (closeIcon != null && isOpen) {
+        true
+    } else {
+        containerColor == MaterialTheme.colorScheme.primary
+    }
+    val isActive = (isHolding && !isHoldCompleted) || (isTapped && !isCallerPrimary)
     val isPrimary = isActive || isCallerPrimary
 
-    val targetContainer = if (isActive) MaterialTheme.colorScheme.primary else containerColor
+    val targetContainer = if (isPrimary) MaterialTheme.colorScheme.primary else containerColor
     val targetContent = if (isPrimary) MaterialTheme.colorScheme.onPrimary else contentColor
 
     val animatedContainerColor by animateColorAsState(
@@ -234,7 +290,7 @@ private fun AnimatedCookieButtonImpl(
         label = "cookie_button_primary_alpha"
     )
 
-    val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = enableTilt && enabled && isPrimary)
+    val tiltAngle = com.android.snippets.ui.util.rememberCookieTilt(enabled = enableTilt && enabled && isPrimary)
 
     val isMorphActive = (isHolding && !isHoldCompleted) || isSettling
     val isMorphing = (isHoldMorphing && !isHoldCompleted) || isSettling
@@ -277,7 +333,7 @@ private fun AnimatedCookieButtonImpl(
     val scope = rememberCoroutineScope()
     var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-    val isElevated = isMorphActive || isHolding || animScaleX.value > 1.01f || isTapped
+    val isElevated = isMorphActive || isHolding || isTapped
 
     val buttonContent: @Composable (Modifier) -> Unit = { btnModifier ->
         Box(
@@ -285,7 +341,7 @@ private fun AnimatedCookieButtonImpl(
                 .zIndex(if (isElevated) 10f else 0f)
                 .size(size)
                 .graphicsLayer {
-                    rotationZ = rotation.value + tiltAngle
+                    rotationZ = rotation.value + tiltAngle.value
                     scaleX = animScaleX.value
                     scaleY = animScaleY.value
                     clip = false
@@ -332,12 +388,15 @@ private fun AnimatedCookieButtonImpl(
                                 } else null
 
                                 kotlinx.coroutines.delay(180L)
-                                currentOnClick()
+                                try {
+                                    currentOnClick()
+                                } finally {
+                                    isTapped = false
+                                }
 
                                 rotJob?.join()
                                 scaleJobX.join()
                                 scaleJobY.join()
-                                isTapped = false
                             }
                         }
                     )
@@ -381,12 +440,59 @@ private fun AnimatedCookieButtonImpl(
             val iconModifier = Modifier
                 .size(iconSize)
                 .graphicsLayer { 
-                    rotationZ = -(rotation.value + tiltAngle)
+                    rotationZ = -(rotation.value + tiltAngle.value)
                     scaleX = animIconScale.value
                     scaleY = animIconScale.value
                 }
             val tint = if (enabled) animatedContentColor else animatedContentColor.copy(alpha = 0.38f)
-            iconContent(iconModifier, tint)
+            if (closeIcon != null) {
+                Box(
+                    modifier = iconModifier,
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (openProgress < 0.6f) {
+                        val fraction = (openProgress * 2f).coerceIn(0f, 1f)
+                        val scale = 1f - (fraction * 0.6f)
+                        val alpha = (1f - fraction).coerceIn(0f, 1f)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    this.alpha = alpha
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            iconContent(Modifier.fillMaxSize(), tint)
+                        }
+                    }
+                    if (openProgress > 0.4f) {
+                        val fraction = ((openProgress - 0.5f) * 2f).coerceIn(0f, 1f)
+                        val scale = 0.4f + (fraction * 0.6f)
+                        val alpha = fraction.coerceIn(0f, 1f)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    this.alpha = alpha
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            RenderIcon(
+                                icon = closeIcon,
+                                modifier = Modifier.fillMaxSize(),
+                                tint = tint,
+                                contentDescription = "Close"
+                            )
+                        }
+                    }
+                }
+            } else {
+                iconContent(iconModifier, tint)
+            }
         }
     }
 

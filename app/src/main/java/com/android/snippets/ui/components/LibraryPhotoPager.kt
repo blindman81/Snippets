@@ -121,18 +121,10 @@ fun LibraryPhotoPager(
                 ) { index, photo ->
                     val isMost = tabSortType == PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
                     val isLeast = tabSortType == PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
-                    val totalCount = pageFilteredPhotos.size
-                    val cardPos = when {
-                        totalCount == 1 -> CardPosition.Single
-                        index == 0 -> CardPosition.First
-                        index == totalCount - 1 -> CardPosition.Last
-                        else -> CardPosition.Middle
-                    }
                     val isDark = isSystemInDarkTheme()
 
                     PhotoCard(
                         photo = photo,
-                        position = cardPos,
                         isSelected = viewModel.selectedPhotoIds.contains(photo.id),
                         selectionMode = viewModel.isSelectionMode,
                         showFavoriteIcon = tabForPage != "Favorites",

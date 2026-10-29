@@ -242,7 +242,7 @@ private fun SnippetMasonryChip(
                     MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
                     isCloud = true
                 ),
-                color = rememberSnippetTextColor(),
+                color = if (isSelected) MaterialTheme.colorScheme.primary else rememberSnippetTextColor(),
                 maxLines = 1,
                 softWrap = false,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Clip
@@ -422,10 +422,9 @@ fun PhotoMasonryItem(
                         )
 
                         if (isSelected) {
-                            val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
                             Box(
                                 modifier = aspectModifier
-                                    .background(wallpaperTint.copy(alpha = 0.28f))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
                             )
                         }
 
@@ -485,9 +484,10 @@ fun PhotoMasonryItem(
                             }
                         }
 
-                        val masonryLocationName = remember(photo.locationName, photo.locationLink) {
+                        val masonryLocationName = remember(photo.locationName, photo.locationLink, viewModel?.locationNameMap) {
                             val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
-                                ?: LocationUtils.getLocationFromExif(null, photo)?.trim()
+                                ?: photo.locationLink?.let { viewModel?.locationNameMap?.get(it) }
+                                ?: LocationUtils.getLocationFromExif(context, photo)?.trim()
                             rawName?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
                         }
 
@@ -625,10 +625,9 @@ fun PhotoMasonryItem(
                     )
 
                     if (isSelected) {
-                        val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
                         Box(
                             modifier = aspectModifier
-                                .background(wallpaperTint.copy(alpha = 0.28f))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
                         )
                     }
 
@@ -688,9 +687,11 @@ fun PhotoMasonryItem(
                         }
                     }
 
-                    val masonryLocationName2 = remember(photo.locationName, photo.locationLink) {
+                    val context2 = LocalContext.current
+                    val masonryLocationName2 = remember(photo.locationName, photo.locationLink, viewModel?.locationNameMap) {
                         val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
-                            ?: LocationUtils.getLocationFromExif(null, photo)?.trim()
+                            ?: photo.locationLink?.let { viewModel?.locationNameMap?.get(it) }
+                            ?: LocationUtils.getLocationFromExif(context2, photo)?.trim()
                         rawName?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
                     }
 

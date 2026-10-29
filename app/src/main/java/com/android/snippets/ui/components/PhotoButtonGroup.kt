@@ -42,11 +42,8 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.vectorResource
 import com.android.snippets.model.Photo
-import com.android.snippets.ui.DownloadMaterialSymbol
-import com.android.snippets.ui.ShareOutlinedMaterialSymbol
-import com.android.snippets.ui.KidStarOutlinedMaterialSymbol
-import com.android.snippets.ui.DeleteMaterialSymbol
 import com.ln.android.snippets.R
 import com.android.snippets.ui.shapes.CirclePolygon
 import com.android.snippets.ui.shapes.Cookie9ToCircleMorph
@@ -56,9 +53,6 @@ import com.android.snippets.ui.shapes.Cookie9Shape
 import com.android.snippets.ui.shapes.MorphShape
 import com.android.snippets.ui.shapes.RoundedPolygonShape
 import com.android.snippets.ui.util.Motion
-import com.android.snippets.ui.MoreHorizMaterialSymbol
-import com.android.snippets.ui.MoreHorizFilledMaterialSymbol
-import com.android.snippets.ui.MoreHorizOutlinedMaterialSymbol
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -80,8 +74,8 @@ fun PhotoButtonGroup(
     onPrimaryClick: () -> Unit,
     modifier: Modifier = Modifier,
     trailingIcon: ImageVector? = null,
-    trailingFilledIcon: ImageVector = MoreHorizFilledMaterialSymbol,
-    trailingOutlinedIcon: ImageVector = MoreHorizOutlinedMaterialSymbol,
+    trailingFilledIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_filled),
+    trailingOutlinedIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_outlined),
     items: List<CookieButtonItem> = emptyList(),
     primaryText: String? = null,
     contentDescription: String? = primaryText,
@@ -276,9 +270,6 @@ fun PhotoButtonGroup(
                                             )
                                         )
                                     }
-                                    launch {
-                                        morphProgressLeading.animateTo(1f, Motion.BouncySpring)
-                                    }
                                     tappedLeading = false
                                 }
                             }
@@ -457,56 +448,18 @@ fun PhotoButtonGroup(
                 }
 
                 // Button Group Menu (Dropdown) - anchored to Trailing (More) Button, aligned and moved to the left
-                if (items.isNotEmpty()) {
-                    val menuWidth = (buttonSize * menuColumns) + (1.dp * (menuColumns - 1)) + 16.dp
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        offset = androidx.compose.ui.unit.DpOffset(x = buttonSize - menuWidth, y = 8.dp),
-                        containerColor = Color.Transparent,
-                        shadowElevation = 0.dp,
-                        tonalElevation = 0.dp,
-                        border = null,
-                        modifier = Modifier.background(Color.Transparent)
-                    ) {
-                        BlurredSurface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            tonalElevation = 3.dp,
-                            shadowElevation = 3.dp
-                        ) {
-                            val menuItems = items.map { item ->
-                                item.copy(
-                                    onClick = item.onClick?.let { origClick ->
-                                        {
-                                            expanded = false
-                                            origClick()
-                                        }
-                                    }
-                                )
-                            }
-
-                            Box(modifier = Modifier.padding(8.dp)) {
-                                CookieButtonGroup(
-                                    selectedIndex = -1,
-                                    items = menuItems,
-                                    columns = menuColumns,
-                                    cookieSize = buttonSize,
-                                    overlap = -1.dp,
-                                    rowSpacing = 1.dp,
-                                    shape = shape,
-                                    selectedContainerColor = selectedContainerColor,
-                                    selectedContentColor = selectedContentColor,
-                                    unselectedContainerColor = unselectedContainerColor,
-                                    unselectedContentColor = unselectedContentColor,
-                                    isSpinning = true,
-                                    enableWiggle = true,
-                                    wiggleNeighborOnToggleOn = true
-                                )
-                            }
-                        }
-                    }
-                }
+                PhotoActionDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    items = items,
+                    menuColumns = menuColumns,
+                    buttonSize = buttonSize,
+                    shape = shape,
+                    selectedContainerColor = selectedContainerColor,
+                    selectedContentColor = selectedContentColor,
+                    unselectedContainerColor = unselectedContainerColor,
+                    unselectedContentColor = unselectedContentColor
+                )
             }
         }
     }
@@ -597,8 +550,8 @@ fun CookieSplitButton(
     onPrimaryClick: () -> Unit,
     modifier: Modifier = Modifier,
     trailingIcon: ImageVector? = null,
-    trailingFilledIcon: ImageVector = MoreHorizFilledMaterialSymbol,
-    trailingOutlinedIcon: ImageVector = MoreHorizOutlinedMaterialSymbol,
+    trailingFilledIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_filled),
+    trailingOutlinedIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_outlined),
     items: List<CookieButtonItem> = emptyList(),
     primaryText: String? = null,
     contentDescription: String? = primaryText,
@@ -651,8 +604,8 @@ fun PhotoCookieSplitButton(
     onPrimaryClick: () -> Unit,
     modifier: Modifier = Modifier,
     trailingIcon: ImageVector? = null,
-    trailingFilledIcon: ImageVector = MoreHorizFilledMaterialSymbol,
-    trailingOutlinedIcon: ImageVector = MoreHorizOutlinedMaterialSymbol,
+    trailingFilledIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_filled),
+    trailingOutlinedIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_outlined),
     items: List<CookieButtonItem> = emptyList(),
     primaryText: String? = null,
     contentDescription: String? = primaryText,
@@ -721,7 +674,7 @@ fun PhotoButtonGroup(
     val hasSnippets = photo.snippets.isNotEmpty()
     val isFavorite = photo.isFavorite
     val hasName = !photo.name.isNullOrBlank()
-    val hasLocation = !photo.locationLink.isNullOrBlank()
+    val hasLocation = !photo.locationLink.isNullOrBlank() || !photo.locationName.isNullOrBlank()
     val hasRating = photo.rating > 0
 
     PhotoButtonGroup(
@@ -741,7 +694,7 @@ fun PhotoButtonGroup(
                 cookieButtonItem(
                     icon = { mod, tint ->
                         Icon(
-                            imageVector = DownloadMaterialSymbol,
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_download_symbol),
                             contentDescription = "Download",
                             modifier = mod.size(iconSize),
                             tint = tint
@@ -754,7 +707,7 @@ fun PhotoButtonGroup(
                 cookieButtonItem(
                     icon = { mod, tint ->
                         Icon(
-                            imageVector = ShareOutlinedMaterialSymbol,
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_share_outlined),
                             contentDescription = "Share",
                             modifier = mod.size(iconSize),
                             tint = tint
@@ -782,8 +735,8 @@ fun PhotoButtonGroup(
                 ),
                 cookieButtonItem(
                     icon = if (hasLocation) Icons.Rounded.Place else Icons.Outlined.Place,
-                    contentDescription = if (hasLocation) "Edit location link" else "Link to a place",
-                    tooltip = if (hasLocation) "Edit location link" else "Link to a place",
+                    contentDescription = if (hasLocation) "Edit location" else "Link to a place",
+                    tooltip = if (hasLocation) (photo.locationName?.takeIf { it.isNotBlank() } ?: "Edit location") else "Link to a place",
                     isSelected = hasLocation,
                     iconSize = iconSize,
                     onClick = onAddLinkClick
@@ -813,7 +766,7 @@ fun PhotoButtonGroup(
                             }
                         } else {
                             Icon(
-                                imageVector = KidStarOutlinedMaterialSymbol,
+                                imageVector = ImageVector.vectorResource(R.drawable.ic_kid_star_outlined),
                                 contentDescription = "Rate",
                                 modifier = mod.size(iconSize),
                                 tint = tint
@@ -836,7 +789,7 @@ fun PhotoButtonGroup(
                 cookieButtonItem(
                     icon = { mod, tint ->
                         Icon(
-                            imageVector = DeleteMaterialSymbol,
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_delete_symbol),
                             contentDescription = "Delete",
                             modifier = mod.size(iconSize),
                             tint = tint

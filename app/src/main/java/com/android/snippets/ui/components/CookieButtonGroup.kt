@@ -219,11 +219,12 @@ fun CookieButtonGroup(
     fun triggerWiggle(targetIndex: Int, direction: Float = 1f) {
         if (!enableWiggle || targetIndex !in wiggleRotations.indices) return
         wiggleJobs[targetIndex]?.cancel()
+        spinJobs[targetIndex]?.cancel()
         wiggleJobs[targetIndex] = scope.launch {
-            wiggleRotations[targetIndex].snapTo(0.05f * direction)
+            wiggleRotations[targetIndex].snapTo(0f)
             wiggleRotations[targetIndex].animateTo(
                 targetValue = 0f,
-                animationSpec = Motion.wiggleSpec(direction)
+                animationSpec = Motion.wiggleSpec(direction, amplitude = 14f)
             )
         }
     }
@@ -271,32 +272,43 @@ fun CookieButtonGroup(
         }
 
         if (item.onClick != null) {
-            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            if (isDirectClick) {
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            }
             val wasPrimary = isItemPrimary(targetIndex)
+            val previousSelected = lastSelectedIndex
+            val prevPrimaryIndex = currentItems.indices.firstOrNull { isItemPrimary(it) } ?: previousSelected
+            val isSwitch = targetIndex != previousSelected || targetIndex != prevPrimaryIndex
+            lastSelectedIndex = targetIndex
 
             // Perform intended action simultaneously
             item.onClick.invoke()
 
             if (enableWiggle) {
-                // Tapping on a button wiggles the adjacent button
-                val isRtl = layoutDirection == LayoutDirection.Rtl
-                val (leftIndex, rightIndex) = if (columns <= 1) {
-                    val left = if (targetIndex > 0) targetIndex - 1 else -1
-                    val right = if (targetIndex + 1 < currentItems.size) targetIndex + 1 else -1
-                    if (isRtl) Pair(right, left) else Pair(left, right)
+                if (isSwitch && prevPrimaryIndex in currentItems.indices && prevPrimaryIndex != targetIndex) {
+                    val wiggleDir = if (targetIndex > prevPrimaryIndex) -1f else 1f
+                    triggerWiggle(prevPrimaryIndex, direction = wiggleDir)
                 } else {
-                    val col = targetIndex % columns
-                    val rowStart = (targetIndex / columns) * columns
-                    val rowEnd = minOf(rowStart + columns, currentItems.size)
-                    val left = if (col > 0) targetIndex - 1 else -1
-                    val right = if (targetIndex + 1 < rowEnd) targetIndex + 1 else -1
-                    if (isRtl) Pair(right, left) else Pair(left, right)
-                }
+                    // Tapping on a button wiggles the adjacent button
+                    val isRtl = layoutDirection == LayoutDirection.Rtl
+                    val (leftIndex, rightIndex) = if (columns <= 1) {
+                        val left = if (targetIndex > 0) targetIndex - 1 else -1
+                        val right = if (targetIndex + 1 < currentItems.size) targetIndex + 1 else -1
+                        if (isRtl) Pair(right, left) else Pair(left, right)
+                    } else {
+                        val col = targetIndex % columns
+                        val rowStart = (targetIndex / columns) * columns
+                        val rowEnd = minOf(rowStart + columns, currentItems.size)
+                        val left = if (col > 0) targetIndex - 1 else -1
+                        val right = if (targetIndex + 1 < rowEnd) targetIndex + 1 else -1
+                        if (isRtl) Pair(right, left) else Pair(left, right)
+                    }
 
-                if (rightIndex in currentItems.indices) {
-                    triggerWiggle(rightIndex, direction = 1f)
-                } else if (leftIndex in currentItems.indices) {
-                    triggerWiggle(leftIndex, direction = -1f)
+                    if (rightIndex in currentItems.indices) {
+                        triggerWiggle(rightIndex, direction = 1f)
+                    } else if (leftIndex in currentItems.indices) {
+                        triggerWiggle(leftIndex, direction = -1f)
+                    }
                 }
             }
 
@@ -322,21 +334,39 @@ fun CookieButtonGroup(
             }
         } else {
             val previousSelected = lastSelectedIndex
-            val isSwitch = targetIndex != previousSelected
+            val prevPrimaryIndex = currentItems.indices.firstOrNull { isItemPrimary(it) } ?: previousSelected
+            val isSwitch = targetIndex != previousSelected || targetIndex != prevPrimaryIndex
             lastSelectedIndex = targetIndex
 
-            if (isSwitch) {
+            if (isDirectClick) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                if (enableWiggle && previousSelected in currentItems.indices && isDirectClick) {
-                    val wasPrevPrimary = currentItems[previousSelected].isSelected ?: true
-                    if (wasPrevPrimary) {
-                        val wiggleDir = if (targetIndex > previousSelected) -1f else 1f
-                        triggerWiggle(previousSelected, direction = wiggleDir)
+                if (enableWiggle) {
+                    if (isSwitch && prevPrimaryIndex in currentItems.indices && prevPrimaryIndex != targetIndex) {
+                        val wiggleDir = if (targetIndex > prevPrimaryIndex) -1f else 1f
+                        triggerWiggle(prevPrimaryIndex, direction = wiggleDir)
+                    } else {
+                        // Tapping on already selected or non-switching button wiggles adjacent button
+                        val isRtl = layoutDirection == LayoutDirection.Rtl
+                        val (leftIndex, rightIndex) = if (columns <= 1) {
+                            val left = if (targetIndex > 0) targetIndex - 1 else -1
+                            val right = if (targetIndex + 1 < currentItems.size) targetIndex + 1 else -1
+                            if (isRtl) Pair(right, left) else Pair(left, right)
+                        } else {
+                            val col = targetIndex % columns
+                            val rowStart = (targetIndex / columns) * columns
+                            val rowEnd = minOf(rowStart + columns, currentItems.size)
+                            val left = if (col > 0) targetIndex - 1 else -1
+                            val right = if (targetIndex + 1 < rowEnd) targetIndex + 1 else -1
+                            if (isRtl) Pair(right, left) else Pair(left, right)
+                        }
+
+                        if (rightIndex in currentItems.indices) {
+                            triggerWiggle(rightIndex, direction = 1f)
+                        } else if (leftIndex in currentItems.indices) {
+                            triggerWiggle(leftIndex, direction = -1f)
+                        }
                     }
                 }
-                currentOnSelect(targetIndex)
-            } else if (isDirectClick) {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                 currentOnSelect(targetIndex)
             }
 
@@ -367,6 +397,7 @@ fun CookieButtonGroup(
         val prev = lastSelectedIndex
         val next = selectedIndex
         if (prev != next) {
+            lastSelectedIndex = next
             if (enableWiggle && prev in currentItems.indices) {
                 val wasPrevPrimary = currentItems[prev].isSelected ?: true
                 if (wasPrevPrimary) {
@@ -379,8 +410,6 @@ fun CookieButtonGroup(
 
             if (next in currentItems.indices && next >= 0) {
                 triggerSpin(next, isDirectClick = false)
-            } else {
-                lastSelectedIndex = next
             }
         }
     }

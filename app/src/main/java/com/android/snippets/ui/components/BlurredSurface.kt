@@ -49,17 +49,12 @@ import com.android.snippets.ui.util.LocalTiltModalFocus
 import kotlin.math.roundToInt
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -97,32 +92,9 @@ val LocalHazeState = compositionLocalOf<HazeState?> { null }
 val LocalIsOnBlurredSurface = compositionLocalOf { false }
 
 /**
- * Blends a base surface color with the system Material You Monet dynamic color (surfaceTint)
- * so that frosted glass blur across the app has a rich, vibrant Monet tint rather than looking gray.
- */
-@Composable
-fun rememberMonetTintedColor(
-    baseColor: Color,
-    tintColor: Color = MaterialTheme.colorScheme.surfaceTint,
-    weight: Float = 0.0f
-): Color {
-    return remember(baseColor, tintColor, weight) {
-        if (weight <= 0f) baseColor else {
-            Color(
-                red = (baseColor.red * (1f - weight) + tintColor.red * weight).coerceIn(0f, 1f),
-                green = (baseColor.green * (1f - weight) + tintColor.green * weight).coerceIn(0f, 1f),
-                blue = (baseColor.blue * (1f - weight) + tintColor.blue * weight).coerceIn(0f, 1f),
-                alpha = baseColor.alpha
-            )
-        }
-    }
-}
-
-/**
  * A surface container that applies Haze backdrop blur (progressive vertical gradient on Android 13+)
  * to blur the content scrolling underneath it.
  *
- * The blur is tinted with the system's Material You Monet dynamic color palette rather than gray.
  * On devices below Android 13, it renders as a standard 100% opaque Surface with no blur.
  *
  * All child UI elements and content stay completely flat and sharp.
@@ -140,18 +112,17 @@ fun BlurredSurface(
     tonalElevation: Dp = 0.dp,
     contentColor: Color = contentColorFor(color),
     hazeState: HazeState? = LocalHazeState.current,
-    monetTintWeight: Float = 0.0f,
     content: @Composable () -> Unit
 ) {
-    val tintedColor = rememberMonetTintedColor(baseColor = color, weight = monetTintWeight)
-
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         if (hazeState != null) {
-            val hazeStyle = HazeStyle(
-                tint = HazeTint(tintedColor.copy(alpha = alpha)),
-                blurRadius = blurEndRadius,
-                noiseFactor = HazeDefaults.noiseFactor
-            )
+            val hazeStyle = remember(color, alpha, blurEndRadius) {
+                HazeStyle(
+                    tint = HazeTint(color.copy(alpha = alpha)),
+                    blurRadius = blurEndRadius,
+                    noiseFactor = HazeDefaults.noiseFactor
+                )
+            }
 
             Box(
                 modifier = modifier
@@ -161,7 +132,7 @@ fun BlurredSurface(
                         } else Modifier
                     )
                     .clip(shape)
-                    .background(tintedColor.copy(alpha = alpha.coerceIn(0f, 0.4f)))
+                    .background(color.copy(alpha = alpha.coerceIn(0f, 0.4f)))
                     .hazeEffect(
                         state = hazeState,
                         style = hazeStyle
@@ -183,7 +154,7 @@ fun BlurredSurface(
             Surface(
                 modifier = modifier,
                 shape = shape,
-                color = tintedColor.copy(alpha = alpha),
+                color = color.copy(alpha = alpha),
                 border = border,
                 shadowElevation = shadowElevation,
                 tonalElevation = tonalElevation,
@@ -211,317 +182,6 @@ fun BlurredSurface(
     }
 }
 
-/**
- * A bottom sheet that applies frosted glass blur with Material You Monet color tinting
- * to its background surface on Android 13+ devices.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun BlurredModalBottomSheet(
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden),
-    shape: Shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
-    alpha: Float = HazeDefaults.tintAlpha,
-    contentColor: Color = contentColorFor(containerColor),
-    scrimColor: Color = BottomSheetDefaults.ScrimColor,
-    dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults.DragHandle() },
-    contentWindowInsets: @Composable () -> WindowInsets = { BottomSheetDefaults.modalWindowInsets },
-    hazeState: HazeState? = LocalHazeState.current,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    val coroutineScope = rememberCoroutineScope()
-    var isDismissing by remember { mutableStateOf(false) }
-
-    val visibleState = remember {
-        MutableTransitionState(false).apply {
-            targetState = true
-        }
-    }
-
-    val scrimAlpha = remember { Animatable(0f) }
-
-    DisposableEffect(Unit) {
-        com.android.snippets.ui.util.CookieTiltController.beginTiltModalFocus()
-        onDispose {
-            com.android.snippets.ui.util.CookieTiltController.endTiltModalFocus()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        scrimAlpha.animateTo(1f, animationSpec = tween(durationMillis = 250))
-    }
-
-    val density = LocalDensity.current
-    val configuration = LocalConfiguration.current
-    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
-    val hasPartiallyExpanded = sheetState.hasPartiallyExpandedState
-    val halfOffset = if (hasPartiallyExpanded) screenHeightPx * 0.5f else 0f
-    val dismissThreshold = with(density) { 140.dp.toPx() }
-    val dismissVelocityThreshold = with(density) { 1200.dp.toPx() }
-
-    var dragOffsetY by remember { mutableFloatStateOf(if (hasPartiallyExpanded) halfOffset else 0f) }
-    var settleJob by remember { mutableStateOf<Job?>(null) }
-    var childScrolledInGesture by remember { mutableStateOf(false) }
-
-    fun triggerDismiss() {
-        if (!isDismissing) {
-            isDismissing = true
-            visibleState.targetState = false
-            coroutineScope.launch {
-                scrimAlpha.animateTo(0f, animationSpec = tween(durationMillis = 220))
-            }
-            coroutineScope.launch {
-                delay(240)
-                onDismissRequest()
-            }
-        }
-    }
-
-    val motionScheme = MaterialTheme.motionScheme
-
-    fun settleSheet(velocityY: Float) {
-        settleJob?.cancel()
-        if (hasPartiallyExpanded) {
-            if (dragOffsetY < halfOffset) {
-                val target = when {
-                    velocityY < -600f -> 0f
-                    velocityY > 600f -> halfOffset
-                    dragOffsetY < halfOffset * 0.5f -> 0f
-                    else -> halfOffset
-                }
-                settleJob = coroutineScope.launch {
-                    animate(
-                        initialValue = dragOffsetY,
-                        targetValue = target,
-                        animationSpec = motionScheme.defaultSpatialSpec()
-                    ) { value, _ -> dragOffsetY = value }
-                }
-            } else {
-                val deltaFromHalf = dragOffsetY - halfOffset
-                if (deltaFromHalf > dismissThreshold || (deltaFromHalf > with(density) { 32.dp.toPx() } && velocityY > dismissVelocityThreshold)) {
-                    settleJob = coroutineScope.launch {
-                        animate(
-                            initialValue = dragOffsetY,
-                            targetValue = screenHeightPx,
-                            animationSpec = motionScheme.fastSpatialSpec()
-                        ) { value, _ -> dragOffsetY = value }
-                    }
-                    triggerDismiss()
-                } else {
-                    settleJob = coroutineScope.launch {
-                        animate(
-                            initialValue = dragOffsetY,
-                            targetValue = halfOffset,
-                            animationSpec = motionScheme.defaultSpatialSpec()
-                        ) { value, _ -> dragOffsetY = value }
-                    }
-                }
-            }
-        } else {
-            if (dragOffsetY > dismissThreshold || (dragOffsetY > with(density) { 32.dp.toPx() } && velocityY > dismissVelocityThreshold)) {
-                settleJob = coroutineScope.launch {
-                    animate(
-                        initialValue = dragOffsetY,
-                        targetValue = screenHeightPx,
-                        animationSpec = motionScheme.fastSpatialSpec()
-                    ) { value, _ -> dragOffsetY = value }
-                }
-                triggerDismiss()
-            } else {
-                settleJob = coroutineScope.launch {
-                    animate(
-                        initialValue = dragOffsetY,
-                        targetValue = 0f,
-                        animationSpec = motionScheme.defaultSpatialSpec()
-                    ) { value, _ -> dragOffsetY = value }
-                }
-            }
-        }
-    }
-
-    BackHandler(enabled = !isDismissing) {
-        if (hasPartiallyExpanded && dragOffsetY < halfOffset - 20f) {
-            settleJob?.cancel()
-            settleJob = coroutineScope.launch {
-                animate(
-                    initialValue = dragOffsetY,
-                    targetValue = halfOffset,
-                    animationSpec = motionScheme.defaultSpatialSpec()
-                ) { value, _ -> dragOffsetY = value }
-            }
-        } else {
-            triggerDismiss()
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .zIndex(900f)
-    ) {
-        // Scrim backdrop
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { this.alpha = scrimAlpha.value }
-                .background(scrimColor)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { triggerDismiss() }
-                )
-        )
-
-        // Sheet content
-        AnimatedVisibility(
-            visibleState = visibleState,
-            enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = motionScheme.defaultSpatialSpec()
-            ),
-            exit = slideOutVertically(
-                targetOffsetY = { it },
-                animationSpec = motionScheme.fastSpatialSpec()
-            ),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            val nestedScrollConnection = remember {
-                object : NestedScrollConnection {
-                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                        if (source == NestedScrollSource.UserInput) {
-                            settleJob?.cancel()
-                            if (dragOffsetY > 0f && available.y < 0f) {
-                                val newOffset = (dragOffsetY + available.y).coerceAtLeast(0f)
-                                val consumedY = newOffset - dragOffsetY
-                                dragOffsetY = newOffset
-                                return Offset(0f, consumedY)
-                            }
-                        }
-                        return Offset.Zero
-                    }
-
-                    override fun onPostScroll(
-                        consumed: Offset,
-                        available: Offset,
-                        source: NestedScrollSource
-                    ): Offset {
-                        if (consumed.y != 0f) {
-                            childScrolledInGesture = true
-                        }
-
-                        // Never allow programmatic scroll/flings to drag the sheet
-                        if (source != NestedScrollSource.UserInput) {
-                            return Offset.Zero
-                        }
-
-                        if (childScrolledInGesture && !hasPartiallyExpanded) {
-                            return Offset.Zero
-                        }
-
-                        if (available.y > 0f) {
-                            settleJob?.cancel()
-                            val newOffset = (dragOffsetY + available.y).coerceAtLeast(0f)
-                            val consumedY = newOffset - dragOffsetY
-                            dragOffsetY = newOffset
-                            return Offset(0f, consumedY)
-                        }
-                        return Offset.Zero
-                    }
-
-                    override suspend fun onPreFling(available: Velocity): Velocity {
-                        childScrolledInGesture = false
-
-                        if (dragOffsetY > 0f) {
-                            settleSheet(available.y)
-                            return available
-                        }
-                        return Velocity.Zero
-                    }
-
-                    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                        childScrolledInGesture = false
-
-                        if (dragOffsetY > 0f) {
-                            settleSheet(available.y)
-                        }
-                        return Velocity.Zero
-                    }
-                }
-            }
-
-            BlurredSurface(
-                shape = shape,
-                color = containerColor,
-                alpha = alpha,
-                blurStartRadius = 4.dp,
-                blurEndRadius = HazeDefaults.blurRadius,
-                contentColor = contentColor,
-                hazeState = hazeState,
-                monetTintWeight = 0.0f,
-                modifier = modifier
-                    .fillMaxWidth()
-                    .then(if (hasPartiallyExpanded) Modifier.fillMaxHeight() else Modifier)
-                    .offset { IntOffset(0, dragOffsetY.roundToInt()) }
-                    .nestedScroll(nestedScrollConnection)
-                    .pointerInput(Unit) {
-                        val velocityTracker = VelocityTracker()
-                        detectVerticalDragGestures(
-                            onDragStart = {
-                                settleJob?.cancel()
-                                velocityTracker.resetTracking()
-                            },
-                            onDragEnd = {
-                                val velocity = velocityTracker.calculateVelocity().y
-                                settleSheet(velocity)
-                            },
-                            onDragCancel = {
-                                settleSheet(0f)
-                            },
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                                velocityTracker.addPosition(change.uptimeMillis, change.position)
-                                settleJob?.cancel()
-                                if (dragAmount > 0 || dragOffsetY > 0) {
-                                    dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
-                                }
-                            }
-                        )
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(if (hasPartiallyExpanded) Modifier.fillMaxHeight() else Modifier)
-                        .windowInsetsPadding(contentWindowInsets().only(WindowInsetsSides.Bottom))
-                ) {
-                    if (dragHandle != null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            dragHandle()
-                        }
-                    }
-                    CompositionLocalProvider(
-                        LocalTiltActive provides (!isDismissing),
-                        LocalTiltModalFocus provides true
-                    ) {
-                        content()
-                    }
-                }
-            }
-        }
-    }
-}
 
 /**
  * Calculates the vertical upward offset required when the soft keyboard overlaps
@@ -560,7 +220,7 @@ internal fun calculateKeyboardOverlapOffset(
 
 /**
  * An AlertDialog replacement that renders as an in-Compose modal surface with genuine frosted glass
- * blur sampling from ambient HazeState, tinted with Material You Monet dynamic color.
+ * blur sampling from ambient HazeState.
  *
  * It does NOT blur the rest of the screen; only the dialog surface card has the frosted glass blur.
  */
@@ -706,7 +366,6 @@ fun BlurredAlertDialog(
                 alpha = 0.65f,
                 shadowElevation = 8.dp,
                 tonalElevation = tonalElevation,
-                monetTintWeight = 0.0f,
                 hazeState = hazeState,
                 modifier = modifier
                     .onSizeChanged { dialogHeight = it.height }

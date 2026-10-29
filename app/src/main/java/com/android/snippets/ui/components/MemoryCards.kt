@@ -350,7 +350,7 @@ fun SameDayPhotoCarousel(
                 photo = photo,
                 isSelected = isSelected,
                 selectionMode = selectionMode,
-                matchingSnippetsCount = getMatchingSnippetsCount(photo, viewModel),
+                matchingSnippetsCount = viewModel.getMatchingSnippetsCount(photo),
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
                 showFavoriteIcon = showFavoriteIcon,

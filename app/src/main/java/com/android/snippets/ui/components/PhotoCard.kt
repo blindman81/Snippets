@@ -1,5 +1,7 @@
 package com.android.snippets.ui
 
+import com.android.snippets.ui.theme.getSnippetTextStyle
+
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -37,7 +39,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.PhotoButtonGroup
-import com.android.snippets.ui.components.rememberMonetTintedColor
 import com.android.snippets.ui.theme.rememberSnippetBackgroundColor
 import com.android.snippets.ui.theme.rememberSnippetTextColor
 import com.android.snippets.ui.util.LocationUtils
@@ -60,7 +61,6 @@ private fun getSaturationColorFilter(saturation: Float): ColorFilter? = when {
 @Composable
 fun PhotoCard(
     photo: Photo,
-    position: CardPosition = CardPosition.Single,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
     onClick: () -> Unit,
@@ -153,8 +153,8 @@ fun PhotoCard(
             .padding(
                 start = 12.dp,
                 end = 12.dp,
-                top = if (position == CardPosition.Middle || position == CardPosition.Last) 0.dp else 2.dp,
-                bottom = if (position == CardPosition.First || position == CardPosition.Middle) 0.dp else 2.dp
+                top = 2.dp,
+                bottom = 2.dp
             )
             .graphicsLayer {
                 scaleX = animatedScale
@@ -235,7 +235,7 @@ fun PhotoCard(
                                                     MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                                     isCloud = true
                                                 ),
-                                                color = rememberSnippetTextColor(),
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else rememberSnippetTextColor(),
                                                 maxLines = 1,
                                                 softWrap = false,
                                                 overflow = androidx.compose.ui.text.style.TextOverflow.Clip
@@ -324,11 +324,10 @@ fun PhotoCard(
                                 )
 
                                 if (isSelected) {
-                                    val wallpaperTint = rememberMonetTintedColor(MaterialTheme.colorScheme.primary, weight = 0.5f)
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .background(wallpaperTint.copy(alpha = 0.28f))
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
                                     )
                                 }
 
@@ -394,9 +393,11 @@ fun PhotoCard(
                             }
                         }
 
-                        val locationName = remember(photo.locationName, photo.locationLink) {
+                        val context = LocalContext.current
+                        val locationName = remember(photo.locationName, photo.locationLink, viewModel.locationNameMap) {
                             val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
-                                ?: LocationUtils.getLocationFromExif(null, photo)?.trim()
+                                ?: photo.locationLink?.let { viewModel.locationNameMap[it] }
+                                ?: LocationUtils.getLocationFromExif(context, photo)?.trim()
                             rawName?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
                         }
 
@@ -533,7 +534,7 @@ fun PhotoCard(
                                                     MaterialTheme.typography.labelLarge,
                                                     isCloud = true
                                                 ),
-                                                color = rememberSnippetTextColor(),
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else rememberSnippetTextColor(),
                                                 maxLines = 1,
                                                 softWrap = false,
                                                 overflow = androidx.compose.ui.text.style.TextOverflow.Clip
