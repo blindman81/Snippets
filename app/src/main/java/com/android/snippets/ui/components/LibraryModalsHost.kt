@@ -104,6 +104,7 @@ fun LibraryModalsHost(
         if (showLinkModal) {
             LocationLinkModal(
                 initialLink = currentModalPhoto.locationLink,
+                initialName = currentModalPhoto.locationName,
                 suggestions = viewModel.allUniqueLocations,
                 locationNames = viewModel.locationNameMap,
                 onDismiss = onCloseLinkModal,
