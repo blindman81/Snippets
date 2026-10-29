@@ -21,8 +21,10 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
@@ -73,7 +75,7 @@ fun FloatingSheet(
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(animationSpec = tween(200)),
-            exit = fadeOut(animationSpec = tween(220)),
+            exit = fadeOut(animationSpec = tween(300)),
             modifier = Modifier.zIndex(15f)
         ) {
             Box(
@@ -90,20 +92,11 @@ fun FloatingSheet(
     val density = LocalDensity.current
     val pillSlideDistance = with(density) { 80.dp.roundToPx() }
 
-    // When closing, sheet morphs into a compact pill before sliding down into the CookieToolbar
-    val activeModifier = if (visible) {
-        sheetModifier
-    } else {
-        Modifier
-            .padding(horizontal = 16.dp)
-            .widthIn(max = 320.dp)
-            .wrapContentHeight()
-    }
-    val activePadding = if (visible) {
-        contentPadding
-    } else {
-        PaddingValues(start = 12.dp, end = 12.dp, top = 24.dp, bottom = 14.dp)
-    }
+    val contentAlphaState = androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 160),
+        label = "floating_sheet_content_alpha"
+    )
 
     // Floating Sheet Content - Positioned above CookieToolbar, sliding smoothly in and out from the pill
     Box(
@@ -130,21 +123,26 @@ fun FloatingSheet(
                     dampingRatio = Spring.DampingRatioLowBouncy,
                     stiffness = Spring.StiffnessMediumLow
                 )
-            ) + fadeIn(animationSpec = tween(150)),
+            ) + fadeIn(animationSpec = tween(180)),
             exit = slideOutVertically(
                 targetOffsetY = { pillSlideDistance },
                 animationSpec = tween(
-                    durationMillis = 240,
-                    easing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
+                    durationMillis = 320,
+                    easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
                 )
             ) + scaleOut(
-                targetScale = 0.88f,
+                targetScale = 0.85f,
                 transformOrigin = TransformOrigin(0.5f, 1f),
                 animationSpec = tween(
-                    durationMillis = 200,
-                    easing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
+                    durationMillis = 320,
+                    easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
                 )
-            ) + fadeOut(animationSpec = tween(180))
+            ) + fadeOut(
+                animationSpec = tween(
+                    durationMillis = 280,
+                    easing = androidx.compose.animation.core.LinearEasing
+                )
+            )
         ) {
             CompositionLocalProvider(
                 LocalTiltActive provides visible,
@@ -157,18 +155,18 @@ fun FloatingSheet(
                     contentColor = contentColor,
                     hazeState = hazeState,
                     shadowElevation = 12.dp,
-                    modifier = activeModifier
+                    modifier = sheetModifier
                         .pointerInput(Unit) {
                             detectTapGestures { /* consume taps inside */ }
                         }
                 ) {
                     Column(
-                        modifier = Modifier.padding(activePadding),
+                        modifier = Modifier
+                            .padding(contentPadding)
+                            .alpha(contentAlphaState.value),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (visible) {
-                            content()
-                        }
+                        content()
                     }
                 }
             }
