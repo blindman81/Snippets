@@ -41,59 +41,66 @@ fun ManageFloatingSheet(
 ) {
     val view = LocalView.current
 
+    var lastNonNullCollection by remember { mutableStateOf<String?>(null) }
+    if (collection != null) {
+        lastNonNullCollection = collection
+    }
+    val activeCollection = collection ?: lastNonNullCollection
+
+    val targetWidth = if (activeCollection == "Library") 116.dp else 216.dp
+
     FloatingSheet(
         visible = collection != null,
         onDismissRequest = onDismissRequest,
         sheetModifier = Modifier
             .padding(horizontal = 16.dp)
-            .widthIn(max = 320.dp)
-            .fillMaxWidth(),
+            .width(targetWidth),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 14.dp)
     ) {
-        if (collection == null) return@FloatingSheet
+        val currentCollection = activeCollection ?: return@FloatingSheet
 
         CompositionLocalProvider(
             com.android.snippets.ui.util.LocalTiltActive provides (com.android.snippets.ui.util.LocalTiltActive.current && !isDeletingCollection)
         ) {
-            val actions = remember(collection) {
+            val actions = remember(currentCollection) {
                 listOfNotNull(
                     ActionItemData(
                         id = "ADD",
-                        label = if (collection == "Library") "Add photo" else "Add photos",
+                        label = if (currentCollection == "Library") "Add photo" else "Add photos",
                         icon = Icons.Rounded.AddPhotoAlternate,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onAddPhotos(collection)
+                            onAddPhotos(currentCollection)
                             onDismissRequest()
                         }
                     ),
-                    if (collection != "Library") ActionItemData(
+                    if (currentCollection != "Library") ActionItemData(
                         id = "REMOVE",
                         label = "Remove\nphotos",
                         icon = Icons.Rounded.Remove,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.startCollectionRemoval(collection)
+                            viewModel.startCollectionRemoval(currentCollection)
                             onDismissRequest()
                         }
                     ) else null,
-                    if (collection != "Library" && collection != "Favorites") ActionItemData(
+                    if (currentCollection != "Library" && currentCollection != "Favorites") ActionItemData(
                         id = "EDIT_EMOJI",
                         label = "Edit emoji",
                         icon = Icons.Rounded.AddReaction,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.navigateEmojiPicker(collection)
+                            viewModel.navigateEmojiPicker(currentCollection)
                             onDismissRequest()
                         }
                     ) else null,
-                    if (collection != "Library" && collection != "Favorites") ActionItemData(
+                    if (currentCollection != "Library" && currentCollection != "Favorites") ActionItemData(
                         id = "DELETE",
                         label = "Delete",
                         icon = R.drawable.ic_delete,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onStartDeleteCollection(collection)
+                            onStartDeleteCollection(currentCollection)
                             onDismissRequest()
                         }
                     ) else null
@@ -102,17 +109,13 @@ fun ManageFloatingSheet(
 
             // Actions placed right from start/top (compact, left-aligned)
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer { clip = false },
+                modifier = Modifier.graphicsLayer { clip = false },
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.Start
             ) {
                 actions.chunked(2).forEach { rowActions ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .graphicsLayer { clip = false },
+                        modifier = Modifier.graphicsLayer { clip = false },
                         horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
                         verticalAlignment = Alignment.Top
                     ) {
