@@ -1,7 +1,9 @@
 package com.android.snippets.model
 
 import android.net.Uri
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class Photo(
     val id: String = java.util.UUID.randomUUID().toString(),
     val uriString: String,
