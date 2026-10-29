@@ -32,8 +32,7 @@ fun MenuFloatingSheet(
         onDismissRequest = onDismissRequest,
         sheetModifier = Modifier
             .padding(horizontal = 16.dp)
-            .widthIn(max = 340.dp)
-            .fillMaxWidth(),
+            .width(316.dp),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 14.dp)
     ) {
         data class MenuItemInfo(
@@ -95,17 +94,13 @@ fun MenuFloatingSheet(
 
         // Menu buttons placed right from start/top (compact, left-aligned)
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer { clip = false },
+            modifier = Modifier.graphicsLayer { clip = false },
             verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.Start
         ) {
             menuItems.chunked(3).forEach { rowItems ->
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer { clip = false },
+                    modifier = Modifier.graphicsLayer { clip = false },
                     horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
                     verticalAlignment = Alignment.Top
                 ) {
