@@ -11,39 +11,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.ArrowDownward
-import androidx.compose.material.icons.rounded.SentimentSatisfiedAlt
-import androidx.compose.material.icons.rounded.SentimentSatisfied
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Image
-import androidx.compose.material.icons.automirrored.rounded.TextSnippet
-
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.ui.graphics.Color
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SnippetSortType
 import com.android.snippets.viewmodel.SnippetStyle
-import com.android.snippets.ui.SettingsCardItem
-import com.android.snippets.ui.CardPosition
-import com.android.snippets.ui.CollectionIcon
-import com.android.snippets.ui.getSnippetTextStyle
+import com.android.snippets.ui.theme.getSnippetTextStyle
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -87,8 +67,32 @@ fun FilterSnippetContent(
         map
     }
 
-    val monthFormat = remember { java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault()) }
-    val yearFormat = remember { java.text.SimpleDateFormat("yyyy", java.util.Locale.getDefault()) }
+    val monthFormat = remember { java.text.SimpleDateFormat("MMM, yyyy", java.util.Locale.getDefault()) }
+
+    val filteredSnippets = remember(allSnippets, viewModel.snippetSortType) {
+        when (viewModel.snippetSortType) {
+            SnippetSortType.Emoji -> allSnippets.filter { viewModel.containsEmoji(it) }
+            SnippetSortType.Emoticons -> allSnippets.filter { viewModel.containsEmoticon(it) }
+            else -> allSnippets
+        }
+    }
+
+    val isOld = viewModel.snippetSortType == SnippetSortType.Old
+
+    val grouped = remember(filteredSnippets, snippetCreationDates, monthFormat) {
+        filteredSnippets.groupBy { snippet ->
+            val time = snippetCreationDates[snippet] ?: 0L
+            monthFormat.format(java.util.Date(time))
+        }
+    }
+
+    val sortedKeys = remember(grouped, isOld, monthFormat) {
+        if (isOld) {
+            grouped.keys.sortedBy { monthFormat.parse(it)?.time ?: 0L }
+        } else {
+            grouped.keys.sortedByDescending { monthFormat.parse(it)?.time ?: 0L }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -96,153 +100,63 @@ fun FilterSnippetContent(
             .verticalScroll(effectiveScrollState)
             .padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
-        when (selectedTabIndex) {
-            0 -> {
-                // Tab 1: Snippets
-                if (viewModel.snippetSortType == SnippetSortType.AZ) {
-                    val grouped = allSnippets.groupBy { it.first().uppercaseChar() }
-                    val sortedKeys = if (viewModel.isSortAscending) {
-                        grouped.keys.sortedBy { it }
-                    } else {
-                        grouped.keys.sortedByDescending { it }
-                    }
-
-                    sortedKeys.forEach { char ->
-                        Text(
-                            text = char.toString(),
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                        )
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            grouped[char]?.forEach { snippet ->
-                                SnippetFilterChip(viewModel, snippet, view)
-                            }
-                        }
-                    }
-                } else if (viewModel.snippetSortType == SnippetSortType.Month) {
-                    val grouped = allSnippets.groupBy { snippet ->
-                        val time = snippetCreationDates[snippet] ?: 0L
-                        monthFormat.format(java.util.Date(time))
-                    }
-                    val sortedKeys = if (viewModel.isSortAscending) {
-                        grouped.keys.sortedBy { monthFormat.parse(it)?.time ?: 0L }
-                    } else {
-                        grouped.keys.sortedByDescending { monthFormat.parse(it)?.time ?: 0L }
-                    }
-
-                    sortedKeys.forEach { key ->
-                        Text(
-                            text = key.uppercase(),
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                        )
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            grouped[key]?.forEach { snippet ->
-                                SnippetFilterChip(viewModel, snippet, view)
-                            }
-                        }
-                    }
-                } else if (viewModel.snippetSortType == SnippetSortType.Year) {
-                    val grouped = allSnippets.groupBy { snippet ->
-                        val time = snippetCreationDates[snippet] ?: 0L
-                        yearFormat.format(java.util.Date(time))
-                    }
-                    val sortedKeys = if (viewModel.isSortAscending) {
-                        grouped.keys.sortedBy { yearFormat.parse(it)?.time ?: 0L }
-                    } else {
-                        grouped.keys.sortedByDescending { yearFormat.parse(it)?.time ?: 0L }
-                    }
-
-                    sortedKeys.forEach { key ->
-                        Text(
-                            text = key,
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                        )
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            grouped[key]?.forEach { snippet ->
-                                SnippetFilterChip(viewModel, snippet, view)
-                            }
-                        }
-                    }
-                } else {
-                    // Default / Other sorts (New, Old, Favorites, Emoji, Emoticons)
-                    val displaySnippets = remember(allSnippets, viewModel.snippetSortType, snippetCreationDates, viewModel.photos) {
-                        when (viewModel.snippetSortType) {
-                            SnippetSortType.New -> allSnippets.sortedByDescending { snippetCreationDates[it] ?: 0L }
-                            SnippetSortType.Old -> allSnippets.sortedBy { snippetCreationDates[it] ?: 0L }
-                            SnippetSortType.Favorites -> {
-                                val favSnippets = viewModel.photos.filter { it.isFavorite }.flatMap { it.snippets }.toSet()
-                                allSnippets.filter { it in favSnippets }.sorted()
-                            }
-                            SnippetSortType.Emoji -> allSnippets.filter { viewModel.containsEmoji(it) }.sorted()
-                            SnippetSortType.Emoticons -> allSnippets.filter { viewModel.containsEmoticon(it) }.sorted()
-                            else -> allSnippets.sortedByDescending { snippetCreationDates[it] ?: 0L }
-                        }
-                    }
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        displaySnippets.forEach { snippet ->
-                            SnippetFilterChip(viewModel, snippet, view)
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(48.dp))
+        if (viewModel.snippetSortType == SnippetSortType.AZ) {
+            val groupedByChar = remember(allSnippets) {
+                allSnippets.groupBy { it.firstOrNull()?.uppercaseChar() ?: '#' }
+            }
+            val sortedChars = remember(groupedByChar) {
+                groupedByChar.keys.sorted()
             }
 
-            1 -> {
-                // Tab 2: Sort
-                val snippetTypes = listOf(
-                    SnippetSortType.New, SnippetSortType.Old, SnippetSortType.AZ,
-                    SnippetSortType.Month, SnippetSortType.Year, SnippetSortType.Favorites,
-                    SnippetSortType.Emoji, SnippetSortType.Emoticons
+            sortedChars.forEachIndexed { index, char ->
+                Text(
+                    text = char.toString(),
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = if (index == 0) 4.dp else 16.dp, bottom = 8.dp)
                 )
-
-                Column(
-                    modifier = Modifier.padding(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    snippetTypes.forEachIndexed { index, type ->
-                        val position = when (index) {
-                            0 -> if (snippetTypes.size == 1) CardPosition.Single else CardPosition.First
-                            snippetTypes.size - 1 -> CardPosition.Last
-                            else -> CardPosition.Middle
-                        }
-                        SortOptionItem(viewModel, type, view, position)
+                    val snippetsInChar = groupedByChar[char]?.sortedWith(String.CASE_INSENSITIVE_ORDER)
+                    snippetsInChar?.forEach { snippet ->
+                        SnippetFilterChip(viewModel, snippet, view)
                     }
                 }
-                Spacer(modifier = Modifier.height(100.dp))
             }
-
-
+        } else {
+            sortedKeys.forEachIndexed { index, key ->
+                Text(
+                    text = key,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = if (index == 0) 4.dp else 16.dp, bottom = 8.dp)
+                )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val snippetsInGroup = if (isOld) {
+                        grouped[key]?.sortedBy { snippetCreationDates[it] ?: 0L }
+                    } else {
+                        grouped[key]?.sortedByDescending { snippetCreationDates[it] ?: 0L }
+                    }
+                    snippetsInGroup?.forEach { snippet ->
+                        SnippetFilterChip(viewModel, snippet, view)
+                    }
+                }
+            }
         }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -257,16 +171,24 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
         },
         label = {
             Text(
-                snippet,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontFamily = if (isSelected) com.android.snippets.ui.theme.GoogleSansFlexWide else com.android.snippets.ui.theme.GoogleSansFlexRound
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = snippet,
+                style = getSnippetTextStyle(
+                    SnippetStyle.Default,
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = if (isSelected) com.android.snippets.ui.theme.GoogleSansFlexWide else com.android.snippets.ui.theme.GoogleSansFlexRound,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
             )
         },
         leadingIcon = if (isSelected) {
-            { Icon(Icons.Rounded.Check, null, modifier = Modifier.size(24.dp)) }
+            {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = "Selected",
+                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                )
+            }
         } else null,
         shape = RoundedCornerShape(8.dp),
         colors = FilterChipDefaults.filterChipColors(
@@ -280,94 +202,3 @@ private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, vie
         border = null
     )
 }
-
-@Composable
-private fun SortOptionItem(viewModel: SnippetsViewModel, type: SnippetSortType, view: android.view.View, position: CardPosition) {
-    val isSelected = viewModel.snippetSortType == type
-    
-    val label = when (type) {
-        SnippetSortType.New -> "Newest first"
-        SnippetSortType.Old -> "Oldest first"
-        SnippetSortType.AZ -> if (isSelected && !viewModel.isSortAscending) "Z-A (alphabetical)" else "A-Z (alphabetical)"
-        SnippetSortType.Month -> if (isSelected && !viewModel.isSortAscending) "Last month first" else "First month first"
-        SnippetSortType.Year -> if (isSelected && !viewModel.isSortAscending) "Last year first" else "First year first"
-        SnippetSortType.Favorites -> "Favorites"
-        SnippetSortType.Emoji -> "Sort by emoji"
-        SnippetSortType.Emoticons -> "Sort by emoticons"
-    }
-
-    val icon = when (type) {
-        SnippetSortType.Emoji -> Icons.Rounded.SentimentSatisfiedAlt
-        SnippetSortType.Emoticons -> ImageVector.Builder(
-            name = "EmoticonSort",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 960f,
-            viewportHeight = 960f
-        ).apply {
-            addGroup(name = "emoticon_group", translationY = 960f).apply {
-                addPath(
-                    pathData = androidx.compose.ui.graphics.vector.PathParser().parsePathString("M260-280q-26 0-43-17t-17-43q0-25 17-42.5t43-17.5q25 0 42.5 17.5T320-340q0 26-17.5 43T260-280Zm0-280q-26 0-43-17t-17-43q0-25 17-42.5t43-17.5q25 0 42.5 17.5T320-620q0 26-17.5 43T260-560Zm140 120v-80h160v80H400Zm288 200-66-44q28-43 43-92.5T680-480q0-66-21.5-124T598-709l61-51q48 57 74.5 128.5T760-480q0 67-19 127.5T688-240Z").toNodes(),
-                    fill = SolidColor(androidx.compose.ui.graphics.Color.Black)
-                )
-            }
-        }.build()
-        SnippetSortType.Favorites -> Icons.Rounded.Favorite
-        SnippetSortType.AZ -> ImageVector.Builder(
-            name = "AZSort",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 960f,
-            viewportHeight = 960f
-        ).apply {
-            addGroup(name = "az_group", translationY = 960f).apply {
-                addPath(
-                    pathData = androidx.compose.ui.graphics.vector.PathParser().parsePathString("m80-280 150-400h86l150 400h-82l-34-96H196l-32 96H80Zm140-164h104l-48-150h-6l-50 150Zm328 164v-76l202-252H556v-72h282v76L638-352h202v72H548ZM360-760l120-120 120 120H360ZM480-80 360-200h240L480-80Z").toNodes(),
-                    fill = SolidColor(androidx.compose.ui.graphics.Color.Black)
-                )
-            }
-        }.build()
-        SnippetSortType.Month -> ImageVector.Builder(
-            name = "MonthSort",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 960f,
-            viewportHeight = 960f
-        ).apply {
-            addGroup(name = "month_group", translationY = 960f).apply {
-                addPath(
-                    pathData = androidx.compose.ui.graphics.vector.PathParser().parsePathString("M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-188.5-11.5Q280-423 280-440t11.5-28.5Q303-480 320-480t28.5 11.5Q360-457 360-440t-11.5 28.5Q337-400 320-400t-28.5-11.5ZM640-400q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-188.5-11.5Q280-263 280-280t11.5-28.5Q303-320 320-320t28.5 11.5Q360-297 360-280t-11.5 28.5Q337-240 320-240t-28.5-11.5ZM640-240q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z").toNodes(),
-                    fill = SolidColor(androidx.compose.ui.graphics.Color.Black)
-                )
-            }
-        }.build()
-        SnippetSortType.Year -> {
-            if (isSelected) {
-                if (viewModel.isSortAscending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
-            } else Icons.Rounded.Style // Placeholder for sort
-        }
-        SnippetSortType.New -> Icons.AutoMirrored.Rounded.TextSnippet
-        SnippetSortType.Old -> Icons.AutoMirrored.Rounded.TextSnippet
-    }
-
-    SettingsCardItem(
-        icon = icon,
-        title = label,
-        isSelected = isSelected,
-        position = position,
-        containerColor = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
-            else rememberMonetTintedColor(MaterialTheme.colorScheme.surfaceContainerHighest, weight = 0.28f).copy(alpha = 0.55f)
-        } else null,
-        onClick = {
-            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-            if (viewModel.snippetSortType == type && (type == SnippetSortType.AZ || type == SnippetSortType.Month || type == SnippetSortType.Year)) {
-                viewModel.isSortAscending = !viewModel.isSortAscending
-            } else {
-                viewModel.snippetSortType = type
-            }
-        }
-    )
-}
-
-
