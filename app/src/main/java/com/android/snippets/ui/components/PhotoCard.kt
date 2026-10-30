@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,11 +29,13 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -343,7 +346,16 @@ fun PhotoCard(
                         val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (isDark) Color.White else Color.Black
                         val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
 
-                        if (circleBadgesAlpha > 0f && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon))) {
+                        val showCollectionBadges = tab == "Library" || tab == "Favorites"
+                        val validCollections = remember(photo.collections, viewModel.userCollections, showCollectionBadges) {
+                            if (showCollectionBadges) {
+                                photo.collections.filter { viewModel.userCollections.isEmpty() || it in viewModel.userCollections }
+                            } else {
+                                emptyList()
+                            }
+                        }
+
+                        if (circleBadgesAlpha > 0f && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon) || validCollections.isNotEmpty())) {
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
@@ -387,6 +399,51 @@ fun PhotoCard(
                                                 tint = iconColor,
                                                 modifier = Modifier.size(16.dp)
                                             )
+                                        }
+                                    }
+                                }
+
+                                validCollections.forEach { col ->
+                                    val iconOrEmoji = viewModel.getCollectionIcon(col)
+                                    Surface(
+                                        color = iconContainerColor.copy(alpha = 0.9f * circleBadgesAlpha),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            when (iconOrEmoji) {
+                                                is String -> {
+                                                    Text(
+                                                        text = iconOrEmoji,
+                                                        fontSize = 14.sp,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                }
+                                                is ImageVector -> {
+                                                    Icon(
+                                                        imageVector = iconOrEmoji,
+                                                        contentDescription = col,
+                                                        tint = iconColor,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                                is Int -> {
+                                                    Icon(
+                                                        painter = painterResource(id = iconOrEmoji),
+                                                        contentDescription = col,
+                                                        tint = iconColor,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                                else -> {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Folder,
+                                                        contentDescription = col,
+                                                        tint = iconColor,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }

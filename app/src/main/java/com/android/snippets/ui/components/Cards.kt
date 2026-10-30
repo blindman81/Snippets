@@ -46,6 +46,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -53,6 +54,8 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -435,7 +438,16 @@ fun PhotoMasonryItem(
                             modifier = Modifier.align(Alignment.Center)
                         )
 
-                        if (!isSelected && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon))) {
+                        val showCollectionBadges = viewModel != null && (tab == "Library" || tab == "Favorites")
+                        val validCollections = remember(photo.collections, viewModel?.userCollections, showCollectionBadges) {
+                            if (showCollectionBadges) {
+                                photo.collections.filter { viewModel!!.userCollections.isEmpty() || it in viewModel.userCollections }
+                            } else {
+                                emptyList()
+                            }
+                        }
+
+                        if (!isSelected && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon) || validCollections.isNotEmpty())) {
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
@@ -478,6 +490,51 @@ fun PhotoMasonryItem(
                                                 tint = iconColor,
                                                 modifier = Modifier.size(12.dp)
                                             )
+                                        }
+                                    }
+                                }
+
+                                validCollections.forEach { col ->
+                                    val iconOrEmoji = viewModel?.getCollectionIcon(col)
+                                    Surface(
+                                        color = iconContainerColor.copy(alpha = 0.9f),
+                                        shape = LocalAppShape.current,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            when (iconOrEmoji) {
+                                                is String -> {
+                                                    Text(
+                                                        text = iconOrEmoji,
+                                                        fontSize = 12.sp,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                }
+                                                is ImageVector -> {
+                                                    Icon(
+                                                        imageVector = iconOrEmoji,
+                                                        contentDescription = col,
+                                                        tint = iconColor,
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                                is Int -> {
+                                                    Icon(
+                                                        painter = painterResource(id = iconOrEmoji),
+                                                        contentDescription = col,
+                                                        tint = iconColor,
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                                else -> {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Folder,
+                                                        contentDescription = col,
+                                                        tint = iconColor,
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -638,7 +695,16 @@ fun PhotoMasonryItem(
                         modifier = Modifier.align(Alignment.Center)
                     )
 
-                    if (!isSelected && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon))) {
+                    val showCollectionBadges = viewModel != null && (tab == "Library" || tab == "Favorites")
+                    val validCollections = remember(photo.collections, viewModel?.userCollections, showCollectionBadges) {
+                        if (showCollectionBadges) {
+                            photo.collections.filter { viewModel!!.userCollections.isEmpty() || it in viewModel.userCollections }
+                        } else {
+                            emptyList()
+                        }
+                    }
+
+                    if (!isSelected && (photo.rating > 0 || (photo.isFavorite && showFavoriteIcon) || validCollections.isNotEmpty())) {
                         Column(
                             modifier = Modifier
                                 .align(Alignment.TopStart)
@@ -681,6 +747,51 @@ fun PhotoMasonryItem(
                                             tint = iconColor,
                                             modifier = Modifier.size(12.dp)
                                         )
+                                    }
+                                }
+                            }
+
+                            validCollections.forEach { col ->
+                                val iconOrEmoji = viewModel?.getCollectionIcon(col)
+                                Surface(
+                                    color = iconContainerColor.copy(alpha = 0.9f),
+                                    shape = LocalAppShape.current,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        when (iconOrEmoji) {
+                                            is String -> {
+                                                Text(
+                                                    text = iconOrEmoji,
+                                                    fontSize = 12.sp,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                            is ImageVector -> {
+                                                Icon(
+                                                    imageVector = iconOrEmoji,
+                                                    contentDescription = col,
+                                                    tint = iconColor,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                            is Int -> {
+                                                Icon(
+                                                    painter = painterResource(id = iconOrEmoji),
+                                                    contentDescription = col,
+                                                    tint = iconColor,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                            else -> {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Folder,
+                                                    contentDescription = col,
+                                                    tint = iconColor,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

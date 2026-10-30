@@ -44,7 +44,8 @@ fun PhotoActionDropdownMenu(
     ) {
         BlurredSurface(
             shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             tonalElevation = 3.dp,
             shadowElevation = 3.dp
         ) {
