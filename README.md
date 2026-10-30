@@ -13,9 +13,8 @@ Rate food you eat upto 5 stars.
 UI and UX design by me, code by agentic tools.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/ec8e11c7-0bcf-4c18-b995-e6cbf363e49c" width="18%">
-  <img src="https://github.com/user-attachments/assets/a2b1aa21-ab6f-48dc-b1aa-59920ee15414" width="18%">
-  <img src="https://github.com/user-attachments/assets/506a19f6-cf20-4716-b775-c600f9604c6b" width="18%">
-  <img src="https://github.com/user-attachments/assets/601c3f2a-2661-4d8e-a458-82908b0dd233" width="18%">
-  <img src="https://github.com/user-attachments/assets/ccd54a1d-0761-4b80-a0f3-fcb32e0679ea" width="18%">
+  <img src="https://github.com/user-attachments/assets/30d80536-0ba4-44dd-8736-cfb10d97f70f" width="18%" style="border-radius: 16px;">
+  <img src="https://github.com/user-attachments/assets/f35b5f39-0175-46f2-9436-9a6caecf806f" width="18%" style="border-radius: 16px;">
+  <img src="https://github.com/user-attachments/assets/4e0966ee-11d5-4399-8b56-3837e2a1d3c3" width="18%" style="border-radius: 16px;">
+  <img src="https://github.com/user-attachments/assets/f0be90af-5200-4b31-98ad-46409ac0a830" width="18%" style="border-radius: 16px;">
 </p>
