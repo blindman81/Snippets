@@ -72,7 +72,6 @@ fun AnimatedCookieButton(
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
     holdScale: Float = 1.45f,
@@ -101,7 +100,6 @@ fun AnimatedCookieButton(
         enabled = enabled,
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
-        isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
         badge = badge,
         holdScale = holdScale,
@@ -128,7 +126,6 @@ fun AnimatedCookieButton(
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
     holdScale: Float = 1.45f,
@@ -157,7 +154,6 @@ fun AnimatedCookieButton(
         enabled = enabled,
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
-        isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
         badge = badge,
         holdScale = holdScale,
@@ -183,7 +179,6 @@ fun AnimatedCookieButton(
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
     holdScale: Float = 1.45f,
@@ -205,7 +200,6 @@ fun AnimatedCookieButton(
         enabled = enabled,
         hapticOnHold = hapticOnHold,
         iconSize = iconSize,
-        isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
         badge = badge,
         holdScale = holdScale,
@@ -231,7 +225,6 @@ private fun AnimatedCookieButtonImpl(
     enabled: Boolean = true,
     hapticOnHold: Boolean = true,
     iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
     holdScale: Float = 1.45f,
@@ -400,40 +393,12 @@ private fun AnimatedCookieButtonImpl(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (isOnBlurredSurface) {
-                // Outline variant layer (bottom):
-                // Retains button container color with M3 outline variant border.
-                // Kept at full opacity so it never fades out when turning primary.
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clip(currentShape)
-                        .background(if (enabled) containerColor else containerColor.copy(alpha = 0.38f))
-                        .border(
-                            border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
-                            shape = currentShape
-                        )
-                )
-                // Primary layer: drawn OVER the outline variant so the outline is not visible when primary
-                if (primaryAlpha > 0.001f) {
-                    val primaryColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .graphicsLayer { alpha = primaryAlpha }
-                            .border(1.dp, primaryColor, currentShape)
-                            .clip(currentShape)
-                            .background(primaryColor)
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clip(currentShape)
-                        .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(currentShape)
+                    .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+            )
             val iconModifier = Modifier
                 .size(iconSize)
                 .graphicsLayer { 

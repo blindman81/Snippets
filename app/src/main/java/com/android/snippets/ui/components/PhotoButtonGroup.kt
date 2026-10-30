@@ -90,8 +90,7 @@ fun PhotoButtonGroup(
     unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
-    enabled: Boolean = true,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+    enabled: Boolean = true
 ) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
@@ -284,37 +283,12 @@ fun PhotoButtonGroup(
                             rotationZ = rotationLeading.value + wiggleLeading.value + tiltLeading
                         }
                 ) {
-                    if (isOnBlurredSurface) {
-                        val secondaryBg = if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f)
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .border(
-                                    border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
-                                    shape = shapeLeading
-                                )
-                                .clip(shapeLeading)
-                                .background(secondaryBg)
-                        )
-                        if (leadingPrimaryAlpha > 0.001f) {
-                            val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .graphicsLayer { alpha = leadingPrimaryAlpha }
-                                    .border(1.dp, primaryBg, shapeLeading)
-                                    .clip(shapeLeading)
-                                    .background(primaryBg)
-                            )
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clip(shapeLeading)
-                                .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
-                        )
-                    }
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(shapeLeading)
+                            .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
+                    )
                 }
 
                 Icon(
@@ -406,37 +380,12 @@ fun PhotoButtonGroup(
                                 rotationZ = rotationTrailing.value + wiggleTrailing.value + tiltTrailing
                             }
                     ) {
-                        if (isOnBlurredSurface) {
-                            val secondaryBg = if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f)
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .border(
-                                        border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
-                                        shape = shapeTrailing
-                                    )
-                                    .clip(shapeTrailing)
-                                    .background(secondaryBg)
-                            )
-                            if (trailingPrimaryAlpha > 0.001f) {
-                                val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .graphicsLayer { alpha = trailingPrimaryAlpha }
-                                        .border(1.dp, primaryBg, shapeTrailing)
-                                        .clip(shapeTrailing)
-                                        .background(primaryBg)
-                                )
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .clip(shapeTrailing)
-                                    .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
-                            )
-                        }
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeTrailing)
+                                .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
+                        )
                     }
 
                     Icon(
@@ -542,7 +491,7 @@ fun SplitButton(
     }
 }
 
-@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled, isOnBlurredSurface)"))
+@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled)"))
 @Composable
 fun CookieSplitButton(
     primaryIcon: ImageVector,
@@ -566,8 +515,7 @@ fun CookieSplitButton(
     unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
-    enabled: Boolean = true,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+    enabled: Boolean = true
 ) {
     PhotoButtonGroup(
         primaryIcon = primaryIcon,
@@ -591,12 +539,11 @@ fun CookieSplitButton(
         unselectedContainerColor = unselectedContainerColor,
         unselectedContentColor = unselectedContentColor,
         isSpinning = isSpinning,
-        enabled = enabled,
-        isOnBlurredSurface = isOnBlurredSurface
+        enabled = enabled
     )
 }
 
-@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled, isOnBlurredSurface)"))
+@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled)"))
 @Composable
 fun PhotoCookieSplitButton(
     primaryIcon: ImageVector,
@@ -620,8 +567,7 @@ fun PhotoCookieSplitButton(
     unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
-    enabled: Boolean = true,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+    enabled: Boolean = true
 ) {
     PhotoButtonGroup(
         primaryIcon = primaryIcon,
@@ -645,8 +591,7 @@ fun PhotoCookieSplitButton(
         unselectedContainerColor = unselectedContainerColor,
         unselectedContentColor = unselectedContentColor,
         isSpinning = isSpinning,
-        enabled = enabled,
-        isOnBlurredSurface = isOnBlurredSurface
+        enabled = enabled
     )
 }
 
