@@ -51,7 +51,7 @@ fun FloatingSheet(
     sheetModifier: Modifier = Modifier,
     bottomSpacing: Dp = 108.dp,
     shape: Shape = RoundedCornerShape(32.dp),
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     alpha: Float = HazeDefaults.tintAlpha,
     contentColor: Color = contentColorFor(containerColor),
     hazeState: HazeState? = LocalHazeState.current,

@@ -158,7 +158,7 @@ fun ManageFloatingSheet(
                                 val isDoubleLine = action.label.contains("\n")
                                 Surface(
                                     shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier
                                         .widthIn(min = 60.dp, max = 84.dp)
