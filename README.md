@@ -13,12 +13,13 @@ Rate food you eat upto 5 cookiestars.
 UI and UX design ideas by me, code by agentic tools.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/30d80536-0ba4-44dd-8736-cfb10d97f70f" width="18%">
-  <img src="https://github.com/user-attachments/assets/f35b5f39-0175-46f2-9436-9a6caecf806f" width="18%">
-  <img src="https://github.com/user-attachments/assets/4e0966ee-11d5-4399-8b56-3837e2a1d3c3" width="18%">
-  <img src="https://github.com/user-attachments/assets/f0be90af-5200-4b31-98ad-46409ac0a830" width="18%">
+  <img src="https://github.com/user-attachments/assets/b20a5c05-29ec-4bac-b743-f140a8d492d2" width="18%">
+  <img src="https://github.com/user-attachments/assets/ecc5157c-8ddf-43b6-9754-b2f96773f973" width="18%">
+  <img src="https://github.com/user-attachments/assets/a82843ca-4d56-4d21-afdd-2dbdab0e68b5" width="18%">
+  <img src="https://github.com/user-attachments/assets/be8fc7e1-a2cf-4fcd-9ad7-820dbe583851" width="18%">
 </p>
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/43147f5a-0781-4f0d-8958-0e937720df05" width="400">
+  <img src="https://github.com/user-attachments/assets/735580a3-39c1-4195-8215-aaed51c68c42" width="400">
+  <img src="https://github.com/user-attachments/assets/0189f553-ec65-4d9e-acc2-96fed2728ce3" width="400">
 </p>
