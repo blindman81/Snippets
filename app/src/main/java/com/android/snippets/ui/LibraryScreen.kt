@@ -94,7 +94,11 @@ fun LibraryScreen(
             isSearchOpen = false
             viewModel.searchQuery = ""
         } else if (viewModel.isSelectionMode) {
-            viewModel.clearSelection()
+            if (viewModel.searchQuery.isNotEmpty()) {
+                viewModel.searchQuery = ""
+            } else {
+                viewModel.clearSelection()
+            }
         } else if (deletingCollection != null) {
             deletingCollection = null
         }

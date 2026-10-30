@@ -1476,6 +1476,7 @@ class SnippetsViewModel @Inject constructor(
         pendingCollectionAssignment = null
         pendingCollectionRemoval = null
         forceSelectionMode = false
+        searchQuery = ""
     }
 
     fun deleteSelectedPhotos(unpublish: Boolean = true) {
@@ -2241,10 +2242,7 @@ class SnippetsViewModel @Inject constructor(
 
     fun getCollectionIcon(collection: String): Any {
         if (collection == "Favorites") return Icons.Rounded.Favorite
-        val iconName = collectionIcons[collection] ?: return Icons.Rounded.Folder
-        
-        // If it's a single emoji or short string, return it as is
-        if (iconName.length <= 4) return iconName
+        val iconName = collectionIcons[collection] ?: collection
         
         return when (iconName) {
             "Landscape" -> Icons.Rounded.Landscape
@@ -2257,7 +2255,11 @@ class SnippetsViewModel @Inject constructor(
             "Travel" -> Icons.Rounded.Flight
             "Waves" -> Icons.Rounded.Waves
             "Apartment" -> Icons.Rounded.Apartment
-            else -> Icons.Rounded.Folder
+            else -> if (iconName.isNotBlank() && iconName.none { it in 'a'..'z' || it in 'A'..'Z' }) {
+                iconName
+            } else {
+                Icons.Rounded.Folder
+            }
         }
     }
 

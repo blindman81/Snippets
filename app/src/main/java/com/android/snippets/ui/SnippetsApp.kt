@@ -312,14 +312,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                         enterTransition = { fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) },
                         exitTransition = { fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing)) },
                         popEnterTransition = { fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) },
-                        popExitTransition = {
-                            fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing)) +
-                                scaleOut(
-                                    targetScale = 0.90f,
-                                    transformOrigin = TransformOrigin(pivotFractionX = 0.5f, pivotFractionY = 0.5f),
-                                    animationSpec = tween(380, easing = FastOutSlowInEasing)
-                                )
-                        }
+                        popExitTransition = { fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing)) }
                     ) {
                         RenderScreenContent(Screen.Memory, this)
                     }
