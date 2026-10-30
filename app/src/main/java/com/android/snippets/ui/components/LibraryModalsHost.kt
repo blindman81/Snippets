@@ -92,7 +92,7 @@ fun LibraryModalsHost(
             )
         }
         if (showRateModal) {
-            RateFoodDialog(
+            Cookiestarslider(
                 initialRating = currentModalPhoto.rating,
                 onDismiss = onCloseRateModal,
                 onConfirm = { rating ->
