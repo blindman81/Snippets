@@ -80,7 +80,7 @@ fun SelectionToolbarContent(
             Text(
                 text = textToShow,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -134,6 +134,103 @@ fun SelectionToolbarContent(
     }
 }
 
+@Composable
+fun ExpandedSearchContent(
+    viewModel: SnippetsViewModel,
+    searchFocusRequester: FocusRequester,
+    onCloseOrBack: () -> Unit,
+    isSpinning: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val view = LocalView.current
+    val focusManager = LocalFocusManager.current
+
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Close / back
+        AnimatedCookieButton(
+            onClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                onCloseOrBack()
+            },
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Close Search",
+            tooltip = "Close",
+            isSpinning = isSpinning,
+            size = 48.dp,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+
+        val searchTextFieldState = rememberTextFieldState(viewModel.searchQuery)
+        LaunchedEffect(searchTextFieldState) {
+            snapshotFlow { searchTextFieldState.text.toString() }.collect { newText ->
+                if (viewModel.searchQuery != newText) {
+                    viewModel.searchQuery = newText
+                }
+            }
+        }
+        LaunchedEffect(viewModel.searchQuery) {
+            if (searchTextFieldState.text.toString() != viewModel.searchQuery) {
+                searchTextFieldState.setTextAndPlaceCursorAtEnd(viewModel.searchQuery)
+            }
+        }
+
+        // Text field
+        BasicTextField(
+            state = searchTextFieldState,
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(searchFocusRequester),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 17.sp
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            onKeyboardAction = {
+                focusManager.clearFocus()
+            },
+            decorator = { innerTextField ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (viewModel.searchQuery.isEmpty()) {
+                        Text(
+                            text = "Search",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+        )
+
+        // Clear button
+        if (viewModel.searchQuery.isNotEmpty()) {
+            AnimatedCookieButton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    viewModel.searchQuery = ""
+                },
+                icon = Icons.Rounded.Close,
+                contentDescription = "Clear",
+                tooltip = "Clear",
+                isSpinning = isSpinning,
+                size = 48.dp,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CookieToolbar(
@@ -159,216 +256,177 @@ fun CookieToolbar(
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
 
+    val isAddOrRemovePhotos = viewModel.isSelectionMode && (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null)
+    val selectionSearchFocusRequester = remember { FocusRequester() }
+
     CompositionLocalProvider(
         LocalTiltActive provides true,
         LocalTiltModalFocus provides true
     ) {
-        BlurredSurface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 8.dp,
-            tonalElevation = 0.dp,
+        Column(
             modifier = modifier
                 .safeDrawingPadding()
                 .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                 .widthIn(max = 320.dp)
                 .fillMaxWidth()
-                .height(84.dp)
                 .graphicsLayer {
                     translationY = cookieToolbarOffset.toPx()
                     scaleX = cookieToolbarScale
                     scaleY = cookieToolbarScale
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
-                }
+                },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-        val motionScheme = MaterialTheme.motionScheme
-        AnimatedContent(
-            targetState = when {
-                viewModel.isSelectionMode -> 2
-                isSearchOpen -> 1
-                else -> 0
-            },
-            transitionSpec = {
-                (fadeIn(motionScheme.defaultEffectsSpec()) + scaleIn(initialScale = 0.92f, animationSpec = motionScheme.defaultSpatialSpec()))
-                    .togetherWith(fadeOut(motionScheme.fastEffectsSpec()) + scaleOut(targetScale = 0.92f, animationSpec = motionScheme.fastSpatialSpec()))
-            },
-            contentAlignment = Alignment.Center,
-            label = "cookie_toolbar_mode",
-            modifier = Modifier.fillMaxSize()
-        ) { searchMode ->
-            if (searchMode == 2) {
-                SelectionToolbarContent(
-                    viewModel = viewModel,
-                    onDeleteClick = onBulkDeleteClick,
-                    isSpinning = !isAnyPopupActive,
-                    isScrolled = isScrolled
-                )
-            } else if (searchMode == 1) {
-                // Search Mode
-                Row(
+            val motionScheme = MaterialTheme.motionScheme
+
+            AnimatedVisibility(
+                visible = isAddOrRemovePhotos,
+                enter = fadeIn(motionScheme.defaultEffectsSpec()) + slideInVertically(motionScheme.defaultSpatialSpec()) { it / 2 },
+                exit = fadeOut(motionScheme.fastEffectsSpec()) + slideOutVertically(motionScheme.fastSpatialSpec()) { it / 2 }
+            ) {
+                BlurredSurface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shadowElevation = 8.dp,
+                    tonalElevation = 0.dp,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxWidth()
+                        .height(84.dp)
                 ) {
-                    // Close / back
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            onSearchOpenChange(false)
+                    ExpandedSearchContent(
+                        viewModel = viewModel,
+                        searchFocusRequester = selectionSearchFocusRequester,
+                        onCloseOrBack = {
                             viewModel.searchQuery = ""
-                        },
-                        icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Close Search",
-                        tooltip = "Close",
-                        isSpinning = true,
-                        size = 48.dp,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-
-                    val searchTextFieldState = rememberTextFieldState(viewModel.searchQuery)
-                    LaunchedEffect(searchTextFieldState) {
-                        snapshotFlow { searchTextFieldState.text.toString() }.collect { newText ->
-                            if (viewModel.searchQuery != newText) {
-                                viewModel.searchQuery = newText
-                            }
-                        }
-                    }
-                    LaunchedEffect(viewModel.searchQuery) {
-                        if (searchTextFieldState.text.toString() != viewModel.searchQuery) {
-                            searchTextFieldState.setTextAndPlaceCursorAtEnd(viewModel.searchQuery)
-                        }
-                    }
-
-                    // Text field
-                    BasicTextField(
-                        state = searchTextFieldState,
-                        modifier = Modifier
-                            .weight(1f)
-                            .focusRequester(searchFocusRequester),
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 17.sp
-                        ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        lineLimits = TextFieldLineLimits.SingleLine,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        onKeyboardAction = {
-                            onSearchOpenChange(false)
                             focusManager.clearFocus()
                         },
-                        decorator = { innerTextField ->
-                            Box(contentAlignment = Alignment.CenterStart) {
-                                if (viewModel.searchQuery.isEmpty()) {
-                                    Text(
-                                        text = "Search",
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        }
+                        isSpinning = !isAnyPopupActive
                     )
-
-                    // Clear button
-                    if (viewModel.searchQuery.isNotEmpty()) {
-                        AnimatedCookieButton(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                viewModel.searchQuery = ""
-                            },
-                            icon = Icons.Rounded.Close,
-                            contentDescription = "Clear",
-                            tooltip = "Clear",
-                            isSpinning = true,
-                            size = 48.dp,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
                 }
-            } else {
-                // Normal Mode
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Menu
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onMenuClick()
-                        },
-                        icon = Icons.Rounded.Menu,
-                        closeIcon = Icons.Rounded.Close,
-                        isOpen = isMenuOpen,
-                        contentDescription = if (isMenuOpen) "Close Menu" else "Menu",
-                        size = 48.dp
-                    )
+            }
 
-                    // Search
-                    val isSearchActive = viewModel.searchQuery.isNotEmpty()
-                    val searchIcon = if (isSearchActive && flatPhotosRaw.any { photo ->
-                        when (currentTab) {
-                            "Library" -> true
-                            "Favorites" -> photo.isFavorite
-                            else -> photo.collections.contains(currentTab)
+            BlurredSurface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shadowElevation = 8.dp,
+                tonalElevation = 0.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(84.dp)
+            ) {
+                AnimatedContent(
+                    targetState = when {
+                        viewModel.isSelectionMode -> 2
+                        isSearchOpen -> 1
+                        else -> 0
+                    },
+                    transitionSpec = {
+                        (fadeIn(motionScheme.defaultEffectsSpec()) + scaleIn(initialScale = 0.92f, animationSpec = motionScheme.defaultSpatialSpec()))
+                            .togetherWith(fadeOut(motionScheme.fastEffectsSpec()) + scaleOut(targetScale = 0.92f, animationSpec = motionScheme.fastSpatialSpec()))
+                    },
+                    contentAlignment = Alignment.Center,
+                    label = "cookie_toolbar_mode",
+                    modifier = Modifier.fillMaxSize()
+                ) { searchMode ->
+                    if (searchMode == 2) {
+                        SelectionToolbarContent(
+                            viewModel = viewModel,
+                            onDeleteClick = onBulkDeleteClick,
+                            isSpinning = !isAnyPopupActive,
+                            isScrolled = isScrolled
+                        )
+                    } else if (searchMode == 1) {
+                        ExpandedSearchContent(
+                            viewModel = viewModel,
+                            searchFocusRequester = searchFocusRequester,
+                            onCloseOrBack = {
+                                onSearchOpenChange(false)
+                                viewModel.searchQuery = ""
+                                focusManager.clearFocus()
+                            },
+                            isSpinning = true
+                        )
+                    } else {
+                        // Normal Mode
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Menu
+                            AnimatedCookieButton(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    onMenuClick()
+                                },
+                                icon = Icons.Rounded.Menu,
+                                closeIcon = Icons.Rounded.Close,
+                                isOpen = isMenuOpen,
+                                contentDescription = if (isMenuOpen) "Close Menu" else "Menu",
+                                size = 48.dp
+                            )
+
+                            // Search
+                            val isSearchActive = viewModel.searchQuery.isNotEmpty()
+                            val searchIcon = if (isSearchActive && flatPhotosRaw.any { photo ->
+                                when (currentTab) {
+                                    "Library" -> true
+                                    "Favorites" -> photo.isFavorite
+                                    else -> photo.collections.contains(currentTab)
+                                }
+                            }) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
+                            AnimatedCookieButton(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    onSearchOpenChange(true)
+                                },
+                                icon = searchIcon,
+                                contentDescription = "Search",
+                                isSelected = isSearchActive,
+                                isSpinning = !isAnyPopupActive,
+                                size = 48.dp,
+                                containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+
+                            // Manage (Middle)
+                            AnimatedCookieButton(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    onManageClick()
+                                },
+                                icon = R.drawable.ic_folder_managed,
+                                closeIcon = Icons.Rounded.Close,
+                                isOpen = isManageOpen,
+                                contentDescription = if (isManageOpen) "Close Manage" else "Manage",
+                                size = 48.dp
+                            )
+
+                            // Filters
+                            val hasFilterSnippets = viewModel.selectedFilterSnippets.isNotEmpty()
+                            val isFilterHighlighted = isFilterOpen || hasFilterSnippets
+                            val filterContentDescription = if (isFilterOpen) "Close Filters" else "Filters"
+                            AnimatedCookieButton(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    onFilterClick()
+                                },
+                                icon = Icons.Rounded.FilterList,
+                                closeIcon = Icons.Rounded.Close,
+                                isOpen = isFilterOpen,
+                                isSelected = isFilterHighlighted,
+                                contentDescription = filterContentDescription,
+                                size = 48.dp
+                            )
                         }
-                    }) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onSearchOpenChange(true)
-                        },
-                        icon = searchIcon,
-                        contentDescription = "Search",
-                        isSelected = isSearchActive,
-                        isSpinning = !isAnyPopupActive,
-                        size = 48.dp,
-                        containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-
-                    // Manage (Middle)
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onManageClick()
-                        },
-                        icon = R.drawable.ic_folder_managed,
-                        closeIcon = Icons.Rounded.Close,
-                        isOpen = isManageOpen,
-                        contentDescription = if (isManageOpen) "Close Manage" else "Manage",
-                        size = 48.dp
-                    )
-
-                    // Filters
-                    val hasFilterSnippets = viewModel.selectedFilterSnippets.isNotEmpty()
-                    val isFilterHighlighted = isFilterOpen || hasFilterSnippets
-                    val filterContentDescription = if (isFilterOpen) "Close Filters" else "Filters"
-                    AnimatedCookieButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onFilterClick()
-                        },
-                        icon = Icons.Rounded.FilterList,
-                        closeIcon = Icons.Rounded.Close,
-                        isOpen = isFilterOpen,
-                        isSelected = isFilterHighlighted,
-                        contentDescription = filterContentDescription,
-                        size = 48.dp
-                    )
+                    }
                 }
             }
         }
     }
-}
 }
