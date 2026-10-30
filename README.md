@@ -4,11 +4,11 @@
   <img width="1024" height="1024" alt="Image" src="https://github.com/user-attachments/assets/4adf12a0-1587-4f96-9d54-7f176d894f7c" />
 </p>
 
-A beautiful Material 3 Expressive app to write upto 15 letters of snippets to your photos. View and share them in an expressive way.
+A beautiful Material 3 Expressive app with hold a button to shape morph and button rotation tilt. Write upto 15 letters of snippets to your photos. View and share them in an expressive way.
 
 Relive moments with memories that cycles photos every day.
 
-Rate food you eat upto 5 stars.
+Rate food you eat upto 5 cookiestars.
 
 UI and UX design ideas by me, code by agentic tools.
 
