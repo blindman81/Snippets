@@ -21,5 +21,6 @@ UI and UX design ideas by me, code by agentic tools.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/735580a3-39c1-4195-8215-aaed51c68c42" width="400">
-  <img src="https://github.com/user-attachments/assets/0189f553-ec65-4d9e-acc2-96fed2728ce3" width="400">
+  <br><br>
+  <img src="https://github.com/user-attachments/assets/3ea5820e-911b-4edd-ace2-5416e8dd2896" width="400">
 </p>
