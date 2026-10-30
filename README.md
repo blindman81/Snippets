@@ -18,3 +18,7 @@ UI and UX design by me, code by agentic tools.
   <img src="https://github.com/user-attachments/assets/4e0966ee-11d5-4399-8b56-3837e2a1d3c3" width="18%" style="border-radius: 16px;">
   <img src="https://github.com/user-attachments/assets/f0be90af-5200-4b31-98ad-46409ac0a830" width="18%" style="border-radius: 16px;">
 </p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/43147f5a-0781-4f0d-8958-0e937720df05" width="400" style="border-radius: 16px;">
+</p>
