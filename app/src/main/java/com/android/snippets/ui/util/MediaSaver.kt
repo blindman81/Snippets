@@ -277,12 +277,12 @@ object MediaSaver {
             if (starDrawable != null) {
                 starDrawable.setBounds(starLeft.toInt(), starTop.toInt(), (starLeft + starSize).toInt(), (starTop + starSize).toInt())
                 val tintedDrawable = starDrawable.mutate()
-                androidx.core.graphics.drawable.DrawableCompat.setTint(tintedDrawable, colorScheme.primary.toArgb())
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tintedDrawable, Color.WHITE)
                 tintedDrawable.draw(canvas)
 
                 // Draw the rating number inside the star
                 val ratingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = colorScheme.onPrimary.toArgb()
+                    color = Color.parseColor("#1F1F1F")
                     textSize = 10f * scaleFactor
                     textAlign = Paint.Align.CENTER
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -298,20 +298,20 @@ object MediaSaver {
         val pillRadius = pillH / 2f
 
         val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = colorScheme.surfaceContainer.toArgb()
-            alpha = (255 * 0.75f).toInt()
+            color = Color.WHITE
+            alpha = (255 * 0.25f).toInt()
             style = Paint.Style.FILL
         }
         val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = colorScheme.outlineVariant.toArgb()
-            alpha = (255 * 0.5f).toInt()
+            color = Color.WHITE
+            alpha = (255 * 0.4f).toInt()
             style = Paint.Style.STROKE
             strokeWidth = 2.5f
         }
 
         // --- Center: Calendar month icon and day, date month and time in pill ---
         val datePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = colorScheme.onSurface.toArgb()
+            color = Color.WHITE
             alpha = 240
             textSize = 26f
             typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -334,17 +334,17 @@ object MediaSaver {
         if (calDrawable != null) {
             calDrawable.setBounds(calIconX.toInt(), calIconY.toInt(), (calIconX + calIconSize).toInt(), (calIconY + calIconSize).toInt())
             val tinted = calDrawable.mutate()
-            androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, colorScheme.primary.toArgb())
+            androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
             tinted.draw(canvas)
         }
         val dateTextY = headerCenterY - ((datePaint.descent() + datePaint.ascent()) / 2f)
         datePaint.textAlign = Paint.Align.LEFT
         canvas.drawText(dateString, calIconX + calIconSize + calItemSpacing, dateTextY, datePaint)
 
-        // --- Left: Label icon and Photo name ---
+        // --- Left: Label icon and Photo name (2dp gap from calendar pill) ---
         if (!photoName.isNullOrBlank()) {
             val namePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = colorScheme.onSurface.toArgb()
+                color = Color.WHITE
                 alpha = 240
                 textSize = 26f
                 typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -352,16 +352,18 @@ object MediaSaver {
             val labelIconSize = 28f
             val itemSpacing = 10f
             val horizontalPadding = 20f
+            val gapFromCalendar = 2f * (width / 360f) // 2dp in px
 
-            val maxLeftPillWidth = (centerPillLeft - paddingX - 16f).coerceAtLeast(100f)
+            val pillRight = centerPillRect.left - gapFromCalendar
+            val maxLeftPillWidth = (pillRight - paddingX).coerceAtLeast(10f)
             val maxTextWidth = (maxLeftPillWidth - horizontalPadding * 2 - labelIconSize - itemSpacing).coerceAtLeast(10f)
             val ellipsizedName = android.text.TextUtils.ellipsize(photoName, namePaint, maxTextWidth, android.text.TextUtils.TruncateAt.END).toString()
             val textWidth = namePaint.measureText(ellipsizedName)
 
             val pillW = horizontalPadding * 2 + labelIconSize + itemSpacing + textWidth
-            val pillLeft = paddingX
+            val pillLeft = pillRight - pillW
             val pillTop = headerCenterY - (pillH / 2f)
-            val pillRect = RectF(pillLeft, pillTop, pillLeft + pillW, pillTop + pillH)
+            val pillRect = RectF(pillLeft, pillTop, pillRight, pillTop + pillH)
 
             canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBgPaint)
             canvas.drawRoundRect(pillRect, pillRadius, pillRadius, pillBorderPaint)
@@ -372,7 +374,7 @@ object MediaSaver {
             if (labelDrawable != null) {
                 labelDrawable.setBounds(iconX.toInt(), iconY.toInt(), (iconX + labelIconSize).toInt(), (iconY + labelIconSize).toInt())
                 val tinted = labelDrawable.mutate()
-                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, colorScheme.primary.toArgb())
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
                 tinted.draw(canvas)
             }
             val textY = headerCenterY - ((namePaint.descent() + namePaint.ascent()) / 2f)
@@ -383,7 +385,7 @@ object MediaSaver {
         // --- Right: Location on icon to show location (2dp gap from calendar pill) ---
         if (!locationText.isNullOrBlank()) {
             val locTextPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = colorScheme.onSurface.toArgb()
+                color = Color.WHITE
                 alpha = 240
                 textSize = 26f
                 typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -414,7 +416,7 @@ object MediaSaver {
             if (locDrawable != null) {
                 locDrawable.setBounds(iconX.toInt(), iconY.toInt(), (iconX + locIconSize).toInt(), (iconY + locIconSize).toInt())
                 val tinted = locDrawable.mutate()
-                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, colorScheme.primary.toArgb())
+                androidx.core.graphics.drawable.DrawableCompat.setTint(tinted, Color.WHITE)
                 tinted.draw(canvas)
             }
             val textY = headerCenterY - ((locTextPaint.descent() + locTextPaint.ascent()) / 2f)
