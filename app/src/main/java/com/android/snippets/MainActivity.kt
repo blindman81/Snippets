@@ -270,7 +270,7 @@ private fun ComposeSplashScreen(
     isInitialLoading: Boolean,
     onAnimationFinished: () -> Unit
 ) {
-    val bgColor = if (isDarkTheme) Color(0xFF42474E) else Color(0xFFF2E0D1)
+    val bgColor = MaterialTheme.colorScheme.background
 
     var startExitAnimation by remember { mutableStateOf(false) }
 
