@@ -177,15 +177,13 @@ fun MemoryScreen(
         isOpening = false
     }
 
-    val isOpeningTransition = isOpening ||
-        (animatedVisibilityScope?.transition?.currentState != EnterExitState.Visible)
+    val isOpeningTransition = isOpening
 
     // State for long-press hold detection to freeze spin & pause timer
     var isPressed by remember { mutableStateOf(false) }
-    val isScrolling = pagerState.isScrollInProgress || abs(pagerState.currentPageOffsetFraction) > 0.005f
+    val isScrolling = pagerState.isScrollInProgress || abs(pagerState.currentPageOffsetFraction) > 0.05f
     val isClosing = viewModel.currentScreen != Screen.Memory ||
-        pagerState.targetPage == 0 ||
-        pagerState.targetPage == photoList.size + 1
+        (photoList.isNotEmpty() && (pagerState.targetPage == 0 || pagerState.targetPage == photoList.size + 1))
     val shouldAnimateSpin = !isPressed && !isScrolling && !isClosing && !isOpeningTransition
 
     var rotationAngle by remember { mutableFloatStateOf(0f) }
@@ -211,9 +209,9 @@ fun MemoryScreen(
     var wavePhase by remember { mutableFloatStateOf(0f) }
 
     // Story Progress Timer and Auto-Advance Loop bound to settledPage to prevent mid-animation cancellation
-    LaunchedEffect(pagerState.settledPage, isPressed, isScrolling, isClosing, isOpeningTransition) {
+    LaunchedEffect(pagerState.settledPage, isClosing, isOpeningTransition) {
         val activeSettled = pagerState.settledPage
-        if (activeSettled >= 1 && activeSettled <= photoList.size && !isScrolling && !isClosing && !isOpeningTransition) {
+        if (activeSettled >= 1 && activeSettled <= photoList.size && !isClosing && !isOpeningTransition) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             currentMemoryProgress = 0f
 
@@ -500,7 +498,7 @@ fun MemoryScreen(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_star_rating),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = Color.White,
                         modifier = Modifier.fillMaxSize()
                     )
                     Text(
@@ -509,7 +507,7 @@ fun MemoryScreen(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold
                         ),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = Color(0xFF1F1F1F),
                         modifier = Modifier.padding(top = 1.dp)
                     )
                 }
@@ -533,17 +531,19 @@ fun MemoryScreen(
                 } else null
                 val photoName = photo?.name?.takeIf { it.isNotBlank() }
 
-                // Left: Label icon and Photo name
+                // Left: Label icon and Photo name (2dp gap from calendar pill)
                 Box(
                     modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.CenterStart
+                    contentAlignment = Alignment.CenterEnd
                 ) {
                     if (photoName != null) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                            modifier = Modifier.height(24.dp)
+                            color = Color.White.copy(alpha = 0.25f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                            modifier = Modifier
+                                .padding(end = 2.dp)
+                                .height(24.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -553,7 +553,7 @@ fun MemoryScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Rounded.Label,
                                     contentDescription = "Photo name",
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = Color.White,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
@@ -562,7 +562,7 @@ fun MemoryScreen(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = Color.White,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
@@ -574,8 +574,8 @@ fun MemoryScreen(
                 // Center: Calendar month icon and day, date month and time in pill
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    color = Color.White.copy(alpha = 0.25f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
                     modifier = Modifier.height(24.dp)
                 ) {
                     Row(
@@ -586,7 +586,7 @@ fun MemoryScreen(
                         Icon(
                             imageVector = Icons.Rounded.CalendarMonth,
                             contentDescription = "Date",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = Color.White,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
@@ -595,7 +595,7 @@ fun MemoryScreen(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             ),
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color.White,
                             maxLines = 1
                         )
                     }
@@ -609,8 +609,8 @@ fun MemoryScreen(
                     if (!locationText.isNullOrBlank()) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                            color = Color.White.copy(alpha = 0.25f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
                             modifier = Modifier
                                 .padding(start = 2.dp)
                                 .height(24.dp)
@@ -623,7 +623,7 @@ fun MemoryScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.LocationOn,
                                     contentDescription = "Location",
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = Color.White,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
@@ -632,7 +632,7 @@ fun MemoryScreen(
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = Color.White,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
