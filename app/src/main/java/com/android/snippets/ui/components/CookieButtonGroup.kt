@@ -195,7 +195,6 @@ fun CookieButtonGroup(
     wiggleNeighborOnToggleOn: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
-    spinOnProgrammaticSelect: Boolean = false,
     onItemClick: ((Int) -> Unit)? = null
 ) {
     val view = LocalView.current
@@ -399,20 +398,18 @@ fun CookieButtonGroup(
         val next = selectedIndex
         if (prev != next) {
             lastSelectedIndex = next
-            if (spinOnProgrammaticSelect) {
-                if (enableWiggle && prev in currentItems.indices) {
-                    val wasPrevPrimary = currentItems[prev].isSelected ?: true
-                    if (wasPrevPrimary) {
-                        val wiggleDir = if (next >= 0) {
-                            if (next > prev) -1f else 1f
-                        } else 1f
-                        triggerWiggle(prev, direction = wiggleDir)
-                    }
+            if (enableWiggle && prev in currentItems.indices) {
+                val wasPrevPrimary = currentItems[prev].isSelected ?: true
+                if (wasPrevPrimary) {
+                    val wiggleDir = if (next >= 0) {
+                        if (next > prev) -1f else 1f
+                    } else 1f
+                    triggerWiggle(prev, direction = wiggleDir)
                 }
+            }
 
-                if (next in currentItems.indices && next >= 0) {
-                    triggerSpin(next, isDirectClick = false)
-                }
+            if (next in currentItems.indices && next >= 0) {
+                triggerSpin(next, isDirectClick = false)
             }
         }
     }
@@ -672,7 +669,6 @@ fun CookieButtonGroup(
     wiggleNeighborOnToggleOn: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
-    spinOnProgrammaticSelect: Boolean = false,
     onItemClick: ((Int) -> Unit)? = null,
     iconSize: Dp = 22.dp
 ) {
@@ -731,7 +727,6 @@ fun CookieNavBar(
     wiggleNeighborOnToggleOn: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
-    spinOnProgrammaticSelect: Boolean = false,
     onItemClick: ((Int) -> Unit)? = null
 ) = CookieButtonGroup(
     selectedIndex = selectedIndex,
@@ -751,7 +746,6 @@ fun CookieNavBar(
     wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
     isOnBlurredSurface = isOnBlurredSurface,
     enableTilt = enableTilt,
-    spinOnProgrammaticSelect = spinOnProgrammaticSelect,
     onItemClick = onItemClick
 )
 

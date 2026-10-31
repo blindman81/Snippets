@@ -300,10 +300,9 @@ fun LibraryScreen(
                             val targetPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
                             val activeTabTarget = pageTabs.getOrNull(targetPage) ?: "Library"
 
-                            LaunchedEffect(pagerState.settledPage) {
-                                val settledTab = pageTabs.getOrNull(pagerState.settledPage) ?: return@LaunchedEffect
-                                val tabX = tabPositions[settledTab] ?: return@LaunchedEffect
-                                val tabW = tabWidths[settledTab] ?: return@LaunchedEffect
+                            LaunchedEffect(activeTabTarget) {
+                                val tabX = tabPositions[activeTabTarget] ?: return@LaunchedEffect
+                                val tabW = tabWidths[activeTabTarget] ?: return@LaunchedEffect
                                 val rowW = tabRowScrollState.maxValue + 0f
                                 val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
                                     .coerceIn(0f, rowW)
