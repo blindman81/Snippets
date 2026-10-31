@@ -585,6 +585,21 @@ class SnippetsViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             photoRepository.allPhotosFlow.collect { roomPhotos ->
                 if (storageMutex.isLocked) return@collect
+                val current = photos
+                if (current.isNotEmpty() && current.size == roomPhotos.size) {
+                    val isIdentical = roomPhotos.all { rp ->
+                        val p = current.find { it.id == rp.id }
+                        p != null && p.date == rp.date && p.snippets == (rp.snippets ?: emptyList<String>()) &&
+                                p.isFavorite == rp.isFavorite && p.rating == rp.rating &&
+                                p.name == rp.name && p.locationName == rp.locationName &&
+                                p.collections == (rp.collections ?: emptyList<String>()) &&
+                                p.isViewed == rp.isViewed && p.surfacedTime == rp.surfacedTime &&
+                                p.widthPx == rp.widthPx && p.heightPx == rp.heightPx &&
+                                p.uriString == rp.uriString
+                    }
+                    if (isIdentical) return@collect
+                }
+
                 val processedPhotos = roomPhotos.map { p ->
                     val (widthPx, heightPx) = if (p.widthPx > 0 && p.heightPx > 0) {
                         p.widthPx to p.heightPx
@@ -648,10 +663,12 @@ class SnippetsViewModel @Inject constructor(
             val roomCollections = collectionEntities.map { it.name }
             val loadedIcons = collectionEntities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()
 
+            var dimensionsNeedSaving = false
             val processedPhotos = roomPhotos.map { p ->
                 val (widthPx, heightPx) = if (p.widthPx > 0 && p.heightPx > 0) {
                     p.widthPx to p.heightPx
                 } else {
+                    dimensionsNeedSaving = true
                     extractImageDimensions(Uri.parse(p.uriString))
                 }
                 Photo(
@@ -675,6 +692,14 @@ class SnippetsViewModel @Inject constructor(
                     name = p.name
                 )
             }.sortedByDescending { it.date }
+
+            if (dimensionsNeedSaving) {
+                try {
+                    photoRepository.insertPhotos(processedPhotos)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
 
             val loadedFirstSeen = try {
                 val currentPrefs = userPreferencesRepository.userPreferencesFlow.first()

@@ -98,6 +98,9 @@ object ExifLocationHelper {
 
     fun reverseGeocodeSync(context: Context, latitude: Double, longitude: Double): String? {
         if (!Geocoder.isPresent()) return null
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            return null
+        }
         return try {
             val geocoder = Geocoder(context, Locale.getDefault())
             val addresses: List<Address>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
