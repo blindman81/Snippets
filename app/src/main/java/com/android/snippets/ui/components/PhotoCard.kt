@@ -185,7 +185,7 @@ fun PhotoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(Motion.PhotoExpandSpring)
+                .then(if (isExpanded) Modifier.animateContentSize(Motion.PhotoExpandSpring) else Modifier)
         ) {
             if (!showBottomCard) {
                 Surface(
@@ -450,11 +450,9 @@ fun PhotoCard(
                             }
                         }
 
-                        val context = LocalContext.current
                         val locationName = remember(photo.locationName, photo.locationLink, viewModel.locationNameMap) {
                             val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
                                 ?: photo.locationLink?.let { viewModel.locationNameMap[it] }
-                                ?: LocationUtils.getLocationFromExif(context, photo)?.trim()
                             rawName?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
                         }
 
