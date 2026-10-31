@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LibraryStatusBarBlur(
     statusBarTop: Dp,
-    alpha: Float,
+    alpha: () -> Float,
     hazeState: HazeState,
     style: HazeStyle,
     modifier: Modifier = Modifier
@@ -49,7 +49,7 @@ fun LibraryStatusBarBlur(
         modifier = modifier
             .fillMaxWidth()
             .height(statusBarTop)
-            .graphicsLayer { this.alpha = alpha }
+            .graphicsLayer { this.alpha = alpha() }
             .then(
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                     Modifier.hazeEffect(
@@ -127,8 +127,10 @@ fun LibraryNavBar(
                     }
                     val isSystem = tabName == "Library" || tabName == "Favorites"
                     val positionModifier = Modifier.onGloballyPositioned { coords ->
-                        tabPositions[tabName] = coords.boundsInParent().left
-                        tabWidths[tabName] = coords.size.width.toFloat()
+                        val left = coords.boundsInParent().left
+                        val width = coords.size.width.toFloat()
+                        if (tabPositions[tabName] != left) tabPositions[tabName] = left
+                        if (tabWidths[tabName] != width) tabWidths[tabName] = width
                     }
 
                     cookieButtonItem(

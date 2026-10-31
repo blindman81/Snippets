@@ -35,7 +35,8 @@ fun LibraryPhotoPager(
     flatPhotosRaw: List<Photo>,
     viewModel: SnippetsViewModel,
     listStates: MutableMap<String, LazyStaggeredGridState>,
-    topGridPadding: Dp,
+    topGridPadding: Dp = 0.dp,
+    statusBarTop: Dp = 0.dp,
     hazeState: HazeState,
     showAddModal: Boolean,
     modalPhotoId: String?,
@@ -79,17 +80,24 @@ fun LibraryPhotoPager(
             viewModel.sortPhotos(filtered, tabSortType)
         }
 
-        var lastSortType by remember(tabForPage) { mutableStateOf(tabSortType) }
-        if (lastSortType != tabSortType) {
-            lastSortType = tabSortType
-            listStates[tabForPage] = LazyStaggeredGridState()
+        val pageHasMemories = remember(viewModel.historyMemories, tabForPage) {
+            when (tabForPage) {
+                "Library" -> viewModel.historyMemories.isNotEmpty()
+                "Favorites" -> viewModel.historyMemories.any { it.isFavorite }
+                else -> viewModel.historyMemories.any { it.collections.contains(tabForPage) }
+            }
+        }
+        val effectiveTopPadding = if (statusBarTop > 0.dp) {
+            if (pageHasMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
+        } else {
+            topGridPadding
         }
 
         if (pageFilteredPhotos.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = topGridPadding),
+                    .padding(top = effectiveTopPadding),
                 contentAlignment = Alignment.Center
             ) {
                 when (tabForPage) {
@@ -108,7 +116,7 @@ fun LibraryPhotoPager(
                 contentPadding = PaddingValues(
                     start = 0.dp,
                     end = 0.dp,
-                    top = topGridPadding,
+                    top = effectiveTopPadding,
                     bottom = 140.dp
                 ),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),

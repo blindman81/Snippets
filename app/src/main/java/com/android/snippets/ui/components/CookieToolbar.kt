@@ -242,8 +242,8 @@ fun CookieToolbar(
     searchFocusRequester: FocusRequester,
     isScrolled: Boolean,
     isAnyPopupActive: Boolean,
-    cookieToolbarOffset: Dp,
-    cookieToolbarScale: Float,
+    cookieToolbarOffset: () -> Dp = { 0.dp },
+    cookieToolbarScale: () -> Float = { 1f },
     isMenuOpen: Boolean = false,
     isManageOpen: Boolean = false,
     isFilterOpen: Boolean = false,
@@ -270,9 +270,9 @@ fun CookieToolbar(
                 .widthIn(max = 320.dp)
                 .fillMaxWidth()
                 .graphicsLayer {
-                    translationY = cookieToolbarOffset.toPx()
-                    scaleX = cookieToolbarScale
-                    scaleY = cookieToolbarScale
+                    translationY = cookieToolbarOffset().toPx()
+                    scaleX = cookieToolbarScale()
+                    scaleY = cookieToolbarScale()
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                 },
             horizontalAlignment = Alignment.CenterHorizontally,
