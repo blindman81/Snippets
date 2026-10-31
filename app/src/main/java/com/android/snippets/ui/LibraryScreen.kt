@@ -208,31 +208,10 @@ fun LibraryScreen(
 
     val isHeaderScrolled by remember(pagerState, pageTabs, listStates) {
         derivedStateOf {
-            if (pagerState.isScrollInProgress) {
-                val offset = pagerState.currentPageOffsetFraction
-                val visiblePages = buildList {
-                    add(pagerState.currentPage)
-                    add(pagerState.settledPage)
-                    add(pagerState.targetPage)
-                    if (kotlin.math.abs(offset) > 0.0001f) {
-                        if (offset > 0f) {
-                            add(pagerState.currentPage + 1)
-                        } else {
-                            add(pagerState.currentPage - 1)
-                        }
-                    }
-                }.filter { it in 0 until pageTabs.size }.distinct()
-
-                visiblePages.any { pageIndex ->
-                    val tabName = pageTabs.getOrNull(pageIndex) ?: return@any false
-                    val state = listStates[tabName] ?: return@any false
-                    state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 10
-                }
-            } else {
-                val tabName = pageTabs.getOrNull(pagerState.currentPage) ?: return@derivedStateOf false
-                val state = listStates[tabName] ?: return@derivedStateOf false
-                state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 10
-            }
+            val target = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
+            val tabName = pageTabs.getOrNull(target) ?: return@derivedStateOf false
+            val state = listStates[tabName] ?: return@derivedStateOf false
+            state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 10
         }
     }
 
@@ -298,14 +277,7 @@ fun LibraryScreen(
                                 }
                             }
                             val hasTabMemories = currentTabMemories.isNotEmpty()
-                            val topGridPadding by animateDpAsState(
-                                targetValue = if (hasTabMemories) statusBarTop + 176.dp else statusBarTop + 72.dp,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                ),
-                                label = "top_grid_padding"
-                            )
+                            val topGridPadding = if (hasTabMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
 
                             val statusBarBlurAlpha by animateFloatAsState(
                                 targetValue = if (isHeaderScrolled) 1f else 0f,
@@ -328,9 +300,10 @@ fun LibraryScreen(
                             val targetPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
                             val activeTabTarget = pageTabs.getOrNull(targetPage) ?: "Library"
 
-                            LaunchedEffect(activeTabTarget) {
-                                val tabX = tabPositions[activeTabTarget] ?: return@LaunchedEffect
-                                val tabW = tabWidths[activeTabTarget] ?: return@LaunchedEffect
+                            LaunchedEffect(pagerState.settledPage) {
+                                val settledTab = pageTabs.getOrNull(pagerState.settledPage) ?: return@LaunchedEffect
+                                val tabX = tabPositions[settledTab] ?: return@LaunchedEffect
+                                val tabW = tabWidths[settledTab] ?: return@LaunchedEffect
                                 val rowW = tabRowScrollState.maxValue + 0f
                                 val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
                                     .coerceIn(0f, rowW)
@@ -345,6 +318,7 @@ fun LibraryScreen(
                                 viewModel = viewModel,
                                 listStates = listStates,
                                 topGridPadding = topGridPadding,
+                                statusBarTop = statusBarTop,
                                 hazeState = hazeState,
                                 showAddModal = showAddModal,
                                 modalPhotoId = modalPhoto?.id,
@@ -402,7 +376,7 @@ fun LibraryScreen(
                             // 2. Status Bar Progressive Blur
                             LibraryStatusBarBlur(
                                 statusBarTop = statusBarTop,
-                                alpha = statusBarBlurAlpha,
+                                alpha = { statusBarBlurAlpha },
                                 hazeState = hazeState,
                                 style = statusBarHazeStyle,
                                 modifier = Modifier.align(Alignment.TopCenter)
@@ -454,8 +428,8 @@ fun LibraryScreen(
                                 searchFocusRequester = searchFocusRequester,
                                 isScrolled = isCurrentTabScrolled,
                                 isAnyPopupActive = isAnyPopupActive,
-                                cookieToolbarOffset = cookieToolbarOffset,
-                                cookieToolbarScale = cookieToolbarScale,
+                                cookieToolbarOffset = { cookieToolbarOffset },
+                                cookieToolbarScale = { cookieToolbarScale },
                                 isMenuOpen = showMenuPopup,
                                 isManageOpen = longPressedCollection != null,
                                 isFilterOpen = viewModel.showFilterSheet,
