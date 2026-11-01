@@ -1,6 +1,8 @@
 package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import com.android.snippets.ui.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -10,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
@@ -144,6 +147,7 @@ fun ExpandedSearchContent(
 ) {
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
 
     Row(
         modifier = modifier
@@ -152,21 +156,6 @@ fun ExpandedSearchContent(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Close / back
-        AnimatedCookieButton(
-            onClick = {
-                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                onCloseOrBack()
-            },
-            icon = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = "Close Search",
-            tooltip = "Close",
-            isSpinning = isSpinning,
-            size = 48.dp,
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-
         val searchTextFieldState = rememberTextFieldState(viewModel.searchQuery)
         LaunchedEffect(searchTextFieldState) {
             snapshotFlow { searchTextFieldState.text.toString() }.collect { newText ->
@@ -180,6 +169,22 @@ fun ExpandedSearchContent(
                 searchTextFieldState.setTextAndPlaceCursorAtEnd(viewModel.searchQuery)
             }
         }
+
+        // Close / back
+        AnimatedCookieButton(
+            onClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                searchTextFieldState.clearText()
+                onCloseOrBack()
+            },
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Close Search",
+            tooltip = "Close",
+            isSpinning = isSpinning,
+            size = 48.dp,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
 
         // Text field
         BasicTextField(
@@ -213,10 +218,15 @@ fun ExpandedSearchContent(
         )
 
         // Clear button
-        if (viewModel.searchQuery.isNotEmpty()) {
+        AnimatedVisibility(
+            visible = viewModel.searchQuery.isNotEmpty(),
+            enter = fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.8f, animationSpec = tween(150)),
+            exit = fadeOut(animationSpec = tween(200)) + scaleOut(targetScale = 0.8f, animationSpec = tween(200))
+        ) {
             AnimatedCookieButton(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    searchTextFieldState.clearText()
                     viewModel.searchQuery = ""
                 },
                 icon = Icons.Rounded.Close,
@@ -255,6 +265,7 @@ fun CookieToolbar(
 ) {
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
 
     val isAddOrRemovePhotos = viewModel.isSelectionMode && (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null)
     val selectionSearchFocusRequester = remember { FocusRequester() }
@@ -299,8 +310,8 @@ fun CookieToolbar(
                         viewModel = viewModel,
                         searchFocusRequester = selectionSearchFocusRequester,
                         onCloseOrBack = {
-                            viewModel.searchQuery = ""
                             focusManager.clearFocus()
+                            viewModel.searchQuery = ""
                         },
                         isSpinning = !isAnyPopupActive
                     )
@@ -344,8 +355,11 @@ fun CookieToolbar(
                             searchFocusRequester = searchFocusRequester,
                             onCloseOrBack = {
                                 onSearchOpenChange(false)
-                                viewModel.searchQuery = ""
                                 focusManager.clearFocus()
+                                scope.launch {
+                                    kotlinx.coroutines.delay(200L)
+                                    viewModel.searchQuery = ""
+                                }
                             },
                             isSpinning = true
                         )
@@ -373,13 +387,16 @@ fun CookieToolbar(
 
                             // Search
                             val isSearchActive = viewModel.searchQuery.isNotEmpty()
-                            val searchIcon = if (isSearchActive && flatPhotosRaw.any { photo ->
-                                when (currentTab) {
-                                    "Library" -> true
-                                    "Favorites" -> photo.isFavorite
-                                    else -> photo.collections.contains(currentTab)
+                            val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
+                                isSearchActive && flatPhotosRaw.any { photo ->
+                                    when (currentTab) {
+                                        "Library" -> true
+                                        "Favorites" -> photo.isFavorite
+                                        else -> photo.collections.contains(currentTab)
+                                    }
                                 }
-                            }) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
+                            }
+                            val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
                             AnimatedCookieButton(
                                 onClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
