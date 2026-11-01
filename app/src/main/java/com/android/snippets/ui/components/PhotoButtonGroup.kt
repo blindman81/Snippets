@@ -225,9 +225,8 @@ fun PhotoButtonGroup(
                                 val holdJob = scope.launch {
                                     kotlinx.coroutines.delay(120L)
                                     isHeld = true
-                                    launch { pressScaleLeading.animateTo(0.92f, Motion.PressSpring) }
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                     launch {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         morphProgressLeading.animateTo(1f, Motion.BouncySpring)
                                     }
                                     launch {
@@ -240,7 +239,6 @@ fun PhotoButtonGroup(
                                     holdJob.cancel()
                                     if (isHeld) {
                                         scope.launch {
-                                            launch { pressScaleLeading.animateTo(1f, Motion.BouncySpring) }
                                             launch { morphProgressLeading.animateTo(if (isPrimaryActive) 1f else 0f, Motion.BouncySpring) }
                                             launch { morphProgressTrailing.animateTo(if (expanded) 1f else 0f, Motion.BouncySpring) }
                                         }
@@ -321,9 +319,8 @@ fun PhotoButtonGroup(
                                     val holdJob = scope.launch {
                                         kotlinx.coroutines.delay(120L)
                                         isHeld = true
-                                        launch { pressScaleTrailing.animateTo(0.92f, Motion.PressSpring) }
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         launch {
-                                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                             morphProgressTrailing.animateTo(1f, Motion.BouncySpring)
                                         }
                                         launch {
@@ -336,7 +333,6 @@ fun PhotoButtonGroup(
                                         holdJob.cancel()
                                         if (isHeld) {
                                             scope.launch {
-                                                launch { pressScaleTrailing.animateTo(1f, Motion.BouncySpring) }
                                                 launch { morphProgressTrailing.animateTo(if (expanded) 1f else 0f, Motion.BouncySpring) }
                                                 launch { morphProgressLeading.animateTo(if (isPrimaryActive) 1f else 0f, Motion.BouncySpring) }
                                             }

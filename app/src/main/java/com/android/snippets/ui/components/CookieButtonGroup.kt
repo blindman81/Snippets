@@ -245,7 +245,7 @@ fun CookieButtonGroup(
 
     fun getTargetMorphIndex(heldIndex: Int): Int? {
         val listSize = currentItems.size
-        if (listSize <= 1) return if (listSize > 0) heldIndex else null
+        if (listSize <= 1) return null
         if (columns <= 1) {
             return if (heldIndex < listSize - 1) heldIndex + 1 else heldIndex - 1
         } else {
@@ -258,7 +258,7 @@ fun CookieButtonGroup(
             } else if (heldIndex > rowStart) {
                 heldIndex - 1
             } else {
-                heldIndex
+                null
             }
         }
     }
@@ -472,11 +472,8 @@ fun CookieButtonGroup(
                                 val holdJob = scope.launch {
                                     kotlinx.coroutines.delay(120L)
                                     isHeld = true
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                     launch {
-                                        pressScales[index].animateTo(0.92f, Motion.PressSpring)
-                                    }
-                                    launch {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         morphProgresses[index].animateTo(
                                             targetValue = 1f,
                                             animationSpec = Motion.BouncySpring
@@ -497,9 +494,6 @@ fun CookieButtonGroup(
                                     holdJob.cancel()
                                     if (isHeld) {
                                         scope.launch {
-                                            launch {
-                                                pressScales[index].animateTo(1f, Motion.BouncySpring)
-                                            }
                                             launch {
                                                 morphProgresses[index].animateTo(
                                                     targetValue = 0f,
