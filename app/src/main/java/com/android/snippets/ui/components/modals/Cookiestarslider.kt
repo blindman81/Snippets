@@ -85,7 +85,7 @@ fun Cookiestarslider(
     }
 
     LaunchedEffect(Unit) {
-        scrimAlpha.animateTo(1f, animationSpec = tween(durationMillis = 200))
+        scrimAlpha.animateTo(1f, animationSpec = Motion.StandardFade)
         if (rating > 0) {
             for (i in 0 until rating) {
                 launch {
@@ -103,7 +103,7 @@ fun Cookiestarslider(
             isDismissing = true
             visibleState.targetState = false
             coroutineScope.launch {
-                scrimAlpha.animateTo(0f, animationSpec = tween(durationMillis = 200))
+                scrimAlpha.animateTo(0f, animationSpec = Motion.StandardFade)
             }
             coroutineScope.launch {
                 delay(220)
@@ -166,23 +166,17 @@ fun Cookiestarslider(
             visibleState = visibleState,
             enter = slideInVertically(
                 initialOffsetY = { it },
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ) + fadeIn(animationSpec = tween(180)) + scaleIn(
+                animationSpec = Motion.DialogSlideEnter
+            ) + fadeIn(animationSpec = Motion.FastFade) + scaleIn(
                 initialScale = 0.90f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+                animationSpec = Motion.DialogScaleEnter
             ),
             exit = slideOutVertically(
                 targetOffsetY = { it },
-                animationSpec = tween(durationMillis = 220)
-            ) + fadeOut(animationSpec = tween(durationMillis = 180)) + scaleOut(
+                animationSpec = Motion.DialogSlideExit
+            ) + fadeOut(animationSpec = Motion.FastFade) + scaleOut(
                 targetScale = 0.90f,
-                animationSpec = tween(durationMillis = 220)
+                animationSpec = Motion.DialogScaleExit
             )
         ) {
             // Pure vertical-oriented slider without any background container/card, with Haze blur

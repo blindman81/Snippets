@@ -46,6 +46,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.ui.util.LocalTiltModalFocus
+import com.android.snippets.ui.util.Motion
 import kotlin.math.roundToInt
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
@@ -342,18 +343,16 @@ fun BlurredAlertDialog(
                 )
         )
 
-        val motionScheme = MaterialTheme.motionScheme
-
         AnimatedVisibility(
             visibleState = visibleState,
             enter = slideInVertically(
                 initialOffsetY = { it },
-                animationSpec = motionScheme.defaultSpatialSpec()
-            ) + fadeIn(animationSpec = motionScheme.defaultEffectsSpec()),
+                animationSpec = Motion.DialogSlideEnter
+            ) + fadeIn(animationSpec = Motion.StandardFade),
             exit = slideOutVertically(
                 targetOffsetY = { it },
-                animationSpec = motionScheme.fastSpatialSpec()
-            ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
+                animationSpec = Motion.DialogSlideExit
+            ) + fadeOut(animationSpec = Motion.FastFade),
             modifier = keyboardOffsetModifier
         ) {
             CompositionLocalProvider(

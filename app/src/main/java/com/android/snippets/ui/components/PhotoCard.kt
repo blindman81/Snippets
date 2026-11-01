@@ -106,7 +106,7 @@ fun PhotoCard(
 
     val circleBadgesAlpha by animateFloatAsState(
         targetValue = if (isExpanded) 0f else 1f,
-        animationSpec = tween(durationMillis = 500),
+        animationSpec = Motion.PhotoCardFade,
         label = "photoCircleBadgesAlpha"
     )
 
@@ -452,8 +452,8 @@ fun PhotoCard(
 
                         androidx.compose.animation.AnimatedVisibility(
                             visible = isExpanded,
-                            enter = fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.85f, animationSpec = tween(500)),
-                            exit = fadeOut(animationSpec = tween(350)) + scaleOut(targetScale = 0.85f, animationSpec = tween(350)),
+                            enter = fadeIn(animationSpec = Motion.PhotoCardFade) + scaleIn(initialScale = 0.85f, animationSpec = Motion.PhotoCardFade),
+                            exit = fadeOut(animationSpec = Motion.PhotoCardExitFade) + scaleOut(targetScale = 0.85f, animationSpec = Motion.PhotoCardExitFade),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(8.dp)
