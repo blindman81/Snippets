@@ -7,6 +7,8 @@ import androidx.compose.foundation.border
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.NonCancellable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -249,7 +251,7 @@ private fun AnimatedCookieButtonImpl(
 
     val openProgress by animateFloatAsState(
         targetValue = if (isOpen) 1f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardFade,
         label = "cookie_button_open_progress"
     )
 
@@ -265,7 +267,7 @@ private fun AnimatedCookieButtonImpl(
 
     val primaryAlpha by animateFloatAsState(
         targetValue = if (isPrimary) 1f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardFade,
         label = "cookie_button_primary_alpha"
     )
 
@@ -287,12 +289,12 @@ private fun AnimatedCookieButtonImpl(
 
     val badgeAlpha by animateFloatAsState(
         targetValue = if (isMorphing) 0f else 1f,
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = Motion.FastFade,
         label = "cookie_badge_alpha"
     )
     val badgeScale by animateFloatAsState(
         targetValue = if (isMorphing) 0f else 1f,
-        animationSpec = if (isMorphing) tween(durationMillis = 180) else Motion.BouncySpring,
+        animationSpec = if (isMorphing) Motion.FastFade else Motion.BouncySpring,
         label = "cookie_badge_scale"
     )
 
@@ -359,34 +361,62 @@ private fun AnimatedCookieButtonImpl(
                             val shouldSpin = currentIsSpinning
                             spinJob?.cancel()
                             spinJob = scope.launch {
-                                isTapped = true
-                                val scaleJobX = launch {
-                                    animScaleX.animateTo(0.84f, Motion.PressSpring)
-                                    animScaleX.animateTo(1f, Motion.BouncySpring)
-                                }
-                                val scaleJobY = launch {
-                                    animScaleY.animateTo(0.84f, Motion.PressSpring)
-                                    animScaleY.animateTo(1f, Motion.BouncySpring)
-                                }
-                                val rotJob = if (shouldSpin) {
-                                    launch {
-                                        rotation.animateTo(
-                                            targetValue = rotation.value + 360f,
-                                            animationSpec = Motion.BouncySpring
-                                        )
-                                    }
-                                } else null
-
-                                kotlinx.coroutines.delay(180L)
                                 try {
-                                    currentOnClick()
-                                } finally {
-                                    isTapped = false
-                                }
+                                    isTapped = true
+                                    val scaleJobX = launch {
+                                        try {
+                                            animScaleX.animateTo(0.84f, Motion.PressSpring)
+                                            animScaleX.animateTo(1f, Motion.BouncySpring)
+                                        } finally {
+                                            withContext(NonCancellable) {
+                                                if (animScaleX.value != 1f) {
+                                                    animScaleX.animateTo(1f, Motion.BouncySpring)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    val scaleJobY = launch {
+                                        try {
+                                            animScaleY.animateTo(0.84f, Motion.PressSpring)
+                                            animScaleY.animateTo(1f, Motion.BouncySpring)
+                                        } finally {
+                                            withContext(NonCancellable) {
+                                                if (animScaleY.value != 1f) {
+                                                    animScaleY.animateTo(1f, Motion.BouncySpring)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    val rotJob = if (shouldSpin) {
+                                        launch {
+                                            rotation.animateTo(
+                                                targetValue = rotation.value + 360f,
+                                                animationSpec = Motion.BouncySpring
+                                            )
+                                        }
+                                    } else null
 
-                                rotJob?.join()
-                                scaleJobX.join()
-                                scaleJobY.join()
+                                    kotlinx.coroutines.delay(180L)
+                                    try {
+                                        currentOnClick()
+                                    } finally {
+                                        isTapped = false
+                                    }
+
+                                    rotJob?.join()
+                                    scaleJobX.join()
+                                    scaleJobY.join()
+                                } finally {
+                                    withContext(NonCancellable) {
+                                        isTapped = false
+                                        if (animScaleX.value != 1f) {
+                                            animScaleX.animateTo(1f, Motion.BouncySpring)
+                                        }
+                                        if (animScaleY.value != 1f) {
+                                            animScaleY.animateTo(1f, Motion.BouncySpring)
+                                        }
+                                    }
+                                }
                             }
                         }
                     )
