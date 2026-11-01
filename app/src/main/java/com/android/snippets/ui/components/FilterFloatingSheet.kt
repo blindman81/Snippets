@@ -54,7 +54,6 @@ fun FilterFloatingSheet(
                         SnippetSortType.Emoticons -> 3
                     },
                     cookieSize = 44.dp,
-                    isOnBlurredSurface = false,
                     items = listOf(
                         cookieButtonItem(
                             icon = sortIcon,

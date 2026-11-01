@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.ui.util.LocalTiltModalFocus
+import com.android.snippets.ui.util.Motion
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.ln.android.snippets.R
 
@@ -68,8 +69,8 @@ fun SelectionToolbarContent(
             },
             icon = Icons.Rounded.Close,
             contentDescription = "Clear Selection",
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             size = 44.dp,
             isSpinning = isSpinning
         )
@@ -83,7 +84,7 @@ fun SelectionToolbarContent(
             Text(
                 text = textToShow,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -95,8 +96,8 @@ fun SelectionToolbarContent(
                 },
                 icon = R.drawable.ic_share,
                 contentDescription = "Share Selection",
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 size = 44.dp,
                 isSpinning = isSpinning
             )
@@ -128,8 +129,8 @@ fun SelectionToolbarContent(
                 },
                 icon = R.drawable.ic_delete,
                 contentDescription = "Delete",
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 size = 44.dp,
                 isSpinning = isSpinning
             )
@@ -193,7 +194,7 @@ fun ExpandedSearchContent(
                 .weight(1f)
                 .focusRequester(searchFocusRequester),
             textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 17.sp
             ),
@@ -209,7 +210,7 @@ fun ExpandedSearchContent(
                         Text(
                             text = "Search",
                             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                     innerTextField()
@@ -289,17 +290,15 @@ fun CookieToolbar(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val motionScheme = MaterialTheme.motionScheme
-
             AnimatedVisibility(
                 visible = isAddOrRemovePhotos,
-                enter = fadeIn(motionScheme.defaultEffectsSpec()) + slideInVertically(motionScheme.defaultSpatialSpec()) { it / 2 },
-                exit = fadeOut(motionScheme.fastEffectsSpec()) + slideOutVertically(motionScheme.fastSpatialSpec()) { it / 2 }
+                enter = fadeIn(Motion.StandardFade) + slideInVertically(Motion.ToolbarSlideEnterInt) { it / 2 },
+                exit = fadeOut(Motion.FastFade) + slideOutVertically(Motion.ToolbarSlideExitInt) { it / 2 }
             ) {
                 BlurredSurface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                     shadowElevation = 8.dp,
                     tonalElevation = 0.dp,
                     modifier = Modifier
@@ -320,8 +319,8 @@ fun CookieToolbar(
 
             BlurredSurface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 shadowElevation = 8.dp,
                 tonalElevation = 0.dp,
                 modifier = Modifier
@@ -335,8 +334,8 @@ fun CookieToolbar(
                         else -> 0
                     },
                     transitionSpec = {
-                        (fadeIn(motionScheme.defaultEffectsSpec()) + scaleIn(initialScale = 0.92f, animationSpec = motionScheme.defaultSpatialSpec()))
-                            .togetherWith(fadeOut(motionScheme.fastEffectsSpec()) + scaleOut(targetScale = 0.92f, animationSpec = motionScheme.fastSpatialSpec()))
+                        (fadeIn(Motion.StandardFade) + scaleIn(initialScale = 0.92f, animationSpec = Motion.DialogScaleEnter))
+                            .togetherWith(fadeOut(Motion.FastFade) + scaleOut(targetScale = 0.92f, animationSpec = Motion.DialogScaleExit))
                     },
                     contentAlignment = Alignment.Center,
                     label = "cookie_toolbar_mode",
