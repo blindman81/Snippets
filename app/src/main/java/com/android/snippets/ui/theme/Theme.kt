@@ -105,9 +105,9 @@ fun SnippetsTheme(
         onSurface = originalColorScheme.onSurface,
         onBackground = originalColorScheme.onSurface,
         onSurfaceVariant = originalColorScheme.onSurfaceVariant,
-        onPrimaryContainer = originalColorScheme.onSurface,
-        onSecondaryContainer = originalColorScheme.onSurface,
-        onTertiaryContainer = originalColorScheme.onSurface,
+        onPrimaryContainer = originalColorScheme.onPrimaryContainer,
+        onSecondaryContainer = originalColorScheme.onSecondaryContainer,
+        onTertiaryContainer = originalColorScheme.onTertiaryContainer,
 
 
         onPrimary = if (darkTheme) Color.Black else Color.White,
@@ -121,7 +121,6 @@ fun SnippetsTheme(
         colorScheme = sanitizedColorScheme,
         typography = Typography,
         shapes = Shapes,
-        motionScheme = MotionScheme.expressive(),
         content = content
     )
 }

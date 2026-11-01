@@ -84,22 +84,22 @@ val OrangeSurfaceContainerLowestDark = Color(0xFF140D07)
 val OrangeSurfaceContainerHighestDark = Color(0xFF3D332C)
 
 // ── Material You Monet Snippet Styling ──────────────────────────────────────
-// Snippets dynamically adopt Monet dynamic colors from MaterialTheme (primaryContainer / onPrimaryContainer)
+// Snippets dynamically adopt Monet dynamic colors from MaterialTheme (secondaryContainer / onSecondaryContainer)
 
 @androidx.compose.runtime.Composable
 fun rememberSnippetBackgroundColor(): Color {
-    return androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer
+    return androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer
 }
 
 @androidx.compose.runtime.Composable
 fun rememberSnippetTextColor(): Color {
-    return androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer
+    return androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer
 }
 
 fun getSnippetBackgroundColorInt(context: android.content.Context, isDark: Boolean = false): Int {
-    return getAppColorScheme(context, isDark).primaryContainer.toArgb()
+    return getAppColorScheme(context, isDark).secondaryContainer.toArgb()
 }
 
 fun getSnippetTextColorInt(context: android.content.Context, isDark: Boolean = false): Int {
-    return getAppColorScheme(context, isDark).onPrimaryContainer.toArgb()
+    return getAppColorScheme(context, isDark).onSecondaryContainer.toArgb()
 }
