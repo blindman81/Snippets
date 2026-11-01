@@ -65,6 +65,7 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.android.snippets.ui.util.rotateWithBounds
+import com.android.snippets.ui.util.Motion
 import com.android.snippets.ui.theme.*
 import androidx.compose.ui.res.painterResource
 import com.android.snippets.viewmodel.Screen
@@ -166,7 +167,7 @@ fun MemoryScreen(
 
     val uiAlpha by animateFloatAsState(
         targetValue = if (pagerState.isScrollInProgress) 0f else 1f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardFade,
         label = "uiAlpha"
     )
 

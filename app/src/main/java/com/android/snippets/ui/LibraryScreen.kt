@@ -237,9 +237,9 @@ fun LibraryScreen(
     val cookieNavBarAlpha by animateFloatAsState(
         targetValue = if (isHeaderScrolled) 0f else 1f,
         animationSpec = if (!isHeaderScrolled) {
-            spring(stiffness = Spring.StiffnessMediumLow)
+            Motion.FadeEnter
         } else {
-            MaterialTheme.motionScheme.defaultEffectsSpec()
+            Motion.FadeExit
         },
         label = "cookie_nav_bar_alpha"
     )
@@ -284,7 +284,7 @@ fun LibraryScreen(
 
                             val statusBarBlurAlpha by animateFloatAsState(
                                 targetValue = if (isHeaderScrolled) 1f else 0f,
-                                animationSpec = tween(durationMillis = 300),
+                                animationSpec = Motion.SlowFade,
                                 label = "status_bar_blur_alpha"
                             )
 
@@ -514,21 +514,15 @@ fun LibraryScreen(
                             // 8. Scroll to Top Floating Button
                             AnimatedVisibility(
                                 visible = isCurrentTabScrolled && !pagerState.isScrollInProgress && !viewModel.isSelectionMode && !isSearchOpen && !isAnyPopupActive,
-                                enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                                enter = fadeIn(animationSpec = Motion.FadeEnter) +
                                         scaleIn(
                                             initialScale = 0.8f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
+                                            animationSpec = Motion.BouncySpring
                                         ),
-                                exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                                exit = fadeOut(animationSpec = Motion.FadeExit) +
                                         scaleOut(
                                             targetScale = 0.8f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                                stiffness = Spring.StiffnessMedium
-                                            )
+                                            animationSpec = Motion.FastExitSpring
                                         ),
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)

@@ -96,7 +96,6 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val motionScheme = MaterialTheme.motionScheme
     val isOverlayShowing = viewModel.showBulkDeleteModal || viewModel.showFilterSheet || viewModel.isAddingPhotos || viewModel.isBusy || viewModel.isCuratingMemories
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -268,51 +267,51 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     startDestination = LibraryRoute,
                     modifier = Modifier.fillMaxSize(),
                     enterTransition = {
-                        fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) +
-                            scaleIn(initialScale = 0.92f, animationSpec = tween(350, easing = FastOutSlowInEasing))
+                        fadeIn(animationSpec = Motion.NavEnterFade) +
+                            scaleIn(initialScale = 0.92f, animationSpec = Motion.NavEnterScale)
                     },
                     exitTransition = {
-                        fadeOut(animationSpec = tween(250, easing = FastOutSlowInEasing)) +
-                            scaleOut(targetScale = 0.95f, animationSpec = tween(250, easing = FastOutSlowInEasing))
+                        fadeOut(animationSpec = Motion.NavExitFade) +
+                            scaleOut(targetScale = 0.95f, animationSpec = Motion.NavExitScale)
                     },
                     popEnterTransition = {
-                        fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) +
-                            scaleIn(initialScale = 0.92f, animationSpec = tween(350, easing = FastOutSlowInEasing))
+                        fadeIn(animationSpec = Motion.NavEnterFade) +
+                            scaleIn(initialScale = 0.92f, animationSpec = Motion.NavEnterScale)
                     },
                     popExitTransition = {
-                        fadeOut(animationSpec = tween(250, easing = FastOutSlowInEasing)) +
+                        fadeOut(animationSpec = Motion.NavExitFade) +
                             scaleOut(
                                 targetScale = 0.90f,
                                 transformOrigin = TransformOrigin(pivotFractionX = 0.5f, pivotFractionY = 0.5f),
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                animationSpec = Motion.NavPopExitScale
                             )
                     }
                 ) {
                     composable<LibraryRoute>(
                         popEnterTransition = {
                             if (initialState.destination.hasRoute<MemoryRoute>()) {
-                                fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing))
+                                fadeIn(animationSpec = Motion.NavMemoryEnterFade)
                             } else {
-                                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) +
-                                    scaleIn(initialScale = 0.92f, animationSpec = tween(350, easing = FastOutSlowInEasing))
+                                fadeIn(animationSpec = Motion.NavEnterFade) +
+                                    scaleIn(initialScale = 0.92f, animationSpec = Motion.NavEnterScale)
                             }
                         },
                         exitTransition = {
                             if (targetState.destination.hasRoute<MemoryRoute>()) {
-                                fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing))
+                                fadeOut(animationSpec = Motion.NavMemoryExitFade)
                             } else {
-                                fadeOut(animationSpec = tween(250, easing = FastOutSlowInEasing)) +
-                                    scaleOut(targetScale = 0.95f, animationSpec = tween(250, easing = FastOutSlowInEasing))
+                                fadeOut(animationSpec = Motion.NavExitFade) +
+                                    scaleOut(targetScale = 0.95f, animationSpec = Motion.NavExitScale)
                             }
                         }
                     ) {
                         RenderScreenContent(Screen.Library, this)
                     }
                     composable<MemoryRoute>(
-                        enterTransition = { fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) },
-                        exitTransition = { fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing)) },
-                        popEnterTransition = { fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) },
-                        popExitTransition = { fadeOut(animationSpec = tween(380, easing = FastOutSlowInEasing)) }
+                        enterTransition = { fadeIn(animationSpec = Motion.NavMemoryEnterFade) },
+                        exitTransition = { fadeOut(animationSpec = Motion.NavMemoryExitFade) },
+                        popEnterTransition = { fadeIn(animationSpec = Motion.NavMemoryEnterFade) },
+                        popExitTransition = { fadeOut(animationSpec = Motion.NavMemoryExitFade) }
                     ) {
                         RenderScreenContent(Screen.Memory, this)
                     }

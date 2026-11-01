@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.snippets.ui.theme.titleEmphasized
+import com.android.snippets.ui.util.Motion
 import com.android.snippets.viewmodel.SnippetsViewModel
 
 @Composable
@@ -38,7 +39,7 @@ fun MainTopBar(
     
     val scrollProgress by animateFloatAsState(
         targetValue = if (isScrolled) 1f else 0f,
-        animationSpec = tween(250),
+        animationSpec = Motion.MediumFade,
         label = "headerScrollProgress"
     )
     val headerColor = if (forceTransparentBackground) {
