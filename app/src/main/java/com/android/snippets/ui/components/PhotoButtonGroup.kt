@@ -30,6 +30,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.automirrored.rounded.TextSnippet
 import androidx.compose.material.icons.automirrored.outlined.Label
@@ -90,7 +93,8 @@ fun PhotoButtonGroup(
     unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
@@ -153,18 +157,18 @@ fun PhotoButtonGroup(
     val isLeadingCallerPrimary = unselectedContainerColor == MaterialTheme.colorScheme.primary
     val leadingPrimaryAlpha by animateFloatAsState(
         targetValue = if (isLeadingPrimary || isLeadingCallerPrimary) 1f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardFade,
         label = "split_leading_primary_alpha"
     )
 
     val animatedLeadingContainerColor by animateColorAsState(
         targetValue = if (isLeadingPrimary) selectedContainerColor else unselectedContainerColor,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardColorFade,
         label = "split_leading_container"
     )
     val animatedLeadingContentColor by animateColorAsState(
         targetValue = if (isLeadingPrimary || isLeadingCallerPrimary) selectedContentColor else unselectedContentColor,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardColorFade,
         label = "split_leading_content"
     )
 
@@ -172,18 +176,18 @@ fun PhotoButtonGroup(
     val isTrailingCallerPrimary = unselectedContainerColor == MaterialTheme.colorScheme.primary
     val trailingPrimaryAlpha by animateFloatAsState(
         targetValue = if (isTrailingPrimary || isTrailingCallerPrimary) 1f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardFade,
         label = "split_trailing_primary_alpha"
     )
 
     val animatedTrailingContainerColor by animateColorAsState(
         targetValue = if (isTrailingPrimary) selectedContainerColor else unselectedContainerColor,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardColorFade,
         label = "split_trailing_container"
     )
     val animatedTrailingContentColor by animateColorAsState(
         targetValue = if (isTrailingPrimary || isTrailingCallerPrimary) selectedContentColor else unselectedContentColor,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = Motion.StandardColorFade,
         label = "split_trailing_content"
     )
 
@@ -257,17 +261,34 @@ fun PhotoButtonGroup(
 
                                 spinLeadingJob?.cancel()
                                 spinLeadingJob = scope.launch {
-                                    launch {
-                                        pressScaleLeading.animateTo(0.92f, Motion.PressSpring)
-                                        pressScaleLeading.animateTo(
-                                            1f,
-                                            androidx.compose.animation.core.spring(
-                                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                                                stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-                                            )
-                                        )
+                                    try {
+                                        val scaleJob = launch {
+                                            try {
+                                                pressScaleLeading.animateTo(0.92f, Motion.PressSpring)
+                                                pressScaleLeading.animateTo(
+                                                    1f,
+                                                    androidx.compose.animation.core.spring(
+                                                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                                        stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                                                    )
+                                                )
+                                            } finally {
+                                                withContext(NonCancellable) {
+                                                    if (pressScaleLeading.value != 1f) {
+                                                        pressScaleLeading.animateTo(1f, Motion.BouncySpring)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        scaleJob.join()
+                                    } finally {
+                                        withContext(NonCancellable) {
+                                            tappedLeading = false
+                                            if (pressScaleLeading.value != 1f) {
+                                                pressScaleLeading.animateTo(1f, Motion.BouncySpring)
+                                            }
+                                        }
                                     }
-                                    tappedLeading = false
                                 }
                             }
                         )
@@ -281,12 +302,37 @@ fun PhotoButtonGroup(
                             rotationZ = rotationLeading.value + wiggleLeading.value + tiltLeading
                         }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(shapeLeading)
-                            .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
-                    )
+                    if (isOnBlurredSurface) {
+                        val secondaryBg = if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f)
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeLeading)
+                                .background(secondaryBg)
+                                .border(
+                                    border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                    shape = shapeLeading
+                                )
+                        )
+                        if (leadingPrimaryAlpha > 0.001f) {
+                            val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .graphicsLayer { alpha = leadingPrimaryAlpha }
+                                    .border(1.dp, primaryBg, shapeLeading)
+                                    .clip(shapeLeading)
+                                    .background(primaryBg)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeLeading)
+                                .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
+                        )
+                    }
                 }
 
                 Icon(
@@ -352,17 +398,34 @@ fun PhotoButtonGroup(
 
                                     spinTrailingJob?.cancel()
                                     spinTrailingJob = scope.launch {
-                                        launch {
-                                            pressScaleTrailing.animateTo(0.92f, Motion.PressSpring)
-                                            pressScaleTrailing.animateTo(
-                                                1f,
-                                                androidx.compose.animation.core.spring(
-                                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                                                    stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-                                                )
-                                            )
+                                        try {
+                                            val scaleJob = launch {
+                                                try {
+                                                    pressScaleTrailing.animateTo(0.92f, Motion.PressSpring)
+                                                    pressScaleTrailing.animateTo(
+                                                        1f,
+                                                        androidx.compose.animation.core.spring(
+                                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                                                        )
+                                                    )
+                                                } finally {
+                                                    withContext(NonCancellable) {
+                                                        if (pressScaleTrailing.value != 1f) {
+                                                            pressScaleTrailing.animateTo(1f, Motion.BouncySpring)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            scaleJob.join()
+                                        } finally {
+                                            withContext(NonCancellable) {
+                                                tappedTrailing = false
+                                                if (pressScaleTrailing.value != 1f) {
+                                                    pressScaleTrailing.animateTo(1f, Motion.BouncySpring)
+                                                }
+                                            }
                                         }
-                                        tappedTrailing = false
                                     }
                                 }
                             )
@@ -376,12 +439,37 @@ fun PhotoButtonGroup(
                                 rotationZ = rotationTrailing.value + wiggleTrailing.value + tiltTrailing
                             }
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clip(shapeTrailing)
-                                .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
-                        )
+                        if (isOnBlurredSurface) {
+                            val secondaryBg = if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f)
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(shapeTrailing)
+                                    .background(secondaryBg)
+                                    .border(
+                                        border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                        shape = shapeTrailing
+                                    )
+                            )
+                            if (trailingPrimaryAlpha > 0.001f) {
+                                val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .graphicsLayer { alpha = trailingPrimaryAlpha }
+                                        .border(1.dp, primaryBg, shapeTrailing)
+                                        .clip(shapeTrailing)
+                                        .background(primaryBg)
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(shapeTrailing)
+                                    .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
+                            )
+                        }
                     }
 
                     Icon(
@@ -511,7 +599,8 @@ fun CookieSplitButton(
     unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     PhotoButtonGroup(
         primaryIcon = primaryIcon,
@@ -535,11 +624,12 @@ fun CookieSplitButton(
         unselectedContainerColor = unselectedContainerColor,
         unselectedContentColor = unselectedContentColor,
         isSpinning = isSpinning,
-        enabled = enabled
+        enabled = enabled,
+        isOnBlurredSurface = isOnBlurredSurface
     )
 }
 
-@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled)"))
+@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled, isOnBlurredSurface)"))
 @Composable
 fun PhotoCookieSplitButton(
     primaryIcon: ImageVector,
@@ -563,7 +653,8 @@ fun PhotoCookieSplitButton(
     unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     PhotoButtonGroup(
         primaryIcon = primaryIcon,
@@ -587,7 +678,8 @@ fun PhotoCookieSplitButton(
         unselectedContainerColor = unselectedContainerColor,
         unselectedContentColor = unselectedContentColor,
         isSpinning = isSpinning,
-        enabled = enabled
+        enabled = enabled,
+        isOnBlurredSurface = isOnBlurredSurface
     )
 }
 
@@ -609,7 +701,8 @@ fun PhotoButtonGroup(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     isPrimaryActive: Boolean = false,
-    buttonSize: Dp = 56.dp
+    buttonSize: Dp = 56.dp,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
     val hasSnippets = photo.snippets.isNotEmpty()
@@ -628,6 +721,7 @@ fun PhotoButtonGroup(
         isPrimaryActive = isPrimaryActive,
         menuColumns = 2,
         buttonSize = buttonSize,
+        isOnBlurredSurface = isOnBlurredSurface,
         modifier = modifier,
         items = run {
             val iconSize = (buttonSize * 0.44f).coerceAtLeast(24.dp)
@@ -744,7 +838,7 @@ fun PhotoButtonGroup(
     )
 }
 
-@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(photo, onAdd, onDownload, onShare, onToggleFavorite, onNamePhotoClick, onAddLinkClick, onRate, onSnippets, onDelete, modifier, isPrimaryActive, buttonSize)"))
+@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(photo, onAdd, onDownload, onShare, onToggleFavorite, onNamePhotoClick, onAddLinkClick, onRate, onSnippets, onDelete, modifier, isPrimaryActive, buttonSize, isOnBlurredSurface)"))
 @Composable
 fun PhotoCookieSplitButton(
     photo: Photo,
@@ -759,7 +853,8 @@ fun PhotoCookieSplitButton(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     isPrimaryActive: Boolean = false,
-    buttonSize: Dp = 56.dp
+    buttonSize: Dp = 56.dp,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     PhotoButtonGroup(
         photo = photo,
@@ -774,7 +869,8 @@ fun PhotoCookieSplitButton(
         onDelete = onDelete,
         modifier = modifier,
         isPrimaryActive = isPrimaryActive,
-        buttonSize = buttonSize
+        buttonSize = buttonSize,
+        isOnBlurredSurface = isOnBlurredSurface
     )
 }
 
