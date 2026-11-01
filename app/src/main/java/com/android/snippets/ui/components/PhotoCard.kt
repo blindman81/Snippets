@@ -60,7 +60,7 @@ private fun getSaturationColorFilter(saturation: Float): ColorFilter? = when {
     else -> ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) })
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PhotoCard(
     photo: Photo,
@@ -69,8 +69,6 @@ fun PhotoCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     showFavoriteIcon: Boolean = true,
     tab: String? = null,
     isMostSnippets: Boolean = false,
@@ -108,7 +106,7 @@ fun PhotoCard(
 
     val circleBadgesAlpha by animateFloatAsState(
         targetValue = if (isExpanded) 0f else 1f,
-        animationSpec = tween(durationMillis = 400),
+        animationSpec = tween(durationMillis = 500),
         label = "photoCircleBadgesAlpha"
     )
 
@@ -185,7 +183,7 @@ fun PhotoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (isExpanded) Modifier.animateContentSize(Motion.PhotoExpandSpring) else Modifier)
+                .animateContentSize(Motion.PhotoExpandSpring)
         ) {
             if (!showBottomCard) {
                 Surface(
@@ -273,74 +271,54 @@ fun PhotoCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(photoShape)
                         ) {
-                            val photoClipShape = photoShape
-                            Box(
-                                modifier = Modifier.fillMaxSize().then(
-                                    if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                                        with(sharedTransitionScope) {
-                                            Modifier.sharedBounds(
-                                                rememberSharedContentState(key = if (tab != null) "photo_${tab}_${photo.id}" else "photo_${photo.id}"),
-                                                animatedVisibilityScope = animatedVisibilityScope,
-                                                boundsTransform = Motion.SharedPhotoBoundsTransform,
-                                                resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
-                                                    contentScale = ContentScale.Crop,
-                                                    alignment = Alignment.Center
-                                                ),
-                                                clipInOverlayDuringTransition = OverlayClip(photoClipShape)
-                                            )
+                            val context = LocalContext.current
+                            val imageRequest = remember(photo.uriString) {
+                                ImageRequest.Builder(context)
+                                    .data(photo.uriString)
+                                    .crossfade(false)
+                                    .memoryCacheKey(photo.uriString)
+                                    .placeholderMemoryCacheKey(photo.uriString)
+                                    .build()
+                            }
+
+                            AsyncImage(
+                                model = imageRequest,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                onSuccess = { state ->
+                                    val w = state.result.drawable.intrinsicWidth
+                                    val h = state.result.drawable.intrinsicHeight
+                                    if (w > 0 && h > 0) {
+                                        val trueRatio = w.toFloat() / h.toFloat()
+                                        if (imageRatio == null || kotlin.math.abs((imageRatio ?: 0f) - trueRatio) > 0.01f) {
+                                            imageRatio = trueRatio
                                         }
-                                    } else {
-                                        Modifier
                                     }
-                                ).clip(photoClipShape)
-                            ) {
-                                val context = LocalContext.current
-                                val imageRequest = remember(photo.uriString) {
-                                    ImageRequest.Builder(context)
-                                        .data(photo.uriString)
-                                        .crossfade(false)
-                                        .memoryCacheKey(photo.uriString)
-                                        .placeholderMemoryCacheKey(photo.uriString)
-                                        .build()
-                                }
-
-                                AsyncImage(
-                                    model = imageRequest,
-                                    contentDescription = null,
-                                    contentScale = if (isExpanded) ContentScale.Fit else ContentScale.Crop,
-                                    onSuccess = { state ->
-                                        if (imageRatio == null) {
-                                            val w = state.result.drawable.intrinsicWidth
-                                            val h = state.result.drawable.intrinsicHeight
-                                            if (w > 0 && h > 0) {
-                                                imageRatio = w.toFloat() / h.toFloat()
-                                            }
-                                        }
-                                    },
-                                    colorFilter = getSaturationColorFilter(saturation),
-                                    modifier = Modifier.fillMaxSize().then(
-                                        if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
-                                    )
+                                },
+                                colorFilter = getSaturationColorFilter(saturation),
+                                modifier = Modifier.fillMaxSize().then(
+                                    if (selectionBlurRadius > 0.dp) Modifier.blur(selectionBlurRadius) else Modifier
                                 )
+                            )
 
-                                if (isSelected) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
-                                    )
-                                }
-
-                                SelectedPhotoIndicator(
-                                    isSelected = isSelected,
-                                    selectionMode = selectionMode,
-                                    count = viewModel.selectedPhotoIds.indexOf(photo.id) + 1,
-                                    modifier = Modifier.align(Alignment.Center)
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
                                 )
                             }
+
+                            SelectedPhotoIndicator(
+                                isSelected = isSelected,
+                                selectionMode = selectionMode,
+                                count = viewModel.selectedPhotoIds.indexOf(photo.id) + 1,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
                         }
 
                         val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (isDark) Color.White else Color.Black
@@ -474,8 +452,8 @@ fun PhotoCard(
 
                         androidx.compose.animation.AnimatedVisibility(
                             visible = isExpanded,
-                            enter = fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 0.85f, animationSpec = tween(400)),
-                            exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.85f, animationSpec = tween(300)),
+                            enter = fadeIn(animationSpec = tween(500)) + scaleIn(initialScale = 0.85f, animationSpec = tween(500)),
+                            exit = fadeOut(animationSpec = tween(350)) + scaleOut(targetScale = 0.85f, animationSpec = tween(350)),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(8.dp)

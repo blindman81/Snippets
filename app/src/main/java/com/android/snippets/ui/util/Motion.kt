@@ -74,7 +74,7 @@ object Motion {
 
     val PhotoExpandSpring = spring<IntSize>(
         dampingRatio = Spring.DampingRatioLowBouncy,
-        stiffness = 110f
+        stiffness = 120f
     )
 
     @OptIn(ExperimentalSharedTransitionApi::class)
