@@ -68,7 +68,9 @@ import com.android.snippets.ui.shapes.MorphShape
 import com.android.snippets.ui.shapes.RoundedPolygonShape
 import com.android.snippets.ui.util.Motion
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Item specification for [CookieButtonGroup].
@@ -221,6 +223,11 @@ fun CookieButtonGroup(
         wiggleJobs[targetIndex]?.cancel()
         spinJobs[targetIndex]?.cancel()
         wiggleJobs[targetIndex] = scope.launch {
+            if (pressScales[targetIndex].value != 1f) {
+                launch {
+                    pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
+                }
+            }
             wiggleRotations[targetIndex].snapTo(0f)
             wiggleRotations[targetIndex].animateTo(
                 targetValue = 0f,
@@ -316,20 +323,38 @@ fun CookieButtonGroup(
                 spinningIndex = targetIndex
                 spinJobs[targetIndex]?.cancel()
                 spinJobs[targetIndex] = scope.launch {
-                    val scaleJob = launch {
-                        pressScales[targetIndex].animateTo(0.84f, Motion.PressSpring)
-                        pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
-                    }
-                    val rotationJob = launch {
-                        rotations[targetIndex].animateTo(
-                            targetValue = rotations[targetIndex].value + 360f,
-                            animationSpec = Motion.BouncySpring
-                        )
-                    }
+                    try {
+                        val scaleJob = launch {
+                            try {
+                                pressScales[targetIndex].animateTo(0.84f, Motion.PressSpring)
+                                pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
+                            } finally {
+                                withContext(NonCancellable) {
+                                    if (pressScales[targetIndex].value != 1f) {
+                                        pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
+                                    }
+                                }
+                            }
+                        }
+                        val rotationJob = launch {
+                            rotations[targetIndex].animateTo(
+                                targetValue = rotations[targetIndex].value + 360f,
+                                animationSpec = Motion.BouncySpring
+                            )
+                        }
 
-                    rotationJob.join()
-                    scaleJob.join()
-                    spinningIndex = -1
+                        rotationJob.join()
+                        scaleJob.join()
+                    } finally {
+                        withContext(NonCancellable) {
+                            if (spinningIndex == targetIndex) {
+                                spinningIndex = -1
+                            }
+                            if (pressScales[targetIndex].value != 1f) {
+                                pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
+                            }
+                        }
+                    }
                 }
             }
         } else {
@@ -374,20 +399,38 @@ fun CookieButtonGroup(
                 spinningIndex = targetIndex
                 spinJobs[targetIndex]?.cancel()
                 spinJobs[targetIndex] = scope.launch {
-                    val scaleJob = launch {
-                        pressScales[targetIndex].animateTo(0.84f, Motion.PressSpring)
-                        pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
-                    }
-                    val rotationJob = launch {
-                        rotations[targetIndex].animateTo(
-                            targetValue = rotations[targetIndex].value + 360f,
-                            animationSpec = Motion.BouncySpring
-                        )
-                    }
+                    try {
+                        val scaleJob = launch {
+                            try {
+                                pressScales[targetIndex].animateTo(0.84f, Motion.PressSpring)
+                                pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
+                            } finally {
+                                withContext(NonCancellable) {
+                                    if (pressScales[targetIndex].value != 1f) {
+                                        pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
+                                    }
+                                }
+                            }
+                        }
+                        val rotationJob = launch {
+                            rotations[targetIndex].animateTo(
+                                targetValue = rotations[targetIndex].value + 360f,
+                                animationSpec = Motion.BouncySpring
+                            )
+                        }
 
-                    rotationJob.join()
-                    scaleJob.join()
-                    spinningIndex = -1
+                        rotationJob.join()
+                        scaleJob.join()
+                    } finally {
+                        withContext(NonCancellable) {
+                            if (spinningIndex == targetIndex) {
+                                spinningIndex = -1
+                            }
+                            if (pressScales[targetIndex].value != 1f) {
+                                pressScales[targetIndex].animateTo(1f, Motion.BouncySpring)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -405,6 +448,15 @@ fun CookieButtonGroup(
                         if (next > prev) -1f else 1f
                     } else 1f
                     triggerWiggle(prev, direction = wiggleDir)
+                }
+            }
+
+            // Restore any interrupted non-target button to full scale
+            currentItems.indices.forEach { idx ->
+                if (idx != next && pressScales[idx].value != 1f && !pressScales[idx].isRunning) {
+                    launch {
+                        pressScales[idx].animateTo(1f, Motion.BouncySpring)
+                    }
                 }
             }
 
@@ -437,6 +489,12 @@ fun CookieButtonGroup(
         )
 
         val tiltAngle by com.android.snippets.ui.util.rememberCookieTilt(enabled = enableTilt && item.enabled && isPrimary)
+
+        LaunchedEffect(currentSelectedIndex) {
+            if (index != currentSelectedIndex && index != spinningIndex && pressScales[index].value != 1f && !pressScales[index].isRunning) {
+                pressScales[index].animateTo(1f, Motion.BouncySpring)
+            }
+        }
 
         val cookieContent = @Composable {
             val currentShape = if (morphProgresses[index].value > 0.001f) {
