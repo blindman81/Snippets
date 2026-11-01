@@ -3,9 +3,6 @@ package com.android.snippets.ui.components
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import com.android.snippets.ui.*
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
@@ -27,7 +24,6 @@ import com.android.snippets.viewmodel.SnippetsViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun LibraryPhotoPager(
     pagerState: PagerState,
@@ -40,8 +36,6 @@ fun LibraryPhotoPager(
     hazeState: HazeState,
     showAddModal: Boolean,
     modalPhotoId: String?,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onPhotoClick: (Photo) -> Unit,
     onPhotoLongClick: (Photo) -> Unit,
     onAddSnippet: (Photo) -> Unit,
@@ -70,14 +64,22 @@ fun LibraryPhotoPager(
         val tabForPage = pageTabs.getOrNull(page) ?: "Library"
         val tabSortType = viewModel.getPhotoSortTypeFor(tabForPage)
         val pageFilteredPhotos = remember(flatPhotosRaw, tabForPage, tabSortType) {
-            val filtered = flatPhotosRaw.filter { photo ->
-                when (tabForPage) {
-                    "Library" -> true
-                    "Favorites" -> photo.isFavorite
-                    else -> photo.collections.contains(tabForPage)
+            val filtered = if (tabForPage == "Library") {
+                flatPhotosRaw
+            } else {
+                flatPhotosRaw.filter { photo ->
+                    when (tabForPage) {
+                        "Favorites" -> photo.isFavorite
+                        else -> photo.collections.contains(tabForPage)
+                    }
                 }
             }
-            viewModel.sortPhotos(filtered, tabSortType)
+            val effectiveRawSort = viewModel.currentSearchSortType ?: viewModel.photoSortType
+            if (tabForPage == "Library" && tabSortType == effectiveRawSort) {
+                filtered
+            } else {
+                viewModel.sortPhotos(filtered, tabSortType)
+            }
         }
 
         val pageHasMemories = remember(viewModel.historyMemories, tabForPage) {
@@ -169,8 +171,6 @@ fun LibraryPhotoPager(
                         onRatePhoto = { onRatePhoto(photo) },
                         onViewSnippets = { onViewSnippets(photo) },
                         onDeletePhoto = { onDeletePhoto(photo) },
-                        sharedTransitionScope = sharedTransitionScope,
-                        animatedVisibilityScope = animatedVisibilityScope,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

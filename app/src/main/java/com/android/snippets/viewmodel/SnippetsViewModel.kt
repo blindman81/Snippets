@@ -1142,22 +1142,48 @@ class SnippetsViewModel @Inject constructor(
         return try {
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             val path = uri.path
+            var orientation = ExifInterface.ORIENTATION_NORMAL
             if (path != null && !uri.toString().startsWith("content:")) {
                 val file = File(path)
                 if (file.exists()) {
                     java.io.FileInputStream(file).use { input ->
                         BitmapFactory.decodeStream(input, null, options)
                     }
+                    orientation = ExifInterface(file.absolutePath).getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_NORMAL
+                    )
                 } else {
                     val resolver = getApplication<Application>().contentResolver
                     resolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input, null, options) }
+                    resolver.openInputStream(uri)?.use { input ->
+                        orientation = ExifInterface(input).getAttributeInt(
+                            ExifInterface.TAG_ORIENTATION,
+                            ExifInterface.ORIENTATION_NORMAL
+                        )
+                    }
                 }
             } else {
                 val resolver = getApplication<Application>().contentResolver
                 resolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input, null, options) }
+                resolver.openInputStream(uri)?.use { input ->
+                    orientation = ExifInterface(input).getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_NORMAL
+                    )
+                }
             }
-            val width = options.outWidth.takeIf { it > 0 } ?: 0
-            val height = options.outHeight.takeIf { it > 0 } ?: 0
+            var width = options.outWidth.takeIf { it > 0 } ?: 0
+            var height = options.outHeight.takeIf { it > 0 } ?: 0
+            if (orientation == ExifInterface.ORIENTATION_ROTATE_90 ||
+                orientation == ExifInterface.ORIENTATION_ROTATE_270 ||
+                orientation == ExifInterface.ORIENTATION_TRANSPOSE ||
+                orientation == ExifInterface.ORIENTATION_TRANSVERSE
+            ) {
+                val temp = width
+                width = height
+                height = temp
+            }
             width to height
         } catch (_: Exception) {
             0 to 0
@@ -2049,7 +2075,11 @@ class SnippetsViewModel @Inject constructor(
         }
 
         val effectiveSort = currentSearchSortType ?: photoSortType
-        sortPhotos(baseList, effectiveSort)
+        if (!hasSearchCriteria && selectedFilterSnippets.isEmpty() && effectiveSort == PhotoSortType.DateNewest) {
+            baseList
+        } else {
+            sortPhotos(baseList, effectiveSort)
+        }
     }
 
     private val groupDateFormat = java.text.SimpleDateFormat("EEE, d MMM", Locale.getDefault())

@@ -8,11 +8,24 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 suspend fun LazyStaggeredGridState.smoothScrollToItemSlow(
     targetIndex: Int,
     targetOffsetPx: Int = 24,
-    durationMillis: Int = 700
+    durationMillis: Int = 600
 ) {
     val visibleItem = layoutInfo.visibleItemsInfo.find { it.index == targetIndex }
     if (visibleItem != null) {
-        val delta = (visibleItem.offset.y - targetOffsetPx).toFloat()
+        val itemTop = visibleItem.offset.y
+        val itemBottom = itemTop + visibleItem.size.height
+        val viewportTop = targetOffsetPx
+        val viewportBottom = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
+
+        // Only scroll if the item is partially or fully out of the visible viewport
+        val delta = when {
+            itemTop < viewportTop -> (itemTop - viewportTop).toFloat()
+            itemBottom > viewportBottom && itemTop > viewportTop -> {
+                (itemBottom - viewportBottom).coerceAtMost(itemTop - viewportTop).toFloat()
+            }
+            else -> 0f
+        }
+
         if (kotlin.math.abs(delta) > 4f) {
             animateScrollBy(
                 value = delta,

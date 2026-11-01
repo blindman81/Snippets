@@ -92,7 +92,10 @@ fun LibraryScreen(
             viewModel.activePhotoId = null
         } else if (isSearchOpen) {
             isSearchOpen = false
-            viewModel.searchQuery = ""
+            scope.launch {
+                kotlinx.coroutines.delay(200L)
+                viewModel.searchQuery = ""
+            }
         } else if (viewModel.isSelectionMode) {
             if (viewModel.searchQuery.isNotEmpty()) {
                 viewModel.searchQuery = ""
@@ -152,7 +155,7 @@ fun LibraryScreen(
             val targetIndex = tabPhotos.indexOfFirst { it.id == activeId }
             if (targetIndex != -1) {
                 val gridState = listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
-                delay(80)
+                delay(180)
                 gridState.smoothScrollToItemSlow(targetIndex, targetOffsetPx = 24)
             }
         }
@@ -321,8 +324,6 @@ fun LibraryScreen(
                                 hazeState = hazeState,
                                 showAddModal = showAddModal,
                                 modalPhotoId = modalPhoto?.id,
-                                sharedTransitionScope = sharedTransitionScope,
-                                animatedVisibilityScope = animatedVisibilityScope,
                                 onPhotoClick = { photo ->
                                     if (viewModel.isSelectionMode) {
                                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
