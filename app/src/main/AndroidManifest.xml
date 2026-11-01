@@ -9,6 +9,7 @@
     <application
         android:name="com.android.snippets.SnippetsApplication"
         android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
         android:backupAgent="com.android.snippets.backup.SnippetsBackupAgent"
         android:fullBackupOnly="true"
         android:backupInForeground="true"
