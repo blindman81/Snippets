@@ -5,52 +5,41 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.derivedStateOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.android.snippets.data.backup.SnippetsBackupManager
 import com.android.snippets.logic.SearchDirective
 import com.android.snippets.logic.ParsedSearchQuery
 import com.android.snippets.logic.SearchQueryParser
 import com.android.snippets.logic.SnippetStyleHelper
 import com.android.snippets.ui.util.PhotoCardExporter
 import com.android.snippets.model.Photo
-import com.android.snippets.ui.util.MediaSaver
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.io.FileOutputStream
 import java.util.Calendar
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import java.text.SimpleDateFormat
 import kotlinx.coroutines.launch
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.exifinterface.media.ExifInterface
 import com.android.snippets.logic.MemoryWorker
 import com.android.snippets.logic.MemoryManager
 import android.app.backup.BackupManager
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import android.widget.Toast
-import android.graphics.BitmapFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.android.snippets.data.DatabasePreloader
-import com.android.snippets.data.toEntity
-import com.android.snippets.data.toPhoto
+import coil3.imageLoader
+import coil3.request.ImageRequest
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.data.repository.PhotoRepository
 import com.android.snippets.data.repository.CollectionRepository
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -60,13 +49,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class Screen { Library, Memory, Settings, About, EmojiPicker, Stats, MonthlyRecap, YearlyRecap }
-enum class SnippetSortType { New, Old, Emoji, AZ, Emoticons }
-enum class PhotoSortType { DateNewest, DateOldest, MostSnippets, LeastSnippets, MostStarred, LeastStarred }
-enum class ThemePreference { SYSTEM, LIGHT, DARK }
-
-enum class DisplayMode { Day, Week, Month }
-enum class SnippetStyle { Default, Thin, Cursive, Mono, Serif, Spaced, Bold, FlexHeavy, FlexWide, FlexSlant, FlexGrade, Flex }
+typealias SnippetSortType = com.android.snippets.model.SnippetSortType
+typealias PhotoSortType = com.android.snippets.model.PhotoSortType
+typealias ThemePreference = com.android.snippets.model.ThemePreference
+typealias SnippetStyle = com.android.snippets.model.SnippetStyle
 
 typealias SearchDirective = com.android.snippets.logic.SearchDirective
 typealias ParsedSearchQuery = com.android.snippets.logic.ParsedSearchQuery
@@ -77,37 +63,32 @@ class SnippetsViewModel @Inject constructor(
     application: Application,
     val photoRepository: PhotoRepository,
     val collectionRepository: CollectionRepository,
-    val userPreferencesRepository: UserPreferencesRepository,
-    private val backupManager: SnippetsBackupManager
+    val userPreferencesRepository: UserPreferencesRepository
 ) : AndroidViewModel(application) {
 
+    sealed interface RecapLaunchEvent {
+        data class Monthly(val month: Int, val year: Int) : RecapLaunchEvent
+        data class Yearly(val year: Int) : RecapLaunchEvent
+    }
+
     companion object {
+        fun rebuildSnippetFirstSeenTimes(source: List<Photo>): Map<String, Long> =
+            com.android.snippets.logic.SnippetManager.rebuildSnippetFirstSeenTimes(source)
         fun matchSearchDirective(rawToken: String): SearchDirective? =
             SearchQueryParser.matchSearchDirective(rawToken)
 
         fun parseSearchQuery(query: String): ParsedSearchQuery =
             SearchQueryParser.parseSearchQuery(query)
 
-        const val SNACKBAR_NAME_PHOTO_FIRST = "Name the photo first!"
-        const val SNACKBAR_ACTION_OPEN = "Open"
+        const val SNACKBAR_NAME_PHOTO_FIRST = com.android.snippets.logic.SnippetManager.SNACKBAR_NAME_PHOTO_FIRST
+        const val SNACKBAR_ACTION_OPEN = com.android.snippets.logic.SnippetManager.SNACKBAR_ACTION_OPEN
 
         fun validateAndExecuteAddSnippet(
             photo: Photo,
             showSnackbar: (message: String, actionLabel: String?, onAction: (() -> Unit)?) -> Unit,
             onShowNameModal: (Photo) -> Unit,
             onShowAddModal: (Photo) -> Unit
-        ) {
-            if (photo.name.isNullOrBlank()) {
-                showSnackbar(
-                    SNACKBAR_NAME_PHOTO_FIRST,
-                    SNACKBAR_ACTION_OPEN
-                ) {
-                    onShowNameModal(photo)
-                }
-            } else {
-                onShowAddModal(photo)
-            }
-        }
+        ) = com.android.snippets.logic.SnippetManager.validateAndExecuteAddSnippet(photo, showSnackbar, onShowNameModal, onShowAddModal)
 
         const val MEMORY_REMINDER_PREFIX = MemoryManager.MEMORY_REMINDER_PREFIX
         const val MEMORIES_PER_CYCLE = MemoryManager.MEMORIES_PER_CYCLE
@@ -154,120 +135,190 @@ class SnippetsViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    var photos by mutableStateOf<List<Photo>>(emptyList())
-        private set
+    private val _uiState = MutableStateFlow(SnippetsUiState())
+    val uiState: StateFlow<SnippetsUiState> = _uiState.asStateFlow()
 
-    var isInitialLoading by mutableStateOf(true)
-        private set
+    fun updateUiState(transform: (SnippetsUiState) -> SnippetsUiState) {
+        _uiState.update(transform)
+    }
 
+    var photos: List<Photo>
+        get() = _uiState.value.photos
+        private set(value) { _uiState.update { it.copy(photos = value) } }
 
+    var isInitialLoading: Boolean
+        get() = _uiState.value.isInitialLoading
+        private set(value) { _uiState.update { it.copy(isInitialLoading = value) } }
 
+    var userCollections: List<String>
+        get() = _uiState.value.userCollections
+        private set(value) { _uiState.update { it.copy(userCollections = value) } }
 
-    var userCollections by mutableStateOf<List<String>>(emptyList())
-        private set
+    var libraryCurrentTab: String
+        get() = _uiState.value.libraryCurrentTab
+        set(value) { _uiState.update { it.copy(libraryCurrentTab = value) } }
 
-    var currentScreen by mutableStateOf(Screen.Library)
-    var previousScreen by mutableStateOf(Screen.Library)
-        private set
-    var libraryCurrentTab by mutableStateOf("Library")
-    val libraryListStates = androidx.compose.runtime.mutableStateMapOf<String, androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState>()
-    val carouselLazyListState = androidx.compose.foundation.lazy.LazyListState()
-    
-    var activePhotoId by mutableStateOf<String?>(null)
-    var searchQuery by mutableStateOf("")
-    
-    var isSearching by mutableStateOf(false)
-        private set
-    var isFiltering by mutableStateOf(false)
-        private set
-    var isBusy by mutableStateOf(false)
-    var isAddingPhotos by mutableStateOf(false)
-    var isCuratingMemories by mutableStateOf(false)
+    var activePhotoId: String?
+        get() = _uiState.value.activePhotoId
+        set(value) { _uiState.update { it.copy(activePhotoId = value) } }
 
-    var selectedFilterSnippets by mutableStateOf<List<String>>(emptyList())
+    var searchQuery: String
+        get() = _uiState.value.searchQuery
+        set(value) { _uiState.update { it.copy(searchQuery = value) } }
+
+    val isSearching: Boolean
+        get() = _uiState.value.isSearching
+
+    val isFiltering: Boolean
+        get() = _uiState.value.isFiltering
+
+    var isBusy: Boolean
+        get() = _uiState.value.isBusy
+        set(value) { _uiState.update { it.copy(isBusy = value) } }
+
+    var isAddingPhotos: Boolean
+        get() = _uiState.value.isAddingPhotos
+        set(value) { _uiState.update { it.copy(isAddingPhotos = value) } }
+
+    var isCuratingMemories: Boolean
+        get() = _uiState.value.isCuratingMemories
+        set(value) { _uiState.update { it.copy(isCuratingMemories = value) } }
+
+    var selectedFilterSnippets: List<String>
+        get() = _uiState.value.selectedFilterSnippets
+        set(value) { _uiState.update { it.copy(selectedFilterSnippets = value) } }
+
+    var scrollToTopTrigger: Long
+        get() = _uiState.value.scrollToTopTrigger
+        private set(value) { _uiState.update { it.copy(scrollToTopTrigger = value) } }
+
+    var pendingRecapLaunch: RecapLaunchEvent?
+        get() = _uiState.value.pendingRecapLaunch
+        set(value) { _uiState.update { it.copy(pendingRecapLaunch = value) } }
+
+    fun requestScrollToTop() {
+        _uiState.update { it.copy(scrollToTopTrigger = System.currentTimeMillis()) }
+    }
 
     fun scrollToTop() {
-        viewModelScope.launch {
-            libraryListStates.values.forEach { state ->
-                try {
-                    state.scrollToItem(0)
-                } catch (_: Exception) {}
-            }
-        }
+        requestScrollToTop()
     }
 
     fun toggleFilterSnippet(snippet: String) {
-        val wasSelected = selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
-        if (wasSelected) {
-            selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
-            scrollToTop()
+        val currentFilters = _uiState.value.selectedFilterSnippets
+        val wasSelected = currentFilters.any { it.equals(snippet, ignoreCase = true) }
+        val updatedFilters = if (wasSelected) {
+            currentFilters.filter { !it.equals(snippet, ignoreCase = true) }
         } else {
-            if (selectedFilterSnippets.size >= 6) {
+            if (currentFilters.size >= 6) {
                 showSnackbar("Upto 6 Chips!")
                 return
             }
-            selectedFilterSnippets = selectedFilterSnippets + snippet
+            currentFilters + snippet
         }
+        _uiState.update { it.copy(selectedFilterSnippets = updatedFilters, scrollToTopTrigger = System.currentTimeMillis()) }
         saveFilterState()
     }
 
     fun clearFilterSnippets() {
-        val hadFilters = selectedFilterSnippets.isNotEmpty()
-        selectedFilterSnippets = emptyList()
-        if (hadFilters) {
-            scrollToTop()
+        val hadFilters = _uiState.value.selectedFilterSnippets.isNotEmpty()
+        _uiState.update {
+            it.copy(
+                selectedFilterSnippets = emptyList(),
+                scrollToTopTrigger = if (hadFilters) System.currentTimeMillis() else it.scrollToTopTrigger
+            )
         }
         saveFilterState()
     }
 
-    fun getMatchingSnippetsCount(photo: Photo): Int {
-        return if (selectedFilterSnippets.isNotEmpty()) {
-            photo.snippets.count { s -> selectedFilterSnippets.any { it.equals(s, ignoreCase = true) } }
-        } else {
-            photo.snippets.size
-        }
-    }
+    fun getMatchingSnippetsCount(photo: Photo): Int =
+        com.android.snippets.logic.SnippetManager.getMatchingSnippetsCount(photo, _uiState.value.selectedFilterSnippets)
 
-    var activeCollection by mutableStateOf<String?>(null)
-    var currentMemoryIndex by mutableStateOf(0)
-    var activeMemoriesSnapshot by mutableStateOf<List<Photo>>(emptyList())
-    var showCreateDialog by mutableStateOf(false)
-    var editingCollectionIcon by mutableStateOf<String?>(null)
-    var collectionIcons by mutableStateOf<Map<String, String>>(emptyMap())
-    var focusCreateCollection by mutableStateOf(false)
-    var memoriesPage by androidx.compose.runtime.mutableIntStateOf(0)
+    var activeCollection: String?
+        get() = _uiState.value.activeCollection
+        set(value) { _uiState.update { it.copy(activeCollection = value) } }
 
-    var snippetFirstSeenTimes by mutableStateOf<Map<String, Long>>(emptyMap())
-        private set
-    
-    // Filter Context
-    var filteringCategory by mutableStateOf<String?>(null)
+    var showCreateDialog: Boolean
+        get() = _uiState.value.showCreateDialog
+        set(value) { _uiState.update { it.copy(showCreateDialog = value) } }
 
-    // Recap State
-    var recapTitle by mutableStateOf("This Month")
-        private set
-    var recapPhotos by mutableStateOf<List<Photo>>(emptyList())
-        private set
-    var isYearlyRecap by mutableStateOf(false)
-        private set
-    var recapMonth by mutableStateOf(Calendar.getInstance().get(Calendar.MONTH))
-    var recapYear by mutableStateOf(Calendar.getInstance().get(Calendar.YEAR))
-    var lastSeenYearlyRecapYear by androidx.compose.runtime.mutableIntStateOf(-1)
-        private set
-    var lastSeenMonthlyRecapPeriod by mutableStateOf("")
-        private set
+    var editingCollectionEmoji: String?
+        get() = _uiState.value.editingCollectionEmoji
+        set(value) { _uiState.update { it.copy(editingCollectionEmoji = value) } }
 
-    // Snackbar State
-    var snackbarMessage by mutableStateOf<String?>(null)
-    var snackbarActionLabel by mutableStateOf<String?>(null)
-    var onSnackbarAction by mutableStateOf<(() -> Unit)?>(null)
-    var snackbarToken by mutableLongStateOf(0L)
+    var editingEmojiPreview: String?
+        get() = _uiState.value.editingEmojiPreview
+        set(value) { _uiState.update { it.copy(editingEmojiPreview = value) } }
+
+    var collectionIcons: Map<String, String>
+        get() = _uiState.value.collectionIcons
+        set(value) { _uiState.update { it.copy(collectionIcons = value) } }
+
+    var focusCreateCollection: Boolean
+        get() = _uiState.value.focusCreateCollection
+        set(value) { _uiState.update { it.copy(focusCreateCollection = value) } }
+
+    var snippetFirstSeenTimes: Map<String, Long>
+        get() = _uiState.value.snippetFirstSeenTimes
+        private set(value) { _uiState.update { it.copy(snippetFirstSeenTimes = value) } }
+
+    var filteringCategory: String?
+        get() = _uiState.value.filteringCategory
+        set(value) { _uiState.update { it.copy(filteringCategory = value) } }
+
+    var recapTitle: String
+        get() = _uiState.value.recapTitle
+        private set(value) { _uiState.update { it.copy(recapTitle = value) } }
+
+    var recapPhotos: List<Photo>
+        get() = _uiState.value.recapPhotos
+        private set(value) { _uiState.update { it.copy(recapPhotos = value) } }
+
+    var isYearlyRecap: Boolean
+        get() = _uiState.value.isYearlyRecap
+        private set(value) { _uiState.update { it.copy(isYearlyRecap = value) } }
+
+    var recapMonth: Int
+        get() = _uiState.value.recapMonth
+        set(value) { _uiState.update { it.copy(recapMonth = value) } }
+
+    var recapYear: Int
+        get() = _uiState.value.recapYear
+        set(value) { _uiState.update { it.copy(recapYear = value) } }
+
+    var lastSeenYearlyRecapYear: Int
+        get() = _uiState.value.lastSeenYearlyRecapYear
+        private set(value) { _uiState.update { it.copy(lastSeenYearlyRecapYear = value) } }
+
+    var lastSeenMonthlyRecapPeriod: String
+        get() = _uiState.value.lastSeenMonthlyRecapPeriod
+        private set(value) { _uiState.update { it.copy(lastSeenMonthlyRecapPeriod = value) } }
+
+    var snackbarMessage: String?
+        get() = _uiState.value.snackbarMessage
+        set(value) { _uiState.update { it.copy(snackbarMessage = value) } }
+
+    var snackbarActionLabel: String?
+        get() = _uiState.value.snackbarActionLabel
+        set(value) { _uiState.update { it.copy(snackbarActionLabel = value) } }
+
+    var onSnackbarAction: (() -> Unit)?
+        get() = _uiState.value.onSnackbarAction
+        set(value) { _uiState.update { it.copy(onSnackbarAction = value) } }
+
+    var snackbarToken: Long
+        get() = _uiState.value.snackbarToken
+        set(value) { _uiState.update { it.copy(snackbarToken = value) } }
 
     fun showSnackbar(message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
-        snackbarMessage = message
-        snackbarActionLabel = actionLabel
-        onSnackbarAction = onAction
-        snackbarToken++
+        _uiState.update {
+            it.copy(
+                snackbarMessage = message,
+                snackbarActionLabel = actionLabel,
+                onSnackbarAction = onAction,
+                snackbarToken = it.snackbarToken + 1
+            )
+        }
     }
 
     fun requestAddSnippet(
@@ -289,44 +340,96 @@ class SnippetsViewModel @Inject constructor(
         )
     }
 
-    // Original collections order
     val sortedCollections: List<String>
-        get() {
-            return userCollections
-        }
-    
-    // Settings State
-    var themePreference by mutableStateOf(ThemePreference.SYSTEM)
-        private set
-    var useDynamicColors by mutableStateOf(true)
-        private set
-    var expandLabelIcon by mutableStateOf(false)
-        private set
-    var expandCalendarIcon by mutableStateOf(false)
-        private set
-    var expandLocationIcon by mutableStateOf(false)
-        private set
+        get() = _uiState.value.userCollections
 
-    var notificationReminderEnabled by mutableStateOf(false)
-        private set
-    var notificationReminderHour by mutableStateOf(9)
-        private set
-    var notificationReminderMinute by mutableStateOf(0)
-        private set
-
-
-    var autoBackupSchedule by mutableStateOf("Disabled")
-        private set
-    var showFilterSheet by mutableStateOf(false)
+    var showFilterSheet: Boolean
+        get() = _uiState.value.showFilterSheet
+        set(value) { _uiState.update { it.copy(showFilterSheet = value) } }
 
 
     val separateCollectionSort = true
     
     
-    fun navigateEmojiPicker(collection: String? = null) {
-        editingCollectionIcon = collection
-        previousScreen = currentScreen
-        currentScreen = Screen.EmojiPicker
+    fun createNewCollection(): String {
+        val newName = com.android.snippets.logic.CollectionManager.generateNewPlaceholderName(userCollections)
+        userCollections = userCollections + newName
+        collectionIcons = collectionIcons + (newName to "")
+        saveCollections()
+        libraryCurrentTab = newName
+        navigateLibrary()
+        editingCollectionEmoji = newName
+        editingEmojiPreview = ""
+        return newName
+    }
+
+    fun startEditingCollectionEmoji(collection: String) {
+        editingCollectionEmoji = collection
+        editingEmojiPreview = collectionIcons[collection] ?: if (collection.isBlank()) "" else collection
+    }
+
+    fun updateEditingEmojiPreview(collection: String, emoji: String) {
+        if (editingCollectionEmoji == collection) {
+            editingEmojiPreview = emoji
+            collectionIcons = collectionIcons + (collection to emoji)
+        }
+    }
+
+    fun finalizeCollectionEmoji(collection: String, emoji: String) {
+        val result = com.android.snippets.logic.CollectionManager.finalizeCollectionEmoji(
+            userCollections = userCollections,
+            collectionIcons = collectionIcons,
+            photos = photos,
+            collection = collection,
+            emoji = emoji
+        ) ?: run {
+            editingCollectionEmoji = null
+            editingEmojiPreview = null
+            return
+        }
+
+        userCollections = result.updatedCollections
+        collectionIcons = result.updatedIcons
+        val finalName = result.finalName
+        val oldIndex = result.oldIndex
+
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            storageMutex.withLock {
+                try {
+                    val existing = collectionRepository.getCollectionByName(collection)
+                    if (existing != null) {
+                        collectionRepository.deleteCollection(existing)
+                    }
+                    collectionRepository.insertCollection(
+                        com.android.snippets.data.CollectionEntity(
+                            name = finalName,
+                            icon = result.updatedIcons[finalName] ?: emoji.trim(),
+                            orderIndex = if (oldIndex != -1) oldIndex else userCollections.size - 1
+                        )
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
+        if (result.photosChanged) {
+            photos = result.updatedPhotos
+            savePhotos()
+        }
+
+        if (libraryCurrentTab == collection) {
+            libraryCurrentTab = finalName
+        }
+
+        saveCollections()
+        editingCollectionEmoji = null
+        editingEmojiPreview = null
+    }
+
+    fun cancelEditingCollectionEmoji() {
+        editingCollectionEmoji = null
+        editingEmojiPreview = null
     }
 
 
@@ -346,57 +449,50 @@ class SnippetsViewModel @Inject constructor(
         }
     }
     
-    var requestNotificationPermission by mutableStateOf(false)
-    
+    var requestNotificationPermission: Boolean
+        get() = _uiState.value.requestNotificationPermission
+        set(value) { _uiState.update { it.copy(requestNotificationPermission = value) } }
+
+    var hasPromptedNotificationPermission: Boolean
+        get() = _uiState.value.hasPromptedNotificationPermission
+        private set(value) { _uiState.update { it.copy(hasPromptedNotificationPermission = value) } }
+
     // Multi-Selection State
-    var selectedPhotoIds by mutableStateOf<Set<String>>(emptySet())
-        private set
+    var selectedPhotoIds: Set<String>
+        get() = _uiState.value.selectedPhotoIds
+        private set(value) { _uiState.update { it.copy(selectedPhotoIds = value) } }
 
-
-    var forceSelectionMode by mutableStateOf(false)
-
-
+    var forceSelectionMode: Boolean
+        get() = _uiState.value.forceSelectionMode
+        set(value) { _uiState.update { it.copy(forceSelectionMode = value) } }
 
     val isSelectionMode: Boolean
-        get() = forceSelectionMode || selectedPhotoIds.isNotEmpty() || pendingCollectionAssignment != null || pendingCollectionRemoval != null
+        get() = _uiState.value.isSelectionMode
 
-    var pendingCollectionAssignment by mutableStateOf<String?>(null)
-        private set
-    var pendingCollectionRemoval by mutableStateOf<String?>(null)
-        private set
+    var pendingCollectionAssignment: String?
+        get() = _uiState.value.pendingCollectionAssignment
+        private set(value) { _uiState.update { it.copy(pendingCollectionAssignment = value) } }
 
+    var pendingCollectionRemoval: String?
+        get() = _uiState.value.pendingCollectionRemoval
+        private set(value) { _uiState.update { it.copy(pendingCollectionRemoval = value) } }
 
     fun startCollectionAssignment(collection: String) {
-        pendingCollectionAssignment = collection
-        selectedPhotoIds = emptySet()
-        currentScreen = Screen.Library
+        _uiState.update {
+            it.copy(pendingCollectionAssignment = collection, selectedPhotoIds = emptySet())
+        }
     }
 
     fun startCollectionRemoval(collection: String) {
-        pendingCollectionRemoval = collection
-        selectedPhotoIds = emptySet()
-        currentScreen = Screen.Library
+        _uiState.update {
+            it.copy(pendingCollectionRemoval = collection, selectedPhotoIds = emptySet())
+        }
     }
-
 
     fun confirmCollectionAssignment() {
         val collection = pendingCollectionAssignment ?: return
         if (selectedPhotoIds.isNotEmpty()) {
-            val now = System.currentTimeMillis()
-            photos = photos.map { photo ->
-                if (selectedPhotoIds.contains(photo.id)) {
-                    if (collection == "Favorites") {
-                        photo.copy(isFavorite = true)
-                    } else {
-                        if (!photo.collections.contains(collection)) {
-                            photo.copy(
-                                collections = photo.collections + collection,
-                                snippetsAddedTime = if (photo.snippetsAddedTime == 0L) now else photo.snippetsAddedTime
-                            )
-                        } else photo
-                    }
-                } else photo
-            }
+            photos = com.android.snippets.logic.CollectionManager.assignPhotosToCollection(photos, selectedPhotoIds, collection)
             savePhotos()
             
             if (collection != "Favorites") {
@@ -410,155 +506,128 @@ class SnippetsViewModel @Inject constructor(
                 )
             }
         }
-        pendingCollectionAssignment = null
-        selectedPhotoIds = emptySet()
-        libraryCurrentTab = collection
+        _uiState.update {
+            it.copy(
+                pendingCollectionAssignment = null,
+                selectedPhotoIds = emptySet(),
+                libraryCurrentTab = collection
+            )
+        }
         navigateLibrary()
     }
 
     fun confirmCollectionRemoval() {
         val collection = pendingCollectionRemoval ?: return
         if (selectedPhotoIds.isNotEmpty()) {
-            photos = photos.map { photo ->
-                if (selectedPhotoIds.contains(photo.id)) {
-                    if (collection == "Favorites") {
-                        photo.copy(isFavorite = false)
-                    } else {
-                        photo.copy(collections = photo.collections - collection)
-                    }
-                } else photo
-            }
+            photos = com.android.snippets.logic.CollectionManager.removePhotosFromCollection(photos, selectedPhotoIds, collection)
             savePhotos()
             
             if (collection != "Favorites") {
                 showSnackbar(message = "Removed from collection")
             }
         }
-        pendingCollectionRemoval = null
-        selectedPhotoIds = emptySet()
-        libraryCurrentTab = collection
+        _uiState.update {
+            it.copy(
+                pendingCollectionRemoval = null,
+                selectedPhotoIds = emptySet(),
+                libraryCurrentTab = collection
+            )
+        }
         navigateLibrary()
     }
 
+    var showBulkAddToCollectionDialog: Boolean
+        get() = _uiState.value.showBulkAddToCollectionDialog
+        set(value) { _uiState.update { it.copy(showBulkAddToCollectionDialog = value) } }
 
-    var showBulkAddToCollectionDialog by mutableStateOf(false)
-    var showBulkDeleteModal by mutableStateOf(false)
+    var showBulkDeleteModal: Boolean
+        get() = _uiState.value.showBulkDeleteModal
+        set(value) { _uiState.update { it.copy(showBulkDeleteModal = value) } }
 
-    private var _snippetSortType = mutableStateOf(SnippetSortType.New)
     var snippetSortType: SnippetSortType
-        get() = _snippetSortType.value
+        get() = _uiState.value.snippetSortType
         set(value) {
-            _snippetSortType.value = value
+            _uiState.update { it.copy(snippetSortType = value) }
             saveFilterState()
         }
 
-    private var _isSortAscending = mutableStateOf(true)
     var isSortAscending: Boolean
-        get() = _isSortAscending.value
+        get() = _uiState.value.isSortAscending
         set(value) {
-            _isSortAscending.value = value
+            _uiState.update { it.copy(isSortAscending = value) }
             saveFilterState()
         }
 
-    private var _displayMode = mutableStateOf(DisplayMode.Day)
-    private var _collectionDisplayModes = mutableStateOf<Map<String, DisplayMode>>(emptyMap())
-    
-    var displayMode: DisplayMode
-        get() = _displayMode.value
-        set(value) {
-            _displayMode.value = value
-            saveFilterState()
-        }
-    
-    var searchDisplayMode by mutableStateOf(DisplayMode.Day)
+    val parsedSearchQuery: ParsedSearchQuery
+        get() = _uiState.value.parsedSearchQuery
 
-    val parsedSearchQuery: ParsedSearchQuery by derivedStateOf {
-        parseSearchQuery(searchQuery)
-    }
+    val currentSearchSortType: PhotoSortType?
+        get() = _uiState.value.currentSearchSortType
 
-    val currentSearchSortType: PhotoSortType? by derivedStateOf {
-        parsedSearchQuery.directives.lastOrNull()?.sortType
-    }
-
-    private var _photoSortType = mutableStateOf(PhotoSortType.DateNewest)
-    private var _collectionPhotoSortTypes = mutableStateOf<Map<String, PhotoSortType>>(emptyMap())
-    
     var photoSortType: PhotoSortType
-        get() = currentSearchSortType ?: _photoSortType.value
+        get() = currentSearchSortType ?: _uiState.value.photoSortType
         set(value) {
-            _photoSortType.value = value
-            libraryListStates["Library"] = androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState()
+            _uiState.update { it.copy(photoSortType = value, scrollToTopTrigger = System.currentTimeMillis()) }
             saveFilterState()
         }
-        
+
     fun getPhotoSortTypeFor(tabName: String): PhotoSortType {
         currentSearchSortType?.let { return it }
-        if (tabName == "Library") return _photoSortType.value
-        return _collectionPhotoSortTypes.value[tabName] ?: PhotoSortType.DateNewest
+        if (tabName == "Library") return _uiState.value.photoSortType
+        return _uiState.value.collectionPhotoSortTypes[tabName] ?: PhotoSortType.DateNewest
     }
 
     fun setPhotoSortTypeFor(tabName: String, sortType: PhotoSortType) {
         if (tabName == "Library") {
-            _photoSortType.value = sortType
+            _uiState.update { it.copy(photoSortType = sortType, scrollToTopTrigger = System.currentTimeMillis()) }
         } else {
-            _collectionPhotoSortTypes.value = _collectionPhotoSortTypes.value + (tabName to sortType)
+            _uiState.update {
+                it.copy(
+                    collectionPhotoSortTypes = it.collectionPhotoSortTypes + (tabName to sortType),
+                    scrollToTopTrigger = System.currentTimeMillis()
+                )
+            }
         }
-        libraryListStates[tabName] = androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState()
         saveFilterState()
     }
-    
-    fun sortPhotos(baseList: List<Photo>, sort: PhotoSortType): List<Photo> {
-        return when (sort) {
-            PhotoSortType.DateNewest -> baseList.sortedByDescending { it.date }
-            PhotoSortType.DateOldest -> baseList.sortedBy { it.date }
-            PhotoSortType.MostSnippets -> baseList.sortedWith(compareByDescending<Photo> { it.snippets.size }.thenByDescending { it.date })
-            PhotoSortType.LeastSnippets -> baseList.sortedWith(compareBy<Photo> { it.snippets.size }.thenByDescending { it.date })
-            PhotoSortType.MostStarred -> baseList.sortedWith(compareByDescending<Photo> { it.rating }.thenByDescending { it.date })
-            PhotoSortType.LeastStarred -> baseList.sortedWith(compareBy<Photo> { it.rating }.thenByDescending { it.date })
-        }
-    }
-    
+
+    fun sortPhotos(baseList: List<Photo>, sort: PhotoSortType): List<Photo> =
+        com.android.snippets.logic.PhotoSearchHelper.sortPhotos(baseList, sort)
+
     val pagedPhotos: Flow<PagingData<com.android.snippets.data.PhotoEntity>> = Pager(
         config = PagingConfig(pageSize = 30, enablePlaceholders = false)
     ) {
         photoRepository.getPagingPhotos()
     }.flow
 
-    // State to track if the next added photo should be a favorite
-    var pendingFavoriteIntent by mutableStateOf(false)
-    var pendingAddPhotoIntentToken by mutableStateOf(0L)
+    var pendingFavoriteIntent: Boolean
+        get() = _uiState.value.pendingFavoriteIntent
+        set(value) { _uiState.update { it.copy(pendingFavoriteIntent = value) } }
+
+    var pendingAddPhotoIntentToken: Long
+        get() = _uiState.value.pendingAddPhotoIntentToken
+        set(value) { _uiState.update { it.copy(pendingAddPhotoIntentToken = value) } }
 
     private val storageMutex = Mutex()
 
     init {
         viewModelScope.launch {
             userPreferencesRepository.userPreferencesFlow.collect { userPrefs ->
-                themePreference = try { ThemePreference.valueOf(userPrefs.themePreference) } catch (e: Exception) { ThemePreference.SYSTEM }
-                useDynamicColors = userPrefs.useDynamicColors
-                expandLabelIcon = userPrefs.expandLabelIcon
-                expandCalendarIcon = userPrefs.expandCalendarIcon
-                expandLocationIcon = userPrefs.expandLocationIcon
-                notificationReminderEnabled = userPrefs.notificationReminderEnabled
-                notificationReminderHour = userPrefs.notificationReminderHour
-                notificationReminderMinute = userPrefs.notificationReminderMinute
-                lastSeenYearlyRecapYear = userPrefs.lastSeenYearlyRecapYear
-                lastSeenMonthlyRecapPeriod = userPrefs.lastSeenMonthlyRecapPeriod
-                _snippetSortType.value = try { SnippetSortType.valueOf(userPrefs.snippetSortType) } catch (e: Exception) { SnippetSortType.New }
-                _isSortAscending.value = userPrefs.isSortAscending
-                selectedFilterSnippets = userPrefs.selectedFilterSnippets.toList()
-                _displayMode.value = try { DisplayMode.valueOf(userPrefs.displayMode) } catch (e: Exception) { DisplayMode.Day }
-                _photoSortType.value = try { PhotoSortType.valueOf(userPrefs.photoSortType) } catch (e: Exception) { PhotoSortType.DateNewest }
+                val sortMap: Map<String, PhotoSortType> = if (userPrefs.collectionPhotoSortTypesJson.isNotBlank() && userPrefs.collectionPhotoSortTypesJson != "{}") {
+                    try { json.decodeFromString(userPrefs.collectionPhotoSortTypesJson) } catch (e: Exception) { emptyMap() }
+                } else emptyMap()
 
-                if (userPrefs.collectionDisplayModesJson.isNotBlank() && userPrefs.collectionDisplayModesJson != "{}") {
-                    _collectionDisplayModes.value = try { json.decodeFromString(userPrefs.collectionDisplayModesJson) } catch (e: Exception) { emptyMap() }
-                }
-                if (userPrefs.collectionPhotoSortTypesJson.isNotBlank() && userPrefs.collectionPhotoSortTypesJson != "{}") {
-                    _collectionPhotoSortTypes.value = try { json.decodeFromString(userPrefs.collectionPhotoSortTypesJson) } catch (e: Exception) { emptyMap() }
-                }
-
-                if (autoBackupSchedule != userPrefs.autoBackupSchedule) {
-                    autoBackupSchedule = userPrefs.autoBackupSchedule
-                    scheduleAutoBackup()
+                _uiState.update { current ->
+                    current.copy(
+                        hasPromptedNotificationPermission = userPrefs.hasPromptedNotificationPermission,
+                        lastSeenYearlyRecapYear = userPrefs.lastSeenYearlyRecapYear,
+                        lastSeenMonthlyRecapPeriod = userPrefs.lastSeenMonthlyRecapPeriod,
+                        snippetSortType = try { SnippetSortType.valueOf(userPrefs.snippetSortType) } catch (e: Exception) { SnippetSortType.New },
+                        isSortAscending = userPrefs.isSortAscending,
+                        selectedFilterSnippets = userPrefs.selectedFilterSnippets.toList(),
+                        photoSortType = try { PhotoSortType.valueOf(userPrefs.photoSortType) } catch (e: Exception) { PhotoSortType.DateNewest },
+                        collectionPhotoSortTypes = sortMap
+                    )
                 }
             }
         }
@@ -604,7 +673,7 @@ class SnippetsViewModel @Inject constructor(
                     val (widthPx, heightPx) = if (p.widthPx > 0 && p.heightPx > 0) {
                         p.widthPx to p.heightPx
                     } else {
-                        extractImageDimensions(Uri.parse(p.uriString))
+                        com.android.snippets.logic.PhotoStorageManager.extractImageDimensions(getApplication(), Uri.parse(p.uriString))
                     }
                     Photo(
                         id = p.id,
@@ -647,11 +716,19 @@ class SnippetsViewModel @Inject constructor(
                 e.printStackTrace()
             }
 
-            val roomPhotos = try {
+            val rawRoomPhotos = try {
                 photoRepository.getAllPhotos()
             } catch (e: Exception) {
                 e.printStackTrace()
                 emptyList()
+            }
+
+            val app = getApplication<Application>()
+            val (roomPhotos, fileHealingNeeded) = com.android.snippets.logic.PhotoStorageManager.healFileUris(app, rawRoomPhotos)
+            if (fileHealingNeeded) {
+                try {
+                    photoRepository.insertPhotos(roomPhotos)
+                } catch (_: Exception) {}
             }
 
             val collectionEntities = try {
@@ -663,43 +740,11 @@ class SnippetsViewModel @Inject constructor(
             val roomCollections = collectionEntities.map { it.name }
             val loadedIcons = collectionEntities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()
 
-            var dimensionsNeedSaving = false
             val processedPhotos = roomPhotos.map { p ->
-                val (widthPx, heightPx) = if (p.widthPx > 0 && p.heightPx > 0) {
-                    p.widthPx to p.heightPx
-                } else {
-                    dimensionsNeedSaving = true
-                    extractImageDimensions(Uri.parse(p.uriString))
-                }
-                Photo(
-                    id = p.id,
-                    uriString = p.uriString,
-                    date = p.date,
-                    snippets = p.snippets ?: emptyList(),
-                    isViewed = p.isViewed,
-                    lastViewedTime = p.lastViewedTime,
-                    snippetsAddedTime = if (p.snippetsAddedTime != 0L) p.snippetsAddedTime else (if ((p.snippets ?: emptyList()).isNotEmpty()) p.date else 0L),
-                    surfacedTime = p.surfacedTime,
-                    isFavorite = p.isFavorite,
-                    isLibraryUpload = p.isLibraryUpload,
-                    collections = p.collections ?: emptyList(),
-                    widthPx = widthPx,
-                    heightPx = heightPx,
-                    isPublic = p.isPublic,
-                    locationLink = p.locationLink,
-                    locationName = p.locationName,
-                    rating = p.rating,
-                    name = p.name
-                )
+                if (p.snippetsAddedTime == 0L && p.snippets.isNotEmpty()) {
+                    p.copy(snippetsAddedTime = p.date)
+                } else p
             }.sortedByDescending { it.date }
-
-            if (dimensionsNeedSaving) {
-                try {
-                    photoRepository.insertPhotos(processedPhotos)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
 
             val loadedFirstSeen = try {
                 val currentPrefs = userPreferencesRepository.userPreferencesFlow.first()
@@ -716,34 +761,43 @@ class SnippetsViewModel @Inject constructor(
                 loadedFirstSeen[snippet] ?: rebuiltTime
             }
 
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                photos = processedPhotos
-                userCollections = roomCollections
-                collectionIcons = loadedIcons
-                snippetFirstSeenTimes = mergedFirstSeen
+            _uiState.update {
+                it.copy(
+                    photos = processedPhotos,
+                    userCollections = roomCollections,
+                    collectionIcons = loadedIcons,
+                    snippetFirstSeenTimes = mergedFirstSeen,
+                    isInitialLoading = false
+                )
+            }
 
-                // Auto-heal any photos that were previously stored with a temporary content:// URI in a single batch
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+
+                // Pre-warm Coil's memory cache for the first batch of photos so they render instantly
+                val photosToPreload = processedPhotos.take(20)
+                if (photosToPreload.isNotEmpty()) {
+                    val loader = app.imageLoader
+                    photosToPreload.forEach { p ->
+                        val request = ImageRequest.Builder(app)
+                            .data(p.uriString)
+                            .memoryCacheKey(p.uriString)
+                            .build()
+                        loader.enqueue(request)
+                    }
+                }
+
+                // Auto-heal content URIs, dimensions, and resolve location links asynchronously in background
                 viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    val brokenPhotos = photos.filter { it.uriString.startsWith("content://") }
-                    if (brokenPhotos.isNotEmpty()) {
-                        var changed = false
-                        val updatedList = photos.toMutableList()
-                        brokenPhotos.forEach { p ->
-                            val healedUri = saveToInternalStorage(android.net.Uri.parse(p.uriString))
-                            if (healedUri != null) {
-                                val (newW, newH) = extractImageDimensions(android.net.Uri.parse(healedUri))
-                                val index = updatedList.indexOfFirst { it.id == p.id }
-                                if (index != -1) {
-                                    updatedList[index] = updatedList[index].copy(uriString = healedUri, widthPx = newW, heightPx = newH)
-                                    changed = true
-                                }
-                            }
-                        }
-                        if (changed) {
+                    val (healedContentPhotos, contentHealed) = com.android.snippets.logic.PhotoStorageManager.healContentUris(app, photos)
+                    val (finalPhotos, dimensionsHealed) = com.android.snippets.logic.PhotoStorageManager.backfillMissingDimensions(app, healedContentPhotos)
+                    if (contentHealed || dimensionsHealed) {
+                        try {
+                            photoRepository.insertPhotos(finalPhotos)
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                photos = updatedList
+                                photos = finalPhotos
                             }
-                            savePhotos()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
                     }
 
@@ -754,8 +808,8 @@ class SnippetsViewModel @Inject constructor(
                         val currentPhotos = photos.toMutableList()
                         needsLocationResolution.forEach { p ->
                             val link = p.locationLink ?: return@forEach
-                            val name = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(link, getApplication())
-                                ?: com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(link, getApplication())
+                            val name = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(link, app)
+                                ?: com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(link, app)
                             if (!name.isNullOrBlank()) {
                                 val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(name)
                                 val idx = currentPhotos.indexOfFirst { it.id == p.id }
@@ -802,10 +856,10 @@ class SnippetsViewModel @Inject constructor(
                 snippetSortType = snippetSortType.name,
                 isSortAscending = isSortAscending,
                 selectedFilterSnippets = selectedFilterSnippets.toSet(),
-                displayMode = _displayMode.value.name,
-                collectionDisplayModesJson = json.encodeToString(_collectionDisplayModes.value),
-                photoSortType = _photoSortType.value.name,
-                collectionPhotoSortTypesJson = json.encodeToString(_collectionPhotoSortTypes.value)
+                displayMode = "Day",
+                collectionDisplayModesJson = "{}",
+                photoSortType = _uiState.value.photoSortType.name,
+                collectionPhotoSortTypesJson = json.encodeToString(_uiState.value.collectionPhotoSortTypes)
             )
         }
     }
@@ -832,16 +886,7 @@ class SnippetsViewModel @Inject constructor(
         }
     }
 
-    private fun rebuildSnippetFirstSeenTimes(source: List<Photo>): Map<String, Long> {
-        val rebuilt = mutableMapOf<String, Long>()
-        source.forEach { photo ->
-            val time = if (photo.snippetsAddedTime > 0L) photo.snippetsAddedTime else photo.date
-            photo.snippets.forEach { snippet ->
-                rebuilt[snippet] = minOf(rebuilt[snippet] ?: Long.MAX_VALUE, time)
-            }
-        }
-        return rebuilt
-    }
+
 
     private fun isSameDay(time1: Long, time2: Long): Boolean {
         if (time1 == 0L || time2 == 0L) return false
@@ -889,29 +934,6 @@ class SnippetsViewModel @Inject constructor(
         }
     }
 
-    // Settings Setters
-    fun updateThemePreference(pref: ThemePreference) {
-        themePreference = pref
-        viewModelScope.launch {
-            userPreferencesRepository.updateThemePreference(pref.name)
-        }
-    }
-
-    fun updateDynamicColors(use: Boolean) {
-        useDynamicColors = use
-        viewModelScope.launch {
-            userPreferencesRepository.updateUseDynamicColors(use)
-        }
-    }
-
-    fun updateNotificationReminder(enabled: Boolean, hour: Int, minute: Int) {
-        notificationReminderEnabled = enabled
-        notificationReminderHour = hour
-        notificationReminderMinute = minute
-        viewModelScope.launch {
-            userPreferencesRepository.updateNotificationReminder(enabled, hour, minute)
-        }
-    }
 
 
 
@@ -920,7 +942,14 @@ class SnippetsViewModel @Inject constructor(
 
 
 
-    fun addPhoto(uri: Uri, isFavorite: Boolean = false, locationLink: String? = null, locationName: String? = null) {
+
+    fun addPhoto(
+        uri: Uri,
+        isFavorite: Boolean = false,
+        locationLink: String? = null,
+        locationName: String? = null,
+        collection: String? = null
+    ) {
         isAddingPhotos = true
         val targetLocation = locationLink?.trim()?.takeIf { it.isNotBlank() }
         val immediateName = locationName?.trim()?.takeIf { it.isNotBlank() }
@@ -928,23 +957,24 @@ class SnippetsViewModel @Inject constructor(
 
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val captureDate = extractCaptureDate(uri)
+                val captureDate = com.android.snippets.logic.PhotoStorageManager.extractCaptureDate(getApplication(), uri)
                 val duplicate = photos.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
                 
                 if (duplicate != null) {
                     val healedUri = if (duplicate.uriString.startsWith("content://")) {
-                        saveToInternalStorage(uri)
+                        com.android.snippets.logic.PhotoStorageManager.saveToInternalStorage(getApplication(), uri)
                     } else null
 
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        if (isFavorite && !duplicate.isFavorite) {
-                            toggleFavorite(duplicate.id)
-                        }
-
                         var updatedPhoto = duplicate
+                        if (isFavorite && !duplicate.isFavorite) {
+                            updatedPhoto = updatedPhoto.copy(isFavorite = true)
+                        }
+                        if (collection != null && !duplicate.collections.contains(collection)) {
+                            updatedPhoto = updatedPhoto.copy(collections = duplicate.collections + collection)
+                        }
                         if (healedUri != null) {
-                            // Extract dimensions from the newly saved internal file
-                            val (newW, newH) = extractImageDimensions(Uri.parse(healedUri))
+                            val (newW, newH) = com.android.snippets.logic.PhotoStorageManager.extractImageDimensions(getApplication(), Uri.parse(healedUri))
                             updatedPhoto = updatedPhoto.copy(
                                 uriString = healedUri,
                                 widthPx = newW,
@@ -952,7 +982,7 @@ class SnippetsViewModel @Inject constructor(
                             )
                         }
                         
-                        if (!targetLocation.isNullOrBlank()) {
+                        if (!targetLocation.isNullOrBlank() && updatedPhoto.locationLink.isNullOrBlank()) {
                             updatedPhoto = updatedPhoto.copy(
                                 locationLink = targetLocation,
                                 locationName = immediateName ?: updatedPhoto.locationName
@@ -967,7 +997,7 @@ class SnippetsViewModel @Inject constructor(
                         }
 
                         if (!targetLocation.isNullOrBlank()) {
-                            openDetail(duplicate.id, tab = "Library", overrideReturnScreen = Screen.Library)
+                            openDetail(duplicate.id, tab = collection ?: "Library")
                         }
 
                         isAddingPhotos = false
@@ -990,14 +1020,15 @@ class SnippetsViewModel @Inject constructor(
                     return@launch
                 }
 
-                val internalUri = saveToInternalStorage(uri) ?: uri.toString()
-                val (widthPx, heightPx) = extractImageDimensions(Uri.parse(internalUri))
+                val internalUri = com.android.snippets.logic.PhotoStorageManager.saveToInternalStorage(getApplication(), uri) ?: uri.toString()
+                val (widthPx, heightPx) = com.android.snippets.logic.PhotoStorageManager.extractImageDimensions(getApplication(), Uri.parse(internalUri))
 
                 val newPhoto = Photo(
                     uriString = internalUri,
                     date = captureDate,
                     snippets = emptyList(),
                     snippetsAddedTime = 0L,
+                    collections = if (collection != null) listOf(collection) else emptyList(),
                     isFavorite = isFavorite,
                     isLibraryUpload = true,
                     widthPx = widthPx,
@@ -1012,7 +1043,7 @@ class SnippetsViewModel @Inject constructor(
                     savePhotos()
 
                     if (!targetLocation.isNullOrBlank()) {
-                        openDetail(newPhoto.id, tab = "Library", overrideReturnScreen = Screen.Library)
+                        openDetail(newPhoto.id, tab = collection ?: "Library")
                     }
 
                     isAddingPhotos = false
@@ -1045,150 +1076,10 @@ class SnippetsViewModel @Inject constructor(
     }
 
     fun addPhotoToCollection(uri: Uri, collection: String, locationLink: String? = null, locationName: String? = null) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val captureDate = extractCaptureDate(uri)
-            val targetLocation = locationLink?.trim()?.takeIf { it.isNotBlank() }
-            val immediateName = locationName?.trim()?.takeIf { it.isNotBlank() }
-                ?: targetLocation?.let { com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(it, getApplication()) }
-            
-            val duplicate = photos.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
-            if (duplicate != null) {
-                val healedUri = if (duplicate.uriString.startsWith("content://")) {
-                    saveToInternalStorage(uri)
-                } else null
-
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    var updatedPhoto = duplicate
-                    if (!duplicate.collections.contains(collection)) {
-                        updatedPhoto = updatedPhoto.copy(collections = duplicate.collections + collection)
-                    }
-                    if (!targetLocation.isNullOrBlank() && updatedPhoto.locationLink.isNullOrBlank()) {
-                        updatedPhoto = updatedPhoto.copy(
-                            locationLink = targetLocation,
-                            locationName = immediateName ?: updatedPhoto.locationName
-                        )
-                    }
-                    if (healedUri != null) {
-                        // Extract dimensions from the healed internal file
-                        val (newW, newH) = extractImageDimensions(Uri.parse(healedUri))
-                        updatedPhoto = updatedPhoto.copy(
-                            uriString = healedUri,
-                            widthPx = newW,
-                            heightPx = newH
-                        )
-                    }
-                    if (updatedPhoto != duplicate) {
-                        photos = photos.map {
-                            if (it.id == duplicate.id) updatedPhoto else it
-                        }
-                        savePhotos()
-                    }
-                }
-
-                if (!targetLocation.isNullOrBlank() && immediateName == null && (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
-                    val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(targetLocation, getApplication())
-                    if (!resolved.isNullOrBlank()) {
-                        val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            photos = photos.map {
-                                if (it.id == duplicate.id && it.locationName.isNullOrBlank()) {
-                                    it.copy(locationName = clean)
-                                } else it
-                            }
-                            savePhotos()
-                        }
-                    }
-                }
-                return@launch
-            }
-
-            val internalUri = saveToInternalStorage(uri) ?: uri.toString()
-            val (widthPx, heightPx) = extractImageDimensions(Uri.parse(internalUri))
-            val newPhoto = Photo(
-                uriString = internalUri,
-                date = captureDate,
-                snippets = emptyList(),
-                collections = listOf(collection),
-                isLibraryUpload = true,
-                widthPx = widthPx,
-                heightPx = heightPx,
-                locationLink = targetLocation,
-                locationName = immediateName
-            )
-            
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                photos = (listOf(newPhoto) + photos).sortedByDescending { it.date }
-                savePhotos()
-            }
-
-            if (!targetLocation.isNullOrBlank() && immediateName == null && (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
-                val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(targetLocation, getApplication())
-                if (!resolved.isNullOrBlank()) {
-                    val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        photos = photos.map {
-                            if (it.id == newPhoto.id && it.locationName.isNullOrBlank()) {
-                                it.copy(locationName = clean)
-                            } else it
-                        }
-                        savePhotos()
-                    }
-                }
-            }
-        }
+        addPhoto(uri = uri, collection = collection, locationLink = locationLink, locationName = locationName)
     }
 
-    private fun extractImageDimensions(uri: Uri): Pair<Int, Int> {
-        return try {
-            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            val path = uri.path
-            var orientation = ExifInterface.ORIENTATION_NORMAL
-            if (path != null && !uri.toString().startsWith("content:")) {
-                val file = File(path)
-                if (file.exists()) {
-                    java.io.FileInputStream(file).use { input ->
-                        BitmapFactory.decodeStream(input, null, options)
-                    }
-                    orientation = ExifInterface(file.absolutePath).getAttributeInt(
-                        ExifInterface.TAG_ORIENTATION,
-                        ExifInterface.ORIENTATION_NORMAL
-                    )
-                } else {
-                    val resolver = getApplication<Application>().contentResolver
-                    resolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input, null, options) }
-                    resolver.openInputStream(uri)?.use { input ->
-                        orientation = ExifInterface(input).getAttributeInt(
-                            ExifInterface.TAG_ORIENTATION,
-                            ExifInterface.ORIENTATION_NORMAL
-                        )
-                    }
-                }
-            } else {
-                val resolver = getApplication<Application>().contentResolver
-                resolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input, null, options) }
-                resolver.openInputStream(uri)?.use { input ->
-                    orientation = ExifInterface(input).getAttributeInt(
-                        ExifInterface.TAG_ORIENTATION,
-                        ExifInterface.ORIENTATION_NORMAL
-                    )
-                }
-            }
-            var width = options.outWidth.takeIf { it > 0 } ?: 0
-            var height = options.outHeight.takeIf { it > 0 } ?: 0
-            if (orientation == ExifInterface.ORIENTATION_ROTATE_90 ||
-                orientation == ExifInterface.ORIENTATION_ROTATE_270 ||
-                orientation == ExifInterface.ORIENTATION_TRANSPOSE ||
-                orientation == ExifInterface.ORIENTATION_TRANSVERSE
-            ) {
-                val temp = width
-                width = height
-                height = temp
-            }
-            width to height
-        } catch (_: Exception) {
-            0 to 0
-        }
-    }
+
 
 
 
@@ -1207,34 +1098,36 @@ class SnippetsViewModel @Inject constructor(
     fun deleteCollection(collection: String) {
         if (collection.isBlank()) return
 
-        userCollections = userCollections.filter { it != collection }
-        
-        // Cleanup per-collection settings
-        _collectionDisplayModes.value = _collectionDisplayModes.value - collection
-        _collectionPhotoSortTypes.value = _collectionPhotoSortTypes.value - collection
+        val result = com.android.snippets.logic.CollectionManager.deleteCollection(
+            userCollections = userCollections,
+            collectionIcons = collectionIcons,
+            photos = photos,
+            selectedFilterSnippets = selectedFilterSnippets,
+            collection = collection
+        )
+
+        userCollections = result.updatedCollections
+        collectionIcons = result.updatedIcons
+        _uiState.update { it.copy(collectionPhotoSortTypes = it.collectionPhotoSortTypes - collection) }
         
         saveCollections()
-        saveFilterState()
-        collectionIcons = collectionIcons - collection
 
-        var photosChanged = false
-        photos = photos.map { photo ->
-            if (photo.collections.contains(collection)) {
-                photosChanged = true
-                photo.copy(collections = photo.collections - collection)
-            } else photo
+        if (result.photosChanged) {
+            photos = result.updatedPhotos
+            savePhotos()
         }
-        if (photosChanged) savePhotos()
+
+        if (result.filtersChanged) {
+            selectedFilterSnippets = result.updatedFilters
+            scrollToTop()
+            saveFilterState()
+        }
 
         if (activeCollection == collection) {
             navigateLibrary()
         }
         if (pendingCollectionAssignment == collection) {
             pendingCollectionAssignment = null
-        }
-        if (selectedFilterSnippets.contains(collection)) {
-            selectedFilterSnippets = selectedFilterSnippets.filter { it != collection }
-            saveFilterState()
         }
     }
 
@@ -1247,191 +1140,93 @@ class SnippetsViewModel @Inject constructor(
         MemoryManager.cancelMemoryNotification(getApplication(), photoId)
     }
 
+    fun markNotificationPermissionPrompted() {
+        hasPromptedNotificationPermission = true
+        viewModelScope.launch {
+            userPreferencesRepository.updateHasPromptedNotificationPermission(true)
+        }
+    }
+
     fun testNotification() {
         requestNotificationPermission = true
         MemoryManager.testNotification(getApplication(), photos)
     }
 
-    private fun extractCaptureDate(uri: Uri): Long {
-        val context = getApplication<Application>()
-        var fallbackDate = 0L
-        
-        // Try to get the file's last modified date as a better fallback than current time
-        try {
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val dateModifiedIndex = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DATE_MODIFIED)
-                    if (dateModifiedIndex != -1) {
-                        val dateSeconds = cursor.getLong(dateModifiedIndex)
-                        if (dateSeconds > 0) fallbackDate = dateSeconds * 1000L
-                    }
-                    if (fallbackDate == 0L) {
-                        val docLastModIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
-                        if (docLastModIndex != -1) {
-                            val dateMs = cursor.getLong(docLastModIndex)
-                            if (dateMs > 0) fallbackDate = dateMs
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {}
-        
-        if (fallbackDate == 0L) fallbackDate = System.currentTimeMillis()
 
-        return try {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                val exif = ExifInterface(input)
-                val dateTime = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
-                    ?: exif.getAttribute(ExifInterface.TAG_DATETIME)
-                
-                if (dateTime != null) {
-                    val format = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
-                    format.parse(dateTime)?.time ?: fallbackDate
-                } else {
-                    fallbackDate
-                }
-            } ?: fallbackDate
-        } catch (e: Exception) {
-            e.printStackTrace()
-            fallbackDate
-        }
-    }
-
-    private fun saveToInternalStorage(uri: Uri): String? {
-        val context = getApplication<Application>()
-        val photosDir = File(context.filesDir, "photos")
-        if (!photosDir.exists()) photosDir.mkdirs()
-        
-        val fileName = "photo_${System.currentTimeMillis()}.jpg" // Still using JPG extension for clarity, but raw copy preserves quality
-        val localFile = File(photosDir, fileName)
-        
-        return try {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(localFile).use { output ->
-                    input.copyTo(output) // Raw byte stream copy ensures original quality
-                }
-            }
-            localFile.absolutePath.let { if (it.startsWith("/")) "file://$it" else it }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
-    private fun deletePhotoFile(uriString: String) {
-        try {
-            if (uriString.startsWith("file://") || uriString.contains("/files/photos/")) {
-                val path = if (uriString.startsWith("file://")) {
-                    uriString.substring(7)
-                } else {
-                    uriString
-                }
-                val file = File(path)
-                if (file.exists()) {
-                    val deleted = file.delete()
-                    android.util.Log.d("SnippetsViewModel", "Deleted photo file: ${file.absolutePath}, success: $deleted")
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
 
     fun updateSnippets(photoId: String, text: String) {
-        val targetPhoto = photos.find { it.id == photoId }
-        if (targetPhoto != null && targetPhoto.snippets.size >= 6) {
-            android.widget.Toast.makeText(getApplication(), "Maximum 6 snippets per photo", android.widget.Toast.LENGTH_SHORT).show()
+        val result = com.android.snippets.logic.SnippetManager.updateSnippets(
+            photos = photos,
+            snippetFirstSeenTimes = snippetFirstSeenTimes,
+            photoId = photoId,
+            text = text
+        ) ?: run {
+            val targetPhoto = photos.find { it.id == photoId }
+            if (targetPhoto != null && targetPhoto.snippets.size >= com.android.snippets.logic.SnippetManager.MAX_SNIPPETS_PER_PHOTO) {
+                android.widget.Toast.makeText(getApplication(), "Maximum 6 snippets per photo", android.widget.Toast.LENGTH_SHORT).show()
+            }
             return
         }
 
-        val trimmedText = text.trim()
-        if (trimmedText.isBlank()) return
-
-        val newSnippets = listOf(trimmedText)
-        val now = System.currentTimeMillis()
-        var firstTimeSnippetsAdded = false
-        var resurfacedMemory = false
-        val wasAppEmptyBefore = photos.all { it.snippets.isEmpty() }
-
-        if (!snippetFirstSeenTimes.containsKey(trimmedText)) {
-            snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmedText to now)
+        if (result.updatedFirstSeen != snippetFirstSeenTimes) {
+            snippetFirstSeenTimes = result.updatedFirstSeen
             saveSnippetFirstSeenTimes()
         }
-        
-        // Update photo's snippets list
-        photos = photos.map {
-            if (it.id == photoId) {
-                val wasEmpty = it.snippets.isEmpty()
-                if (wasEmpty && newSnippets.isNotEmpty()) {
-                    firstTimeSnippetsAdded = true
-                }
-                val updatedSnippets = (it.snippets + newSnippets).distinct()
-                it.copy(
-                    snippets = updatedSnippets,
-                    snippetsAddedTime = if (newSnippets.isNotEmpty()) now else it.snippetsAddedTime,
-                    surfacedTime = 0L
-                )
-            } else it
-        }
 
+        photos = result.updatedPhotos
         savePhotos()
         reconcileSurfacedMemories()
 
-        if (firstTimeSnippetsAdded && wasAppEmptyBefore) {
+        if (result.isFirstTimeAdded && result.wasAppEmptyBefore) {
             showSnackbar("You just created your first snippet! A new memory will be created soon.")
         }
     }
 
     fun removeSnippet(photoId: String, snippet: String) {
-        var emptiedMemory = false
-        photos = photos.map {
-            if (it.id == photoId) {
-                val updatedSnippets = it.snippets.filter { s -> s != snippet }
-                emptiedMemory = it.snippets.isNotEmpty() && updatedSnippets.isEmpty()
-                it.copy(
-                    snippets = updatedSnippets,
-                    snippetsAddedTime = if (updatedSnippets.isEmpty()) 0L else it.snippetsAddedTime
-                )
-            } else it
-        }
+        val result = com.android.snippets.logic.SnippetManager.removeSnippet(
+            photos = photos,
+            snippetFirstSeenTimes = snippetFirstSeenTimes,
+            selectedFilterSnippets = selectedFilterSnippets,
+            photoId = photoId,
+            snippet = snippet
+        )
+
+        photos = result.updatedPhotos
         savePhotos()
-        
 
-        
-        if (emptiedMemory) cancelMemoryNotification(photoId)
+        if (result.emptiedMemory) {
+            cancelMemoryNotification(photoId)
+        }
 
-        if (photos.none { photo -> photo.snippets.contains(snippet) }) {
-            snippetFirstSeenTimes = snippetFirstSeenTimes - snippet
+        if (result.updatedFirstSeen != snippetFirstSeenTimes) {
+            snippetFirstSeenTimes = result.updatedFirstSeen
             saveSnippetFirstSeenTimes()
         }
 
-        if (selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }) {
-            selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
+        if (result.filtersChanged) {
+            selectedFilterSnippets = result.updatedFilterSnippets
+            scrollToTop()
             saveFilterState()
         }
     }
 
     fun deleteSnippetGlobally(snippet: String) {
-        val emptiedMemoryIds = mutableListOf<String>()
-        photos = photos.map {
-            val updatedSnippets = it.snippets.filter { s -> s != snippet }
-            if (it.snippets.isNotEmpty() && updatedSnippets.isEmpty()) {
-                emptiedMemoryIds.add(it.id)
-            }
-            it.copy(
-                snippets = updatedSnippets,
-                snippetsAddedTime = if (updatedSnippets.isEmpty()) 0L else it.snippetsAddedTime
-            )
-        }
-        savePhotos()
-        emptiedMemoryIds.forEach { cancelMemoryNotification(it) }
-        
+        val result = com.android.snippets.logic.SnippetManager.deleteSnippetGlobally(
+            photos = photos,
+            snippetFirstSeenTimes = snippetFirstSeenTimes,
+            snippet = snippet
+        )
 
-        snippetFirstSeenTimes = snippetFirstSeenTimes - snippet
+        photos = result.updatedPhotos
+        savePhotos()
+        result.emptiedMemoryIds.forEach { cancelMemoryNotification(it) }
+
+        snippetFirstSeenTimes = result.updatedFirstSeen
         saveSnippetFirstSeenTimes()
 
         if (selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }) {
             selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
+            scrollToTop()
             saveFilterState()
         }
     }
@@ -1494,7 +1289,7 @@ class SnippetsViewModel @Inject constructor(
     }
     fun deletePhoto(photoId: String, unpublish: Boolean = true) {
         val deletedPhoto = photos.find { it.id == photoId }
-        deletedPhoto?.let { deletePhotoFile(it.uriString) }
+        deletedPhoto?.let { com.android.snippets.logic.PhotoStorageManager.deletePhotoFile(it.uriString) }
         photos = photos.filter { it.id != photoId }
         savePhotos()
         cancelMemoryNotification(photoId)
@@ -1506,6 +1301,7 @@ class SnippetsViewModel @Inject constructor(
                 saveSnippetFirstSeenTimes()
                 if (selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }) {
                     selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(snippet, ignoreCase = true) }
+                    scrollToTop()
                     saveFilterState()
                 }
             }
@@ -1533,7 +1329,7 @@ class SnippetsViewModel @Inject constructor(
     fun deleteSelectedPhotos(unpublish: Boolean = true) {
         isBusy = true
         photos.filter { selectedPhotoIds.contains(it.id) }.forEach { photo ->
-            deletePhotoFile(photo.uriString)
+            com.android.snippets.logic.PhotoStorageManager.deletePhotoFile(photo.uriString)
         }
         photos = photos.filter { !selectedPhotoIds.contains(it.id) }
         savePhotos()
@@ -1563,10 +1359,8 @@ class SnippetsViewModel @Inject constructor(
         isBusy = false
     }
     
-    val isAllSelectedFavorited: Boolean by derivedStateOf {
-        val selected = photos.filter { selectedPhotoIds.contains(it.id) }
-        selected.isNotEmpty() && selected.all { it.isFavorite }
-    }
+    val isAllSelectedFavorited: Boolean
+        get() = _uiState.value.isAllSelectedFavorited
 
     fun bulkFavoriteSelection() {
         isBusy = true
@@ -1587,121 +1381,82 @@ class SnippetsViewModel @Inject constructor(
     }
 
     fun bulkAddSnippet(photoIds: Set<String>, text: String) {
-        val trimmedText = text.trim()
-        if (trimmedText.isBlank() || photoIds.isEmpty()) return
+        val result = com.android.snippets.logic.SnippetManager.bulkAddSnippet(
+            photos = photos,
+            snippetFirstSeenTimes = snippetFirstSeenTimes,
+            photoIds = photoIds,
+            text = text
+        ) ?: return
 
-        val now = System.currentTimeMillis()
-        if (!snippetFirstSeenTimes.containsKey(trimmedText)) {
-            snippetFirstSeenTimes = snippetFirstSeenTimes + (trimmedText to now)
+        if (result.updatedFirstSeen != snippetFirstSeenTimes) {
+            snippetFirstSeenTimes = result.updatedFirstSeen
             saveSnippetFirstSeenTimes()
         }
 
-        var skippedCount = 0
-        photos = photos.map { photo ->
-            if (photoIds.contains(photo.id)) {
-                if (photo.snippets.size >= 6 && !photo.snippets.contains(trimmedText)) {
-                    skippedCount++
-                    photo
-                } else {
-                    val updatedSnippets = (photo.snippets + trimmedText).distinct()
-                    photo.copy(
-                        snippets = updatedSnippets,
-                        snippetsAddedTime = now,
-                        surfacedTime = 0L
-                    )
-                }
-            } else photo
-        }
+        photos = result.updatedPhotos
         savePhotos()
         reconcileSurfacedMemories()
 
-        if (skippedCount > 0) {
-            showSnackbar("Added '$trimmedText' to selected photos ($skippedCount skipped because they reached the limit of 6 snippets)")
+        val trimmedText = text.trim()
+        if (result.skippedCount > 0) {
+            showSnackbar("Added '$trimmedText' to selected photos (${result.skippedCount} skipped because they reached the limit of 6 snippets)")
         } else {
-            showSnackbar("Added '$trimmedText' to ${photoIds.size} photos")
+            showSnackbar("Added '$trimmedText' to ${result.addedCount} photos")
         }
         clearSelection()
     }
 
     fun bulkRemoveSnippet(photoIds: Set<String>, snippet: String) {
-        if (photoIds.isEmpty() || snippet.isBlank()) return
-        val trimmedSnippet = snippet.trim()
+        val result = com.android.snippets.logic.SnippetManager.bulkRemoveSnippet(
+            photos = photos,
+            snippetFirstSeenTimes = snippetFirstSeenTimes,
+            selectedFilterSnippets = selectedFilterSnippets,
+            photoIds = photoIds,
+            snippet = snippet
+        ) ?: return
 
-        var emptiedMemoryIds = mutableListOf<String>()
-        photos = photos.map { photo ->
-            if (photoIds.contains(photo.id)) {
-                val updatedSnippets = photo.snippets.filter { s -> s != trimmedSnippet }
-                if (photo.snippets.isNotEmpty() && updatedSnippets.isEmpty()) {
-                    emptiedMemoryIds.add(photo.id)
-                }
-                photo.copy(
-                    snippets = updatedSnippets,
-                    snippetsAddedTime = if (updatedSnippets.isEmpty()) 0L else photo.snippetsAddedTime
-                )
-            } else photo
-        }
+        photos = result.updatedPhotos
         savePhotos()
-        emptiedMemoryIds.forEach { cancelMemoryNotification(it) }
+        result.emptiedMemoryIds.forEach { cancelMemoryNotification(it) }
 
-        if (photos.none { photo -> photo.snippets.contains(trimmedSnippet) }) {
-            snippetFirstSeenTimes = snippetFirstSeenTimes - trimmedSnippet
+        if (result.updatedFirstSeen != snippetFirstSeenTimes) {
+            snippetFirstSeenTimes = result.updatedFirstSeen
             saveSnippetFirstSeenTimes()
         }
 
-        if (selectedFilterSnippets.any { it.equals(trimmedSnippet, ignoreCase = true) }) {
-            selectedFilterSnippets = selectedFilterSnippets.filter { !it.equals(trimmedSnippet, ignoreCase = true) }
+        if (result.filtersChanged) {
+            selectedFilterSnippets = result.updatedFilterSnippets
+            scrollToTop()
             saveFilterState()
         }
 
-        showSnackbar("Removed '$trimmedSnippet' from selected photos")
+        showSnackbar("Removed '${snippet.trim()}' from selected photos")
         clearSelection()
     }
 
     fun bulkClearSnippets(photoIds: Set<String>) {
         if (photoIds.isEmpty()) return
-        
-        photos = photos.map { photo ->
-            if (photoIds.contains(photo.id)) {
-                cancelMemoryNotification(photo.id)
-                photo.copy(
-                    snippets = emptyList(),
-                    snippetsAddedTime = 0L
-                )
-            } else photo
-        }
+
+        val result = com.android.snippets.logic.SnippetManager.bulkClearSnippets(photos, photoIds)
+        photos = result.updatedPhotos
         savePhotos()
-        
-        val allExistingSnippets = photos.flatMap { it.snippets }.toSet()
-        snippetFirstSeenTimes = snippetFirstSeenTimes.filterKeys { it in allExistingSnippets }
+        result.emptiedMemoryIds.forEach { cancelMemoryNotification(it) }
+
+        snippetFirstSeenTimes = snippetFirstSeenTimes.filterKeys { it in result.remainingSnippets }
         saveSnippetFirstSeenTimes()
-        
-        selectedFilterSnippets = selectedFilterSnippets.filter { it in allExistingSnippets }
+
+        val previousFilterSize = selectedFilterSnippets.size
+        selectedFilterSnippets = selectedFilterSnippets.filter { it in result.remainingSnippets }
+        if (selectedFilterSnippets.size != previousFilterSize) {
+            scrollToTop()
+        }
         saveFilterState()
-        
+
         showSnackbar("Cleared all snippets from selected photos")
         clearSelection()
     }
 
-    fun updateExpandLabelIcon(expand: Boolean) {
-        expandLabelIcon = expand
-        viewModelScope.launch {
-            userPreferencesRepository.updateExpandLabelIcon(expand)
-        }
-    }
 
-    fun updateExpandCalendarIcon(expand: Boolean) {
-        expandCalendarIcon = expand
-        viewModelScope.launch {
-            userPreferencesRepository.updateExpandCalendarIcon(expand)
-        }
-    }
-
-    fun updateExpandLocationIcon(expand: Boolean) {
-        expandLocationIcon = expand
-        viewModelScope.launch {
-            userPreferencesRepository.updateExpandLocationIcon(expand)
-        }
-    }
 
     fun downloadPhotoCard(context: Context, photo: Photo, isDark: Boolean, bgColor: Int) {
         viewModelScope.launch {
@@ -1721,10 +1476,11 @@ class SnippetsViewModel @Inject constructor(
         if (selectedPhotoIds.isEmpty()) return
         
         viewModelScope.launch {
-            val isDarkTheme = when (themePreference) {
-                ThemePreference.LIGHT -> false
-                ThemePreference.DARK -> true
-                ThemePreference.SYSTEM -> (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            val isDarkTheme = when (prefs.themePreference.uppercase()) {
+                "LIGHT" -> false
+                "DARK" -> true
+                else -> (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
             }
             val photosToShare = selectedPhotoIds.mapNotNull { photoId ->
                 photos.find { it.id == photoId }?.let { it to getPureSnippets(it) }
@@ -1734,10 +1490,8 @@ class SnippetsViewModel @Inject constructor(
             }
         }
     }
-    fun openDetail(id: String, tab: String? = null, overrideReturnScreen: Screen? = null) {
+    fun openDetail(id: String, tab: String? = null) {
         activePhotoId = id
-        previousScreen = currentScreen
-        currentScreen = Screen.Library
         tab?.let { libraryCurrentTab = it }
     }
 
@@ -1746,62 +1500,19 @@ class SnippetsViewModel @Inject constructor(
     }
 
     fun navigateBack() {
-        when (currentScreen) {
-            Screen.Memory,
-            Screen.Settings,
-            Screen.About,
-            Screen.Stats -> navigateLibrary()
-            Screen.EmojiPicker,
-            Screen.MonthlyRecap,
-            Screen.YearlyRecap -> {
-                currentScreen = previousScreen
-            }
-            Screen.Library -> {
-                if (activePhotoId != null) {
-                    activePhotoId = null
-                }
-            }
+        if (activePhotoId != null) {
+            activePhotoId = null
         }
     }
 
 
-    fun getPhotosForPeriod(month: Int?, year: Int): List<Photo> {
-        val matched = photos.filter { photo ->
-            val c = Calendar.getInstance().apply { timeInMillis = photo.date }
-            val matchesYear = c.get(Calendar.YEAR) == year
-            val matchesMonth = month == null || c.get(Calendar.MONTH) == month
-            
-            val matchesPeriod = matchesYear && matchesMonth
-            if (matchesPeriod) {
-                if (month == null) {
-                    photo.isFavorite || photo.rating >= 3
-                } else {
-                    true
-                }
-            } else {
-                false
-            }
-        }
-        return matched.sortedWith(
-            compareByDescending<Photo> { it.isFavorite }
-                .thenByDescending { it.rating }
-                .thenByDescending { it.snippets.size }
-                .thenByDescending { it.date }
-        )
-    }
+    fun getPhotosForPeriod(month: Int?, year: Int): List<Photo> =
+        com.android.snippets.logic.RecapManager.getRecapPhotos(photos, month, year)
 
     fun triggerMonthlyRecap(month: Int? = null, year: Int? = null) {
-        val cal = Calendar.getInstance()
-        val targetMonth = month ?: if (cal.get(Calendar.DAY_OF_MONTH) == 1) {
-            (cal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }.get(Calendar.MONTH)
-        } else {
-            cal.get(Calendar.MONTH)
-        }
-        val targetYear = year ?: if (cal.get(Calendar.DAY_OF_MONTH) == 1 && targetMonth == 11) {
-            cal.get(Calendar.YEAR) - 1
-        } else {
-            cal.get(Calendar.YEAR)
-        }
+        val prevMonthCal = Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
+        val targetMonth = month ?: prevMonthCal.get(Calendar.MONTH)
+        val targetYear = year ?: if (month != null) Calendar.getInstance().get(Calendar.YEAR) else prevMonthCal.get(Calendar.YEAR)
 
         val monthCal = Calendar.getInstance().apply {
             set(Calendar.MONTH, targetMonth)
@@ -1810,12 +1521,10 @@ class SnippetsViewModel @Inject constructor(
         val monthName = SimpleDateFormat("MMMM", Locale.getDefault()).format(monthCal.time)
 
         isYearlyRecap = false
-        recapTitle = "This $monthName"
+        recapTitle = "$monthName Recap"
         recapPhotos = getPhotosForPeriod(month = targetMonth, year = targetYear)
         recapMonth = targetMonth
         recapYear = targetYear
-        previousScreen = currentScreen
-        currentScreen = Screen.MonthlyRecap
     }
 
     fun triggerYearlyRecap(year: Int? = null) {
@@ -1823,54 +1532,83 @@ class SnippetsViewModel @Inject constructor(
         val targetYear = year ?: (cal.get(Calendar.YEAR) - 1).coerceAtLeast(2020)
 
         isYearlyRecap = true
-        recapTitle = "This $targetYear"
+        recapTitle = "$targetYear Recap"
         recapPhotos = getPhotosForPeriod(month = null, year = targetYear)
         recapYear = targetYear
-        previousScreen = currentScreen
-        currentScreen = Screen.YearlyRecap
     }
 
     fun checkAndTriggerRecapOnLaunch() {
-        val now = Calendar.getInstance()
-        val dayOfMonth = now.get(Calendar.DAY_OF_MONTH)
-        val dayOfYear = now.get(Calendar.DAY_OF_YEAR)
-        val currentYear = now.get(Calendar.YEAR)
+        if (photos.isEmpty()) return
 
-        if (dayOfYear == 1) {
-            val targetYear = currentYear - 1
-            if (lastSeenYearlyRecapYear != targetYear) {
-                val yearlyPhotos = getPhotosForPeriod(month = null, year = targetYear)
+        val now = Calendar.getInstance()
+        val currentYear = now.get(Calendar.YEAR)
+        val currentMonth = now.get(Calendar.MONTH)
+
+        // 1. Check Yearly Recap: when entering a new year (e.g. in January) for previous completed year
+        val prevYear = currentYear - 1
+        if (currentMonth == Calendar.JANUARY && prevYear >= 2020) {
+            if (lastSeenYearlyRecapYear != prevYear) {
+                val yearlyPhotos = getPhotosForPeriod(month = null, year = prevYear)
                 if (yearlyPhotos.isNotEmpty()) {
-                    lastSeenYearlyRecapYear = targetYear
+                    lastSeenYearlyRecapYear = prevYear
                     viewModelScope.launch {
-                        userPreferencesRepository.updateLastSeenYearlyRecapYear(targetYear)
+                        userPreferencesRepository.updateLastSeenYearlyRecapYear(prevYear)
+                        userPreferencesRepository.updateLastNotifiedYearlyRecapYear(prevYear)
                     }
-                    triggerYearlyRecap(targetYear)
+                    triggerYearlyRecap(prevYear)
+                    pendingRecapLaunch = RecapLaunchEvent.Yearly(prevYear)
+                    return
+                } else {
+                    lastSeenYearlyRecapYear = prevYear
+                    viewModelScope.launch {
+                        userPreferencesRepository.updateLastSeenYearlyRecapYear(prevYear)
+                        userPreferencesRepository.updateLastNotifiedYearlyRecapYear(prevYear)
+                    }
                 }
             }
-        } else if (dayOfMonth == 1) {
-            val prevCal = (now.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
-            val targetMonth = prevCal.get(Calendar.MONTH)
-            val targetYear = prevCal.get(Calendar.YEAR)
-            val recapKey = "${targetYear}_${targetMonth}"
-            if (lastSeenMonthlyRecapPeriod != recapKey) {
-                val monthlyPhotos = getPhotosForPeriod(month = targetMonth, year = targetYear)
-                if (monthlyPhotos.isNotEmpty()) {
-                    lastSeenMonthlyRecapPeriod = recapKey
-                    viewModelScope.launch {
-                        userPreferencesRepository.updateLastSeenMonthlyRecapPeriod(recapKey)
-                    }
-                    triggerMonthlyRecap(targetMonth, targetYear)
+        }
+
+        // 2. Check Monthly Recap: for completed previous month
+        val prevCal = (now.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+        val targetMonth = prevCal.get(Calendar.MONTH)
+        val targetYear = prevCal.get(Calendar.YEAR)
+        val recapKey = "${targetYear}_${targetMonth}"
+
+        if (lastSeenMonthlyRecapPeriod != recapKey) {
+            val monthlyPhotos = getPhotosForPeriod(month = targetMonth, year = targetYear)
+            if (monthlyPhotos.isNotEmpty()) {
+                lastSeenMonthlyRecapPeriod = recapKey
+                viewModelScope.launch {
+                    userPreferencesRepository.updateLastSeenMonthlyRecapPeriod(recapKey)
+                    userPreferencesRepository.updateLastNotifiedMonthlyRecapPeriod(recapKey)
+                }
+                triggerMonthlyRecap(targetMonth, targetYear)
+                pendingRecapLaunch = RecapLaunchEvent.Monthly(targetMonth, targetYear)
+            } else {
+                // If there were no photos at all for that month, mark as seen to prevent repetitive checks
+                lastSeenMonthlyRecapPeriod = recapKey
+                viewModelScope.launch {
+                    userPreferencesRepository.updateLastSeenMonthlyRecapPeriod(recapKey)
+                    userPreferencesRepository.updateLastNotifiedMonthlyRecapPeriod(recapKey)
                 }
             }
         }
     }
 
+    fun testRecapNotification(isYearly: Boolean = false) {
+        requestNotificationPermission = true
+        viewModelScope.launch {
+            com.android.snippets.logic.RecapManager.testRecapNotification(getApplication(), photos, isYearly)
+        }
+    }
+
     fun navigateLibrary() {
         searchQuery = ""
+        val hadFilters = selectedFilterSnippets.isNotEmpty()
         selectedFilterSnippets = emptyList()
-        previousScreen = currentScreen
-        currentScreen = Screen.Library
+        if (hadFilters) {
+            requestScrollToTop()
+        }
         activePhotoId = null
         clearSelection()
     }
@@ -1883,411 +1621,27 @@ class SnippetsViewModel @Inject constructor(
         showFilterSheet = false
     }
 
-    fun navigateSettings() {
-        searchQuery = ""
-        previousScreen = currentScreen
-        currentScreen = Screen.Settings
-        activePhotoId = null
-    }
-
-    fun navigateAbout() {
-        searchQuery = ""
-        previousScreen = currentScreen
-        currentScreen = Screen.About
-        activePhotoId = null
-    }
-
-    fun navigateStats() {
-        searchQuery = ""
-        previousScreen = currentScreen
-        currentScreen = Screen.Stats
-        activePhotoId = null
-    }
-
-
-    fun openMemory(memories: List<Photo>, index: Int) {
-        if (memories.isEmpty()) return
-        activeMemoriesSnapshot = memories
-        currentMemoryIndex = index.coerceIn(0, activeMemoriesSnapshot.size - 1)
-        previousScreen = currentScreen
-        currentScreen = Screen.Memory
-        MemoryWorker.isInMemoryScreen = true
-        MemoryWorker.cancelSummaryNotification(getApplication())
-    }
-
-    fun openMemory(index: Int) {
-        openMemory(curatedMemories, index)
-    }
-
-    fun openMemoryForPhoto(photoId: String) {
-        val targetPhoto = photos.find { it.id == photoId } ?: return
-        val index = curatedMemories.indexOfFirst { it.id == photoId }
-        if (index != -1) {
-            openMemory(index)
-            return
-        }
-        val combined = (listOf(targetPhoto) + curatedMemories).sortedByDescending { it.date }
-        val newIndex = combined.indexOfFirst { it.id == photoId }.coerceAtLeast(0)
-        openMemory(combined, newIndex)
-    }
-
-    fun onMemoryViewed(index: Int) {
-        val list = activeMemoriesSnapshot.ifEmpty { curatedMemories }
-        if (list.isEmpty()) return
-        currentMemoryIndex = index.coerceIn(0, list.size - 1)
-        list.getOrNull(currentMemoryIndex)?.let { markAsViewed(it.id) }
-    }
-
-    fun onMemoryViewed(photoId: String) {
-        val list = activeMemoriesSnapshot.ifEmpty { curatedMemories }
-        val index = list.indexOfFirst { it.id == photoId }
-        if (index != -1) {
-            currentMemoryIndex = index
-        }
-        markAsViewed(photoId)
-    }
-
-    private fun markAsViewed(id: String) {
-        val now = System.currentTimeMillis()
-        val photo = photos.find { it.id == id } ?: return
-
-        // Skip entirely if already up-to-date — avoids any list rebuild
-        if (photo.isViewed && photo.snippetsAddedTime <= photo.lastViewedTime) {
-            return
-        }
-
-        // Rebuild list synchronously on the Main thread to prevent race conditions
-        val updated = photos.map {
-            if (it.id == id) it.copy(isViewed = true, lastViewedTime = now) else it
-        }
-        photos = updated
-        savePhotos()
-
-        // Immediately cancel the posted notification and clear its posted state
-        MemoryWorker.cancelPostedNotification(getApplication(), id)
-    }
-
-    val activePhoto: Photo? get() = photos.find { it.id == activePhotoId }
-
-    val curatedMemories: List<Photo> by derivedStateOf {
-        MemoryManager.getCuratedMemories(photos)
-    }
-
-    val historyMemories: List<Photo> by derivedStateOf {
-        MemoryManager.getHistoryMemories(photos)
-    }
-
-    val hasUnviewedMemories: Boolean by derivedStateOf {
-        MemoryManager.hasUnviewedMemories(curatedMemories)
-    }
+    val activePhoto: Photo?
+        get() = _uiState.value.activePhoto
     
-    val filteredPhotos: List<Photo> by derivedStateOf {
-        val parsed = parsedSearchQuery
-        val textTokens = parsed.textTokens
-        val directives = parsed.directives
-        val hasSearchCriteria = textTokens.isNotEmpty() || directives.isNotEmpty()
+    val filteredPhotos: List<Photo>
+        get() = _uiState.value.filteredPhotos
 
-        val baseList = if (!hasSearchCriteria && selectedFilterSnippets.isEmpty()) {
-            photos
-        } else {
-            photos.filter { photo ->
-                var dateObj: java.util.Date? = null
-                var dayName: String? = null
-                var monthName: String? = null
-                var yearName: String? = null
-                var weekName: String? = null
-                var fullDate: String? = null
-
-                // 1. Text criteria: All textTokens must match (AND logic)
-                val matchesText = textTokens.isEmpty() || textTokens.all { part ->
-                    val isNegationQuery = part.startsWith("not ", ignoreCase = true) || part.equals("not", ignoreCase = true)
-
-                    photo.snippets.any { s ->
-                        val index = s.indexOf(part, ignoreCase = true)
-                        if (index == -1) return@any false
-
-                        // SMART: If we matched "sweet" inside "not sweet", and we didn't search for "not", skip it
-                        val isPrecededByNot = s.startsWith("not ", ignoreCase = true) && !isNegationQuery
-                        !isPrecededByNot
-                    } ||
-                    photo.collections.any { it.contains(part, ignoreCase = true) } ||
-                    (photo.name?.contains(part, ignoreCase = true) == true) ||
-                    run {
-                        if (dateObj == null) {
-                            dateObj = java.util.Date(photo.date)
-                            dayName = dayOfWeekFormat.format(dateObj)
-                            monthName = monthDateFormat.format(dateObj)
-                            yearName = yearDateFormat.format(dateObj)
-                            weekName = weekDateFormat.format(dateObj)
-                            fullDate = groupDateFormat.format(dateObj)
-                        }
-                        dayName!!.contains(part, ignoreCase = true) ||
-                        monthName!!.contains(part, ignoreCase = true) ||
-                        yearName!!.contains(part, ignoreCase = true) ||
-                        weekName!!.contains(part, ignoreCase = true) ||
-                        fullDate!!.contains(part, ignoreCase = true)
-                    }
-                }
-
-                // 2. Directives criteria: All directives must match (AND logic)
-                val matchesDirectives = directives.all { directive ->
-                    when (directive) {
-                        is SearchDirective.Old, is SearchDirective.New -> true
-                        is SearchDirective.MostSnippets, is SearchDirective.LeastSnippets, is SearchDirective.Snippets -> photo.snippets.isNotEmpty()
-                        is SearchDirective.MostStars, is SearchDirective.LeastStars, is SearchDirective.Stars -> photo.rating > 0
-                        is SearchDirective.StarRating -> photo.rating == directive.rating
-                    }
-                }
-
-                val matchesSearch = hasSearchCriteria && matchesText && matchesDirectives
-
-                val matchesChips = selectedFilterSnippets.isNotEmpty() && selectedFilterSnippets.any { chip ->
-                    photo.snippets.any { it.equals(chip, ignoreCase = true) }
-                }
-
-                if (hasSearchCriteria && selectedFilterSnippets.isNotEmpty()) {
-                    matchesSearch || matchesChips // Union of search and filters
-                } else if (hasSearchCriteria) {
-                    matchesSearch
-                } else {
-                    matchesChips
-                }
-            }
-        }
-
-        // Smart grouping: Auto-switch searchDisplayMode based on the FIRST matching date-part
-        if (textTokens.isNotEmpty()) {
-            val months = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
-
-            textTokens.forEach { part ->
-                val isMonth = months.any { it.startsWith(part, ignoreCase = true) }
-                val isWeek = part.startsWith("Week", ignoreCase = true)
-
-                if (isMonth || isWeek) {
-                    searchDisplayMode = when {
-                        isMonth -> DisplayMode.Month
-                        isWeek -> DisplayMode.Week
-                        else -> searchDisplayMode
-                    }
-                    return@forEach
-                }
-            }
-        }
-
-        val effectiveSort = currentSearchSortType ?: photoSortType
-        if (!hasSearchCriteria && selectedFilterSnippets.isEmpty() && effectiveSort == PhotoSortType.DateNewest) {
-            baseList
-        } else {
-            sortPhotos(baseList, effectiveSort)
-        }
-    }
-
-    private val groupDateFormat = java.text.SimpleDateFormat("EEE, d MMM", Locale.getDefault())
-    private val weekDateFormat = java.text.SimpleDateFormat("'Week' w, yyyy", Locale.getDefault())
-    private val monthDateFormat = java.text.SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-    private val yearDateFormat = java.text.SimpleDateFormat("yyyy", Locale.getDefault())
-    private val dayOfWeekFormat = java.text.SimpleDateFormat("EEEE", Locale.getDefault())
-    private val weekRangeFormat = java.text.SimpleDateFormat("MMM d", Locale.getDefault())
-    private val groupCalendar = Calendar.getInstance()
-    private val startCalendar = Calendar.getInstance()
-    private val endCalendar = Calendar.getInstance()
-
-    private fun groupPhotosByDate(
-        source: List<Photo>, 
-        mode: DisplayMode = displayMode,
-        sort: PhotoSortType = photoSortType
-    ): Map<String, List<Photo>> {
-        if (sort == PhotoSortType.MostSnippets || sort == PhotoSortType.LeastSnippets ||
-            sort == PhotoSortType.MostStarred || sort == PhotoSortType.LeastStarred) {
-            val label = when (sort) {
-                PhotoSortType.MostSnippets -> "Most Snippets"
-                PhotoSortType.LeastSnippets -> "Least Snippets"
-                PhotoSortType.MostStarred -> "Most Starred"
-                PhotoSortType.LeastStarred -> "Least Starred"
-                else -> ""
-            }
-            return mapOf(label to source)
-        }
-        val now = System.currentTimeMillis()
-        groupCalendar.timeInMillis = now
-        val todayDay = groupCalendar.get(Calendar.DAY_OF_YEAR)
-        val todayYear = groupCalendar.get(Calendar.YEAR)
-        val weekCache = HashMap<Int, String>()
-        val dateObj = java.util.Date()
-
-        return source.groupBy { photo ->
-            groupCalendar.timeInMillis = photo.date
-            val photoDay = groupCalendar.get(Calendar.DAY_OF_YEAR)
-            val photoYear = groupCalendar.get(Calendar.YEAR)
-
-            when (mode) {
-                DisplayMode.Day -> {
-                    when {
-                        photoYear == todayYear && photoDay == todayDay -> "Today"
-                        photoYear == todayYear && photoDay == todayDay - 1 -> "Yesterday"
-                        else -> {
-                            dateObj.time = photo.date
-                            groupDateFormat.format(dateObj)
-                        }
-                    }
-                }
-                DisplayMode.Week -> {
-                    val photoWeek = groupCalendar.get(Calendar.WEEK_OF_YEAR)
-                    val cacheKey = photoYear * 100 + photoWeek
-                    weekCache.getOrPut(cacheKey) {
-                        startCalendar.timeInMillis = photo.date
-                        startCalendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                        endCalendar.timeInMillis = startCalendar.timeInMillis
-                        endCalendar.add(Calendar.DAY_OF_WEEK, 6)
-                        "${weekRangeFormat.format(startCalendar.time)} - ${weekRangeFormat.format(endCalendar.time)}"
-                    }
-                }
-                DisplayMode.Month -> {
-                    dateObj.time = photo.date
-                    monthDateFormat.format(dateObj)
-                }
-            }
-        }
-    }
-
-    val groupedPhotos: Map<String, List<Photo>> by derivedStateOf {
-        groupPhotosByDate(photos)
-    }
-
-        fun containsEmoji(s: String): Boolean = SnippetStyleHelper.containsEmoji(s)
+    fun containsEmoji(s: String): Boolean = SnippetStyleHelper.containsEmoji(s)
 
     fun containsEmoticon(s: String): Boolean = SnippetStyleHelper.containsEmoticon(s)
 
-    val favoritesUniqueSnippets: List<String> by derivedStateOf {
-        val set = LinkedHashSet<String>()
-        val pList = photos
-        for (i in pList.indices) {
-            val p = pList[i]
-            if (p.isFavorite) {
-                val snips = p.snippets
-                for (j in snips.indices) set.add(snips[j])
-            }
-        }
-        set.toList()
-    }
+    val favoritesUniqueSnippets: List<String>
+        get() = _uiState.value.favoritesUniqueSnippets
 
+    val allUniqueSnippets: List<String>
+        get() = _uiState.value.allUniqueSnippets
 
-    val allUniqueSnippets: List<String> by derivedStateOf {
-        val baseSnippets = LinkedHashSet<String>()
-        val pList = photos
-        for (i in pList.indices) {
-            val snips = pList[i].snippets
-            for (j in snips.indices) baseSnippets.add(snips[j])
-        }
+    val locationNameMap: Map<String, String>
+        get() = _uiState.value.locationNameMap
 
-        val filtered = when (snippetSortType) {
-            SnippetSortType.Emoji -> baseSnippets.filter { containsEmoji(it) }
-            SnippetSortType.Emoticons -> baseSnippets.filter { containsEmoticon(it) }
-            else -> baseSnippets.toList()
-        }
-
-        when (snippetSortType) {
-            SnippetSortType.New -> filtered.sortedByDescending { snippetFirstSeenTimes[it] ?: 0L }
-            SnippetSortType.Old -> filtered.sortedBy { snippetFirstSeenTimes[it] ?: 0L }
-            SnippetSortType.AZ -> filtered.sortedWith(String.CASE_INSENSITIVE_ORDER)
-            SnippetSortType.Emoji, SnippetSortType.Emoticons -> filtered.sorted()
-        }
-    }
-
-    val locationNameMap: Map<String, String> by derivedStateOf {
-        val map = mutableMapOf<String, String>()
-        photos.forEach { p ->
-            val link = p.locationLink?.trim()?.takeIf { it.isNotBlank() }
-            val name = p.locationName?.trim()?.takeIf { it.isNotBlank() }
-                ?: link?.let { com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(it) }
-            if (link != null && name != null) {
-                val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(name)
-                if (clean.isNotBlank()) {
-                    map[link] = clean
-                }
-            }
-        }
-        map
-    }
-
-    val allUniqueLocations: List<String> by derivedStateOf {
-        val nameToLink = mutableMapOf<String, String>()
-        photos.forEach { p ->
-            val link = p.locationLink?.trim()?.takeIf { it.isNotBlank() }
-            val name = p.locationName?.trim()?.takeIf { it.isNotBlank() }
-                ?: link?.let { com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(it) }
-            if (link != null && name != null) {
-                val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(name)
-                if (clean.isNotBlank()) {
-                    nameToLink.putIfAbsent(clean.lowercase(), link)
-                }
-            }
-        }
-
-        val counts = mutableMapOf<String, Int>()
-        photos.forEach { p ->
-            val link = p.locationLink?.trim()?.takeIf { it.isNotBlank() }
-            val rawName = p.locationName?.trim()?.takeIf { it.isNotBlank() }
-            val cleanName = rawName?.let { com.android.snippets.ui.util.LocationUtils.cleanLocationName(it) }
-
-            val key = when {
-                link != null -> link
-                cleanName != null -> nameToLink[cleanName.lowercase()] ?: cleanName
-                else -> null
-            }
-
-            if (!key.isNullOrBlank()) {
-                counts[key] = (counts[key] ?: 0) + 1
-            }
-        }
-
-        photos.forEach { p ->
-            val rawName = p.locationName?.trim()?.takeIf { it.isNotBlank() }
-            if (rawName != null) {
-                val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(rawName)
-                val key = nameToLink[clean.lowercase()] ?: clean
-                if (key.isNotBlank() && !counts.containsKey(key)) {
-                    counts[key] = 1
-                }
-            }
-        }
-
-        counts.entries
-            .sortedWith(
-                compareByDescending<Map.Entry<String, Int>> { it.value }
-                    .thenBy { it.key.lowercase() }
-            )
-            .map { it.key }
-    }
-
-    val filteredGroupedPhotos: Map<String, List<Photo>> by derivedStateOf {
-        groupPhotosByDate(filteredPhotos, _displayMode.value, _photoSortType.value)
-    }
-
-    val filteredCollectionPhotos: Map<String, List<Photo>> by derivedStateOf {
-        val currentCollection = activeCollection
-        val source = if (currentCollection != null) {
-            filteredPhotos.filter { it.collections.contains(currentCollection) }
-        } else filteredPhotos
-        
-        val mode = if (separateCollectionSort && currentCollection != null) {
-            _collectionDisplayModes.value[currentCollection] ?: DisplayMode.Day
-        } else _displayMode.value
-        
-        val sort = if (separateCollectionSort && currentCollection != null) {
-            getPhotoSortTypeFor(currentCollection)
-        } else {
-            getPhotoSortTypeFor("Library")
-        }
-        
-        groupPhotosByDate(source, mode, sort)
-    }
-
-    val filteredFavoritesPhotos: Map<String, List<Photo>> by derivedStateOf {
-        val source = filteredPhotos.filter { it.isFavorite }
-        // Favorites uses Library defaults (as per "leave favorites out" preference)
-        groupPhotosByDate(source, _displayMode.value, getPhotoSortTypeFor("Favorites"))
-    }
+    val allUniqueLocations: List<String>
+        get() = _uiState.value.allUniqueLocations
 
     fun getPureSnippets(photo: Photo): List<String> {
         return photo.snippets.filterNot { snippet -> 
@@ -2295,28 +1649,13 @@ class SnippetsViewModel @Inject constructor(
         }
     }
 
-    fun getCollectionIcon(collection: String): Any {
-        if (collection == "Favorites") return Icons.Rounded.Favorite
-        val iconName = collectionIcons[collection] ?: collection
-        
-        return when (iconName) {
-            "Landscape" -> Icons.Rounded.Landscape
-            "Nature" -> Icons.Rounded.Nature
-            "Person" -> Icons.Rounded.Person
-            "Group" -> Icons.Rounded.Groups
-            "LocalDrink" -> Icons.Rounded.LocalDrink
-            "Cookie" -> Icons.Rounded.Cookie
-            "Pets" -> Icons.Rounded.Pets
-            "Travel" -> Icons.Rounded.Flight
-            "Waves" -> Icons.Rounded.Waves
-            "Apartment" -> Icons.Rounded.Apartment
-            else -> if (iconName.isNotBlank() && iconName.none { it in 'a'..'z' || it in 'A'..'Z' }) {
-                iconName
-            } else {
-                Icons.Rounded.Folder
-            }
-        }
-    }
+    fun getCollectionIcon(collection: String): Any =
+        com.android.snippets.logic.CollectionManager.getCollectionIcon(
+            collection = collection,
+            editingCollectionEmoji = editingCollectionEmoji,
+            editingEmojiPreview = editingEmojiPreview,
+            collectionIcons = collectionIcons
+        )
 
     fun getSnippetFirstSeenTime(name: String): Long? {
         return snippetFirstSeenTimes[name.trim()]
@@ -2343,77 +1682,6 @@ class SnippetsViewModel @Inject constructor(
 
 
 
-    fun exportBackupToFile(context: Context, uri: Uri) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                backupManager.exportBackup(
-                    context = context,
-                    uri = uri,
-                    photos = photos,
-                    userCollections = userCollections,
-                    collectionIcons = collectionIcons,
-                    snippetFirstSeenTimes = snippetFirstSeenTimes
-                )
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(context, "Backup file exported successfully!", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-    }
 
-    fun importBackupFromFile(context: Context, uri: Uri) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                backupManager.importBackup(context, uri)
-                // Force reload all settings and data
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    loadAllData()
-                    Toast.makeText(context, "Backup file imported successfully!", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-    }
-    fun updateAutoBackupSchedule(schedule: String) {
-        autoBackupSchedule = schedule
-        viewModelScope.launch {
-            userPreferencesRepository.updateAutoBackupSchedule(schedule)
-        }
-        scheduleAutoBackup()
-    }
-
-    private fun scheduleAutoBackup() {
-        val workManager = androidx.work.WorkManager.getInstance(getApplication())
-        if (autoBackupSchedule == "Disabled") {
-            workManager.cancelUniqueWork("auto_backup_work")
-            android.util.Log.d("SnippetsViewModel", "Cancelled auto backup work.")
-        } else {
-            val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.android.snippets.logic.AutoBackupWorker>(
-                24, java.util.concurrent.TimeUnit.HOURS
-            ).setConstraints(
-                androidx.work.Constraints.Builder()
-                    .setRequiresCharging(true)
-                    .setRequiresBatteryNotLow(true)
-                    .setRequiresStorageNotLow(true)
-                    .build()
-            ).build()
-            
-            workManager.enqueueUniquePeriodicWork(
-                "auto_backup_work",
-                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
-                workRequest
-            )
-            android.util.Log.d("SnippetsViewModel", "Scheduled auto backup work: $autoBackupSchedule")
-        }
-    }
 
 }
