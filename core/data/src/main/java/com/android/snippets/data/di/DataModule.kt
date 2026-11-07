@@ -1,9 +1,6 @@
-package com.android.snippets.di
+package com.android.snippets.data.di
 
 import android.content.Context
-import com.android.snippets.data.CollectionDao
-import com.android.snippets.data.PhotoDao
-import com.android.snippets.data.SnippetsDatabase
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.data.repository.CollectionRepository
 import com.android.snippets.data.repository.CollectionRepositoryImpl
@@ -19,25 +16,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
-
-    @Provides
-    @Singleton
-    fun provideSnippetsDatabase(
-        @ApplicationContext context: Context
-    ): SnippetsDatabase {
-        return SnippetsDatabase.getInstance(context)
-    }
-
-    @Provides
-    fun providePhotoDao(database: SnippetsDatabase): PhotoDao {
-        return database.photoDao()
-    }
-
-    @Provides
-    fun provideCollectionDao(database: SnippetsDatabase): CollectionDao {
-        return database.collectionDao()
-    }
+object DataModule {
 
     @Provides
     @Singleton

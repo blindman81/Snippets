@@ -51,8 +51,11 @@ data class UserPreferences(
     val collectionPhotoSortTypesJson: String = "{}",
     val lastSeenYearlyRecapYear: Int = -1,
     val lastSeenMonthlyRecapPeriod: String = "",
+    val lastNotifiedYearlyRecapYear: Int = -1,
+    val lastNotifiedMonthlyRecapPeriod: String = "",
     val snippetFirstSeenJson: String = "{}",
-    val memoryPostedNotificationIds: Set<String> = emptySet()
+    val memoryPostedNotificationIds: Set<String> = emptySet(),
+    val hasPromptedNotificationPermission: Boolean = false
 )
 
 /**
@@ -84,8 +87,11 @@ class UserPreferencesRepository(private val context: Context) {
         val COLLECTION_PHOTO_SORT_TYPES_JSON = stringPreferencesKey("collection_photo_sort_types_json")
         val LAST_SEEN_YEARLY_RECAP_YEAR = intPreferencesKey("last_seen_yearly_recap_year")
         val LAST_SEEN_MONTHLY_RECAP_PERIOD = stringPreferencesKey("last_seen_monthly_recap_period")
+        val LAST_NOTIFIED_YEARLY_RECAP_YEAR = intPreferencesKey("last_notified_yearly_recap_year")
+        val LAST_NOTIFIED_MONTHLY_RECAP_PERIOD = stringPreferencesKey("last_notified_monthly_recap_period")
         val SNIPPET_FIRST_SEEN_JSON = stringPreferencesKey("snippet_first_seen_json")
         val MEMORY_POSTED_IDS = stringSetPreferencesKey("posted_ids")
+        val HAS_PROMPTED_NOTIFICATION_PERMISSION = booleanPreferencesKey("has_prompted_notification_permission")
     }
 
     /**
@@ -170,8 +176,11 @@ class UserPreferencesRepository(private val context: Context) {
             collectionPhotoSortTypesJson = preferences[PreferencesKeys.COLLECTION_PHOTO_SORT_TYPES_JSON] ?: "{}",
             lastSeenYearlyRecapYear = preferences[PreferencesKeys.LAST_SEEN_YEARLY_RECAP_YEAR] ?: -1,
             lastSeenMonthlyRecapPeriod = preferences[PreferencesKeys.LAST_SEEN_MONTHLY_RECAP_PERIOD] ?: "",
+            lastNotifiedYearlyRecapYear = preferences[PreferencesKeys.LAST_NOTIFIED_YEARLY_RECAP_YEAR] ?: -1,
+            lastNotifiedMonthlyRecapPeriod = preferences[PreferencesKeys.LAST_NOTIFIED_MONTHLY_RECAP_PERIOD] ?: "",
             snippetFirstSeenJson = preferences[PreferencesKeys.SNIPPET_FIRST_SEEN_JSON] ?: "{}",
-            memoryPostedNotificationIds = preferences[PreferencesKeys.MEMORY_POSTED_IDS] ?: emptySet()
+            memoryPostedNotificationIds = preferences[PreferencesKeys.MEMORY_POSTED_IDS] ?: emptySet(),
+            hasPromptedNotificationPermission = preferences[PreferencesKeys.HAS_PROMPTED_NOTIFICATION_PERMISSION] ?: false
         )
     }
 
@@ -253,6 +262,18 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun updateLastNotifiedYearlyRecapYear(year: Int) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_NOTIFIED_YEARLY_RECAP_YEAR] = year
+        }
+    }
+
+    suspend fun updateLastNotifiedMonthlyRecapPeriod(period: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_NOTIFIED_MONTHLY_RECAP_PERIOD] = period
+        }
+    }
+
     suspend fun updateSnippetFirstSeenJson(json: String) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.SNIPPET_FIRST_SEEN_JSON] = json
@@ -288,6 +309,12 @@ class UserPreferencesRepository(private val context: Context) {
             (settings["collection_photo_sort_types_json"] as? String)?.let { preferences[PreferencesKeys.COLLECTION_PHOTO_SORT_TYPES_JSON] = it }
             (settings["last_seen_yearly_recap_year"] as? Number)?.let { preferences[PreferencesKeys.LAST_SEEN_YEARLY_RECAP_YEAR] = it.toInt() }
             (settings["last_seen_monthly_recap_period"] as? String)?.let { preferences[PreferencesKeys.LAST_SEEN_MONTHLY_RECAP_PERIOD] = it }
+        }
+    }
+
+    suspend fun updateHasPromptedNotificationPermission(prompted: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.HAS_PROMPTED_NOTIFICATION_PERMISSION] = prompted
         }
     }
 
