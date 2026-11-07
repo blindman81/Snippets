@@ -46,12 +46,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import com.android.snippets.viewmodel.SnippetsViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AboutScreen(viewModel: SnippetsViewModel) {
+fun AboutScreen() {
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
@@ -79,7 +78,7 @@ fun AboutScreen(viewModel: SnippetsViewModel) {
                     title = "About",
                     onNavigationClick = { 
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                        viewModel.navigateLibrary() 
+                        (view.context as? androidx.activity.ComponentActivity)?.finish()
                     },
                     navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                     isSpinning = !(showMenu || showLicenses),
@@ -247,7 +246,7 @@ fun LicenseDialog(onDismiss: () -> Unit) {
                 LicenseItem(
                     name = "Coil",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2024 Coil Contributors"
+                    copyright = "Copyright (c) 2024-2026 Coil Contributors"
                 )
                 LicenseItem(
                     name = "Haze",

@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.android.snippets.ui.components.MainTopBar
 import com.android.snippets.ui.shapes.CookieShape
 import com.android.snippets.viewmodel.SnippetStyle
-import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.StatsViewModel
 import com.ln.android.snippets.R
 import java.util.Calendar
 import java.util.Locale
@@ -38,7 +38,7 @@ import java.util.Locale
  * Snippet stats and fun insights screen composable redesigned with cookie9sided.
  */
 @Composable
-fun StatsScreen(viewModel: SnippetsViewModel) {
+fun StatsScreen(viewModel: StatsViewModel) {
     val view = LocalView.current
     val scrollState = rememberScrollState()
 
@@ -142,7 +142,7 @@ fun StatsScreen(viewModel: SnippetsViewModel) {
                 title = "Stats",
                 onNavigationClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    viewModel.navigateLibrary()
+                    (view.context as? androidx.activity.ComponentActivity)?.finish()
                 },
                 navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                 isSpinning = true,

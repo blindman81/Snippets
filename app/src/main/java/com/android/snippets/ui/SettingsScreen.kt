@@ -75,9 +75,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalView
 import android.view.HapticFeedbackConstants
-import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.SettingsViewModel
 import com.android.snippets.viewmodel.ThemePreference
-import com.android.snippets.viewmodel.Screen
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -250,11 +249,11 @@ private fun SettingsRow(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SettingsScreen(viewModel: SnippetsViewModel) {
+fun SettingsScreen(viewModel: SettingsViewModel) {
     val view = LocalView.current
     val context = LocalContext.current
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
+        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
         if (uri != null) {
             viewModel.exportBackupToFile(context, uri)
@@ -284,7 +283,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                     title = "Settings",
                     onNavigationClick = { 
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                        viewModel.navigateLibrary()
+                        (view.context as? androidx.activity.ComponentActivity)?.finish()
                     },
                     navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                     isSpinning = !showAutoBackupDialog,
@@ -447,7 +446,7 @@ fun SettingsScreen(viewModel: SnippetsViewModel) {
                                 title = "Export",
                                 icon = backupIcon,
                                 isSelected = null,
-                                onClick = { exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.json") }
+                                onClick = { exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.zip") }
                             ),
                             SettingItemData(
                                 title = "Import",

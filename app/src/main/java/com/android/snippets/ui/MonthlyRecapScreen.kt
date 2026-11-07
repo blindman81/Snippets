@@ -23,24 +23,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.*
 import androidx.activity.compose.BackHandler
+import com.android.snippets.viewmodel.SnippetsUiState
 import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.SettingsViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonthlyRecapScreen(
     viewModel: SnippetsViewModel,
-    onBack: () -> Unit = { viewModel.navigateBack() }
+    onBack: () -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val view = LocalView.current
     val isDark = isSystemInDarkTheme()
 
-    val photos = viewModel.recapPhotos
-    val title = viewModel.recapTitle
+    val photos = uiState.recapPhotos
+    val title = uiState.recapTitle
     val listState = rememberLazyListState()
     val isScrolled by remember {
         derivedStateOf {
@@ -68,8 +71,8 @@ fun MonthlyRecapScreen(
         showRateModal ||
         showLinkModal ||
         showNameModal ||
-        viewModel.activePhotoId != null ||
-        viewModel.isSelectionMode
+        uiState.activePhotoId != null ||
+        uiState.isSelectionMode
 
     val handleBack: () -> Unit = {
         when {
@@ -79,20 +82,21 @@ fun MonthlyRecapScreen(
             showRateModal -> showRateModal = false
             showLinkModal -> showLinkModal = false
             showNameModal -> showNameModal = false
-            viewModel.activePhotoId != null -> viewModel.activePhotoId = null
-            viewModel.isSelectionMode -> viewModel.clearSelection()
-            else -> onBack()
+            uiState.activePhotoId != null -> viewModel.activePhotoId = null
+            uiState.isSelectionMode -> viewModel.clearSelection()
+            else -> {
+                val act = context as? androidx.activity.ComponentActivity
+                if (act != null) {
+                    act.finish()
+                } else {
+                    onBack()
+                }
+            }
         }
     }
 
     BackHandler(enabled = isBackHandlerEnabled) {
         handleBack()
-    }
-
-    LaunchedEffect(photos.isEmpty()) {
-        if (photos.isEmpty()) {
-            onBack()
-        }
     }
 
     Scaffold(
@@ -112,28 +116,29 @@ fun MonthlyRecapScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentAlignment = Alignment.TopCenter
+            contentAlignment = if (photos.isNotEmpty()) Alignment.TopCenter else Alignment.Center
         ) {
             if (photos.isNotEmpty()) {
                 RecapCardList(
                     photos = photos,
+                    uiState = uiState,
                     viewModel = viewModel,
                     listState = listState,
                     modalPhoto = modalPhoto,
                     showAddModal = showAddModal,
                     onPhotoClick = { photo ->
-                        if (viewModel.isSelectionMode) {
+                        if (uiState.isSelectionMode) {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             viewModel.toggleSelection(photo.id)
                         } else {
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            val isExpanding = viewModel.activePhotoId != photo.id
+                            val isExpanding = uiState.activePhotoId != photo.id
                             viewModel.activePhotoId = if (isExpanding) photo.id else null
                         }
                     },
                     onPhotoLongClick = { photo ->
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                        if (!uiState.isSelectionMode) viewModel.toggleSelection(photo.id)
                     },
                     onAddSnippet = { photo ->
                         viewModel.requestAddSnippet(
@@ -188,6 +193,21 @@ fun MonthlyRecapScreen(
                         showDeleteModal = true
                     }
                 )
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Text(
+                        text = "No photos found for $title",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(onClick = handleBack) {
+                        Text("Go Back")
+                    }
+                }
             }
         }
     }
@@ -216,7 +236,9 @@ fun MonthlyRecapScreen(
 @Composable
 private fun RecapCardList(
     photos: List<Photo>,
+    uiState: SnippetsUiState,
     viewModel: SnippetsViewModel,
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
     listState: androidx.compose.foundation.lazy.LazyListState,
     modalPhoto: Photo?,
     showAddModal: Boolean,
@@ -240,13 +262,21 @@ private fun RecapCardList(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         itemsIndexed(photos, key = { _, photo -> photo.id }) { index, photo ->
+            val isSelected = uiState.selectedPhotoIds.contains(photo.id)
+            val selectedCount = if (isSelected) uiState.selectedPhotoIds.indexOf(photo.id) + 1 else 0
             PhotoCard(
                 photo = photo,
-                isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                selectionMode = viewModel.isSelectionMode,
+                isSelected = isSelected,
+                selectionMode = uiState.isSelectionMode,
+                selectedCount = selectedCount,
+                userCollections = uiState.userCollections,
+                locationNameMap = uiState.locationNameMap,
                 showFavoriteIcon = true,
                 viewModel = viewModel,
-                isExpanded = viewModel.activePhotoId == photo.id,
+                expandLocationIcon = settingsViewModel.expandLocationIcon,
+                expandLabelIcon = settingsViewModel.expandLabelIcon,
+                expandCalendarIcon = settingsViewModel.expandCalendarIcon,
+                isExpanded = uiState.activePhotoId == photo.id,
                 isAddSnippetOpen = showAddModal && modalPhoto?.id == photo.id,
                 onClick = { onPhotoClick(photo) },
                 onLongClick = { onPhotoLongClick(photo) },

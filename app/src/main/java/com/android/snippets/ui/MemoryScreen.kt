@@ -1,5 +1,6 @@
 package com.android.snippets.ui
 
+import android.content.Intent
 import android.os.Build
 import androidx.compose.ui.graphics.blur.BlurRadiusSpec
 import kotlinx.coroutines.launch
@@ -62,16 +63,18 @@ import android.view.HapticFeedbackConstants
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
 import androidx.palette.graphics.Palette
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.android.snippets.ui.util.rotateWithBounds
 import com.android.snippets.ui.util.Motion
 import com.android.snippets.ui.theme.*
 import androidx.compose.ui.res.painterResource
-import com.android.snippets.viewmodel.Screen
 import com.android.snippets.logic.MemoryWorker
 import com.ln.android.snippets.R
-import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.MemoryViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.*
@@ -81,12 +84,32 @@ import kotlin.random.Random
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MemoryScreen(
-    viewModel: SnippetsViewModel,
+    viewModel: MemoryViewModel,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val activity = context as? androidx.activity.ComponentActivity
+
     val photoList = viewModel.activeMemoriesSnapshot.ifEmpty { viewModel.curatedMemories }
-    val initialPage = (viewModel.currentMemoryIndex + 1).coerceIn(1, (photoList.size).coerceAtLeast(1))
+
+    if (photoList.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = Color.White,
+                strokeWidth = 3.dp
+            )
+        }
+        return
+    }
+
+    val initialPage = (viewModel.currentMemoryIndex + 1).coerceIn(1, photoList.size)
     val pagerState = rememberPagerState(initialPage = initialPage) {
         photoList.size + 2 // [Close, Photos..., Close]
     }
@@ -108,7 +131,7 @@ fun MemoryScreen(
     LaunchedEffect(pagerState.currentPage, photoList) {
         if (photoList.isNotEmpty()) {
             if (pagerState.currentPage == 0 || pagerState.currentPage == photoList.size + 1) {
-                viewModel.navigateLibrary()
+                activity?.finish()
             } else {
                 val index = pagerState.currentPage - 1
                 if (index in photoList.indices) {
@@ -121,10 +144,6 @@ fun MemoryScreen(
 
 
     val coroutineScope = rememberCoroutineScope()
-
-    val context = LocalContext.current
-    val view = LocalView.current
-    val activity = view.context as? androidx.activity.ComponentActivity
     
     val isDarkTheme = when (viewModel.themePreference) {
         com.android.snippets.viewmodel.ThemePreference.LIGHT -> false
@@ -183,8 +202,7 @@ fun MemoryScreen(
     // State for long-press hold detection to freeze spin & pause timer
     var isPressed by remember { mutableStateOf(false) }
     val isScrolling = pagerState.isScrollInProgress || abs(pagerState.currentPageOffsetFraction) > 0.05f
-    val isClosing = viewModel.currentScreen != Screen.Memory ||
-        (photoList.isNotEmpty() && (pagerState.targetPage == 0 || pagerState.targetPage == photoList.size + 1))
+    val isClosing = photoList.isNotEmpty() && (pagerState.targetPage == 0 || pagerState.targetPage == photoList.size + 1)
     val shouldAnimateSpin = !isPressed && !isScrolling && !isClosing && !isOpeningTransition
 
     var rotationAngle by remember { mutableFloatStateOf(0f) }
@@ -234,7 +252,10 @@ fun MemoryScreen(
                 snapshotFlow { pagerState.isScrollInProgress }
                     .first { !it }
                 coroutineScope.launch {
-                    pagerState.animateScrollToPage(activeSettled + 1)
+                    pagerState.animateScrollToPage(
+                        activeSettled + 1,
+                        animationSpec = tween(durationMillis = Motion.NavDuration, easing = FastOutSlowInEasing)
+                    )
                 }
             }
         }
@@ -280,11 +301,17 @@ fun MemoryScreen(
                                     viewModel.onMemoryViewed(photo.id)
                                     if (offset.x < size.width * 0.3f) {
                                         coroutineScope.launch {
-                                            pagerState.animateScrollToPage(pagerState.settledPage - 1)
+                                            pagerState.animateScrollToPage(
+                                                pagerState.settledPage - 1,
+                                                animationSpec = tween(durationMillis = Motion.NavDuration, easing = FastOutSlowInEasing)
+                                            )
                                         }
                                     } else {
                                         coroutineScope.launch {
-                                            pagerState.animateScrollToPage(pagerState.settledPage + 1)
+                                            pagerState.animateScrollToPage(
+                                                pagerState.settledPage + 1,
+                                                animationSpec = tween(durationMillis = Motion.NavDuration, easing = FastOutSlowInEasing)
+                                            )
                                         }
                                     }
                                 }
@@ -296,6 +323,11 @@ fun MemoryScreen(
                     }
             ) {
                 val pageHazeState = remember { dev.chrisbanes.haze.HazeState() }
+
+                val density = LocalDensity.current
+                val slideOffsetPx = remember(density) { with(density) { 30.dp.toPx() } }
+                val pageOffset = ((pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
+                val absOffset = kotlin.math.abs(pageOffset)
 
                 // Blurred background photo with hazeSource
                 Box(
@@ -314,6 +346,7 @@ fun MemoryScreen(
                             .graphicsLayer {
                                 scaleX = 1.08f
                                 scaleY = 1.08f
+                                alpha = 1f - (absOffset * 0.4f)
                             }
                             .then(
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -356,7 +389,12 @@ fun MemoryScreen(
                     Card(
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            viewModel.openDetail(photo.id)
+                            val intent = Intent(context, com.android.snippets.MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                putExtra("open_photo_id", photo.id)
+                            }
+                            context.startActivity(intent)
+                            activity?.finish()
                         },
                         shape = CookieShape,
                         border = BorderStroke(4.dp, Color.White),
@@ -368,26 +406,10 @@ fun MemoryScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 24.dp)
                             .aspectRatio(1f)
-                            .then(
-                                if (photo.id == transitionTargetId && sharedTransitionScope != null && animatedVisibilityScope != null) {
-                                    with(sharedTransitionScope) {
-                                        Modifier.sharedBounds(
-                                            rememberSharedContentState(key = "memory_${photo.id}"),
-                                            animatedVisibilityScope = animatedVisibilityScope,
-                                            boundsTransform = { _, _ ->
-                                                spring(
-                                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                                    stiffness = Spring.StiffnessMediumLow
-                                                )
-                                            },
-                                            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Crop),
-                                            clipInOverlayDuringTransition = OverlayClip(CookieShape)
-                                        )
-                                    }
-                                } else Modifier
-                            )
                             .graphicsLayer {
                                 rotationZ = pageRotation
+                                alpha = 1f - (absOffset * 0.45f)
+                                translationX = pageOffset * slideOffsetPx * 0.5f
                             }
                             .clip(CookieShape)
                     ) {
@@ -395,8 +417,8 @@ fun MemoryScreen(
                             ImageRequest.Builder(context)
                                 .data(photo.uriString)
                                 .crossfade(false)
+                                .allowHardware(false)
                                 .memoryCacheKey(photo.uriString)
-                                .placeholderMemoryCacheKey(photo.uriString)
                                 .build()
                         }
                         AsyncImage(
@@ -404,8 +426,7 @@ fun MemoryScreen(
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             onSuccess = { state ->
-                                val drawable = state.result.drawable
-                                val bitmap = (drawable as? BitmapDrawable)?.bitmap
+                                val bitmap = state.result.image.toBitmap()
                                 if (bitmap != null) {
                                     val topHeight = (bitmap.height * 0.1f).toInt().coerceIn(1, bitmap.height)
                                     Palette.from(bitmap)
@@ -473,10 +494,13 @@ fun MemoryScreen(
                 .alpha(uiAlpha)
                 .zIndex(1f)
         ) {
+            val maxIndex = (photoList.size - 1).coerceAtLeast(0)
+            val activeIndex = (pagerState.settledPage - 1).coerceIn(0, maxIndex)
+
             // Segmented M3 Wavy / Flat Progress Bar
             MemoryStoryProgressBar(
                 count = photoList.size,
-                currentIndex = (pagerState.settledPage - 1).coerceIn(0, photoList.size - 1),
+                currentIndex = activeIndex,
                 currentProgress = currentMemoryProgress,
                 wavePhase = wavePhase,
                 modifier = Modifier
@@ -485,7 +509,6 @@ fun MemoryScreen(
                     .padding(bottom = 8.dp)
             )
 
-            val activeIndex = (pagerState.settledPage - 1).coerceIn(0, photoList.size - 1)
             val photo = photoList.getOrNull(activeIndex)
 
             if (photo != null && photo.rating > 0) {

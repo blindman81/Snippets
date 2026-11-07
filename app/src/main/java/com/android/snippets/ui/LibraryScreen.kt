@@ -9,29 +9,43 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldBuffer
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import kotlin.math.abs
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.*
 import com.android.snippets.ui.util.Motion
 import com.android.snippets.ui.util.smoothScrollToItemSlow
 import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.MemoryViewModel
+import com.android.snippets.viewmodel.SettingsViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -47,18 +61,24 @@ import kotlinx.coroutines.launch
 @Composable
 fun LibraryScreen(
     viewModel: SnippetsViewModel,
+    memoryViewModel: MemoryViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
     windowSizeClass: WindowSizeClass?,
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onAddPhotos: (String) -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     var showMenuPopup by remember { mutableStateOf(false) }
     var isSearchOpen by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
+    val emojiFocusRequester = remember { FocusRequester() }
+    val emojiTextFieldState = rememberTextFieldState()
 
     var modalPhoto by remember { mutableStateOf<Photo?>(null) }
     var showAddModal by remember { mutableStateOf(false) }
@@ -72,11 +92,15 @@ fun LibraryScreen(
     var deletingCollection by remember { mutableStateOf<String?>(null) }
 
     val isBackHandlerEnabled = showAddModal || showSnippetsModal || showDeleteModal ||
-            showRateModal || showLinkModal || showNameModal || (viewModel.activePhotoId != null) ||
-            isSearchOpen || viewModel.isSelectionMode || (deletingCollection != null)
+            showRateModal || showLinkModal || showNameModal || (uiState.activePhotoId != null) ||
+            isSearchOpen || uiState.isSelectionMode || (deletingCollection != null) ||
+            (uiState.editingCollectionEmoji != null)
 
     BackHandler(enabled = isBackHandlerEnabled) {
-        if (showAddModal) {
+        if (uiState.editingCollectionEmoji != null) {
+            keyboardController?.hide()
+            viewModel.cancelEditingCollectionEmoji()
+        } else if (showAddModal) {
             showAddModal = false
         } else if (showSnippetsModal) {
             showSnippetsModal = false
@@ -88,7 +112,7 @@ fun LibraryScreen(
             showLinkModal = false
         } else if (showNameModal) {
             showNameModal = false
-        } else if (viewModel.activePhotoId != null) {
+        } else if (uiState.activePhotoId != null) {
             viewModel.activePhotoId = null
         } else if (isSearchOpen) {
             isSearchOpen = false
@@ -96,8 +120,8 @@ fun LibraryScreen(
                 kotlinx.coroutines.delay(200L)
                 viewModel.searchQuery = ""
             }
-        } else if (viewModel.isSelectionMode) {
-            if (viewModel.searchQuery.isNotEmpty()) {
+        } else if (uiState.isSelectionMode) {
+            if (uiState.searchQuery.isNotEmpty()) {
                 viewModel.searchQuery = ""
             } else {
                 viewModel.clearSelection()
@@ -109,17 +133,31 @@ fun LibraryScreen(
 
     val isAnyPopupActive = showAddModal || showSnippetsModal || showDeleteModal ||
             showRateModal || showLinkModal || showNameModal ||
-            viewModel.showBulkAddToCollectionDialog || viewModel.showBulkDeleteModal ||
-            viewModel.showCreateDialog || showMenuPopup || isSearchOpen ||
-            (longPressedCollection != null) || (deletingCollection != null) || viewModel.showFilterSheet
+            uiState.showBulkAddToCollectionDialog || uiState.showBulkDeleteModal ||
+            uiState.showCreateDialog || showMenuPopup || isSearchOpen ||
+            (longPressedCollection != null) || (deletingCollection != null) || uiState.showFilterSheet
 
-    val pageTabs = remember(viewModel.userCollections) {
-        listOf("Library", "Favorites") + viewModel.userCollections
+    val pageTabs = remember(uiState.userCollections) {
+        listOf("Library", "Favorites") + uiState.userCollections
     }
 
-    val initialPage = remember(pageTabs) { pageTabs.indexOf(viewModel.libraryCurrentTab).coerceAtLeast(0) }
+    val initialPage = remember(pageTabs) { pageTabs.indexOf(uiState.libraryCurrentTab).coerceAtLeast(0) }
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { pageTabs.size })
-    val listStates = viewModel.libraryListStates
+    val listStates = remember { mutableStateMapOf<String, androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState>() }
+    val carouselLazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    LaunchedEffect(viewModel.scrollToTopTrigger) {
+        if (viewModel.scrollToTopTrigger != 0L) {
+            listStates.values.forEach { state ->
+                try {
+                    state.scrollToItem(0)
+                } catch (_: Exception) {}
+            }
+            try {
+                carouselLazyListState.scrollToItem(0)
+            } catch (_: Exception) {}
+        }
+    }
 
     val currentTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
 
@@ -131,15 +169,46 @@ fun LibraryScreen(
             isFirstTabLoad = false
         } else {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-            viewModel.carouselLazyListState.scrollToItem(0)
+            carouselLazyListState.scrollToItem(0)
         }
         isFabVisible = true
     }
 
-    val flatPhotosRaw = viewModel.filteredPhotos
+    LaunchedEffect(viewModel.libraryCurrentTab, pageTabs) {
+        val targetIndex = pageTabs.indexOf(viewModel.libraryCurrentTab)
+        if (targetIndex != -1 && targetIndex != pagerState.currentPage) {
+            pagerState.scrollToPage(targetIndex)
+        }
+    }
 
-    LaunchedEffect(viewModel.activePhotoId, currentTab) {
-        val activeId = viewModel.activePhotoId
+    LaunchedEffect(viewModel.editingCollectionEmoji) {
+        val editingCol = viewModel.editingCollectionEmoji
+        if (editingCol != null) {
+            emojiTextFieldState.clearText()
+            delay(50)
+            emojiFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    LaunchedEffect(emojiTextFieldState) {
+        snapshotFlow { emojiTextFieldState.text.toString() }
+            .collect { text ->
+                val emoji = text.trim()
+                val editingCol = viewModel.editingCollectionEmoji
+                if (editingCol != null && emoji.isNotEmpty()) {
+                    viewModel.updateEditingEmojiPreview(editingCol, emoji)
+                    delay(150)
+                    keyboardController?.hide()
+                    viewModel.finalizeCollectionEmoji(editingCol, emoji)
+                }
+            }
+    }
+
+    val flatPhotosRaw = uiState.filteredPhotos
+
+    LaunchedEffect(uiState.activePhotoId, currentTab) {
+        val activeId = uiState.activePhotoId
         if (activeId != null) {
             val tabSort = viewModel.getPhotoSortTypeFor(currentTab)
             val tabPhotos = viewModel.sortPhotos(
@@ -179,7 +248,7 @@ fun LibraryScreen(
         }
     }
 
-    val isCookieToolbarVisible = viewModel.isSelectionMode || isFabVisible || isAnyPopupActive
+    val isCookieToolbarVisible = uiState.isSelectionMode || isFabVisible || isAnyPopupActive
 
     val cookieToolbarOffset by animateDpAsState(
         targetValue = if (isCookieToolbarVisible) 0.dp else 200.dp,
@@ -201,6 +270,9 @@ fun LibraryScreen(
         label = "cookie_toolbar_scale"
     )
 
+    val density = LocalDensity.current
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
     val currentGridState = listStates[currentTab] ?: listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
 
     val isCurrentTabScrolled by remember(currentTab, currentGridState) {
@@ -209,12 +281,98 @@ fun LibraryScreen(
         }
     }
 
-    val isHeaderScrolled by remember(pagerState, pageTabs, listStates) {
+    val getCollapseDistanceForTab = remember(density, statusBarTop, memoryViewModel.historyMemories) {
+        { tabName: String? ->
+            if (tabName == null) {
+                with(density) { (statusBarTop + 72.dp).toPx() }
+            } else {
+                val hasMemories = when (tabName) {
+                    "Library" -> memoryViewModel.historyMemories.isNotEmpty()
+                    "Favorites" -> memoryViewModel.historyMemories.any { it.isFavorite }
+                    else -> memoryViewModel.historyMemories.any { it.collections.contains(tabName) }
+                }
+                val paddingDp = if (hasMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
+                with(density) { paddingDp.toPx() }
+            }
+        }
+    }
+
+    val getScrollOffsetForTab = remember(listStates, getCollapseDistanceForTab) {
+        { tabName: String? ->
+            if (tabName == null) {
+                0f
+            } else {
+                val state = listStates[tabName]
+                if (state == null) {
+                    0f
+                } else {
+                    val maxCollapse = getCollapseDistanceForTab(tabName)
+                    if (state.firstVisibleItemIndex > 0) {
+                        maxCollapse
+                    } else {
+                        state.firstVisibleItemScrollOffset.toFloat().coerceIn(0f, maxCollapse)
+                    }
+                }
+            }
+        }
+    }
+
+    val currentHeaderScrollOffset by remember(pagerState, pageTabs, getScrollOffsetForTab) {
         derivedStateOf {
-            val target = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
-            val tabName = pageTabs.getOrNull(target) ?: return@derivedStateOf false
-            val state = listStates[tabName] ?: return@derivedStateOf false
-            state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 10
+            val currentPage = pagerState.currentPage
+            val currentTabName = pageTabs.getOrNull(currentPage)
+            val currentOffset = getScrollOffsetForTab(currentTabName)
+            if (pagerState.isScrollInProgress) {
+                val targetPage = pagerState.targetPage
+                if (targetPage != currentPage && targetPage in pageTabs.indices) {
+                    val targetTabName = pageTabs.getOrNull(targetPage)
+                    val targetOffset = getScrollOffsetForTab(targetTabName)
+                    val fraction = abs(pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+                    currentOffset + (targetOffset - currentOffset) * fraction
+                } else {
+                    currentOffset
+                }
+            } else {
+                currentOffset
+            }
+        }
+    }
+
+    val currentMaxCollapseDistance by remember(pagerState, pageTabs, getCollapseDistanceForTab) {
+        derivedStateOf {
+            val currentPage = pagerState.currentPage
+            val currentTabName = pageTabs.getOrNull(currentPage)
+            val currentMax = getCollapseDistanceForTab(currentTabName)
+            if (pagerState.isScrollInProgress) {
+                val targetPage = pagerState.targetPage
+                if (targetPage != currentPage && targetPage in pageTabs.indices) {
+                    val targetTabName = pageTabs.getOrNull(targetPage)
+                    val targetMax = getCollapseDistanceForTab(targetTabName)
+                    val fraction = abs(pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+                    currentMax + (targetMax - currentMax) * fraction
+                } else {
+                    currentMax
+                }
+            } else {
+                currentMax
+            }
+        }
+    }
+
+    val headerCollapseProgress by remember {
+        derivedStateOf {
+            val maxCollapse = currentMaxCollapseDistance
+            if (maxCollapse > 0f) {
+                (currentHeaderScrollOffset / maxCollapse).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+        }
+    }
+
+    val isHeaderScrolled by remember {
+        derivedStateOf {
+            headerCollapseProgress > 0.05f
         }
     }
 
@@ -224,25 +382,11 @@ fun LibraryScreen(
         }
     }
 
-    val cookieNavBarOffset by animateDpAsState(
-        targetValue = if (isHeaderScrolled) (-280).dp else 0.dp,
-        animationSpec = if (!isHeaderScrolled) {
-            Motion.NavBarEnterSpring
-        } else {
-            Motion.NavBarExitSpring
-        },
-        label = "cookie_nav_bar_offset"
-    )
-
-    val cookieNavBarAlpha by animateFloatAsState(
-        targetValue = if (isHeaderScrolled) 0f else 1f,
-        animationSpec = if (!isHeaderScrolled) {
-            Motion.FadeEnter
-        } else {
-            Motion.FadeExit
-        },
-        label = "cookie_nav_bar_alpha"
-    )
+    val statusBarBlurAlpha by remember {
+        derivedStateOf {
+            (headerCollapseProgress * 1.5f).coerceIn(0f, 1f)
+        }
+    }
 
     val hazeState = LocalHazeState.current ?: dev.chrisbanes.haze.rememberHazeState()
 
@@ -257,11 +401,15 @@ fun LibraryScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTapGestures(onTap = { focusManager.clearFocus() })
-                    }
+                    .then(
+                        if (isSearchOpen) {
+                            Modifier.pointerInput(Unit) {
+                                detectTapGestures(onTap = { focusManager.clearFocus() })
+                            }
+                        } else Modifier
+                    )
             ) {
-                if (viewModel.isInitialLoading) {
+                if (uiState.isInitialLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         LoadingIndicator()
                     }
@@ -271,22 +419,15 @@ fun LibraryScreen(
                                 (com.android.snippets.ui.util.LocalTiltActive.current && !isAnyPopupActive)
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                            val currentTabMemories = remember(viewModel.historyMemories, currentTab) {
+                            val currentTabMemories = remember(memoryViewModel.historyMemories, currentTab) {
                                 when (currentTab) {
-                                    "Library" -> viewModel.historyMemories
-                                    "Favorites" -> viewModel.historyMemories.filter { it.isFavorite }
-                                    else -> viewModel.historyMemories.filter { it.collections.contains(currentTab) }
+                                    "Library" -> memoryViewModel.historyMemories
+                                    "Favorites" -> memoryViewModel.historyMemories.filter { it.isFavorite }
+                                    else -> memoryViewModel.historyMemories.filter { it.collections.contains(currentTab) }
                                 }
                             }
                             val hasTabMemories = currentTabMemories.isNotEmpty()
                             val topGridPadding = if (hasTabMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
-
-                            val statusBarBlurAlpha by animateFloatAsState(
-                                targetValue = if (isHeaderScrolled) 1f else 0f,
-                                animationSpec = Motion.SlowFade,
-                                label = "status_bar_blur_alpha"
-                            )
 
                             val statusBarBaseColor = MaterialTheme.colorScheme.surfaceContainer
                             val statusBarHazeStyle = remember(statusBarBaseColor) {
@@ -317,7 +458,10 @@ fun LibraryScreen(
                                 pagerState = pagerState,
                                 pageTabs = pageTabs,
                                 flatPhotosRaw = flatPhotosRaw,
+                                uiState = uiState,
                                 viewModel = viewModel,
+                                settingsViewModel = settingsViewModel,
+                                memoryViewModel = memoryViewModel,
                                 listStates = listStates,
                                 topGridPadding = topGridPadding,
                                 statusBarTop = statusBarTop,
@@ -325,18 +469,15 @@ fun LibraryScreen(
                                 showAddModal = showAddModal,
                                 modalPhotoId = modalPhoto?.id,
                                 onPhotoClick = { photo ->
-                                    if (viewModel.isSelectionMode) {
-                                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                    if (uiState.isSelectionMode) {
                                         viewModel.toggleSelection(photo.id)
                                     } else {
-                                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                                        val isExpanding = viewModel.activePhotoId != photo.id
+                                        val isExpanding = uiState.activePhotoId != photo.id
                                         viewModel.activePhotoId = if (isExpanding) photo.id else null
                                     }
                                 },
                                 onPhotoLongClick = { photo ->
-                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                    if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
+                                    if (!uiState.isSelectionMode) viewModel.toggleSelection(photo.id)
                                 },
                                 onAddSnippet = { photo ->
                                     viewModel.requestAddSnippet(
@@ -388,8 +529,8 @@ fun LibraryScreen(
                                     .align(Alignment.TopStart)
                                     .fillMaxWidth()
                                     .graphicsLayer {
-                                        translationY = cookieNavBarOffset.toPx()
-                                        alpha = cookieNavBarAlpha
+                                        translationY = -currentHeaderScrollOffset
+                                        alpha = (1f - (headerCollapseProgress - 0.4f) / 0.6f).coerceIn(0f, 1f)
                                         clip = false
                                     }
                             ) {
@@ -406,12 +547,18 @@ fun LibraryScreen(
                                     statusBarTop = statusBarTop,
                                     cookieNavBarOffset = 0.dp,
                                     cookieNavBarAlpha = 1f,
+                                    onScrollCarouselToTop = {
+                                        scope.launch {
+                                            carouselLazyListState.animateScrollToItem(0)
+                                        }
+                                    },
                                     modifier = Modifier.fillMaxWidth()
                                 )
 
                                 MemoriesCarousel(
                                     currentTab = currentTab,
-                                    viewModel = viewModel,
+                                    viewModel = memoryViewModel,
+                                    lazyListState = carouselLazyListState,
                                     sharedTransitionScope = sharedTransitionScope,
                                     animatedVisibilityScope = animatedVisibilityScope,
                                     modifier = Modifier.fillMaxWidth()
@@ -432,7 +579,7 @@ fun LibraryScreen(
                                 cookieToolbarScale = { cookieToolbarScale },
                                 isMenuOpen = showMenuPopup,
                                 isManageOpen = longPressedCollection != null,
-                                isFilterOpen = viewModel.showFilterSheet,
+                                isFilterOpen = uiState.showFilterSheet,
                                 onMenuClick = {
                                     if (showMenuPopup) {
                                         showMenuPopup = false
@@ -453,7 +600,7 @@ fun LibraryScreen(
                                     }
                                 },
                                 onFilterClick = {
-                                    if (viewModel.showFilterSheet) {
+                                    if (uiState.showFilterSheet) {
                                         viewModel.closeFilter()
                                     } else {
                                         showMenuPopup = false
@@ -495,7 +642,7 @@ fun LibraryScreen(
 
                             // 7. Filter Floating Sheet
                             FloatingSheet(
-                                visible = viewModel.showFilterSheet,
+                                visible = uiState.showFilterSheet,
                                 onDismissRequest = { viewModel.closeFilter() },
                                 modifier = Modifier.padding(top = (topGridPadding - 65.dp).coerceAtLeast(0.dp)),
                                 sheetModifier = Modifier
@@ -511,47 +658,7 @@ fun LibraryScreen(
                                 )
                             }
 
-                            // 8. Scroll to Top Floating Button
-                            AnimatedVisibility(
-                                visible = isCurrentTabScrolled && !pagerState.isScrollInProgress && !viewModel.isSelectionMode && !isSearchOpen && !isAnyPopupActive,
-                                enter = fadeIn(animationSpec = Motion.FadeEnter) +
-                                        scaleIn(
-                                            initialScale = 0.8f,
-                                            animationSpec = Motion.BouncySpring
-                                        ),
-                                exit = fadeOut(animationSpec = Motion.FadeExit) +
-                                        scaleOut(
-                                            targetScale = 0.8f,
-                                            animationSpec = Motion.FastExitSpring
-                                        ),
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .safeDrawingPadding()
-                                    .padding(bottom = 132.dp)
-                                    .graphicsLayer {
-                                        translationY = cookieToolbarOffset.toPx()
-                                    }
-                            ) {
-                                AnimatedCookieButton(
-                                    onClick = {
-                                        val state = listStates[currentTab]
-                                        if (state != null) {
-                                            scope.launch {
-                                                state.animateScrollToItem(0)
-                                            }
-                                        }
-                                    },
-                                    icon = Icons.Rounded.KeyboardArrowUp,
-                                    contentDescription = "Scroll to top",
-                                    tooltip = "Scroll to top",
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    size = 48.dp,
-                                    isSpinning = !isAnyPopupActive
-                                )
-                            }
-
-                            // 9. Photo & Collection Modals
+                            // 8. Photo & Collection Modals
                             LibraryModalsHost(
                                 viewModel = viewModel,
                                 deletingCollection = deletingCollection,
@@ -577,10 +684,51 @@ fun LibraryScreen(
                                 showNameModal = showNameModal,
                                 onCloseNameModal = { showNameModal = false }
                             )
+
+                            // 9. Hidden text field to open keyboard for emoji selection
+                            BasicTextField(
+                                state = emojiTextFieldState,
+                                modifier = Modifier
+                                    .size(1.dp)
+                                    .focusRequester(emojiFocusRequester),
+                                inputTransformation = EmojiInputTransformation,
+                                lineLimits = TextFieldLineLimits.SingleLine,
+                                keyboardOptions = KeyboardOptions(
+                                    imeAction = ImeAction.Done
+                                ),
+                                onKeyboardAction = {
+                                    val editingCol = viewModel.editingCollectionEmoji
+                                    val emoji = emojiTextFieldState.text.toString().trim()
+                                    if (editingCol != null && emoji.isNotEmpty()) {
+                                        keyboardController?.hide()
+                                        viewModel.finalizeCollectionEmoji(editingCol, emoji)
+                                    } else {
+                                        keyboardController?.hide()
+                                        viewModel.cancelEditingCollectionEmoji()
+                                    }
+                                }
+                            )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+private object EmojiInputTransformation : InputTransformation {
+    override fun TextFieldBuffer.transformInput() {
+        val emojiOnly = asCharSequence().filter { char ->
+            val type = Character.getType(char).toInt()
+            type == Character.SURROGATE.toInt() || 
+            type == Character.OTHER_SYMBOL.toInt() ||
+            char.code > 0x2000 // Catch many more complex emojis
+        }
+        if (emojiOnly.length > 8) {
+            val latest = emojiOnly.takeLast(4).toString()
+            replace(0, length, latest)
+        } else if (emojiOnly != asCharSequence()) {
+            replace(0, length, emojiOnly)
         }
     }
 }
