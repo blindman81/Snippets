@@ -2,9 +2,10 @@ package com.android.snippets.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mood
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.EmojiEmotions
+import androidx.compose.material.icons.rounded.InsertEmoticon
 import androidx.compose.material.icons.rounded.Mood
 import androidx.compose.material.icons.rounded.SortByAlpha
 import androidx.compose.material3.MaterialTheme
@@ -69,7 +70,7 @@ fun FilterFloatingSheet(
                             }
                         ),
                         cookieButtonItem(
-                            icon = Icons.Rounded.Mood,
+                            icon = if (viewModel.snippetSortType == SnippetSortType.Emoji) Icons.Filled.Mood else Icons.Rounded.Mood,
                             contentDescription = "Emojis",
                             tooltip = "Emojis",
                             isSelected = viewModel.snippetSortType == SnippetSortType.Emoji,
@@ -87,7 +88,7 @@ fun FilterFloatingSheet(
                             }
                         ),
                         cookieButtonItem(
-                            icon = Icons.Rounded.EmojiEmotions,
+                            icon = Icons.Rounded.InsertEmoticon,
                             contentDescription = "Emoticons",
                             tooltip = "Emoticons",
                             isSelected = viewModel.snippetSortType == SnippetSortType.Emoticons,

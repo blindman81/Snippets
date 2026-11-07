@@ -12,6 +12,8 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import com.android.snippets.viewmodel.SnippetsViewModel
@@ -70,11 +72,12 @@ fun SnippetsSnackbarEffect(
     viewModel: SnippetsViewModel,
     snackbarHostState: SnackbarHostState
 ) {
-    LaunchedEffect(viewModel.snackbarToken) {
-        if (viewModel.snackbarToken != 0L) {
-            val message = viewModel.snackbarMessage ?: return@LaunchedEffect
-            val actionLabel = viewModel.snackbarActionLabel
-            val onAction = viewModel.onSnackbarAction
+    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(uiState.snackbarToken) {
+        if (uiState.snackbarToken != 0L) {
+            val message = uiState.snackbarMessage ?: return@LaunchedEffect
+            val actionLabel = uiState.snackbarActionLabel
+            val onAction = uiState.onSnackbarAction
             snackbarHostState.currentSnackbarData?.dismiss()
             val result = snackbarHostState.showSnackbar(
                 message = message,

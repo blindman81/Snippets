@@ -199,42 +199,42 @@ fun LocationLinkModal(
                     },
                     singleLine = true,
                     leadingIcon = {
-                        Icon(Icons.Rounded.Place, contentDescription = null)
-                    },
-                    trailingIcon = {
-                        if (isResolving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        } else if (textValue.isNotEmpty() || !targetLink.isNullOrBlank()) {
-                            IconButton(onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                textValue = ""
-                                targetLink = null
-                            }) {
-                                Icon(Icons.Rounded.Clear, contentDescription = "Clear")
-                            }
-                        } else {
-                            IconButton(onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                coroutineScope.launch {
-                                    val clipEntry = clipboard.getClipEntry()
-                                    val textToPaste = clipEntry?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
-                                        ?: run {
-                                            val sysClipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                                            sysClipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
-                                        }
-                                    if (!textToPaste.isNullOrBlank()) {
-                                        handleInput(textToPaste)
+                        IconButton(onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            coroutineScope.launch {
+                                val clipEntry = clipboard.getClipEntry()
+                                val textToPaste = clipEntry?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+                                    ?: run {
+                                        val sysClipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                        sysClipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
                                     }
+                                if (!textToPaste.isNullOrBlank()) {
+                                    handleInput(textToPaste)
                                 }
-                            }) {
-                                Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste")
                             }
+                        }) {
+                            Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste")
                         }
                     },
+                    trailingIcon = if (isResolving || textValue.isNotEmpty() || !targetLink.isNullOrBlank()) {
+                        {
+                            if (isResolving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                IconButton(onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    textValue = ""
+                                    targetLink = null
+                                }) {
+                                    Icon(Icons.Rounded.Clear, contentDescription = "Clear")
+                                }
+                            }
+                        }
+                    } else null,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )

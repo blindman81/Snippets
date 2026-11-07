@@ -78,7 +78,8 @@ fun AnimatedCookieButton(
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
-    isOpen: Boolean = false
+    isOpen: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -106,7 +107,8 @@ fun AnimatedCookieButton(
         badge = badge,
         holdScale = holdScale,
         closeIcon = closeIcon,
-        isOpen = isOpen
+        isOpen = isOpen,
+        isOnBlurredSurface = isOnBlurredSurface
     )
 }
 
@@ -132,7 +134,8 @@ fun AnimatedCookieButton(
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
-    isOpen: Boolean = false
+    isOpen: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -160,7 +163,8 @@ fun AnimatedCookieButton(
         badge = badge,
         holdScale = holdScale,
         closeIcon = closeIcon,
-        isOpen = isOpen
+        isOpen = isOpen,
+        isOnBlurredSurface = isOnBlurredSurface
     )
 }
 
@@ -185,7 +189,8 @@ fun AnimatedCookieButton(
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
-    isOpen: Boolean = false
+    isOpen: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     AnimatedCookieButtonImpl(
         onClick = onClick,
@@ -206,7 +211,8 @@ fun AnimatedCookieButton(
         badge = badge,
         holdScale = holdScale,
         closeIcon = closeIcon,
-        isOpen = isOpen
+        isOpen = isOpen,
+        isOnBlurredSurface = isOnBlurredSurface
     )
 }
 
@@ -231,7 +237,8 @@ private fun AnimatedCookieButtonImpl(
     badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
-    isOpen: Boolean = false
+    isOpen: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
     var isHoldMorphing by remember { mutableStateOf(false) }
@@ -251,7 +258,7 @@ private fun AnimatedCookieButtonImpl(
 
     val openProgress by animateFloatAsState(
         targetValue = if (isOpen) 1f else 0f,
-        animationSpec = Motion.StandardFade,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         label = "cookie_button_open_progress"
     )
 
@@ -267,7 +274,7 @@ private fun AnimatedCookieButtonImpl(
 
     val primaryAlpha by animateFloatAsState(
         targetValue = if (isPrimary) 1f else 0f,
-        animationSpec = Motion.StandardFade,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "cookie_button_primary_alpha"
     )
 
@@ -289,12 +296,12 @@ private fun AnimatedCookieButtonImpl(
 
     val badgeAlpha by animateFloatAsState(
         targetValue = if (isMorphing) 0f else 1f,
-        animationSpec = Motion.FastFade,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "cookie_badge_alpha"
     )
     val badgeScale by animateFloatAsState(
         targetValue = if (isMorphing) 0f else 1f,
-        animationSpec = if (isMorphing) Motion.FastFade else Motion.BouncySpring,
+        animationSpec = if (isMorphing) MaterialTheme.motionScheme.fastSpatialSpec() else MaterialTheme.motionScheme.defaultSpatialSpec(),
         label = "cookie_badge_scale"
     )
 
@@ -423,12 +430,38 @@ private fun AnimatedCookieButtonImpl(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(currentShape)
-                    .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
-            )
+            if (isOnBlurredSurface) {
+                // Outline variant (bottom layer)
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(currentShape)
+                        .background(if (enabled) containerColor else containerColor.copy(alpha = 0.38f))
+                        .border(
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                            shape = currentShape
+                        )
+                )
+                // Primary layer (drawn OVER outline variant)
+                if (primaryAlpha > 0.001f) {
+                    val primaryBg = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer { alpha = primaryAlpha }
+                            .border(1.dp, primaryBg, currentShape)
+                            .clip(currentShape)
+                            .background(primaryBg)
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(currentShape)
+                        .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+                )
+            }
             val iconModifier = Modifier
                 .size(iconSize)
                 .graphicsLayer { 

@@ -67,7 +67,6 @@ import com.android.snippets.ui.theme.*
 import com.android.snippets.ui.util.*
 import com.android.snippets.ui.components.*
 import androidx.compose.material3.carousel.rememberCarouselState
-import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -97,9 +96,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import coil.imageLoader
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.android.snippets.model.Photo
 
 private val GrayscaleColorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
@@ -409,7 +408,6 @@ fun PhotoMasonryItem(
                                 .data(photo.uriString)
                                 .crossfade(false)
                                 .memoryCacheKey(photo.uriString)
-                                .placeholderMemoryCacheKey(photo.uriString)
                                 .build()
                         }
 
@@ -666,7 +664,6 @@ fun PhotoMasonryItem(
                             .data(photo.uriString)
                             .crossfade(false)
                             .memoryCacheKey(photo.uriString)
-                            .placeholderMemoryCacheKey(photo.uriString)
                             .build()
                     }
 

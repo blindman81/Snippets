@@ -21,6 +21,10 @@ import androidx.compose.ui.unit.dp
 import com.android.snippets.model.Photo
 import com.android.snippets.viewmodel.PhotoSortType
 import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.SnippetsUiState
+import com.android.snippets.viewmodel.SettingsViewModel
+import com.android.snippets.viewmodel.MemoryViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 
@@ -29,7 +33,10 @@ fun LibraryPhotoPager(
     pagerState: PagerState,
     pageTabs: List<String>,
     flatPhotosRaw: List<Photo>,
+    uiState: SnippetsUiState,
     viewModel: SnippetsViewModel,
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
+    memoryViewModel: MemoryViewModel = hiltViewModel(),
     listStates: MutableMap<String, LazyStaggeredGridState>,
     topGridPadding: Dp = 0.dp,
     statusBarTop: Dp = 0.dp,
@@ -62,7 +69,7 @@ fun LibraryPhotoPager(
         pageSpacing = 16.dp
     ) { page ->
         val tabForPage = pageTabs.getOrNull(page) ?: "Library"
-        val tabSortType = viewModel.getPhotoSortTypeFor(tabForPage)
+        val tabSortType = if (tabForPage == "Library") uiState.photoSortType else uiState.collectionPhotoSortTypes[tabForPage] ?: PhotoSortType.DateNewest
         val pageFilteredPhotos = remember(flatPhotosRaw, tabForPage, tabSortType) {
             val filtered = if (tabForPage == "Library") {
                 flatPhotosRaw
@@ -74,7 +81,7 @@ fun LibraryPhotoPager(
                     }
                 }
             }
-            val effectiveRawSort = viewModel.currentSearchSortType ?: viewModel.photoSortType
+            val effectiveRawSort = uiState.currentSearchSortType ?: uiState.photoSortType
             if (tabForPage == "Library" && tabSortType == effectiveRawSort) {
                 filtered
             } else {
@@ -82,11 +89,11 @@ fun LibraryPhotoPager(
             }
         }
 
-        val pageHasMemories = remember(viewModel.historyMemories, tabForPage) {
+        val pageHasMemories = remember(memoryViewModel.historyMemories, tabForPage) {
             when (tabForPage) {
-                "Library" -> viewModel.historyMemories.isNotEmpty()
-                "Favorites" -> viewModel.historyMemories.any { it.isFavorite }
-                else -> viewModel.historyMemories.any { it.collections.contains(tabForPage) }
+                "Library" -> memoryViewModel.historyMemories.isNotEmpty()
+                "Favorites" -> memoryViewModel.historyMemories.any { it.isFavorite }
+                else -> memoryViewModel.historyMemories.any { it.collections.contains(tabForPage) }
             }
         }
         val effectiveTopPadding = if (statusBarTop > 0.dp) {
@@ -111,69 +118,97 @@ fun LibraryPhotoPager(
         } else {
             val pageListState = listStates[tabForPage] ?: listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
 
-            LazyVerticalStaggeredGrid(
-                columns = StaggeredGridCells.Fixed(1),
-                state = pageListState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 0.dp,
-                    end = 0.dp,
-                    top = effectiveTopPadding,
-                    bottom = 140.dp
-                ),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalItemSpacing = 4.dp
-            ) {
-                itemsIndexed(
-                    items = pageFilteredPhotos,
-                    key = { _, photo -> "${tabSortType.name}_${photo.id}" },
-                    contentType = { _, _ -> "card" }
-                ) { index, photo ->
-                    val isMost = tabSortType == PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
-                    val isLeast = tabSortType == PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
-                    val isDark = isSystemInDarkTheme()
+            LaunchedEffect(viewModel.selectedFilterSnippets) {
+                pageListState.scrollToItem(0)
+            }
 
-                    PhotoCard(
-                        photo = photo,
-                        isSelected = viewModel.selectedPhotoIds.contains(photo.id),
-                        selectionMode = viewModel.isSelectionMode,
-                        showFavoriteIcon = tabForPage != "Favorites",
-                        tab = tabForPage,
-                        isMostSnippets = isMost,
-                        isLeastSnippets = isLeast,
-                        viewModel = viewModel,
-                        isExpanded = viewModel.activePhotoId == photo.id,
-                        isAddSnippetOpen = showAddModal && modalPhotoId == photo.id,
-                        onClick = { onPhotoClick(photo) },
-                        onLongClick = { onPhotoLongClick(photo) },
-                        onAddSnippet = { onAddSnippet(photo) },
-                        onDownload = {
-                            viewModel.downloadPhotoCard(
-                                context,
-                                photo,
-                                isDark,
-                                if (isDark) android.graphics.Color.BLACK else android.graphics.Color.WHITE
-                            )
-                        },
-                        onShare = {
-                            viewModel.sharePhotoCard(
-                                context,
-                                photo,
-                                isDark,
-                                if (isDark) android.graphics.Color.BLACK else android.graphics.Color.WHITE
-                            )
-                        },
-                        onToggleFavorite = {
-                            viewModel.toggleFavorite(photo.id)
-                        },
-                        onNamePhoto = { onNamePhoto(photo) },
-                        onEditLink = { onEditLink(photo) },
-                        onRatePhoto = { onRatePhoto(photo) },
-                        onViewSnippets = { onViewSnippets(photo) },
-                        onDeletePhoto = { onDeletePhoto(photo) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(1),
+                    state = pageListState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 0.dp,
+                        end = 0.dp,
+                        top = effectiveTopPadding,
+                        bottom = 140.dp
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalItemSpacing = 4.dp
+                ) {
+                    itemsIndexed(
+                        items = pageFilteredPhotos,
+                        key = { _, photo -> "${tabSortType.name}_${photo.id}" },
+                        contentType = { _, _ -> "card" }
+                    ) { index, photo ->
+                        val isMost = tabSortType == PhotoSortType.MostSnippets && photo.snippets.isNotEmpty()
+                        val isLeast = tabSortType == PhotoSortType.LeastSnippets && photo.snippets.isNotEmpty()
+                        val isDark = isSystemInDarkTheme()
+
+                        val isSelected = uiState.selectedPhotoIds.contains(photo.id)
+                        val selectedCount = if (isSelected) uiState.selectedPhotoIds.indexOf(photo.id) + 1 else 0
+
+                        PhotoCard(
+                            photo = photo,
+                            isSelected = isSelected,
+                            selectionMode = uiState.isSelectionMode,
+                            selectedCount = selectedCount,
+                            userCollections = uiState.userCollections,
+                            locationNameMap = uiState.locationNameMap,
+                            showFavoriteIcon = tabForPage != "Favorites",
+                            tab = tabForPage,
+                            isMostSnippets = isMost,
+                            isLeastSnippets = isLeast,
+                            viewModel = viewModel,
+                            expandLocationIcon = settingsViewModel.expandLocationIcon,
+                            expandLabelIcon = settingsViewModel.expandLabelIcon,
+                            expandCalendarIcon = settingsViewModel.expandCalendarIcon,
+                            isExpanded = uiState.activePhotoId == photo.id,
+                            isAddSnippetOpen = showAddModal && modalPhotoId == photo.id,
+                            onClick = { onPhotoClick(photo) },
+                            onLongClick = { onPhotoLongClick(photo) },
+                            onAddSnippet = { onAddSnippet(photo) },
+                            onDownload = {
+                                viewModel.downloadPhotoCard(
+                                    context,
+                                    photo,
+                                    isDark,
+                                    if (isDark) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+                                )
+                            },
+                            onShare = {
+                                viewModel.sharePhotoCard(
+                                    context,
+                                    photo,
+                                    isDark,
+                                    if (isDark) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+                                )
+                            },
+                            onToggleFavorite = {
+                                viewModel.toggleFavorite(photo.id)
+                            },
+                            onNamePhoto = { onNamePhoto(photo) },
+                            onEditLink = { onEditLink(photo) },
+                            onRatePhoto = { onRatePhoto(photo) },
+                            onViewSnippets = { onViewSnippets(photo) },
+                            onDeletePhoto = { onDeletePhoto(photo) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
+
+                VerticalScrollbar(
+                    state = pageListState,
+                    totalItemsCount = pageFilteredPhotos.size,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(
+                            top = effectiveTopPadding + 4.dp,
+                            bottom = 144.dp,
+                            end = 4.dp
+                        )
+                        .fillMaxHeight()
+                )
             }
         }
     }

@@ -290,7 +290,7 @@ fun BlurredAlertDialog(
     }
 
     LaunchedEffect(Unit) {
-        scrimAlpha.animateTo(1f, animationSpec = tween(durationMillis = 200))
+        scrimAlpha.animateTo(1f, animationSpec = Motion.StandardFade)
     }
 
     val triggerDismiss: () -> Unit = {
@@ -298,7 +298,7 @@ fun BlurredAlertDialog(
             isDismissing = true
             visibleState.targetState = false
             coroutineScope.launch {
-                scrimAlpha.animateTo(0f, animationSpec = tween(durationMillis = 200))
+                scrimAlpha.animateTo(0f, animationSpec = Motion.StandardFade)
             }
             coroutineScope.launch {
                 delay(220)
@@ -312,7 +312,7 @@ fun BlurredAlertDialog(
             isDismissing = true
             visibleState.targetState = false
             coroutineScope.launch {
-                scrimAlpha.animateTo(0f, animationSpec = tween(durationMillis = 200))
+                scrimAlpha.animateTo(0f, animationSpec = Motion.StandardFade)
             }
             coroutineScope.launch {
                 delay(220)

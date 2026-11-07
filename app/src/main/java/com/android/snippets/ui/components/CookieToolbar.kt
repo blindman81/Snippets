@@ -41,12 +41,14 @@ import com.android.snippets.model.Photo
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.ui.util.LocalTiltModalFocus
 import com.android.snippets.ui.util.Motion
+import com.android.snippets.viewmodel.SnippetsUiState
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.ln.android.snippets.R
 
 @Composable
 fun SelectionToolbarContent(
     viewModel: SnippetsViewModel,
+    uiState: SnippetsUiState = viewModel.uiState.collectAsState().value,
     onDeleteClick: () -> Unit,
     isSpinning: Boolean = true,
     isScrolled: Boolean = false,
@@ -69,15 +71,15 @@ fun SelectionToolbarContent(
             },
             icon = Icons.Rounded.Close,
             contentDescription = "Clear Selection",
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             size = 44.dp,
             isSpinning = isSpinning
         )
 
         val textToShow = when {
-            viewModel.pendingCollectionAssignment != null -> "Add photos"
-            viewModel.pendingCollectionRemoval != null -> "Remove photos"
+            uiState.pendingCollectionAssignment != null -> "Add photos"
+            uiState.pendingCollectionRemoval != null -> "Remove photos"
             else -> ""
         }
         if (textToShow.isNotEmpty()) {
@@ -96,20 +98,20 @@ fun SelectionToolbarContent(
                 },
                 icon = R.drawable.ic_share,
                 contentDescription = "Share Selection",
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 size = 44.dp,
                 isSpinning = isSpinning
             )
         }
 
-        if (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null) {
+        if (uiState.pendingCollectionAssignment != null || uiState.pendingCollectionRemoval != null) {
             AnimatedCookieButton(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    if (viewModel.pendingCollectionAssignment != null) {
+                    if (uiState.pendingCollectionAssignment != null) {
                         viewModel.confirmCollectionAssignment()
-                    } else if (viewModel.pendingCollectionRemoval != null) {
+                    } else if (uiState.pendingCollectionRemoval != null) {
                         viewModel.confirmCollectionRemoval()
                     }
                 },
@@ -129,8 +131,8 @@ fun SelectionToolbarContent(
                 },
                 icon = R.drawable.ic_delete,
                 contentDescription = "Delete",
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 size = 44.dp,
                 isSpinning = isSpinning
             )
@@ -206,7 +208,7 @@ fun ExpandedSearchContent(
             },
             decorator = { innerTextField ->
                 Box(contentAlignment = Alignment.CenterStart) {
-                    if (viewModel.searchQuery.isEmpty()) {
+                    if (searchTextFieldState.text.isEmpty()) {
                         Text(
                             text = "Search",
                             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold),
@@ -220,7 +222,7 @@ fun ExpandedSearchContent(
 
         // Clear button
         AnimatedVisibility(
-            visible = viewModel.searchQuery.isNotEmpty(),
+            visible = searchTextFieldState.text.isNotEmpty(),
             enter = fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.8f, animationSpec = tween(150)),
             exit = fadeOut(animationSpec = tween(200)) + scaleOut(targetScale = 0.8f, animationSpec = tween(200))
         ) {
@@ -264,11 +266,12 @@ fun CookieToolbar(
     onBulkDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
 
-    val isAddOrRemovePhotos = viewModel.isSelectionMode && (viewModel.pendingCollectionAssignment != null || viewModel.pendingCollectionRemoval != null)
+    val isAddOrRemovePhotos = uiState.isSelectionMode && (uiState.pendingCollectionAssignment != null || uiState.pendingCollectionRemoval != null)
     val selectionSearchFocusRequester = remember { FocusRequester() }
 
     CompositionLocalProvider(
@@ -329,7 +332,7 @@ fun CookieToolbar(
             ) {
                 AnimatedContent(
                     targetState = when {
-                        viewModel.isSelectionMode -> 2
+                        uiState.isSelectionMode -> 2
                         isSearchOpen -> 1
                         else -> 0
                     },
@@ -344,6 +347,7 @@ fun CookieToolbar(
                     if (searchMode == 2) {
                         SelectionToolbarContent(
                             viewModel = viewModel,
+                            uiState = uiState,
                             onDeleteClick = onBulkDeleteClick,
                             isSpinning = !isAnyPopupActive,
                             isScrolled = isScrolled
@@ -385,7 +389,7 @@ fun CookieToolbar(
                             )
 
                             // Search
-                            val isSearchActive = viewModel.searchQuery.isNotEmpty()
+                            val isSearchActive = uiState.searchQuery.isNotEmpty()
                             val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
                                 isSearchActive && flatPhotosRaw.any { photo ->
                                     when (currentTab) {
@@ -424,7 +428,7 @@ fun CookieToolbar(
                             )
 
                             // Filters
-                            val hasFilterSnippets = viewModel.selectedFilterSnippets.isNotEmpty()
+                            val hasFilterSnippets = uiState.selectedFilterSnippets.isNotEmpty()
                             val isFilterHighlighted = isFilterOpen || hasFilterSnippets
                             val filterContentDescription = if (isFilterOpen) "Close Filters" else "Filters"
                             AnimatedCookieButton(

@@ -17,6 +17,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import com.android.snippets.ui.AboutActivity
+import com.android.snippets.ui.SettingsActivity
+import com.android.snippets.ui.StatsActivity
 import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.viewmodel.SnippetsViewModel
 
@@ -27,6 +32,7 @@ fun MenuFloatingSheet(
     viewModel: SnippetsViewModel,
     view: android.view.View
 ) {
+    val context = LocalContext.current
     FloatingSheet(
         visible = show,
         onDismissRequest = onDismissRequest,
@@ -42,7 +48,7 @@ fun MenuFloatingSheet(
         )
 
         val marqueeIcon = ImageVector.vectorResource(com.ln.android.snippets.R.drawable.ic_marquee_select)
-        val menuItems = remember(marqueeIcon) {
+        val menuItems = remember(marqueeIcon, context) {
             listOf(
                 MenuItemInfo(
                     label = "Create",
@@ -50,7 +56,7 @@ fun MenuFloatingSheet(
                     onClick = {
                         onDismissRequest()
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        viewModel.navigateEmojiPicker(null)
+                        viewModel.createNewCollection()
                     }
                 ),
                 MenuItemInfo(
@@ -68,7 +74,7 @@ fun MenuFloatingSheet(
                     onClick = {
                         onDismissRequest()
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        viewModel.navigateStats()
+                        context.startActivity(Intent(context, StatsActivity::class.java))
                     }
                 ),
                 MenuItemInfo(
@@ -77,7 +83,7 @@ fun MenuFloatingSheet(
                     onClick = {
                         onDismissRequest()
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        viewModel.navigateSettings()
+                        context.startActivity(Intent(context, SettingsActivity::class.java))
                     }
                 ),
                 MenuItemInfo(
@@ -86,7 +92,7 @@ fun MenuFloatingSheet(
                     onClick = {
                         onDismissRequest()
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        viewModel.navigateAbout()
+                        context.startActivity(Intent(context, AboutActivity::class.java))
                     }
                 )
             )

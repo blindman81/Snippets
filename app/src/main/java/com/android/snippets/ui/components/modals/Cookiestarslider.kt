@@ -12,8 +12,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -167,17 +165,11 @@ fun Cookiestarslider(
             enter = slideInVertically(
                 initialOffsetY = { it },
                 animationSpec = Motion.DialogSlideEnter
-            ) + fadeIn(animationSpec = Motion.FastFade) + scaleIn(
-                initialScale = 0.90f,
-                animationSpec = Motion.DialogScaleEnter
-            ),
+            ) + fadeIn(animationSpec = Motion.StandardFade),
             exit = slideOutVertically(
                 targetOffsetY = { it },
                 animationSpec = Motion.DialogSlideExit
-            ) + fadeOut(animationSpec = Motion.FastFade) + scaleOut(
-                targetScale = 0.90f,
-                animationSpec = Motion.DialogScaleExit
-            )
+            ) + fadeOut(animationSpec = Motion.FastFade)
         ) {
             // Pure vertical-oriented slider without any background container/card, with Haze blur
             Box(

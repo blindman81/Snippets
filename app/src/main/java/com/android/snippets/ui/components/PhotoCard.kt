@@ -38,8 +38,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.PhotoButtonGroup
 import com.android.snippets.ui.theme.rememberSnippetBackgroundColor
@@ -66,6 +67,9 @@ fun PhotoCard(
     photo: Photo,
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
+    selectedCount: Int = 0,
+    userCollections: List<String> = emptyList(),
+    locationNameMap: Map<String, String> = emptyMap(),
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -75,6 +79,9 @@ fun PhotoCard(
     isLeastSnippets: Boolean = false,
     grayOutIfViewed: Boolean = false,
     viewModel: SnippetsViewModel,
+    expandLocationIcon: Boolean = false,
+    expandLabelIcon: Boolean = false,
+    expandCalendarIcon: Boolean = false,
     isExpanded: Boolean = false,
     isAddSnippetOpen: Boolean = false,
     onAddSnippet: () -> Unit = {},
@@ -152,8 +159,8 @@ fun PhotoCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(
-                start = 12.dp,
-                end = 12.dp,
+                start = 16.dp,
+                end = 16.dp,
                 top = 2.dp,
                 bottom = 2.dp
             )
@@ -281,7 +288,6 @@ fun PhotoCard(
                                     .data(photo.uriString)
                                     .crossfade(false)
                                     .memoryCacheKey(photo.uriString)
-                                    .placeholderMemoryCacheKey(photo.uriString)
                                     .build()
                             }
 
@@ -290,8 +296,8 @@ fun PhotoCard(
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 onSuccess = { state ->
-                                    val w = state.result.drawable.intrinsicWidth
-                                    val h = state.result.drawable.intrinsicHeight
+                                    val w = state.result.image.width
+                                    val h = state.result.image.height
                                     if (w > 0 && h > 0) {
                                         val trueRatio = w.toFloat() / h.toFloat()
                                         if (imageRatio == null || kotlin.math.abs((imageRatio ?: 0f) - trueRatio) > 0.01f) {
@@ -313,10 +319,11 @@ fun PhotoCard(
                                 )
                             }
 
+                            val effectiveCount = if (selectedCount > 0) selectedCount else (viewModel.selectedPhotoIds.indexOf(photo.id) + 1)
                             SelectedPhotoIndicator(
                                 isSelected = isSelected,
                                 selectionMode = selectionMode,
-                                count = viewModel.selectedPhotoIds.indexOf(photo.id) + 1,
+                                count = effectiveCount,
                                 modifier = Modifier.align(Alignment.Center)
                             )
                         }
@@ -325,9 +332,10 @@ fun PhotoCard(
                         val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
 
                         val showCollectionBadges = tab == "Library" || tab == "Favorites"
-                        val validCollections = remember(photo.collections, viewModel.userCollections, showCollectionBadges) {
+                        val effectiveUserCollections = if (userCollections.isNotEmpty()) userCollections else viewModel.userCollections
+                        val validCollections = remember(photo.collections, effectiveUserCollections, showCollectionBadges) {
                             if (showCollectionBadges) {
-                                photo.collections.filter { viewModel.userCollections.isEmpty() || it in viewModel.userCollections }
+                                photo.collections.filter { effectiveUserCollections.isEmpty() || it in effectiveUserCollections }
                             } else {
                                 emptyList()
                             }
@@ -428,9 +436,10 @@ fun PhotoCard(
                             }
                         }
 
-                        val locationName = remember(photo.locationName, photo.locationLink, viewModel.locationNameMap) {
+                        val effectiveLocationNameMap = if (locationNameMap.isNotEmpty()) locationNameMap else viewModel.locationNameMap
+                        val locationName = remember(photo.locationName, photo.locationLink, effectiveLocationNameMap) {
                             val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
-                                ?: photo.locationLink?.let { viewModel.locationNameMap[it] }
+                                ?: photo.locationLink?.let { effectiveLocationNameMap[it] }
                             rawName?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) }
                         }
 
@@ -445,7 +454,7 @@ fun PhotoCard(
                                     .align(Alignment.TopEnd)
                                     .graphicsLayer { alpha = circleBadgesAlpha },
                                 alignEnd = true,
-                                defaultExpanded = viewModel.expandLocationIcon,
+                                defaultExpanded = expandLocationIcon,
                                 key = "${photo.id}_location"
                             )
                         }
@@ -474,17 +483,18 @@ fun PhotoCard(
                             )
                         }
 
-                        if (!photo.name.isNullOrBlank() && circleBadgesAlpha > 0f) {
+                        val photoName = photo.name
+                        if (!photoName.isNullOrBlank() && circleBadgesAlpha > 0f) {
                             ExpandableCardPillIcon(
                                 icon = Icons.AutoMirrored.Rounded.Label,
-                                text = photo.name,
+                                text = photoName,
                                 contentDescription = "Photo name",
                                 iconColor = iconColor,
                                 containerColor = iconContainerColor,
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
                                     .graphicsLayer { alpha = circleBadgesAlpha },
-                                defaultExpanded = viewModel.expandLabelIcon,
+                                defaultExpanded = expandLabelIcon,
                                 key = "${photo.id}_name"
                             )
                         }
@@ -503,7 +513,7 @@ fun PhotoCard(
                                     .align(Alignment.BottomEnd)
                                     .graphicsLayer { alpha = circleBadgesAlpha },
                                 alignEnd = true,
-                                defaultExpanded = viewModel.expandCalendarIcon,
+                                defaultExpanded = expandCalendarIcon,
                                 key = "${photo.id}_date"
                             )
                         }

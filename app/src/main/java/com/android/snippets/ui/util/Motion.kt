@@ -1,8 +1,6 @@
 package com.android.snippets.ui.util
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.KeyframesSpec
@@ -17,9 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import com.android.snippets.viewmodel.Screen
+import androidx.compose.ui.unit.dp
 
 object Motion {
+    const val NavDuration = 300
+
     // --- Spring Physics Tokens ---
     val BouncySpring = spring<Float>(
         dampingRatio = 0.45f,
@@ -84,8 +84,8 @@ object Motion {
 
     // Dialog & Modal Spatial Transitions
     val DialogSlideEnter = spring<IntOffset>(
-        dampingRatio = 0.52f,
-        stiffness = 320f
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessMediumLow
     )
 
     val DialogSlideExit = tween<IntOffset>(
@@ -155,20 +155,6 @@ object Motion {
         durationMillis = 350
     )
 
-    // --- Navigation Transitions ---
-    val NavEasing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
-    const val NavDuration = 300
-    const val ExitDuration = 250
-
-    val NavEnterFade = tween<Float>(300, easing = FastOutSlowInEasing)
-    val NavEnterScale = tween<Float>(350, easing = FastOutSlowInEasing)
-    val NavExitFade = tween<Float>(250, easing = FastOutSlowInEasing)
-    val NavExitScale = tween<Float>(250, easing = FastOutSlowInEasing)
-    val NavPopExitScale = tween<Float>(300, easing = FastOutSlowInEasing)
-
-    val NavMemoryEnterFade = tween<Float>(400, easing = FastOutSlowInEasing)
-    val NavMemoryExitFade = tween<Float>(380, easing = FastOutSlowInEasing)
-
     @OptIn(ExperimentalSharedTransitionApi::class)
     val SharedPhotoBoundsTransform: BoundsTransform = BoundsTransform { _, _ ->
         tween(durationMillis = 600, easing = FastOutSlowInEasing)
@@ -194,32 +180,6 @@ object Motion {
             modifier = modifier.fillMaxWidth()
         ) {
             content()
-        }
-    }
-
-    fun screenTransition(initialState: Screen, targetState: Screen): ContentTransform {
-        val isNavigatingBack = targetState == Screen.Library ||
-            (initialState == Screen.EmojiPicker && targetState == Screen.Settings) ||
-            (initialState in listOf(Screen.MonthlyRecap, Screen.YearlyRecap))
-
-        return when {
-            targetState == Screen.Memory ->
-                (slideInVertically(animationSpec = tween(NavDuration, easing = NavEasing)) { it } +
-                    fadeIn(animationSpec = tween(NavDuration, easing = NavEasing)))
-                    .togetherWith(fadeOut(animationSpec = tween(ExitDuration, easing = FastOutLinearInEasing)))
-
-            isNavigatingBack ->
-                (fadeIn(animationSpec = tween(NavDuration, easing = NavEasing)) +
-                    scaleIn(initialScale = 0.96f, animationSpec = tween(NavDuration, easing = NavEasing)))
-                    .togetherWith(
-                        fadeOut(animationSpec = tween(ExitDuration, easing = FastOutLinearInEasing)) +
-                            scaleOut(targetScale = 0.98f, animationSpec = tween(ExitDuration, easing = FastOutLinearInEasing))
-                    )
-
-            else ->
-                (fadeIn(animationSpec = tween(NavDuration, easing = NavEasing)) +
-                    scaleIn(initialScale = 0.96f, animationSpec = tween(NavDuration, easing = NavEasing)))
-                    .togetherWith(fadeOut(animationSpec = tween(ExitDuration, easing = FastOutLinearInEasing)))
         }
     }
 

@@ -91,6 +91,7 @@ fun LibraryNavBar(
     statusBarTop: Dp,
     cookieNavBarOffset: Dp = 0.dp,
     cookieNavBarAlpha: Float = 1f,
+    onScrollCarouselToTop: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -118,7 +119,15 @@ fun LibraryNavBar(
         ) {
             val libraryFilled = ImageVector.vectorResource(R.drawable.ic_collections_bookmark_filled)
             val libraryOutlined = ImageVector.vectorResource(R.drawable.ic_collections_bookmark_outlined)
-            val cookieNavBarItems = remember(allTabs, activeTabTarget, libraryFilled, libraryOutlined) {
+            val cookieNavBarItems = remember(
+                allTabs,
+                activeTabTarget,
+                libraryFilled,
+                libraryOutlined,
+                viewModel.collectionIcons,
+                viewModel.editingCollectionEmoji,
+                viewModel.editingEmojiPreview
+            ) {
                 allTabs.mapIndexed { _, tabName ->
                     val iconOrEmoji = when (tabName) {
                         "Library" -> if (tabName == activeTabTarget) libraryFilled else libraryOutlined
@@ -151,11 +160,13 @@ fun LibraryNavBar(
                                     modifier = iconModifier.size(20.dp),
                                     tint = tint
                                 )
-                                is String -> Text(
-                                    text = iconOrEmoji,
-                                    fontSize = 16.sp,
-                                    modifier = iconModifier
-                                )
+                                is String -> if (iconOrEmoji.isNotEmpty()) {
+                                    Text(
+                                        text = iconOrEmoji,
+                                        fontSize = 16.sp,
+                                        modifier = iconModifier
+                                    )
+                                }
                                 else -> Icon(
                                     Icons.Rounded.Folder,
                                     contentDescription = tabName,
@@ -177,11 +188,16 @@ fun LibraryNavBar(
                     val pageIndex = pageTabs.indexOf(tabName)
                     if (pageIndex != -1) {
                         if (tabName == currentTab) {
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            scope.launch {
-                                viewModel.carouselLazyListState.animateScrollToItem(0)
+                            if (tabName.isBlank() || viewModel.getCollectionIcon(tabName) == "") {
+                                viewModel.startEditingCollectionEmoji(tabName)
+                            } else {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                onScrollCarouselToTop?.invoke()
                             }
                         } else {
+                            if (tabName.isBlank() || viewModel.getCollectionIcon(tabName) == "") {
+                                viewModel.startEditingCollectionEmoji(tabName)
+                            }
                             scope.launch {
                                 val current = pagerState.currentPage
                                 if (kotlin.math.abs(pageIndex - current) > 1) {

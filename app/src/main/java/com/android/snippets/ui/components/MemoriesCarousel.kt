@@ -43,20 +43,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.shapes.CookieShape
 import com.android.snippets.ui.util.Motion
-import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.MemoryViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MemoriesCarousel(
     currentTab: String,
-    viewModel: SnippetsViewModel,
+    viewModel: MemoryViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
     cardSize: Dp = 84.dp,
+    lazyListState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
@@ -70,7 +73,6 @@ fun MemoriesCarousel(
     }
 
     val isVisible = tabMemories.isNotEmpty()
-    val lazyListState = viewModel.carouselLazyListState
 
     AnimatedVisibility(
         visible = isVisible,
@@ -125,7 +127,7 @@ private fun MemoryCarouselCard(
     photo: Photo,
     itemIndex: Int,
     tabMemories: List<Photo>,
-    viewModel: SnippetsViewModel,
+    viewModel: MemoryViewModel,
     cardSize: Dp,
     sharedTransitionScope: SharedTransitionScope?,
     animatedVisibilityScope: AnimatedVisibilityScope?
@@ -173,31 +175,17 @@ private fun MemoryCarouselCard(
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
             modifier = Modifier
                 .fillMaxSize()
-                .then(
-                    if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                        with(sharedTransitionScope) {
-                            Modifier.sharedBounds(
-                                rememberSharedContentState(key = "memory_${photo.id}"),
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                boundsTransform = { _, _ ->
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
-                                    )
-                                },
-                                resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.Crop),
-                                clipInOverlayDuringTransition = OverlayClip(CookieShape)
-                            )
-                        }
-                    } else Modifier
-                )
                 .clip(CookieShape)
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
                     onClick = {
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                        viewModel.openMemory(tabMemories, itemIndex)
+                        val intent = android.content.Intent(context, com.android.snippets.ui.MemoryActivity::class.java).apply {
+                            putExtra("memory_index", itemIndex)
+                            putExtra("photo_id", photo.id)
+                        }
+                        context.startActivity(intent)
                     }
                 )
         ) {
@@ -206,7 +194,6 @@ private fun MemoryCarouselCard(
                     .data(photo.uriString)
                     .crossfade(false)
                     .memoryCacheKey(photo.uriString)
-                    .placeholderMemoryCacheKey(photo.uriString)
                     .build()
             }
 

@@ -90,7 +90,7 @@ fun ManageFloatingSheet(
                         icon = Icons.Rounded.AddReaction,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            viewModel.navigateEmojiPicker(currentCollection)
+                            viewModel.startEditingCollectionEmoji(currentCollection)
                             onDismissRequest()
                         }
                     ) else null,

@@ -35,12 +35,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.imageLoader
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.imageLoader
+import coil3.request.ImageRequest
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.shapes.CookieShape
-import com.android.snippets.viewmodel.Screen
 import com.android.snippets.viewmodel.SnippetsViewModel
 
 private val GrayscaleColorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
@@ -96,19 +95,7 @@ fun MemoryAvatar(
     Surface(
         modifier = modifier
             .alpha(animatedAlpha)
-            .graphicsLayer { rotationZ = rotation }
-            .then(
-                if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                    with(sharedTransitionScope) {
-                        Modifier.sharedBounds(
-                            rememberSharedContentState(key = "memory_${photo.id}"),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                            boundsTransform = { _, _ -> spring(dampingRatio = 0.8f, stiffness = 500f) },
-                            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds
-                        )
-                    }
-                } else Modifier
-            ),
+            .graphicsLayer { rotationZ = rotation },
         shape = avatarShape,
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(2.dp, MaterialTheme.colorScheme.primaryContainer),
@@ -286,92 +273,6 @@ fun MemoryMoreButton(
                     }
                 }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class, ExperimentalFoundationApi::class)
-@Composable
-fun SameDayPhotoCarousel(
-    photoList: List<Photo>,
-    viewModel: SnippetsViewModel,
-    screen: Screen,
-    modifier: Modifier = Modifier,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
-    showFavoriteIcon: Boolean = true
-) {
-    val view = LocalView.current
-    val context = LocalContext.current
-    
-    LaunchedEffect(photoList) {
-        val imageLoader = context.imageLoader
-        photoList.take(6).forEach { photo ->
-            val request = ImageRequest.Builder(context)
-                .data(photo.uriString)
-                .size(840, 960)
-                .build()
-            imageLoader.enqueue(request)
-        }
-    }
-
-    val state = rememberCarouselState(initialItem = 0) { photoList.size }
-    val carouselItemShape = remember { RoundedCornerShape(48.dp) }
-
-    LaunchedEffect(viewModel.activePhotoId, viewModel.currentScreen) {
-        if (viewModel.activePhotoId != null) {
-            val targetIndex = photoList.indexOfFirst { it.id == viewModel.activePhotoId }
-            if (targetIndex != -1) {
-                kotlinx.coroutines.delay(250)
-                state.scrollToItem(targetIndex)
-            }
-        }
-    }
-
-    HorizontalUncontainedCarousel(
-        state = state,
-        itemWidth = 280.dp,
-        itemSpacing = 8.dp,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(320.dp)
-    ) { itemIndex ->
-        val photo = photoList[itemIndex]
-        val isSelected = viewModel.selectedPhotoIds.contains(photo.id)
-        val selectionMode = viewModel.isSelectionMode
-
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .maskClip(carouselItemShape)
-        ) {
-            PhotoMasonryItem(
-                photo = photo,
-                isSelected = isSelected,
-                selectionMode = selectionMode,
-                matchingSnippetsCount = viewModel.getMatchingSnippetsCount(photo),
-                sharedTransitionScope = sharedTransitionScope,
-                animatedVisibilityScope = animatedVisibilityScope,
-                showFavoriteIcon = showFavoriteIcon,
-                fillCard = true,
-                shape = carouselItemShape,
-                viewModel = viewModel,
-                onClick = {
-                    if (viewModel.isSelectionMode) {
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        viewModel.toggleSelection(photo.id)
-                    } else {
-                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                        viewModel.openDetail(photo.id, overrideReturnScreen = screen)
-                    }
-                },
-                onLongClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                    if (!viewModel.isSelectionMode) viewModel.toggleSelection(photo.id)
-                },
-                modifier = Modifier.fillMaxSize()
-            )
         }
     }
 }
