@@ -9,6 +9,7 @@
     <application
         android:name="com.android.snippets.SnippetsApplication"
         android:allowBackup="true"
+        android:hasFragileUserData="false"
         android:enableOnBackInvokedCallback="true"
         android:backupAgent="com.android.snippets.backup.SnippetsBackupAgent"
         android:fullBackupOnly="true"
@@ -23,6 +24,7 @@
         android:theme="@style/Theme.Snippets">
         <activity
             android:name="com.android.snippets.MainActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="true"
             android:launchMode="singleTop"
             android:label="@string/app_name"
@@ -41,6 +43,42 @@
             </intent-filter>
 
         </activity>
+
+        <activity
+            android:name="com.android.snippets.ui.MemoryActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.SettingsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.AboutActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.StatsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.MonthlyRecapActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.YearlyRecapActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Snippets" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -17,6 +17,9 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import com.android.snippets.ui.SnippetsApp
 import com.android.snippets.ui.theme.SnippetsTheme
 import com.android.snippets.viewmodel.SnippetsViewModel
+import com.android.snippets.viewmodel.SettingsViewModel
+import com.android.snippets.viewmodel.MemoryViewModel
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -41,6 +44,8 @@ import kotlinx.coroutines.delay
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val viewModel: SnippetsViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
+    private val memoryViewModel: MemoryViewModel by viewModels()
     private var pendingNotificationPhotoId by mutableStateOf<String?>(null)
     private var pendingNotificationToken by mutableStateOf(0L)
     private var pendingSharedImageUri by mutableStateOf<android.net.Uri?>(null)
@@ -104,10 +109,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleOpenPhotoIntent(intent: android.content.Intent?) {
+        val photoId = intent?.getStringExtra("open_photo_id")
+        if (!photoId.isNullOrBlank()) {
+            viewModel.openDetail(photoId)
+            intent.removeExtra("open_photo_id")
+        }
+    }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
         viewModel.requestNotificationPermission = false
+        viewModel.markNotificationPermissionPrompted()
     }
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -130,10 +144,11 @@ class MainActivity : ComponentActivity() {
             handleTileIntent(intent)
             handleShareIntent(intent)
             handleHistoryIntent(intent)
+            handleOpenPhotoIntent(intent)
         }
 
         setContent {
-            val isDarkTheme = when (viewModel.themePreference) {
+            val isDarkTheme = when (settingsViewModel.themePreference) {
                 com.android.snippets.viewmodel.ThemePreference.LIGHT -> false
                 com.android.snippets.viewmodel.ThemePreference.DARK -> true
                 com.android.snippets.viewmodel.ThemePreference.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
@@ -141,52 +156,63 @@ class MainActivity : ComponentActivity() {
             val view = androidx.compose.ui.platform.LocalView.current
             val activity = view.context as androidx.activity.ComponentActivity
             
-            val currentScreen = viewModel.currentScreen
             androidx.compose.runtime.SideEffect {
                 val window = activity.window
                 val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                if (currentScreen != com.android.snippets.viewmodel.Screen.Memory) {
-                    insetsController.isAppearanceLightStatusBars = !isDarkTheme
-                }
+                insetsController.isAppearanceLightStatusBars = !isDarkTheme
                 insetsController.isAppearanceLightNavigationBars = !isDarkTheme
-            }
-
-            androidx.compose.runtime.LaunchedEffect(currentScreen) {
-                if (currentScreen == com.android.snippets.viewmodel.Screen.Memory) {
-                    com.android.snippets.logic.MemoryWorker.isInMemoryScreen = true
-                    com.android.snippets.logic.MemoryWorker.cancelSummaryNotification(activity)
-                }
             }
             
             var showSplashOverlay by remember { mutableStateOf(true) }
 
             SnippetsTheme(
                 darkTheme = isDarkTheme,
-                dynamicColor = viewModel.useDynamicColors
+                dynamicColor = settingsViewModel.useDynamicColors
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            val photos = viewModel.photos
+                            val uiState by viewModel.uiState.collectAsState()
+                            val photos = uiState.photos
                             val targetPhotoId = pendingNotificationPhotoId
                             val notificationToken = pendingNotificationToken
-                            val isInitialLoading = viewModel.isInitialLoading
-                            androidx.compose.runtime.LaunchedEffect(notificationToken, isInitialLoading, photos) {
-                                if (!isInitialLoading && notificationToken != 0L && photos.isNotEmpty()) {
-                                    if (targetPhotoId != null) {
-                                        viewModel.openMemoryForPhoto(targetPhotoId)
-                                    } else if (viewModel.curatedMemories.isNotEmpty()) {
-                                        viewModel.openMemory(0)
-                                    } else {
-                                        photos.firstOrNull()?.let {
-                                            viewModel.openMemoryForPhoto(it.id)
+                            androidx.compose.runtime.LaunchedEffect(notificationToken, uiState.isInitialLoading, photos) {
+                                if (!uiState.isInitialLoading && notificationToken != 0L && photos.isNotEmpty()) {
+                                    val intent = android.content.Intent(this@MainActivity, com.android.snippets.ui.MemoryActivity::class.java).apply {
+                                        if (targetPhotoId != null) {
+                                            putExtra("photo_id", targetPhotoId)
+                                        } else if (memoryViewModel.curatedMemories.isNotEmpty()) {
+                                            putExtra("memory_index", 0)
+                                        } else {
+                                            photos.firstOrNull()?.let { putExtra("photo_id", it.id) }
                                         }
                                     }
+                                    startActivity(intent)
                                     
                                     pendingNotificationToken = 0L
                                     pendingNotificationPhotoId = null
+                                }
+                            }
+
+                            val pendingRecap = uiState.pendingRecapLaunch
+                            androidx.compose.runtime.LaunchedEffect(pendingRecap) {
+                                pendingRecap?.let { recap ->
+                                    when (recap) {
+                                        is com.android.snippets.viewmodel.SnippetsViewModel.RecapLaunchEvent.Monthly -> {
+                                            startActivity(android.content.Intent(this@MainActivity, com.android.snippets.ui.MonthlyRecapActivity::class.java).apply {
+                                                putExtra("month", recap.month)
+                                                putExtra("year", recap.year)
+                                            })
+                                        }
+                                        is com.android.snippets.viewmodel.SnippetsViewModel.RecapLaunchEvent.Yearly -> {
+                                            startActivity(android.content.Intent(this@MainActivity, com.android.snippets.ui.YearlyRecapActivity::class.java).apply {
+                                                putExtra("year", recap.year)
+                                            })
+                                        }
+                                    }
+                                    viewModel.pendingRecapLaunch = null
                                 }
                             }
 
@@ -194,10 +220,9 @@ class MainActivity : ComponentActivity() {
                             val sharedUri = pendingSharedImageUri
                             val sharedLink = pendingSharedText
                             val sharedName = pendingSharedLocationName
-                            androidx.compose.runtime.LaunchedEffect(shareToken, viewModel.isInitialLoading) {
-                                if (!viewModel.isInitialLoading && shareToken != 0L && sharedUri != null) {
+                            androidx.compose.runtime.LaunchedEffect(shareToken, uiState.isInitialLoading) {
+                                if (!uiState.isInitialLoading && shareToken != 0L && sharedUri != null) {
                                     viewModel.addPhotoToLibrary(sharedUri, locationLink = sharedLink, locationName = sharedName)
-                                    viewModel.currentScreen = com.android.snippets.viewmodel.Screen.Library
                                     viewModel.libraryCurrentTab = "Library"
                                     
                                     pendingShareToken = 0L
@@ -208,15 +233,29 @@ class MainActivity : ComponentActivity() {
                             }
 
                             val historyToken = pendingHistoryIntentToken
-                            androidx.compose.runtime.LaunchedEffect(historyToken, viewModel.isInitialLoading) {
-                                if (!viewModel.isInitialLoading && historyToken != 0L) {
-                                    viewModel.currentScreen = com.android.snippets.viewmodel.Screen.Library
+                            androidx.compose.runtime.LaunchedEffect(historyToken, uiState.isInitialLoading) {
+                                if (!uiState.isInitialLoading && historyToken != 0L) {
                                     viewModel.libraryCurrentTab = "Library"
                                     pendingHistoryIntentToken = 0L
                                 }
                             }
 
-                            val requestPermission = viewModel.requestNotificationPermission
+                            val hasPromptedPermission = uiState.hasPromptedNotificationPermission
+                            androidx.compose.runtime.LaunchedEffect(uiState.isInitialLoading, showSplashOverlay, hasPromptedPermission) {
+                                if (!uiState.isInitialLoading && !showSplashOverlay) {
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                                        val permissionGranted = ContextCompat.checkSelfPermission(
+                                            this@MainActivity,
+                                            android.Manifest.permission.POST_NOTIFICATIONS
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                        if (!permissionGranted && !hasPromptedPermission) {
+                                            viewModel.requestNotificationPermission = true
+                                        }
+                                    }
+                                }
+                            }
+
+                            val requestPermission = uiState.requestNotificationPermission
                             androidx.compose.runtime.LaunchedEffect(requestPermission) {
                                 if (requestPermission) {
                                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -225,9 +264,11 @@ class MainActivity : ComponentActivity() {
                                             android.Manifest.permission.POST_NOTIFICATIONS
                                         )
                                         if (permissionState != PackageManager.PERMISSION_GRANTED) {
+                                            viewModel.markNotificationPermissionPrompted()
                                             requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                                         } else {
                                             viewModel.requestNotificationPermission = false
+                                            viewModel.markNotificationPermissionPrompted()
                                         }
                                     } else {
                                         viewModel.requestNotificationPermission = false
@@ -240,7 +281,7 @@ class MainActivity : ComponentActivity() {
                             if (showSplashOverlay) {
                                 ComposeSplashScreen(
                                     isDarkTheme = isDarkTheme,
-                                    isInitialLoading = viewModel.isInitialLoading,
+                                    isInitialLoading = uiState.isInitialLoading,
                                     onAnimationFinished = {
                                         showSplashOverlay = false
                                     }
@@ -259,6 +300,7 @@ class MainActivity : ComponentActivity() {
         handleTileIntent(intent)
         handleShareIntent(intent)
         handleHistoryIntent(intent)
+        handleOpenPhotoIntent(intent)
     }
 }
 
