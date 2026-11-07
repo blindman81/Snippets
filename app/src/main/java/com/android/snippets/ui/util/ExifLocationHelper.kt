@@ -17,14 +17,16 @@ import kotlin.coroutines.resume
 object ExifLocationHelper {
 
     fun getLocationFromExif(context: Context? = null, photo: Photo): String? {
-        if (!photo.locationName.isNullOrBlank()) {
-            return LocationNameCleaner.cleanLocationName(photo.locationName)
+        val locName = photo.locationName
+        if (!locName.isNullOrBlank()) {
+            return LocationNameCleaner.cleanLocationName(locName)
         }
-        if (!photo.locationLink.isNullOrBlank()) {
-            val nameFromLink = GoogleMapsUrlResolver.extractPlaceNameFromLink(photo.locationLink, context)
+        val locLink = photo.locationLink
+        if (!locLink.isNullOrBlank()) {
+            val nameFromLink = GoogleMapsUrlResolver.extractPlaceNameFromLink(locLink, context)
             if (nameFromLink != null) return LocationNameCleaner.cleanLocationName(nameFromLink)
-            if (!photo.locationLink.startsWith("http://", ignoreCase = true) && !photo.locationLink.startsWith("https://", ignoreCase = true)) {
-                return LocationNameCleaner.cleanLocationName(photo.locationLink)
+            if (!locLink.startsWith("http://", ignoreCase = true) && !locLink.startsWith("https://", ignoreCase = true)) {
+                return LocationNameCleaner.cleanLocationName(locLink)
             }
         }
         if (context != null) {

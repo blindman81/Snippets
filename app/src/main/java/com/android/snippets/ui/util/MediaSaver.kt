@@ -4,7 +4,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.*
 import android.net.Uri
-import coil.imageLoader
+import coil3.imageLoader
+import coil3.toBitmap
+import coil3.request.allowHardware
 import android.os.Build
 import androidx.compose.ui.graphics.toArgb
 import android.os.Environment
@@ -575,12 +577,12 @@ object MediaSaver {
     private suspend fun runCoil(context: Context, uri: Uri): Bitmap? {
         return try {
             val loader = context.imageLoader
-            val request = coil.request.ImageRequest.Builder(context)
+            val request = coil3.request.ImageRequest.Builder(context)
                 .data(uri)
                 .allowHardware(false) // Required for Canvas drawing
                 .build()
             val result = loader.execute(request)
-            (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+            result.image?.toBitmap()
         } catch (e: Exception) {
             e.printStackTrace()
             null

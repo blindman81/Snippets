@@ -25,6 +25,28 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
     companion object {
         const val TAG = "AutoBackupWorker"
 
+        fun schedule(context: Context, schedule: String) {
+            val workManager = androidx.work.WorkManager.getInstance(context)
+            if (schedule == "Disabled") {
+                workManager.cancelUniqueWork("auto_backup_work")
+            } else {
+                val workRequest = androidx.work.PeriodicWorkRequestBuilder<AutoBackupWorker>(
+                    24, java.util.concurrent.TimeUnit.HOURS
+                ).setConstraints(
+                    androidx.work.Constraints.Builder()
+                        .setRequiresBatteryNotLow(true)
+                        .setRequiresStorageNotLow(true)
+                        .build()
+                ).build()
+                
+                workManager.enqueueUniquePeriodicWork(
+                    "auto_backup_work",
+                    androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                    workRequest
+                )
+            }
+        }
+
         private val json = Json {
             prettyPrint = true
             ignoreUnknownKeys = true

@@ -28,8 +28,10 @@ import androidx.graphics.shapes.toPath
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import coil.imageLoader
-import coil.request.ImageRequest
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.data.toPhoto
 import com.android.snippets.data.toEntity
@@ -42,9 +44,6 @@ import kotlinx.serialization.json.Json
 import com.ln.android.snippets.R
 import java.io.File
 import java.io.FileOutputStream
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.random.Random
 
 /**
@@ -61,7 +60,6 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         const val INPUT_PHOTO_ID = "photo_id"
         const val INPUT_NOTIFICATION_TYPE = "notification_type"
         const val INPUT_IS_CYCLE_TRIGGER = "is_cycle_trigger"
-        const val NOTIFICATION_DATE_FORMAT = "EEE, d MMM"
         private val jsonSerializer = Json { ignoreUnknownKeys = true }
 
         const val TYPE_NEW = "new"
@@ -179,24 +177,18 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 return notificationFallbackText(notificationType)
             }
 
-            // Notification date format: "Wed, 18 Oct"
-            val dayAndDate = SimpleDateFormat(NOTIFICATION_DATE_FORMAT, Locale.getDefault())
-                .format(Date(photo.date))
-
-            // Photo name in notification title (fallback: day and date)
-            val nameOrDate = photo.name?.takeIf { it.isNotBlank() } ?: dayAndDate
+            // Photo name in notification title (only the photo name)
+            val photoName = photo.name?.trim()?.takeIf { it.isNotBlank() }
+            val title = photoName ?: notificationFallbackText(notificationType).first
 
             // plus location
-            val locationStr = LocationUtils.getLocationFromExif(context, photo)
+            val locationStr = LocationUtils.getLocationFromExif(context, photo) ?: photo.locationName
 
-            val title = listOfNotNull(nameOrDate, locationStr).joinToString(" • ")
-
-            // Metadata: date in body when custom name is used, favorite status, star rating
-            val dateInBody = if (!photo.name.isNullOrBlank()) dayAndDate else null
+            // Metadata: location, favorite status, star rating
             val favoriteStr = if (photo.isFavorite) "❤️ Favorite" else null
             val ratingStr = if (photo.rating > 0) "★ ${photo.rating}" else null
 
-            val metaParts = listOfNotNull(dateInBody, favoriteStr, ratingStr)
+            val metaParts = listOfNotNull(locationStr, favoriteStr, ratingStr)
             val text = if (metaParts.isNotEmpty()) {
                 metaParts.joinToString(" • ")
             } else {
@@ -308,6 +300,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 clearPostedNotificationState(applicationContext, photo.id)
                 postNotification(photo.id, TYPE_NEW)
             }
+            RecapManager.checkAndPostRecapNotification(applicationContext, finalPhotos)
         }
 
         MemoryManager.scheduleNextCycleWork(applicationContext)
@@ -332,6 +325,8 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             rawBitmap?.let { createMemoryCardBitmap(it) }
         }
 
+        val (title, text) = buildNotificationMetadata(applicationContext, photo, notificationType)
+
         val notificationBuilder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setLargeIcon(rawBitmap)
@@ -340,21 +335,19 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             .setAutoCancel(true)
             .setGroup(GROUP_KEY)
             .setContentIntent(pendingIntent)
+            .setContentTitle(title)
+            .setContentText(text)
 
         if (memoryCardBitmap != null) {
             val bigPictureStyle = NotificationCompat.BigPictureStyle()
                 .bigPicture(memoryCardBitmap)
                 .bigLargeIcon(rawBitmap)
-                .setBigContentTitle(null)
-                .setSummaryText(null)
+                .setBigContentTitle(title)
+                .setSummaryText(text)
 
             notificationBuilder.setStyle(bigPictureStyle)
         } else {
-            val (title, text) = buildNotificationMetadata(applicationContext, photo, notificationType)
-            notificationBuilder
-                .setContentTitle(title)
-                .setContentText(text)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            notificationBuilder.setStyle(NotificationCompat.BigTextStyle().bigText(text))
         }
 
         val notification = notificationBuilder.build()
@@ -375,7 +368,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 .size(1024, 1024)
                 .build()
             val result = applicationContext.imageLoader.execute(request)
-            (result.drawable as? BitmapDrawable)?.bitmap
+            result.image?.toBitmap()
         } catch (e: Exception) {
             e.printStackTrace()
             null
