@@ -24,4 +24,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Snippets"
 include(":app")
+include(":core:model")
+include(":core:database")
+include(":core:data")
  

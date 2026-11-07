@@ -14,7 +14,7 @@ android {
     defaultConfig {
         applicationId = "com.ln.android.snippets"
         minSdk = 24
-        targetSdk = 37
+        targetSdk = 35
         versionCode = 30
         versionName = "6.5"
     }
@@ -34,19 +34,25 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-        freeCompilerArgs += listOf(
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
-        )
-    }
     buildFeatures {
         compose = true
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        freeCompilerArgs.addAll(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
+        )
+    }
+}
+
 dependencies {
+    implementation(project(":core:model"))
+    implementation(project(":core:database"))
+    implementation(project(":core:data"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -60,6 +66,7 @@ dependencies {
     implementation(libs.androidx.compose.material3.windowsizeclass)
     implementation(libs.material)
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(libs.androidx.palette)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -77,7 +84,6 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.paging)
-    ksp(libs.androidx.room.compiler)
 
     // Paging 3
     implementation(libs.androidx.paging.compose)
@@ -87,6 +93,7 @@ dependencies {
 
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
