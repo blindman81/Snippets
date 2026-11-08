@@ -70,7 +70,7 @@ fun MenuFloatingSheet(
                 ),
                 MenuItemInfo(
                     label = "Stats",
-                    icon = com.ln.android.snippets.R.drawable.ic_query_stats,
+                    icon = com.ln.android.snippets.R.drawable.ic_leaderboard,
                     onClick = {
                         onDismissRequest()
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)

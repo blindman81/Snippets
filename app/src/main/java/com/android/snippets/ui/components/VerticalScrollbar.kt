@@ -54,9 +54,8 @@ fun VerticalScrollbar(
     var dragThumbOffsetY by remember { mutableFloatStateOf(0f) }
     var scrollJob by remember { mutableStateOf<Job?>(null) }
 
-    val isScrollInProgress = state.isScrollInProgress || isDragging
     val thumbColor by animateColorAsState(
-        targetValue = if (isScrollInProgress) thumbColorActive else thumbColorIdle,
+        targetValue = if (isDragging) thumbColorActive else thumbColorIdle,
         animationSpec = tween(durationMillis = 200),
         label = "scrollbarThumbColor"
     )
