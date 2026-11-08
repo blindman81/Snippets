@@ -8,79 +8,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 
 
-private val OrangeLightColorScheme = lightColorScheme(
-    primary                 = OrangePrimary,
-    onPrimary               = OrangeOnPrimary,
-    primaryContainer        = OrangePrimaryContainer,
-    onPrimaryContainer      = OrangeOnPrimaryContainer,
-    secondary               = OrangeSecondary,
-    onSecondary             = OrangeOnSecondary,
-    secondaryContainer      = OrangeSecondaryContainer,
-    onSecondaryContainer    = OrangeOnSecondaryContainer,
-    tertiary                = OrangeTertiary,
-    onTertiary              = OrangeOnTertiary,
-    tertiaryContainer       = OrangeTertiaryContainer,
-    onTertiaryContainer     = OrangeOnTertiaryContainer,
-    error                   = OrangeError,
-    onError                 = OrangeOnError,
-    errorContainer          = OrangeErrorContainer,
-    onErrorContainer        = OrangeOnErrorContainer,
-    background              = OrangeBackground,
-    onBackground            = OrangeOnBackground,
-    surface                 = OrangeSurface,
-    onSurface               = OrangeOnSurface,
-    surfaceVariant          = OrangeSurfaceVariant,
-    onSurfaceVariant        = OrangeOnSurfaceVariant,
-    outline                 = OrangeOutline,
-    outlineVariant          = OrangeOutlineVariant,
-    inverseSurface          = OrangeInverseSurface,
-    inverseOnSurface        = OrangeInverseOnSurface,
-    inversePrimary          = OrangeInversePrimary,
-    surfaceContainer        = OrangeSurfaceContainer,
-    surfaceContainerLow     = OrangeSurfaceContainerLow,
-    surfaceContainerHigh    = OrangeSurfaceContainerHigh,
-    surfaceContainerLowest  = OrangeSurfaceContainerLowest,
-    surfaceContainerHighest = OrangeSurfaceContainerHighest,
-)
-
-private val OrangeDarkColorScheme = darkColorScheme(
-    primary                 = OrangePrimaryDark,
-    onPrimary               = OrangeOnPrimaryDark,
-    primaryContainer        = OrangePrimaryContainerDark,
-    onPrimaryContainer      = OrangeOnPrimaryContainerDark,
-    secondary               = OrangeSecondaryDark,
-    onSecondary             = OrangeOnSecondaryDark,
-    secondaryContainer      = OrangeSecondaryContainerDark,
-    onSecondaryContainer    = OrangeOnSecondaryContainerDark,
-    tertiary                = OrangeTertiaryDark,
-    onTertiary              = OrangeOnTertiaryDark,
-    tertiaryContainer       = OrangeTertiaryContainerDark,
-    onTertiaryContainer     = OrangeOnTertiaryContainerDark,
-    error                   = OrangeErrorDark,
-    onError                 = OrangeOnErrorDark,
-    errorContainer          = OrangeErrorContainerDark,
-    onErrorContainer        = OrangeOnErrorContainerDark,
-    background              = OrangeBackgroundDark,
-    onBackground            = OrangeOnBackgroundDark,
-    surface                 = OrangeSurfaceDark,
-    onSurface               = OrangeOnSurfaceDark,
-    surfaceVariant          = OrangeSurfaceVariantDark,
-    onSurfaceVariant        = OrangeOnSurfaceVariantDark,
-    outline                 = OrangeOutlineDark,
-    outlineVariant          = OrangeOutlineVariantDark,
-    inverseSurface          = OrangeInverseSurfaceDark,
-    inverseOnSurface        = OrangeInverseOnSurfaceDark,
-    inversePrimary          = OrangeInversePrimaryDark,
-    surfaceContainer        = OrangeSurfaceContainerDark,
-    surfaceContainerLow     = OrangeSurfaceContainerLowDark,
-    surfaceContainerHigh    = OrangeSurfaceContainerHighDark,
-    surfaceContainerLowest  = OrangeSurfaceContainerLowestDark,
-    surfaceContainerHighest = OrangeSurfaceContainerHighestDark,
-)
+private val LightColorScheme = lightColorScheme()
+private val DarkColorScheme = darkColorScheme()
 
 @Composable
 fun SnippetsTheme(
-
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+ (API 31+)
     dynamicColor: Boolean = true,
@@ -91,8 +23,8 @@ fun SnippetsTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> OrangeDarkColorScheme
-        else      -> OrangeLightColorScheme
+        darkTheme -> DarkColorScheme
+        else      -> LightColorScheme
     }
 
     val textBase = if (darkTheme) {
@@ -126,13 +58,11 @@ fun SnippetsTheme(
 }
 
 fun getAppColorScheme(context: android.content.Context, isDark: Boolean = false): ColorScheme {
-    val prefs = context.getSharedPreferences("snippets_prefs", android.content.Context.MODE_PRIVATE)
-    val useDynamicColors = prefs.getBoolean("use_dynamic_colors", true)
     return when {
-        useDynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        isDark -> OrangeDarkColorScheme
-        else -> OrangeLightColorScheme
+        isDark -> DarkColorScheme
+        else -> LightColorScheme
     }
 }
