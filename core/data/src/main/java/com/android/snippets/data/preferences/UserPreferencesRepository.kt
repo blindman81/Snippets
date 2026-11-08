@@ -190,12 +190,6 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun updateUseDynamicColors(useDynamicColors: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.USE_DYNAMIC_COLORS] = useDynamicColors
-        }
-    }
-
     suspend fun updateExpandLabelIcon(expand: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.EXPAND_LABEL_ICON] = expand

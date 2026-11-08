@@ -332,6 +332,12 @@ class SnippetsBackupManager @Inject constructor(
         } ?: throw IOException("Unable to open output stream")
     }
 
+    suspend fun restoreBackup(
+        context: Context,
+        uri: Uri,
+        onProgress: ((current: Int, total: Int, message: String) -> Unit)? = null
+    ) = importBackup(context, uri, onProgress)
+
     suspend fun importBackup(
         context: Context,
         uri: Uri,

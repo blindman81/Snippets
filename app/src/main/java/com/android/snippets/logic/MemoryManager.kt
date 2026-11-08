@@ -119,7 +119,7 @@ object MemoryManager {
         val previousCycleStart = getPreviousCycleStart(now)
 
         val updatedPhotos = photos.map { photo ->
-            if (shouldResurfaceMemory(photo, now) || (photo.isViewed && photo.snippetsAddedTime > photo.lastViewedTime)) {
+            if (shouldResurfaceMemory(photo, now) || (photo.isViewed && photo.lastViewedTime > 0L && photo.snippetsAddedTime > photo.lastViewedTime)) {
                 changed = true
                 photo.copy(isViewed = false, lastViewedTime = 0L, surfacedTime = 0L)
             } else photo

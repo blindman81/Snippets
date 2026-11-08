@@ -33,7 +33,7 @@ data class ParsedSearchQuery(
 object SearchQueryParser {
 
     private val WHITESPACE_REGEX = Regex("\\s+")
-    private val STAR_COUNT_REGEX = Regex("^([1-5])\\s*stars?$")
+    private val STAR_COUNT_REGEX = Regex("^([0-5])\\s*stars?$")
 
     fun matchSearchDirective(rawToken: String): SearchDirective? {
         val clean = rawToken.trim().lowercase(Locale.getDefault())

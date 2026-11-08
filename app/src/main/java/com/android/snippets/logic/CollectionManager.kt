@@ -184,7 +184,7 @@ object CollectionManager {
             "Waves" -> Icons.Rounded.Waves
             "Apartment" -> Icons.Rounded.Apartment
             else -> if (iconName.isBlank()) {
-                ""
+                Icons.Rounded.Add
             } else if (iconName.none { it in 'a'..'z' || it in 'A'..'Z' }) {
                 iconName
             } else {

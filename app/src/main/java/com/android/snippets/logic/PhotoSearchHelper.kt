@@ -1,6 +1,7 @@
 package com.android.snippets.logic
 
 import com.android.snippets.model.Photo
+import com.android.snippets.ui.util.LocationUtils
 import com.android.snippets.viewmodel.PhotoSortType
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -17,7 +18,8 @@ object PhotoSearchHelper {
     fun filterPhotos(
         photos: List<Photo>,
         parsed: ParsedSearchQuery,
-        selectedFilterSnippets: List<String>
+        selectedFilterSnippets: List<String>,
+        locationNameMap: Map<String, String> = emptyMap()
     ): List<Photo> {
         val textTokens = parsed.textTokens
         val directives = parsed.directives
@@ -37,31 +39,61 @@ object PhotoSearchHelper {
 
             // 1. Text criteria: All textTokens must match (AND logic)
             val matchesText = textTokens.isEmpty() || textTokens.all { part ->
-                val isNegationQuery = part.startsWith("not ", ignoreCase = true) || part.equals("not", ignoreCase = true)
+                val isLocationQuery = part.startsWith("location:", ignoreCase = true) ||
+                        part.startsWith("loc:", ignoreCase = true) ||
+                        part.startsWith("place:", ignoreCase = true)
+                val searchTerm = if (isLocationQuery) {
+                    part.substringAfter(':').trim()
+                } else {
+                    part
+                }
 
-                photo.snippets.any { s ->
-                    val index = s.indexOf(part, ignoreCase = true)
-                    if (index == -1) return@any false
+                val locCandidates = listOfNotNull(
+                    photo.locationName?.trim()?.takeIf { it.isNotBlank() },
+                    photo.locationLink?.let { locationNameMap[it]?.trim()?.takeIf { name -> name.isNotBlank() } },
+                    photo.locationLink?.let { LocationUtils.extractPlaceNameFromLink(it)?.trim()?.takeIf { name -> name.isNotBlank() } },
+                    photo.locationLink?.trim()?.takeIf { !it.startsWith("http://", ignoreCase = true) && !it.startsWith("https://", ignoreCase = true) && it.isNotBlank() }
+                )
 
-                    val isPrecededByNot = s.startsWith("not ", ignoreCase = true) && !isNegationQuery
-                    !isPrecededByNot
-                } ||
-                photo.collections.any { it.contains(part, ignoreCase = true) } ||
-                (photo.name?.contains(part, ignoreCase = true) == true) ||
-                run {
-                    if (dateObj == null) {
-                        dateObj = Date(photo.date)
-                        dayName = dayOfWeekFormat.format(dateObj)
-                        monthName = monthDateFormat.format(dateObj)
-                        yearName = yearDateFormat.format(dateObj)
-                        weekName = weekDateFormat.format(dateObj)
-                        fullDate = groupDateFormat.format(dateObj)
+                val matchesLocation = if (isLocationQuery && searchTerm.isEmpty()) {
+                    locCandidates.isNotEmpty()
+                } else {
+                    locCandidates.any { loc ->
+                        loc.contains(searchTerm, ignoreCase = true) ||
+                        LocationUtils.cleanLocationName(loc).contains(searchTerm, ignoreCase = true)
                     }
-                    dayName!!.contains(part, ignoreCase = true) ||
-                    monthName!!.contains(part, ignoreCase = true) ||
-                    yearName!!.contains(part, ignoreCase = true) ||
-                    weekName!!.contains(part, ignoreCase = true) ||
-                    fullDate!!.contains(part, ignoreCase = true)
+                }
+
+                if (isLocationQuery) {
+                    matchesLocation
+                } else {
+                    val isNegationQuery = part.startsWith("not ", ignoreCase = true) || part.equals("not", ignoreCase = true)
+
+                    photo.snippets.any { s ->
+                        val index = s.indexOf(part, ignoreCase = true)
+                        if (index == -1) return@any false
+
+                        val isPrecededByNot = s.startsWith("not ", ignoreCase = true) && !isNegationQuery
+                        !isPrecededByNot
+                    } ||
+                    photo.collections.any { it.contains(part, ignoreCase = true) } ||
+                    (photo.name?.contains(part, ignoreCase = true) == true) ||
+                    matchesLocation ||
+                    run {
+                        if (dateObj == null) {
+                            dateObj = Date(photo.date)
+                            dayName = dayOfWeekFormat.format(dateObj)
+                            monthName = monthDateFormat.format(dateObj)
+                            yearName = yearDateFormat.format(dateObj)
+                            weekName = weekDateFormat.format(dateObj)
+                            fullDate = groupDateFormat.format(dateObj)
+                        }
+                        dayName!!.contains(part, ignoreCase = true) ||
+                        monthName!!.contains(part, ignoreCase = true) ||
+                        yearName!!.contains(part, ignoreCase = true) ||
+                        weekName!!.contains(part, ignoreCase = true) ||
+                        fullDate!!.contains(part, ignoreCase = true)
+                    }
                 }
             }
 
