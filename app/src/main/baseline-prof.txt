@@ -1,0 +1,19 @@
+# Application Startup
+HSPLcom/android/snippets/SnippetsApplication;-><init>()V
+HSPLcom/android/snippets/SnippetsApplication;->onCreate()V
+HSPLcom/android/snippets/MainActivity;-><init>()V
+HSPLcom/android/snippets/MainActivity;->onCreate(Landroid/os/Bundle;)V
+Lcom/android/snippets/SnippetsApplication;
+Lcom/android/snippets/MainActivity;
+
+# Core UI & ViewModels
+HSPLcom/android/snippets/ui/**->*(**)**
+Lcom/android/snippets/ui/**;
+HSPLcom/android/snippets/viewmodel/**->*(**)**
+Lcom/android/snippets/viewmodel/**;
+
+# Logic & Services
+HSPLcom/android/snippets/logic/**->*(**)**
+HSPLcom/android/snippets/service/**->*(**)**
+Lcom/android/snippets/logic/**;
+Lcom/android/snippets/service/**;

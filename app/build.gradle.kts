@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 android {
@@ -37,6 +38,11 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+baselineProfile {
+    mergeIntoMain = true
+    saveInSrc = true
 }
 
 kotlin {
@@ -97,4 +103,8 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Baseline Profiles
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 }
