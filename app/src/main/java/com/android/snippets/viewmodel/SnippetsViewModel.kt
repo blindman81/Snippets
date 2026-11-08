@@ -360,12 +360,14 @@ class SnippetsViewModel @Inject constructor(
         navigateLibrary()
         editingCollectionEmoji = newName
         editingEmojiPreview = ""
+        _uiState.update { it.copy(emojiKeyboardRequestCount = it.emojiKeyboardRequestCount + 1) }
         return newName
     }
 
     fun startEditingCollectionEmoji(collection: String) {
         editingCollectionEmoji = collection
         editingEmojiPreview = collectionIcons[collection] ?: if (collection.isBlank()) "" else collection
+        _uiState.update { it.copy(emojiKeyboardRequestCount = it.emojiKeyboardRequestCount + 1) }
     }
 
     fun updateEditingEmojiPreview(collection: String, emoji: String) {
@@ -383,6 +385,9 @@ class SnippetsViewModel @Inject constructor(
             collection = collection,
             emoji = emoji
         ) ?: run {
+            if (collection.isBlank() && userCollections.contains(collection)) {
+                deleteCollection(collection)
+            }
             editingCollectionEmoji = null
             editingEmojiPreview = null
             return
@@ -428,8 +433,12 @@ class SnippetsViewModel @Inject constructor(
     }
 
     fun cancelEditingCollectionEmoji() {
+        val col = editingCollectionEmoji
         editingCollectionEmoji = null
         editingEmojiPreview = null
+        if (col != null && col.isBlank() && userCollections.contains(col)) {
+            deleteCollection(col)
+        }
     }
 
 
@@ -479,7 +488,11 @@ class SnippetsViewModel @Inject constructor(
 
     fun startCollectionAssignment(collection: String) {
         _uiState.update {
-            it.copy(pendingCollectionAssignment = collection, selectedPhotoIds = emptySet())
+            it.copy(
+                pendingCollectionAssignment = collection,
+                selectedPhotoIds = emptySet(),
+                libraryCurrentTab = "Library"
+            )
         }
     }
 
@@ -653,7 +666,6 @@ class SnippetsViewModel @Inject constructor(
 
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             photoRepository.allPhotosFlow.collect { roomPhotos ->
-                if (storageMutex.isLocked) return@collect
                 val current = photos
                 if (current.isNotEmpty() && current.size == roomPhotos.size) {
                     val isIdentical = roomPhotos.all { rp ->
@@ -662,7 +674,8 @@ class SnippetsViewModel @Inject constructor(
                                 p.isFavorite == rp.isFavorite && p.rating == rp.rating &&
                                 p.name == rp.name && p.locationName == rp.locationName &&
                                 p.collections == (rp.collections ?: emptyList<String>()) &&
-                                p.isViewed == rp.isViewed && p.surfacedTime == rp.surfacedTime &&
+                                p.isViewed == rp.isViewed && p.lastViewedTime == rp.lastViewedTime &&
+                                p.surfacedTime == rp.surfacedTime &&
                                 p.widthPx == rp.widthPx && p.heightPx == rp.heightPx &&
                                 p.uriString == rp.uriString
                     }
@@ -876,7 +889,20 @@ class SnippetsViewModel @Inject constructor(
                         if (deletedEntities.isNotEmpty()) {
                             photoRepository.deletePhotos(deletedEntities)
                         }
-                        photoRepository.insertPhotos(snapshot)
+                        val mergedSnapshot = snapshot.map { p ->
+                            val dbPhoto = currentDb.find { it.id == p.id }
+                            if (dbPhoto != null && dbPhoto.isViewed && (!p.isViewed || dbPhoto.lastViewedTime > p.lastViewedTime)) {
+                                p.copy(isViewed = true, lastViewedTime = dbPhoto.lastViewedTime)
+                            } else {
+                                p
+                            }
+                        }
+                        photoRepository.insertPhotos(mergedSnapshot)
+                        if (mergedSnapshot != snapshot) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                photos = mergedSnapshot
+                            }
+                        }
                         BackupManager(getApplication()).dataChanged()
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -943,13 +969,14 @@ class SnippetsViewModel @Inject constructor(
 
 
 
-    fun addPhoto(
-        uri: Uri,
+    fun addPhotos(
+        uris: List<Uri>,
         isFavorite: Boolean = false,
         locationLink: String? = null,
         locationName: String? = null,
         collection: String? = null
     ) {
+        if (uris.isEmpty()) return
         isAddingPhotos = true
         val targetLocation = locationLink?.trim()?.takeIf { it.isNotBlank() }
         val immediateName = locationName?.trim()?.takeIf { it.isNotBlank() }
@@ -957,15 +984,19 @@ class SnippetsViewModel @Inject constructor(
 
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val captureDate = com.android.snippets.logic.PhotoStorageManager.extractCaptureDate(getApplication(), uri)
-                val duplicate = photos.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
-                
-                if (duplicate != null) {
-                    val healedUri = if (duplicate.uriString.startsWith("content://")) {
-                        com.android.snippets.logic.PhotoStorageManager.saveToInternalStorage(getApplication(), uri)
-                    } else null
+                var currentPhotosList = photos
+                val newPhotosList = mutableListOf<Photo>()
+                var singleDetailToOpen: String? = null
 
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                for (uri in uris) {
+                    val captureDate = com.android.snippets.logic.PhotoStorageManager.extractCaptureDate(getApplication(), uri)
+                    val duplicate = currentPhotosList.find { it.date == captureDate && it.uriString.contains(uri.lastPathSegment ?: "___") }
+
+                    if (duplicate != null) {
+                        val healedUri = if (duplicate.uriString.startsWith("content://")) {
+                            com.android.snippets.logic.PhotoStorageManager.saveToInternalStorage(getApplication(), uri)
+                        } else null
+
                         var updatedPhoto = duplicate
                         if (isFavorite && !duplicate.isFavorite) {
                             updatedPhoto = updatedPhoto.copy(isFavorite = true)
@@ -981,81 +1012,68 @@ class SnippetsViewModel @Inject constructor(
                                 heightPx = newH
                             )
                         }
-                        
                         if (!targetLocation.isNullOrBlank() && updatedPhoto.locationLink.isNullOrBlank()) {
                             updatedPhoto = updatedPhoto.copy(
                                 locationLink = targetLocation,
                                 locationName = immediateName ?: updatedPhoto.locationName
                             )
                         }
-                        
                         if (updatedPhoto != duplicate) {
-                            photos = photos.map {
+                            currentPhotosList = currentPhotosList.map {
                                 if (it.id == duplicate.id) updatedPhoto else it
                             }
-                            savePhotos()
                         }
-
-                        if (!targetLocation.isNullOrBlank()) {
-                            openDetail(duplicate.id, tab = collection ?: "Library")
+                        if (uris.size == 1) {
+                            singleDetailToOpen = duplicate.id
                         }
+                    } else {
+                        val internalUri = com.android.snippets.logic.PhotoStorageManager.saveToInternalStorage(getApplication(), uri) ?: uri.toString()
+                        val (widthPx, heightPx) = com.android.snippets.logic.PhotoStorageManager.extractImageDimensions(getApplication(), Uri.parse(internalUri))
 
-                        isAddingPhotos = false
+                        val newPhoto = Photo(
+                            uriString = internalUri,
+                            date = captureDate,
+                            snippets = emptyList(),
+                            snippetsAddedTime = 0L,
+                            collections = if (collection != null) listOf(collection) else emptyList(),
+                            isFavorite = isFavorite,
+                            isLibraryUpload = true,
+                            widthPx = widthPx,
+                            heightPx = heightPx,
+                            locationLink = targetLocation,
+                            locationName = immediateName,
+                            rating = 0
+                        )
+                        newPhotosList.add(newPhoto)
+                        if (uris.size == 1) {
+                            singleDetailToOpen = newPhoto.id
+                        }
                     }
-
-                    if (!targetLocation.isNullOrBlank() && immediateName == null && (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
-                        val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(targetLocation, getApplication())
-                        if (!resolved.isNullOrBlank()) {
-                            val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                photos = photos.map {
-                                    if (it.id == duplicate.id && it.locationName.isNullOrBlank()) {
-                                        it.copy(locationName = clean)
-                                    } else it
-                                }
-                                savePhotos()
-                            }
-                        }
-                    }
-                    return@launch
                 }
 
-                val internalUri = com.android.snippets.logic.PhotoStorageManager.saveToInternalStorage(getApplication(), uri) ?: uri.toString()
-                val (widthPx, heightPx) = com.android.snippets.logic.PhotoStorageManager.extractImageDimensions(getApplication(), Uri.parse(internalUri))
+                val finalPhotos = (newPhotosList + currentPhotosList).sortedByDescending { it.date }
 
-                val newPhoto = Photo(
-                    uriString = internalUri,
-                    date = captureDate,
-                    snippets = emptyList(),
-                    snippetsAddedTime = 0L,
-                    collections = if (collection != null) listOf(collection) else emptyList(),
-                    isFavorite = isFavorite,
-                    isLibraryUpload = true,
-                    widthPx = widthPx,
-                    heightPx = heightPx,
-                    locationLink = targetLocation,
-                    locationName = immediateName,
-                    rating = 0
-                )
-                
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    photos = (listOf(newPhoto) + photos).sortedByDescending { it.date }
+                    photos = finalPhotos
                     savePhotos()
 
-                    if (!targetLocation.isNullOrBlank()) {
-                        openDetail(newPhoto.id, tab = collection ?: "Library")
+                    if (uris.size == 1 && !targetLocation.isNullOrBlank() && singleDetailToOpen != null) {
+                        openDetail(singleDetailToOpen, tab = collection ?: "Library")
+                    } else if (newPhotosList.isNotEmpty() && uris.size > 1) {
+                        showSnackbar("${newPhotosList.size} photos added")
                     }
 
                     isAddingPhotos = false
                 }
 
-                if (!targetLocation.isNullOrBlank() && immediateName == null && (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
+                if (uris.size == 1 && !targetLocation.isNullOrBlank() && immediateName == null &&
+                    (targetLocation.startsWith("http://", ignoreCase = true) || targetLocation.startsWith("https://", ignoreCase = true))) {
                     val resolved = com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(targetLocation, getApplication())
                     if (!resolved.isNullOrBlank()) {
                         val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(resolved)
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             photos = photos.map {
-                                if (it.id == newPhoto.id && it.locationName.isNullOrBlank()) {
+                                if (it.id == singleDetailToOpen && it.locationName.isNullOrBlank()) {
                                     it.copy(locationName = clean)
                                 } else it
                             }
@@ -1071,12 +1089,36 @@ class SnippetsViewModel @Inject constructor(
         }
     }
 
+    fun addPhoto(
+        uri: Uri,
+        isFavorite: Boolean = false,
+        locationLink: String? = null,
+        locationName: String? = null,
+        collection: String? = null
+    ) {
+        addPhotos(
+            uris = listOf(uri),
+            isFavorite = isFavorite,
+            locationLink = locationLink,
+            locationName = locationName,
+            collection = collection
+        )
+    }
+
     fun addPhotoToLibrary(uri: Uri, locationLink: String? = null, locationName: String? = null) {
-        addPhoto(uri = uri, locationLink = locationLink, locationName = locationName)
+        addPhotos(uris = listOf(uri), locationLink = locationLink, locationName = locationName)
+    }
+
+    fun addPhotosToLibrary(uris: List<Uri>, locationLink: String? = null, locationName: String? = null) {
+        addPhotos(uris = uris, locationLink = locationLink, locationName = locationName)
     }
 
     fun addPhotoToCollection(uri: Uri, collection: String, locationLink: String? = null, locationName: String? = null) {
-        addPhoto(uri = uri, collection = collection, locationLink = locationLink, locationName = locationName)
+        addPhotos(uris = listOf(uri), collection = collection, locationLink = locationLink, locationName = locationName)
+    }
+
+    fun addPhotosToCollection(uris: List<Uri>, collection: String, locationLink: String? = null, locationName: String? = null) {
+        addPhotos(uris = uris, collection = collection, locationLink = locationLink, locationName = locationName)
     }
 
 
@@ -1096,7 +1138,7 @@ class SnippetsViewModel @Inject constructor(
     }
 
     fun deleteCollection(collection: String) {
-        if (collection.isBlank()) return
+        if (collection == "Library" || collection == "Favorites" || !userCollections.contains(collection)) return
 
         val result = com.android.snippets.logic.CollectionManager.deleteCollection(
             userCollections = userCollections,
@@ -1128,6 +1170,12 @@ class SnippetsViewModel @Inject constructor(
         }
         if (pendingCollectionAssignment == collection) {
             pendingCollectionAssignment = null
+        }
+        if (editingCollectionEmoji == collection) {
+            cancelEditingCollectionEmoji()
+        }
+        if (libraryCurrentTab == collection) {
+            libraryCurrentTab = "Library"
         }
     }
 
@@ -1319,11 +1367,15 @@ class SnippetsViewModel @Inject constructor(
     }
 
     fun clearSelection() {
+        val returnCollection = pendingCollectionAssignment
         selectedPhotoIds = emptySet()
         pendingCollectionAssignment = null
         pendingCollectionRemoval = null
         forceSelectionMode = false
         searchQuery = ""
+        if (returnCollection != null) {
+            libraryCurrentTab = returnCollection
+        }
     }
 
     fun deleteSelectedPhotos(unpublish: Boolean = true) {

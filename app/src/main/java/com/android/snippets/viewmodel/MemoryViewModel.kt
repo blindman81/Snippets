@@ -15,6 +15,7 @@ import com.android.snippets.model.Photo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -35,6 +36,18 @@ class MemoryViewModel @Inject constructor(
 
     var currentMemoryIndex by mutableStateOf(0)
     var activeMemoriesSnapshot by mutableStateOf<List<Photo>>(emptyList())
+    var activePhotoId by mutableStateOf<String?>(null)
+
+    val currentPhoto: Photo? by derivedStateOf {
+        val id = activePhotoId
+        if (id != null) {
+            photos.find { it.id == id } ?: activeMemoriesSnapshot.firstOrNull { it.id == id }
+        } else {
+            activeMemoriesSnapshot.firstOrNull()
+                ?: curatedMemories.getOrNull(currentMemoryIndex)
+                ?: photos.firstOrNull()
+        }
+    }
 
     val curatedMemories: List<Photo> by derivedStateOf {
         MemoryManager.getCuratedMemories(photos)
@@ -68,58 +81,61 @@ class MemoryViewModel @Inject constructor(
 
     fun openMemory(memories: List<Photo>, index: Int) {
         if (memories.isEmpty()) return
-        activeMemoriesSnapshot = memories
-        currentMemoryIndex = index.coerceIn(0, activeMemoriesSnapshot.size - 1)
+        val target = memories.getOrNull(index) ?: memories.firstOrNull() ?: return
+        activePhotoId = target.id
+        activeMemoriesSnapshot = listOf(target)
+        currentMemoryIndex = 0
         MemoryWorker.isInMemoryScreen = true
         MemoryWorker.cancelSummaryNotification(getApplication())
     }
 
     fun openMemory(index: Int) {
-        openMemory(curatedMemories, index)
+        val target = curatedMemories.getOrNull(index) ?: photos.getOrNull(index)
+        if (target != null) {
+            openMemory(listOf(target), 0)
+        }
     }
 
     fun openMemoryForPhoto(photoId: String) {
-        val targetPhoto = photos.find { it.id == photoId } ?: return
-        val index = curatedMemories.indexOfFirst { it.id == photoId }
-        if (index != -1) {
-            openMemory(index)
-            return
+        activePhotoId = photoId
+        val targetPhoto = photos.find { it.id == photoId }
+        if (targetPhoto != null) {
+            activeMemoriesSnapshot = listOf(targetPhoto)
+            currentMemoryIndex = 0
         }
-        val combined = (listOf(targetPhoto) + curatedMemories).sortedByDescending { it.date }
-        val newIndex = combined.indexOfFirst { it.id == photoId }.coerceAtLeast(0)
-        openMemory(combined, newIndex)
+        MemoryWorker.isInMemoryScreen = true
+        MemoryWorker.cancelSummaryNotification(getApplication())
     }
 
     fun onMemoryViewed(index: Int) {
-        val list = activeMemoriesSnapshot.ifEmpty { curatedMemories }
-        if (list.isEmpty()) return
-        currentMemoryIndex = index.coerceIn(0, list.size - 1)
-        list.getOrNull(currentMemoryIndex)?.let { markAsViewed(it.id) }
+        val photo = currentPhoto ?: return
+        markAsViewed(photo.id)
     }
 
     fun onMemoryViewed(photoId: String) {
-        val list = activeMemoriesSnapshot.ifEmpty { curatedMemories }
-        val index = list.indexOfFirst { it.id == photoId }
-        if (index != -1) {
-            currentMemoryIndex = index
-        }
         markAsViewed(photoId)
     }
 
     private fun markAsViewed(id: String) {
-        val now = System.currentTimeMillis()
-        val photo = photos.find { it.id == id } ?: return
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable).launch {
+            val now = System.currentTimeMillis()
+            val existing = photos.find { it.id == id } ?: photoRepository.getPhotoById(id) ?: return@launch
+            val safeLastViewed = maxOf(now, existing.snippetsAddedTime)
 
-        if (photo.isViewed && photo.snippetsAddedTime <= photo.lastViewedTime) {
-            return
-        }
+            if (existing.isViewed && existing.lastViewedTime >= safeLastViewed) {
+                return@launch
+            }
 
-        val updatedPhoto = photo.copy(isViewed = true, lastViewedTime = now)
-        photos = photos.map { if (it.id == id) updatedPhoto else it }
-        viewModelScope.launch {
+            val updatedPhoto = existing.copy(isViewed = true, lastViewedTime = safeLastViewed)
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                photos = photos.map { if (it.id == id) updatedPhoto else it }
+                if (activeMemoriesSnapshot.any { it.id == id }) {
+                    activeMemoriesSnapshot = activeMemoriesSnapshot.map { if (it.id == id) updatedPhoto else it }
+                }
+            }
+
             photoRepository.updatePhoto(updatedPhoto)
+            MemoryWorker.cancelPostedNotification(getApplication(), id)
         }
-
-        MemoryWorker.cancelPostedNotification(getApplication(), id)
     }
 }

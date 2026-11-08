@@ -35,6 +35,7 @@ data class SnippetsUiState(
     val focusCreateCollection: Boolean = false,
     val editingCollectionEmoji: String? = null,
     val editingEmojiPreview: String? = null,
+    val emojiKeyboardRequestCount: Long = 0L,
     val activeCollection: String? = null,
     val pendingCollectionAssignment: String? = null,
     val pendingCollectionRemoval: String? = null,
@@ -84,13 +85,18 @@ data class SnippetsUiState(
         get() = parsedSearchQuery.directives.lastOrNull()?.sortType
 
     val effectivePhotoSortType: PhotoSortType
-        get() = currentSearchSortType ?: (if (libraryCurrentTab == "Library") photoSortType else collectionPhotoSortTypes[libraryCurrentTab] ?: PhotoSortType.DateNewest)
+        get() = currentSearchSortType ?: photoSortType
 
     val filteredPhotos: List<Photo>
         get() {
             val parsed = parsedSearchQuery
             val hasSearchCriteria = parsed.textTokens.isNotEmpty() || parsed.directives.isNotEmpty()
-            val baseList = com.android.snippets.logic.PhotoSearchHelper.filterPhotos(photos, parsed, selectedFilterSnippets)
+            val baseList = com.android.snippets.logic.PhotoSearchHelper.filterPhotos(
+                photos = photos,
+                parsed = parsed,
+                selectedFilterSnippets = selectedFilterSnippets,
+                locationNameMap = locationNameMap
+            )
             val effectiveSort = effectivePhotoSortType
             return if (!hasSearchCriteria && selectedFilterSnippets.isEmpty() && effectiveSort == PhotoSortType.DateNewest) {
                 baseList

@@ -66,13 +66,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun updateDynamicColors(use: Boolean) {
-        useDynamicColors = use
-        viewModelScope.launch {
-            userPreferencesRepository.updateUseDynamicColors(use)
-        }
-    }
-
     fun updateExpandLabelIcon(expand: Boolean) {
         expandLabelIcon = expand
         viewModelScope.launch {
@@ -131,19 +124,21 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun importBackupFromFile(context: Context, uri: Uri) {
+    fun restoreBackupFromFile(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 backupManager.importBackup(context, uri)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Backup file imported successfully!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Backup restored successfully!", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Restore failed: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
+
+    fun importBackupFromFile(context: Context, uri: Uri) = restoreBackupFromFile(context, uri)
 }
