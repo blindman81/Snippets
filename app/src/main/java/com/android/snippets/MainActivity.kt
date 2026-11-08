@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
     private var pendingNotificationPhotoId by mutableStateOf<String?>(null)
     private var pendingNotificationToken by mutableStateOf(0L)
     private var pendingSharedImageUri by mutableStateOf<android.net.Uri?>(null)
+    private var pendingSharedImageUris by mutableStateOf<List<android.net.Uri>>(emptyList())
     private var pendingSharedText by mutableStateOf<String?>(null)
     private var pendingSharedLocationName by mutableStateOf<String?>(null)
     private var pendingShareToken by mutableStateOf(0L)
@@ -78,20 +79,36 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleShareIntent(intent: android.content.Intent?) {
-        if (intent?.action == android.content.Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
-            val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM) as? android.net.Uri
+        val action = intent?.action
+        val isImageShare = intent?.type?.startsWith("image/") == true
+        if ((action == android.content.Intent.ACTION_SEND || action == android.content.Intent.ACTION_SEND_MULTIPLE) && isImageShare) {
+            val uris = when (action) {
+                android.content.Intent.ACTION_SEND_MULTIPLE -> {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableArrayListExtra<android.net.Uri>(android.content.Intent.EXTRA_STREAM)
+                    } ?: emptyList()
+                }
+                else -> {
+                    val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM) as? android.net.Uri
+                    }
+                    if (uri != null) listOf(uri) else emptyList()
+                }
             }
             val rawText = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
                 ?: intent.getStringExtra(android.content.Intent.EXTRA_SUBJECT)
                 ?: intent.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)?.toString()
             val extractedUrl = extractUrlOnly(rawText)
             val extractedPlace = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(rawText, this)
-            if (uri != null) {
-                pendingSharedImageUri = uri
+            if (uris.isNotEmpty()) {
+                pendingSharedImageUris = uris
+                pendingSharedImageUri = uris.firstOrNull()
                 pendingSharedText = extractedUrl ?: rawText
                 pendingSharedLocationName = extractedPlace
                 pendingShareToken = System.currentTimeMillis()
@@ -109,11 +126,43 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleDeepLinkIntent(intent: android.content.Intent?) {
+        if (intent?.action == android.content.Intent.ACTION_VIEW) {
+            val data = intent.data ?: return
+            val host = data.host
+            val pathSegments = data.pathSegments
+
+            when {
+                (host == "photo" && pathSegments.isNotEmpty()) -> {
+                    viewModel.openDetail(pathSegments[0])
+                }
+                (pathSegments.getOrNull(0) == "photo" && pathSegments.size > 1) -> {
+                    viewModel.openDetail(pathSegments[1])
+                }
+                host == "memory" || pathSegments.getOrNull(0) == "memory" -> {
+                    val memoryIntent = android.content.Intent(this, com.android.snippets.ui.MemoryActivity::class.java)
+                    startActivity(memoryIntent)
+                }
+            }
+            intent.data = null
+        }
+    }
     private fun handleOpenPhotoIntent(intent: android.content.Intent?) {
         val photoId = intent?.getStringExtra("open_photo_id")
         if (!photoId.isNullOrBlank()) {
             viewModel.openDetail(photoId)
             intent.removeExtra("open_photo_id")
+        }
+    }
+
+    private fun handleSearchIntent(intent: android.content.Intent?) {
+        val query = intent?.getStringExtra("search_query")
+            ?: intent?.getStringExtra(android.app.SearchManager.QUERY)
+        if (!query.isNullOrBlank()) {
+            viewModel.searchQuery = query
+            viewModel.libraryCurrentTab = "Library"
+            intent?.removeExtra("search_query")
+            intent?.removeExtra(android.app.SearchManager.QUERY)
         }
     }
 
@@ -145,6 +194,8 @@ class MainActivity : ComponentActivity() {
             handleShareIntent(intent)
             handleHistoryIntent(intent)
             handleOpenPhotoIntent(intent)
+            handleDeepLinkIntent(intent)
+            handleSearchIntent(intent)
         }
 
         setContent {
@@ -166,8 +217,7 @@ class MainActivity : ComponentActivity() {
             var showSplashOverlay by remember { mutableStateOf(true) }
 
             SnippetsTheme(
-                darkTheme = isDarkTheme,
-                dynamicColor = settingsViewModel.useDynamicColors
+                darkTheme = isDarkTheme
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -218,15 +268,24 @@ class MainActivity : ComponentActivity() {
 
                             val shareToken = pendingShareToken
                             val sharedUri = pendingSharedImageUri
+                            val sharedUris = pendingSharedImageUris
                             val sharedLink = pendingSharedText
                             val sharedName = pendingSharedLocationName
                             androidx.compose.runtime.LaunchedEffect(shareToken, uiState.isInitialLoading) {
-                                if (!uiState.isInitialLoading && shareToken != 0L && sharedUri != null) {
-                                    viewModel.addPhotoToLibrary(sharedUri, locationLink = sharedLink, locationName = sharedName)
-                                    viewModel.libraryCurrentTab = "Library"
+                                if (!uiState.isInitialLoading && shareToken != 0L) {
+                                    val urisToProcess = when {
+                                        sharedUris.isNotEmpty() -> sharedUris
+                                        sharedUri != null -> listOf(sharedUri)
+                                        else -> emptyList()
+                                    }
+                                    if (urisToProcess.isNotEmpty()) {
+                                        viewModel.addPhotosToLibrary(urisToProcess, locationLink = sharedLink, locationName = sharedName)
+                                        viewModel.libraryCurrentTab = "Library"
+                                    }
                                     
                                     pendingShareToken = 0L
                                     pendingSharedImageUri = null
+                                    pendingSharedImageUris = emptyList()
                                     pendingSharedText = null
                                     pendingSharedLocationName = null
                                 }
@@ -301,6 +360,8 @@ class MainActivity : ComponentActivity() {
         handleShareIntent(intent)
         handleHistoryIntent(intent)
         handleOpenPhotoIntent(intent)
+        handleDeepLinkIntent(intent)
+        handleSearchIntent(intent)
     }
 }
 

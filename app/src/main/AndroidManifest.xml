@@ -6,6 +6,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <queries>
+        <intent>
+            <action android:name="android.provider.action.PICK_IMAGES" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
     <application
         android:name="com.android.snippets.SnippetsApplication"
         android:allowBackup="true"
@@ -42,43 +49,76 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
 
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="snippets" />
+                <data
+                    android:scheme="https"
+                    android:host="snippets.app" />
+            </intent-filter>
+
         </activity>
 
         <activity
             android:name="com.android.snippets.ui.MemoryActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Snippets" />
 
         <activity
             android:name="com.android.snippets.ui.SettingsActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Snippets" />
 
         <activity
             android:name="com.android.snippets.ui.AboutActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Snippets" />
 
         <activity
             android:name="com.android.snippets.ui.StatsActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Snippets" />
 
         <activity
             android:name="com.android.snippets.ui.MonthlyRecapActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Snippets" />
 
         <activity
             android:name="com.android.snippets.ui.YearlyRecapActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.SearchActivity"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Snippets">
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+            </intent-filter>
+        </activity>
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -39,8 +39,7 @@ class AboutActivity : ComponentActivity() {
             }
 
             SnippetsTheme(
-                darkTheme = isDarkTheme,
-                dynamicColor = viewModel.useDynamicColors
+                darkTheme = isDarkTheme
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

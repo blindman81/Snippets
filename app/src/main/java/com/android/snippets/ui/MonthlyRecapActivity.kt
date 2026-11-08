@@ -61,8 +61,7 @@ class MonthlyRecapActivity : ComponentActivity() {
             }
 
             SnippetsTheme(
-                darkTheme = isDarkTheme,
-                dynamicColor = settingsViewModel.useDynamicColors
+                darkTheme = isDarkTheme
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

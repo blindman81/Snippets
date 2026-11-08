@@ -53,12 +53,13 @@ class MemoryActivity : ComponentActivity() {
                     viewModel.openMemoryForPhoto(photoId)
                 } else if (viewModel.curatedMemories.isNotEmpty()) {
                     viewModel.openMemory(memoryIndex)
+                } else if (viewModel.photos.isNotEmpty()) {
+                    viewModel.openMemory(viewModel.photos, 0)
                 }
             }
 
             SnippetsTheme(
-                darkTheme = isDarkTheme,
-                dynamicColor = viewModel.useDynamicColors
+                darkTheme = isDarkTheme
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
