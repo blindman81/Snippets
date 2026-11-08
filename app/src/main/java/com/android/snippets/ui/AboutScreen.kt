@@ -1,11 +1,14 @@
 package com.android.snippets.ui
 import com.android.snippets.ui.components.*
 
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.window.PopupProperties
+import kotlin.coroutines.cancellation.CancellationException
 
 
 
@@ -94,9 +97,23 @@ fun AboutScreen() {
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                 isSpinning = !(showMenu || showLicenses)
                             )
+                            PredictiveBackHandler(enabled = showMenu) { progress ->
+                                try {
+                                    progress.collect { }
+                                    showMenu = false
+                                } catch (e: CancellationException) {
+                                    // cancelled
+                                }
+                            }
+
                             DropdownMenu(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false },
+                                properties = PopupProperties(
+                                    focusable = true,
+                                    dismissOnBackPress = false,
+                                    dismissOnClickOutside = true
+                                ),
                                 shape = RoundedCornerShape(12.dp),
                                 offset = DpOffset(x = (-16).dp, y = 8.dp),
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -131,73 +148,73 @@ fun AboutScreen() {
                     modifier = Modifier
                         .fillMaxSize()
                         .hazeSource(state = hazeState),
-                    contentAlignment = Alignment.TopCenter
+                    contentAlignment = Alignment.Center
                 ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "DIRECTOR",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = "Lakshmi Narayana",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Text(
-                    text = "UI and UX design ideas by me, code by agentic tools.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.widthIn(max = 280.dp)
-                )
-
-                AnimatedCookieButton(
-                    onClick = {
-                        val email = "lnsnippets2026@gmail.com"
-                        val intent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:$email")
-                            setPackage("com.google.android.gm")
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(scrollState)
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "DIRECTOR",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Lakshmi Narayana",
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
+                            )
                         }
-                        try {
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            try {
-                                val fallbackIntent = Intent(Intent.ACTION_SENDTO).apply {
+
+                        Text(
+                            text = "UI and UX design ideas by me, code by agentic tools.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.widthIn(max = 280.dp)
+                        )
+
+                        AnimatedCookieButton(
+                            onClick = {
+                                val email = "lnsnippets2026@gmail.com"
+                                val intent = Intent(Intent.ACTION_SENDTO).apply {
                                     data = Uri.parse("mailto:$email")
                                 }
-                                context.startActivity(fallbackIntent)
-                            } catch (e2: Exception) {
-                                // Fallback if no email client is available
-                            }
-                        }
-                    },
-                    icon = Icons.Rounded.ContactMail,
-                    contentDescription = "Contact Mail",
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    size = 56.dp
-                )
-
-            }
-        }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    try {
+                                        val fallbackIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                            data = Uri.parse("mailto:$email")
+                                        }
+                                        context.startActivity(fallbackIntent)
+                                    } catch (e2: Exception) {
+                                        // Fallback if no email client is available
+                                    }
+                                }
+                            },
+                            icon = Icons.Rounded.ContactMail,
+                            contentDescription = "Contact Mail",
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            size = 56.dp
+                        )
+                    }
+                }
     }
 }
 }

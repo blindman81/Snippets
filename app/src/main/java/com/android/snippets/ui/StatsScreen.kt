@@ -1,5 +1,6 @@
 package com.android.snippets.ui
 
+import android.content.Intent
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -55,6 +56,15 @@ fun StatsScreen(viewModel: StatsViewModel) {
     }
 
     val context = LocalContext.current
+    val onOpenSearch: (String) -> Unit = { query ->
+        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        val intent = Intent(context, SearchActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("search_query", query)
+        }
+        context.startActivity(intent)
+    }
+
     // 2. Most photographed location
     val mostPhotographedLocationEntry = remember(photos, context) {
         photos.mapNotNull { photo ->
@@ -63,26 +73,56 @@ fun StatsScreen(viewModel: StatsViewModel) {
         }.groupingBy { it }.eachCount().maxByOrNull { it.value }
     }
 
-    // 3. Longest streak
+    // 3a. Current active streak (resets to 0 if streak is broken)
+    val currentStreakDays = remember(photos) {
+        if (photos.isEmpty()) 0
+        else {
+            val photoDaysSet = photos.map { photo ->
+                val cal = Calendar.getInstance().apply { timeInMillis = photo.date }
+                Day(cal.get(Calendar.YEAR), cal.get(Calendar.DAY_OF_YEAR))
+            }.toSet()
+
+            val nowCal = Calendar.getInstance()
+            val today = Day(nowCal.get(Calendar.YEAR), nowCal.get(Calendar.DAY_OF_YEAR))
+            val yesterday = today.previousDay()
+
+            val startDay = when {
+                today in photoDaysSet -> today
+                yesterday in photoDaysSet -> yesterday
+                else -> null
+            }
+
+            if (startDay == null) {
+                0
+            } else {
+                var streak = 0
+                var curr: Day? = startDay
+                while (curr != null && curr in photoDaysSet) {
+                    streak += 1
+                    curr = curr.previousDay()
+                }
+                streak
+            }
+        }
+    }
+
+    // 3b. Longest streak (properly handles 365-day and 366-day leap year boundaries)
     val longestStreakDays = remember(photos) {
         if (photos.isEmpty()) 0
         else {
-            val daysSet = photos.map { photo ->
-                val cal = Calendar.getInstance()
-                cal.timeInMillis = photo.date
-                val year = cal.get(Calendar.YEAR)
-                val dayOfYear = cal.get(Calendar.DAY_OF_YEAR)
-                year * 366 + dayOfYear
+            val daysList = photos.map { photo ->
+                val cal = Calendar.getInstance().apply { timeInMillis = photo.date }
+                Day(cal.get(Calendar.YEAR), cal.get(Calendar.DAY_OF_YEAR))
             }.distinct().sorted()
 
             var maxStreak = 0
             var currentStreak = 0
-            var prevDay: Int? = null
+            var prevDay: Day? = null
 
-            for (day in daysSet) {
+            for (day in daysList) {
                 if (prevDay == null) {
                     currentStreak = 1
-                } else if (day == prevDay + 1) {
+                } else if (day.isImmediatelyAfter(prevDay)) {
                     currentStreak += 1
                 } else {
                     currentStreak = 1
@@ -215,7 +255,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     cookieSize = 82.dp,
                     cookieContent = {
                         Text(
-                            text = "$longestStreakDays d",
+                            text = "$currentStreakDays d",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
@@ -335,6 +375,9 @@ fun StatsScreen(viewModel: StatsViewModel) {
             ) {
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    onClick = mostPhotographedLocationEntry?.key?.let { locName ->
+                        { onOpenSearch(locName) }
+                    },
                     cookieContent = {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -538,8 +581,10 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     val count1 = ratingCounts[r1]
+                    val ratingQuery1 = if (r1 == 1) "1 star" else "$r1 stars"
                     CookieStatItem(
                         modifier = Modifier.weight(1f),
+                        onClick = { onOpenSearch(ratingQuery1) },
                         cookieContent = {
                             Text(
                                 text = count1.toString(),
@@ -554,8 +599,10 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     )
 
                     val count2 = ratingCounts[r2]
+                    val ratingQuery2 = if (r2 == 1) "1 star" else "$r2 stars"
                     CookieStatItem(
                         modifier = Modifier.weight(1f),
+                        onClick = { onOpenSearch(ratingQuery2) },
                         cookieContent = {
                             Text(
                                 text = count2.toString(),
@@ -580,8 +627,8 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     if (!loc.isNullOrEmpty()) loc else null
                 }.groupingBy { it }.eachCount()
                     .toList()
+                    .filter { it.second >= 3 }
                     .sortedByDescending { it.second }
-                    .take(6)
             }
 
             if (topLocations.isEmpty()) {
@@ -607,6 +654,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         val (name1, count1) = row[0]
                         CookieStatItem(
                             modifier = Modifier.weight(1f),
+                            onClick = { onOpenSearch(name1) },
                             cookieContent = {
                                 Text(
                                     text = count1.toString(),
@@ -636,6 +684,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             val (name2, count2) = row[1]
                             CookieStatItem(
                                 modifier = Modifier.weight(1f),
+                                onClick = { onOpenSearch(name2) },
                                 cookieContent = {
                                     Text(
                                         text = count2.toString(),
@@ -717,6 +766,7 @@ private fun CookieStatItem(
     cookieSize: Dp = 104.dp,
     cookieColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     pillColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    onClick: (() -> Unit)? = null,
     cookieContent: @Composable BoxScope.() -> Unit,
     pillContent: @Composable RowScope.() -> Unit
 ) {
@@ -728,7 +778,9 @@ private fun CookieStatItem(
             modifier = Modifier.size(cookieSize),
             shape = CookieShape,
             color = cookieColor,
-            contentColor = MaterialTheme.colorScheme.onSurface
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            onClick = onClick ?: {},
+            enabled = onClick != null
         ) {
             Box(
                 modifier = Modifier
@@ -743,7 +795,9 @@ private fun CookieStatItem(
         Surface(
             shape = CircleShape,
             color = pillColor,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            onClick = onClick ?: {},
+            enabled = onClick != null
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -752,6 +806,36 @@ private fun CookieStatItem(
             ) {
                 pillContent()
             }
+        }
+    }
+}
+
+private data class Day(val year: Int, val dayOfYear: Int) : Comparable<Day> {
+    override fun compareTo(other: Day): Int {
+        val y = year.compareTo(other.year)
+        return if (y != 0) y else dayOfYear.compareTo(other.dayOfYear)
+    }
+
+    fun isImmediatelyAfter(prev: Day): Boolean {
+        if (year == prev.year) {
+            return dayOfYear == prev.dayOfYear + 1
+        }
+        if (year == prev.year + 1 && dayOfYear == 1) {
+            val prevCal = Calendar.getInstance().apply { set(Calendar.YEAR, prev.year) }
+            val daysInPrevYear = prevCal.getActualMaximum(Calendar.DAY_OF_YEAR) // 366 for leap year, 365 otherwise
+            return prev.dayOfYear == daysInPrevYear
+        }
+        return false
+    }
+
+    fun previousDay(): Day {
+        return if (dayOfYear > 1) {
+            Day(year, dayOfYear - 1)
+        } else {
+            val prevYear = year - 1
+            val cal = Calendar.getInstance().apply { set(Calendar.YEAR, prevYear) }
+            val daysInPrevYear = cal.getActualMaximum(Calendar.DAY_OF_YEAR) // 366 or 365
+            Day(prevYear, daysInPrevYear)
         }
     }
 }

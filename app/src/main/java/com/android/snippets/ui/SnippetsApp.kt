@@ -29,14 +29,14 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     var pendingCollectionForPicker by remember { mutableStateOf<String?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        uri?.let {
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
             val pendingColl = pendingCollectionForPicker
             if (pendingColl != null && pendingColl != "Library" && pendingColl != "Favorites") {
-                viewModel.addPhotoToCollection(it, pendingColl)
+                viewModel.addPhotosToCollection(uris, pendingColl)
             } else {
-                viewModel.addPhoto(it, isFavorite = uiState.pendingFavoriteIntent)
+                viewModel.addPhotos(uris, isFavorite = uiState.pendingFavoriteIntent)
             }
             pendingCollectionForPicker = null
         }

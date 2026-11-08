@@ -5,7 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -14,6 +14,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -52,6 +54,14 @@ import com.android.snippets.ui.util.Motion
 import com.android.snippets.viewmodel.MemoryViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 
+private val GrayscaleColorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+
+private fun getSaturationColorFilter(saturation: Float): ColorFilter? = when {
+    saturation >= 0.999f -> null
+    saturation <= 0.001f -> GrayscaleColorFilter
+    else -> ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) })
+}
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MemoriesCarousel(
@@ -61,35 +71,53 @@ fun MemoriesCarousel(
     cardSize: Dp = 84.dp,
     lazyListState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    isCollapsed: Boolean = false,
+    pageTabs: List<String> = emptyList()
 ) {
     val allMemories = viewModel.historyMemories
-    val tabMemories = remember(allMemories, currentTab) {
-        when (currentTab) {
-            "Library" -> allMemories
-            "Favorites" -> allMemories.filter { it.isFavorite }
-            else -> allMemories.filter { it.collections.contains(currentTab) }
-        }
-    }
-
-    val isVisible = tabMemories.isNotEmpty()
+    val isVisible = !isCollapsed && currentTab == "Library" && allMemories.isNotEmpty()
 
     AnimatedVisibility(
         visible = isVisible,
-        enter = expandVertically(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow
+        enter = slideInVertically(
+            animationSpec = tween(
+                durationMillis = 280,
+                easing = LinearOutSlowInEasing
             ),
-            expandFrom = Alignment.Top
-        ) + fadeIn(animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)),
-        exit = shrinkVertically(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow
+            initialOffsetY = { -it / 2 }
+        ) + expandVertically(
+            animationSpec = tween(
+                durationMillis = 280,
+                easing = LinearOutSlowInEasing
             ),
-            shrinkTowards = Alignment.Top
-        ) + fadeOut(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)),
+            expandFrom = Alignment.Top,
+            clip = false
+        ) + fadeIn(
+            animationSpec = tween(
+                durationMillis = 280,
+                easing = LinearOutSlowInEasing
+            )
+        ),
+        exit = slideOutVertically(
+            animationSpec = tween(
+                durationMillis = 240,
+                easing = LinearOutSlowInEasing
+            ),
+            targetOffsetY = { -it / 2 }
+        ) + shrinkVertically(
+            animationSpec = tween(
+                durationMillis = 240,
+                easing = LinearOutSlowInEasing
+            ),
+            shrinkTowards = Alignment.Top,
+            clip = false
+        ) + fadeOut(
+            animationSpec = tween(
+                durationMillis = 240,
+                easing = LinearOutSlowInEasing
+            )
+        ),
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer { clip = false }
@@ -104,13 +132,13 @@ fun MemoriesCarousel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             itemsIndexed(
-                items = tabMemories,
-                key = { _, photo -> photo.id }
+                items = allMemories,
+                key = { _, photo -> "lib_${photo.id}" }
             ) { itemIndex, photo ->
                 MemoryCarouselCard(
                     photo = photo,
                     itemIndex = itemIndex,
-                    tabMemories = tabMemories,
+                    tabMemories = allMemories,
                     viewModel = viewModel,
                     cardSize = cardSize,
                     sharedTransitionScope = sharedTransitionScope,
@@ -145,21 +173,15 @@ private fun MemoryCarouselCard(
 
     val saturation by animateFloatAsState(
         targetValue = if (photo.isViewed) 0f else 1f,
-        animationSpec = tween(durationMillis = 500, delayMillis = 200),
+        animationSpec = tween(durationMillis = 500),
         label = "memory_saturation"
     )
     val cardContentAlpha by animateFloatAsState(
         targetValue = if (photo.isViewed) 0.6f else 1f,
-        animationSpec = tween(durationMillis = 500, delayMillis = 200),
+        animationSpec = tween(durationMillis = 500),
         label = "memory_alpha"
     )
-    val colorMatrix = remember { ColorMatrix() }
-    val dynamicColorFilter = remember(saturation) {
-        if (saturation < 0.99f) {
-            colorMatrix.setToSaturation(saturation)
-            ColorFilter.colorMatrix(colorMatrix)
-        } else null
-    }
+    val dynamicColorFilter = getSaturationColorFilter(saturation)
 
     Box(
         modifier = Modifier

@@ -9,8 +9,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -37,10 +35,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Keyboard
-import androidx.compose.material.icons.rounded.FormatColorFill
-import androidx.compose.material.icons.outlined.FormatColorFill
-import androidx.compose.material.icons.rounded.CloudSync
-import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material.icons.rounded.Info
 
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -95,8 +89,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 
 private data class SettingItemData(
@@ -260,15 +253,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         }
     }
 
-    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+    val restoreLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            viewModel.importBackupFromFile(context, uri)
+            viewModel.restoreBackupFromFile(context, uri)
         }
     }
     
-    var showAutoBackupDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     val hazeState = LocalHazeState.current ?: rememberHazeState()
@@ -286,7 +278,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         (view.context as? androidx.activity.ComponentActivity)?.finish()
                     },
                     navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
-                    isSpinning = !showAutoBackupDialog,
                     isScrolled = scrollState.value > 0,
                     leftAlignTitle = true,
                     showDividerOnScroll = false
@@ -359,27 +350,19 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    val dynamicColorsIcon = if (viewModel.useDynamicColors) Icons.Rounded.FormatColorFill else Icons.Outlined.FormatColorFill
                     val expandLabelIcon = if (viewModel.expandLabelIcon) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label
                     val expandCalendarIcon = if (viewModel.expandCalendarIcon) Icons.Rounded.CalendarMonth else Icons.Outlined.CalendarMonth
                     val expandLocationIcon = if (viewModel.expandLocationIcon) Icons.Rounded.LocationOn else Icons.Outlined.LocationOn
 
-                    val interfaceRow1Items = remember(
-                        viewModel.useDynamicColors,
+                    val expandItems = remember(
                         viewModel.expandLabelIcon,
                         viewModel.expandCalendarIcon,
-                        dynamicColorsIcon,
+                        viewModel.expandLocationIcon,
                         expandLabelIcon,
-                        expandCalendarIcon
+                        expandCalendarIcon,
+                        expandLocationIcon
                     ) {
                         listOf(
-                            SettingItemData(
-                                title = "Dynamic\ncolors",
-                                icon = dynamicColorsIcon,
-                                isSelected = viewModel.useDynamicColors,
-                                isDoubleLine = true,
-                                onClick = { viewModel.updateDynamicColors(!viewModel.useDynamicColors) }
-                            ),
                             SettingItemData(
                                 title = "Expand\nlabel icon",
                                 icon = expandLabelIcon,
@@ -393,12 +376,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                                 isSelected = viewModel.expandCalendarIcon,
                                 isDoubleLine = true,
                                 onClick = { viewModel.updateExpandCalendarIcon(!viewModel.expandCalendarIcon) }
-                            )
-                        )
-                    }
-
-                    val interfaceRow2Items = remember(viewModel.expandLocationIcon, expandLocationIcon) {
-                        listOf(
+                            ),
                             SettingItemData(
                                 title = "Expand\nlocation icon",
                                 icon = expandLocationIcon,
@@ -409,11 +387,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         )
                     }
 
-                    SettingsRow(items = interfaceRow1Items)
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    SettingsRow(items = interfaceRow2Items, columns = 3)
+                    SettingsRow(items = expandItems)
 
                     Spacer(modifier = Modifier.height(28.dp))
 
@@ -435,30 +409,45 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    val isAutoBackupOn = viewModel.autoBackupSchedule != "Disabled"
-                    val autoBackupIcon = if (isAutoBackupOn) Icons.Rounded.CloudSync else Icons.Outlined.CloudSync
+                    val isDailyBackupOn = viewModel.autoBackupSchedule != "Disabled"
+                    val dailyBackupIcon = if (isDailyBackupOn) {
+                        ImageVector.vectorResource(R.drawable.ic_backup_filled)
+                    } else {
+                        ImageVector.vectorResource(R.drawable.ic_backup_outlined)
+                    }
 
-                    val backupIcon = ImageVector.vectorResource(R.drawable.ic_backup_section)
-                    val importIcon = ImageVector.vectorResource(R.drawable.ic_import_section)
-                    val actionItems = remember(isAutoBackupOn, backupIcon, importIcon) {
+                    val exportIcon = ImageVector.vectorResource(R.drawable.ic_file_export)
+                    val restoreIcon = ImageVector.vectorResource(R.drawable.ic_settings_backup_restore)
+                    val actionItems = remember(isDailyBackupOn, dailyBackupIcon, exportIcon, restoreIcon) {
                         listOf(
                             SettingItemData(
                                 title = "Export",
-                                icon = backupIcon,
+                                icon = exportIcon,
                                 isSelected = null,
                                 onClick = { exportLauncher.launch("snippets_backup_${System.currentTimeMillis() / 1000}.zip") }
                             ),
                             SettingItemData(
-                                title = "Import",
-                                icon = importIcon,
+                                title = "Restore",
+                                icon = restoreIcon,
                                 isSelected = null,
-                                onClick = { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*")) }
+                                onClick = { restoreLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*")) }
                             ),
                             SettingItemData(
-                                title = "Auto backup",
-                                icon = autoBackupIcon,
-                                isSelected = isAutoBackupOn,
-                                onClick = { showAutoBackupDialog = true }
+                                title = "Daily backup",
+                                icon = dailyBackupIcon,
+                                isSelected = isDailyBackupOn,
+                                onClick = {
+                                    val nextSchedule = if (isDailyBackupOn) "Disabled" else "Daily"
+                                    viewModel.updateAutoBackupSchedule(nextSchedule)
+                                    if (nextSchedule == "Daily") {
+                                        val currentTime = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date())
+                                        Toast.makeText(
+                                            context,
+                                            "Daily backup occurs at $currentTime",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
                             )
                         )
                     }
@@ -468,17 +457,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     Spacer(modifier = Modifier.height(36.dp))
                 }
             }
-        }
-
-        if (showAutoBackupDialog) {
-            AutoBackupScheduleDialog(
-                currentSchedule = viewModel.autoBackupSchedule,
-                onDismiss = { showAutoBackupDialog = false },
-                onConfirm = { selected ->
-                    viewModel.updateAutoBackupSchedule(selected)
-                    showAutoBackupDialog = false
-                }
-            )
         }
     }
 }
@@ -594,66 +572,6 @@ private fun ButtonGroupScope.themeToggleableItem(
                 }
             )
         }
-    )
-}
-
-@Composable
-fun AutoBackupScheduleDialog(
-    currentSchedule: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var selectedSchedule by remember { mutableStateOf(currentSchedule) }
-    val options = listOf("Disabled", "Daily", "Weekly", "Monthly")
-    val labels = listOf("Disabled", "Daily", "Weekly (Sunday)", "Monthly (1st of month)")
-
-    BlurredAlertDialog(
-        onDismissRequest = onDismiss,
-        onConfirm = { onConfirm(selectedSchedule) },
-        title = {
-            Text(
-                text = "Auto backup",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .selectableGroup(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                options.forEachIndexed { index, option ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .selectable(
-                                selected = (selectedSchedule == option),
-                                onClick = { selectedSchedule = option },
-                                role = androidx.compose.ui.semantics.Role.RadioButton
-                            )
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = (selectedSchedule == option),
-                            onClick = null
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = labels[index],
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-            }
-        },
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = true)
     )
 }
 

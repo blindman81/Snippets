@@ -90,11 +90,7 @@ fun LibraryPhotoPager(
         }
 
         val pageHasMemories = remember(memoryViewModel.historyMemories, tabForPage) {
-            when (tabForPage) {
-                "Library" -> memoryViewModel.historyMemories.isNotEmpty()
-                "Favorites" -> memoryViewModel.historyMemories.any { it.isFavorite }
-                else -> memoryViewModel.historyMemories.any { it.collections.contains(tabForPage) }
-            }
+            tabForPage == "Library" && memoryViewModel.historyMemories.isNotEmpty()
         }
         val effectiveTopPadding = if (statusBarTop > 0.dp) {
             if (pageHasMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
@@ -112,7 +108,11 @@ fun LibraryPhotoPager(
                 when (tabForPage) {
                     "Favorites" -> EmptyFavoritesState()
                     "Library" -> EmptyLibraryState()
-                    else -> EmptyCollectionState()
+                    else -> {
+                        if (!uiState.isSearching) {
+                            EmptyCollectionState()
+                        }
+                    }
                 }
             }
         } else {

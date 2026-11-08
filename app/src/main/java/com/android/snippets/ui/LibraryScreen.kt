@@ -1,7 +1,7 @@
 package com.android.snippets.ui
 
 import android.view.HapticFeedbackConstants
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlin.math.abs
+import kotlin.coroutines.cancellation.CancellationException
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.*
 import com.android.snippets.ui.util.Motion
@@ -76,6 +78,11 @@ fun LibraryScreen(
 
     var showMenuPopup by remember { mutableStateOf(false) }
     var isSearchOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.searchQuery) {
+        if (uiState.searchQuery.isNotEmpty()) {
+            isSearchOpen = true
+        }
+    }
     val searchFocusRequester = remember { FocusRequester() }
     val emojiFocusRequester = remember { FocusRequester() }
     val emojiTextFieldState = rememberTextFieldState()
@@ -91,51 +98,60 @@ fun LibraryScreen(
     var longPressedCollection by remember { mutableStateOf<String?>(null) }
     var deletingCollection by remember { mutableStateOf<String?>(null) }
 
-    val isBackHandlerEnabled = showAddModal || showSnippetsModal || showDeleteModal ||
-            showRateModal || showLinkModal || showNameModal || (uiState.activePhotoId != null) ||
-            isSearchOpen || uiState.isSelectionMode || (deletingCollection != null) ||
-            (uiState.editingCollectionEmoji != null)
-
-    BackHandler(enabled = isBackHandlerEnabled) {
-        if (uiState.editingCollectionEmoji != null) {
-            keyboardController?.hide()
-            viewModel.cancelEditingCollectionEmoji()
-        } else if (showAddModal) {
-            showAddModal = false
-        } else if (showSnippetsModal) {
-            showSnippetsModal = false
-        } else if (showDeleteModal) {
-            showDeleteModal = false
-        } else if (showRateModal) {
-            showRateModal = false
-        } else if (showLinkModal) {
-            showLinkModal = false
-        } else if (showNameModal) {
-            showNameModal = false
-        } else if (uiState.activePhotoId != null) {
-            viewModel.activePhotoId = null
-        } else if (isSearchOpen) {
-            isSearchOpen = false
-            scope.launch {
-                kotlinx.coroutines.delay(200L)
-                viewModel.searchQuery = ""
-            }
-        } else if (uiState.isSelectionMode) {
-            if (uiState.searchQuery.isNotEmpty()) {
-                viewModel.searchQuery = ""
-            } else {
-                viewModel.clearSelection()
-            }
-        } else if (deletingCollection != null) {
-            deletingCollection = null
-        }
-    }
 
     val isAnyPopupActive = showAddModal || showSnippetsModal || showDeleteModal ||
             showRateModal || showLinkModal || showNameModal ||
             uiState.showBulkAddToCollectionDialog || uiState.showBulkDeleteModal ||
             uiState.showCreateDialog || showMenuPopup || isSearchOpen ||
             (longPressedCollection != null) || (deletingCollection != null) || uiState.showFilterSheet
+
+    PredictiveBackHandler(enabled = uiState.isSelectionMode) { progress ->
+        try {
+            progress.collect { }
+            if (uiState.searchQuery.isNotEmpty()) {
+                viewModel.searchQuery = ""
+            } else {
+                viewModel.clearSelection()
+            }
+        } catch (_: CancellationException) {}
+    }
+
+    PredictiveBackHandler(enabled = isSearchOpen) { progress ->
+        try {
+            progress.collect { }
+            isSearchOpen = false
+            viewModel.searchQuery = ""
+        } catch (_: CancellationException) {}
+    }
+
+    PredictiveBackHandler(enabled = uiState.activePhotoId != null) { progress ->
+        try {
+            progress.collect { }
+            viewModel.closeDetail()
+        } catch (_: CancellationException) {}
+    }
+
+    PredictiveBackHandler(enabled = deletingCollection != null) { progress ->
+        try {
+            progress.collect { }
+            deletingCollection = null
+        } catch (_: CancellationException) {}
+    }
+
+    PredictiveBackHandler(enabled = uiState.editingCollectionEmoji != null) { progress ->
+        try {
+            progress.collect { }
+            keyboardController?.hide()
+            viewModel.cancelEditingCollectionEmoji()
+        } catch (_: CancellationException) {}
+    }
+
+    PredictiveBackHandler(enabled = showMenuPopup) { progress ->
+        try {
+            progress.collect { }
+            showMenuPopup = false
+        } catch (_: CancellationException) {}
+    }
 
     val pageTabs = remember(uiState.userCollections) {
         listOf("Library", "Favorites") + uiState.userCollections
@@ -145,6 +161,22 @@ fun LibraryScreen(
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { pageTabs.size })
     val listStates = remember { mutableStateMapOf<String, androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState>() }
     val carouselLazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val tabRowScrollState = rememberScrollState()
+    val tabPositions = remember { mutableStateMapOf<String, Float>() }
+    val tabWidths = remember { mutableStateMapOf<String, Float>() }
+
+    var savedCollectionsScrollPosition by rememberSaveable { mutableIntStateOf(0) }
+    var previousPendingAssignment by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(uiState.pendingCollectionAssignment) {
+        val currentAssignment = uiState.pendingCollectionAssignment
+        if (currentAssignment != null && previousPendingAssignment == null) {
+            savedCollectionsScrollPosition = tabRowScrollState.value
+        } else if (currentAssignment == null && previousPendingAssignment != null) {
+            tabRowScrollState.scrollTo(savedCollectionsScrollPosition)
+        }
+        previousPendingAssignment = currentAssignment
+    }
 
     LaunchedEffect(viewModel.scrollToTopTrigger) {
         if (viewModel.scrollToTopTrigger != 0L) {
@@ -163,28 +195,55 @@ fun LibraryScreen(
 
     var isFabVisible by remember { mutableStateOf(true) }
     var isFirstTabLoad by remember { mutableStateOf(true) }
+
+    // Instant tactile haptic feedback on page boundary switch (without mutating ViewModel state)
     LaunchedEffect(currentTab) {
-        viewModel.libraryCurrentTab = currentTab
         if (isFirstTabLoad) {
             isFirstTabLoad = false
         } else {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-            carouselLazyListState.scrollToItem(0)
         }
-        isFabVisible = true
+    }
+
+    // Only commit active tab to ViewModel & reset carousel once the pager settles
+    LaunchedEffect(pagerState, pageTabs) {
+        snapshotFlow { Pair(pagerState.isScrollInProgress, pagerState.settledPage) }
+            .collect { (isScrolling, settled) ->
+                if (!isScrolling) {
+                    val settledTab = pageTabs.getOrNull(settled) ?: "Library"
+                    if (viewModel.libraryCurrentTab != settledTab) {
+                        viewModel.libraryCurrentTab = settledTab
+                        try {
+                            carouselLazyListState.scrollToItem(0)
+                        } catch (_: Exception) {}
+                    }
+                    isFabVisible = true
+                }
+            }
+    }
+
+    val displayedCarouselTab by remember(pageTabs, pagerState.settledPage, currentTab, pagerState.isScrollInProgress) {
+        derivedStateOf {
+            if (pagerState.isScrollInProgress) {
+                pageTabs.getOrNull(pagerState.settledPage) ?: currentTab
+            } else {
+                currentTab
+            }
+        }
     }
 
     LaunchedEffect(viewModel.libraryCurrentTab, pageTabs) {
         val targetIndex = pageTabs.indexOf(viewModel.libraryCurrentTab)
-        if (targetIndex != -1 && targetIndex != pagerState.currentPage) {
-            pagerState.scrollToPage(targetIndex)
+        if (targetIndex != -1 && targetIndex != pagerState.currentPage && !pagerState.isScrollInProgress) {
+            pagerState.animateScrollToPage(targetIndex)
         }
     }
 
-    LaunchedEffect(viewModel.editingCollectionEmoji) {
+    LaunchedEffect(viewModel.editingCollectionEmoji, uiState.emojiKeyboardRequestCount) {
         val editingCol = viewModel.editingCollectionEmoji
-        if (editingCol != null) {
+        if (editingCol != null && uiState.emojiKeyboardRequestCount > 0L) {
             emojiTextFieldState.clearText()
+            focusManager.clearFocus(force = true)
             delay(50)
             emojiFocusRequester.requestFocus()
             keyboardController?.show()
@@ -205,7 +264,14 @@ fun LibraryScreen(
             }
     }
 
-    val flatPhotosRaw = uiState.filteredPhotos
+    val flatPhotosRaw = remember(
+        uiState.photos,
+        uiState.searchQuery,
+        uiState.selectedFilterSnippets,
+        uiState.photoSortType
+    ) {
+        uiState.filteredPhotos
+    }
 
     LaunchedEffect(uiState.activePhotoId, currentTab) {
         val activeId = uiState.activePhotoId
@@ -286,11 +352,7 @@ fun LibraryScreen(
             if (tabName == null) {
                 with(density) { (statusBarTop + 72.dp).toPx() }
             } else {
-                val hasMemories = when (tabName) {
-                    "Library" -> memoryViewModel.historyMemories.isNotEmpty()
-                    "Favorites" -> memoryViewModel.historyMemories.any { it.isFavorite }
-                    else -> memoryViewModel.historyMemories.any { it.collections.contains(tabName) }
-                }
+                val hasMemories = tabName == "Library" && memoryViewModel.historyMemories.isNotEmpty()
                 val paddingDp = if (hasMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
                 with(density) { paddingDp.toPx() }
             }
@@ -317,45 +379,101 @@ fun LibraryScreen(
         }
     }
 
-    val currentHeaderScrollOffset by remember(pagerState, pageTabs, getScrollOffsetForTab) {
-        derivedStateOf {
-            val currentPage = pagerState.currentPage
-            val currentTabName = pageTabs.getOrNull(currentPage)
-            val currentOffset = getScrollOffsetForTab(currentTabName)
-            if (pagerState.isScrollInProgress) {
-                val targetPage = pagerState.targetPage
-                if (targetPage != currentPage && targetPage in pageTabs.indices) {
-                    val targetTabName = pageTabs.getOrNull(targetPage)
-                    val targetOffset = getScrollOffsetForTab(targetTabName)
-                    val fraction = abs(pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
-                    currentOffset + (targetOffset - currentOffset) * fraction
-                } else {
-                    currentOffset
-                }
+    val isTabScrolled = remember(listStates) {
+        { tabName: String? ->
+            if (tabName == null) false
+            else {
+                val state = listStates[tabName]
+                state != null && (state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 10)
+            }
+        }
+    }
+
+    var isSwipeTransitionActive by remember { mutableStateOf(false) }
+    var swipeTargetOffset by remember { mutableFloatStateOf(0f) }
+
+    val swipeAnimOffset by animateFloatAsState(
+        targetValue = swipeTargetOffset,
+        animationSpec = if (swipeTargetOffset > 0f) {
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+        } else {
+            spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)
+        },
+        label = "swipe_header_offset",
+        finishedListener = {
+            if (!pagerState.isScrollInProgress) {
+                isSwipeTransitionActive = false
+            }
+        }
+    )
+
+    LaunchedEffect(
+        pagerState.isScrollInProgress,
+        pagerState.currentPage,
+        pagerState.targetPage,
+        pagerState.currentPageOffsetFraction
+    ) {
+        val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
+        val isCurrentScrolled = isTabScrolled(currentTabName)
+
+        if (pagerState.isScrollInProgress) {
+            val swipingTargetPage = when {
+                pagerState.targetPage != pagerState.currentPage -> pagerState.targetPage
+                pagerState.currentPageOffsetFraction > 0.001f -> (pagerState.currentPage + 1).coerceAtMost(pageTabs.size - 1)
+                pagerState.currentPageOffsetFraction < -0.001f -> (pagerState.currentPage - 1).coerceAtLeast(0)
+                else -> pagerState.currentPage
+            }
+            val targetTabName = pageTabs.getOrNull(swipingTargetPage)
+            val isTargetScrolled = isTabScrolled(targetTabName)
+
+            if (!isCurrentScrolled && isTargetScrolled) {
+                isSwipeTransitionActive = true
+                swipeTargetOffset = getCollapseDistanceForTab(targetTabName)
+            } else if (isCurrentScrolled && !isTargetScrolled) {
+                isSwipeTransitionActive = true
+                swipeTargetOffset = getCollapseDistanceForTab(currentTabName)
+            } else if (isCurrentScrolled && isTargetScrolled) {
+                isSwipeTransitionActive = true
+                swipeTargetOffset = getCollapseDistanceForTab(targetTabName)
             } else {
-                currentOffset
+                if (isSwipeTransitionActive) {
+                    swipeTargetOffset = 0f
+                }
+            }
+        } else {
+            val settledTabName = pageTabs.getOrNull(pagerState.settledPage) ?: currentTabName
+            val isSettledScrolled = isTabScrolled(settledTabName)
+            if (isSwipeTransitionActive) {
+                if (!isSettledScrolled) {
+                    swipeTargetOffset = 0f
+                } else {
+                    swipeTargetOffset = getCollapseDistanceForTab(settledTabName)
+                }
+            }
+        }
+    }
+
+    val currentHeaderScrollOffset by remember(
+        isSwipeTransitionActive,
+        swipeAnimOffset,
+        pagerState,
+        pageTabs,
+        getScrollOffsetForTab
+    ) {
+        derivedStateOf {
+            if (isSwipeTransitionActive) {
+                swipeAnimOffset
+            } else {
+                val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
+                getScrollOffsetForTab(currentTabName)
             }
         }
     }
 
     val currentMaxCollapseDistance by remember(pagerState, pageTabs, getCollapseDistanceForTab) {
         derivedStateOf {
-            val currentPage = pagerState.currentPage
-            val currentTabName = pageTabs.getOrNull(currentPage)
-            val currentMax = getCollapseDistanceForTab(currentTabName)
-            if (pagerState.isScrollInProgress) {
-                val targetPage = pagerState.targetPage
-                if (targetPage != currentPage && targetPage in pageTabs.indices) {
-                    val targetTabName = pageTabs.getOrNull(targetPage)
-                    val targetMax = getCollapseDistanceForTab(targetTabName)
-                    val fraction = abs(pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
-                    currentMax + (targetMax - currentMax) * fraction
-                } else {
-                    currentMax
-                }
-            } else {
-                currentMax
-            }
+            val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
+            getCollapseDistanceForTab(currentTabName)
         }
     }
 
@@ -366,6 +484,37 @@ fun LibraryScreen(
                 (currentHeaderScrollOffset / maxCollapse).coerceIn(0f, 1f)
             } else {
                 0f
+            }
+        }
+    }
+
+    val isCarouselCollapsed by remember(
+        headerCollapseProgress,
+        pagerState.isScrollInProgress,
+        pagerState.currentPage,
+        pagerState.targetPage,
+        pagerState.currentPageOffsetFraction,
+        pageTabs
+    ) {
+        derivedStateOf {
+            if (headerCollapseProgress > 0.85f) {
+                true
+            } else if (pagerState.isScrollInProgress) {
+                val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
+                val swipingTargetPage = when {
+                    pagerState.targetPage != pagerState.currentPage -> pagerState.targetPage
+                    pagerState.currentPageOffsetFraction > 0.001f -> (pagerState.currentPage + 1).coerceAtMost(pageTabs.size - 1)
+                    pagerState.currentPageOffsetFraction < -0.001f -> (pagerState.currentPage - 1).coerceAtLeast(0)
+                    else -> pagerState.currentPage
+                }
+                val targetTabName = pageTabs.getOrNull(swipingTargetPage)
+                if (currentTabName == "Library") {
+                    targetTabName != "Library" || kotlin.math.abs(pagerState.currentPageOffsetFraction) > 0.001f
+                } else {
+                    true
+                }
+            } else {
+                false
             }
         }
     }
@@ -420,11 +569,7 @@ fun LibraryScreen(
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             val currentTabMemories = remember(memoryViewModel.historyMemories, currentTab) {
-                                when (currentTab) {
-                                    "Library" -> memoryViewModel.historyMemories
-                                    "Favorites" -> memoryViewModel.historyMemories.filter { it.isFavorite }
-                                    else -> memoryViewModel.historyMemories.filter { it.collections.contains(currentTab) }
-                                }
+                                if (currentTab == "Library") memoryViewModel.historyMemories else emptyList()
                             }
                             val hasTabMemories = currentTabMemories.isNotEmpty()
                             val topGridPadding = if (hasTabMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
@@ -438,13 +583,11 @@ fun LibraryScreen(
                                 )
                             }
 
-                            val tabRowScrollState = rememberScrollState()
-                            val tabPositions = remember { mutableStateMapOf<String, Float>() }
-                            val tabWidths = remember { mutableStateMapOf<String, Float>() }
                             val targetPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
                             val activeTabTarget = pageTabs.getOrNull(targetPage) ?: "Library"
 
                             LaunchedEffect(activeTabTarget) {
+                                if (uiState.pendingCollectionAssignment != null) return@LaunchedEffect
                                 val tabX = tabPositions[activeTabTarget] ?: return@LaunchedEffect
                                 val tabW = tabWidths[activeTabTarget] ?: return@LaunchedEffect
                                 val rowW = tabRowScrollState.maxValue + 0f
@@ -523,17 +666,29 @@ fun LibraryScreen(
                                 modifier = Modifier.align(Alignment.TopCenter)
                             )
 
-                            // 3. Cookie Nav Bar & Memories Carousel
+                            // 3. Memories Carousel & Cookie Nav Bar
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .fillMaxWidth()
+                                    .padding(top = statusBarTop)
                                     .graphicsLayer {
                                         translationY = -currentHeaderScrollOffset
                                         alpha = (1f - (headerCollapseProgress - 0.4f) / 0.6f).coerceIn(0f, 1f)
                                         clip = false
                                     }
                             ) {
+                                MemoriesCarousel(
+                                    currentTab = currentTab,
+                                    viewModel = memoryViewModel,
+                                    lazyListState = carouselLazyListState,
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    isCollapsed = isCarouselCollapsed,
+                                    pageTabs = pageTabs,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
                                 LibraryNavBar(
                                     allTabs = pageTabs,
                                     activeTabTarget = activeTabTarget,
@@ -544,7 +699,7 @@ fun LibraryScreen(
                                     tabRowScrollState = tabRowScrollState,
                                     tabPositions = tabPositions,
                                     tabWidths = tabWidths,
-                                    statusBarTop = statusBarTop,
+                                    statusBarTop = 0.dp,
                                     cookieNavBarOffset = 0.dp,
                                     cookieNavBarAlpha = 1f,
                                     onScrollCarouselToTop = {
@@ -552,15 +707,6 @@ fun LibraryScreen(
                                             carouselLazyListState.animateScrollToItem(0)
                                         }
                                     },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                MemoriesCarousel(
-                                    currentTab = currentTab,
-                                    viewModel = memoryViewModel,
-                                    lazyListState = carouselLazyListState,
-                                    sharedTransitionScope = sharedTransitionScope,
-                                    animatedVisibilityScope = animatedVisibilityScope,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }

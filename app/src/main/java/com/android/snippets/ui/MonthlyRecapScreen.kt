@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.*
-import androidx.activity.compose.BackHandler
 import com.android.snippets.viewmodel.SnippetsUiState
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SettingsViewModel
@@ -65,38 +64,13 @@ fun MonthlyRecapScreen(
         }
     }
 
-    val isBackHandlerEnabled = showAddModal ||
-        showSnippetsModal ||
-        showDeleteModal ||
-        showRateModal ||
-        showLinkModal ||
-        showNameModal ||
-        uiState.activePhotoId != null ||
-        uiState.isSelectionMode
-
-    val handleBack: () -> Unit = {
-        when {
-            showAddModal -> showAddModal = false
-            showSnippetsModal -> showSnippetsModal = false
-            showDeleteModal -> showDeleteModal = false
-            showRateModal -> showRateModal = false
-            showLinkModal -> showLinkModal = false
-            showNameModal -> showNameModal = false
-            uiState.activePhotoId != null -> viewModel.activePhotoId = null
-            uiState.isSelectionMode -> viewModel.clearSelection()
-            else -> {
-                val act = context as? androidx.activity.ComponentActivity
-                if (act != null) {
-                    act.finish()
-                } else {
-                    onBack()
-                }
-            }
+    val handleBack = {
+        val act = context as? androidx.activity.ComponentActivity
+        if (act != null) {
+            act.finish()
+        } else {
+            onBack()
         }
-    }
-
-    BackHandler(enabled = isBackHandlerEnabled) {
-        handleBack()
     }
 
     Scaffold(

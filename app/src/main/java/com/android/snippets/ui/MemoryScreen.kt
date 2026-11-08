@@ -2,34 +2,21 @@ package com.android.snippets.ui
 
 import android.content.Intent
 import android.os.Build
-import androidx.compose.ui.graphics.blur.BlurRadiusSpec
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-
-import kotlinx.coroutines.flow.first
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import com.android.snippets.ui.shapes.CookieShape
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
@@ -37,18 +24,11 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.blur.BlurRadiusSpec
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -58,23 +38,27 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.graphics.drawable.BitmapDrawable
-import android.view.HapticFeedbackConstants
-import androidx.core.graphics.ColorUtils
+import androidx.compose.ui.zIndex
 import androidx.core.view.WindowCompat
-import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.allowHardware
-import coil3.toBitmap
-import com.android.snippets.ui.util.rotateWithBounds
-import com.android.snippets.ui.util.Motion
-import com.android.snippets.ui.theme.*
-import androidx.compose.ui.res.painterResource
 import com.android.snippets.logic.MemoryWorker
-import com.ln.android.snippets.R
+import com.android.snippets.ui.shapes.CookieShape
+import com.android.snippets.ui.theme.*
+import com.android.snippets.ui.util.Motion
+import com.android.snippets.ui.util.rotateWithBounds
 import com.android.snippets.viewmodel.MemoryViewModel
+import com.ln.android.snippets.R
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.*
@@ -92,9 +76,9 @@ fun MemoryScreen(
     val view = LocalView.current
     val activity = context as? androidx.activity.ComponentActivity
 
-    val photoList = viewModel.activeMemoriesSnapshot.ifEmpty { viewModel.curatedMemories }
+    val photo = viewModel.currentPhoto
 
-    if (photoList.isEmpty()) {
+    if (photo == null) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -109,49 +93,11 @@ fun MemoryScreen(
         return
     }
 
-    val initialPage = (viewModel.currentMemoryIndex + 1).coerceIn(1, photoList.size)
-    val pagerState = rememberPagerState(initialPage = initialPage) {
-        photoList.size + 2 // [Close, Photos..., Close]
-    }
-    val transitionTargetId by remember {
-        derivedStateOf {
-            val targetIndex = (pagerState.currentPage - 1).coerceIn(0, (photoList.size - 1).coerceAtLeast(0))
-            photoList.getOrNull(targetIndex)?.id
-        }
-    }
-
-    val targetPage = (viewModel.currentMemoryIndex + 1).coerceIn(1, (photoList.size).coerceAtLeast(1))
-    LaunchedEffect(targetPage, photoList) {
-        if (photoList.isNotEmpty() && pagerState.currentPage != targetPage) {
-            pagerState.scrollToPage(targetPage)
-        }
-    }
-    
-    // Sync pager state back to ViewModel and handle swipe-to-close
-    LaunchedEffect(pagerState.currentPage, photoList) {
-        if (photoList.isNotEmpty()) {
-            if (pagerState.currentPage == 0 || pagerState.currentPage == photoList.size + 1) {
-                activity?.finish()
-            } else {
-                val index = pagerState.currentPage - 1
-                if (index in photoList.indices) {
-                    viewModel.currentMemoryIndex = index
-                }
-            }
-        }
-    }
-
-
-
-    val coroutineScope = rememberCoroutineScope()
-    
     val isDarkTheme = when (viewModel.themePreference) {
         com.android.snippets.viewmodel.ThemePreference.LIGHT -> false
         com.android.snippets.viewmodel.ThemePreference.DARK -> true
         com.android.snippets.viewmodel.ThemePreference.SYSTEM -> isSystemInDarkTheme()
     }
-
-    val photoLightnessMap = remember { mutableStateMapOf<Int, Boolean>() }
 
     LaunchedEffect(isDarkTheme) {
         activity?.window?.let { window ->
@@ -169,26 +115,14 @@ fun MemoryScreen(
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(photo.id) {
         MemoryWorker.isInMemoryScreen = true
         MemoryWorker.cancelSummaryNotification(context)
         onDispose {
             MemoryWorker.isInMemoryScreen = false
             MemoryWorker.cancelSummaryNotification(context)
-            val photoList = viewModel.activeMemoriesSnapshot.ifEmpty { viewModel.curatedMemories }
-            photoList.getOrNull(viewModel.currentMemoryIndex)?.let {
-                viewModel.onMemoryViewed(it.id)
-            }
         }
     }
-
-
-
-    val uiAlpha by animateFloatAsState(
-        targetValue = if (pagerState.isScrollInProgress) 0f else 1f,
-        animationSpec = Motion.StandardFade,
-        label = "uiAlpha"
-    )
 
     // State for enter transition settling so rotation/timer wait until open
     var isOpening by remember { mutableStateOf(true) }
@@ -199,11 +133,26 @@ fun MemoryScreen(
 
     val isOpeningTransition = isOpening
 
+    val uiAlpha by animateFloatAsState(
+        targetValue = if (isOpeningTransition) 0f else 1f,
+        animationSpec = Motion.StandardFade,
+        label = "uiAlpha"
+    )
+
+    // State to ensure memory is viewed once on screen for 3 seconds
+    var isMarkedViewed by remember(photo.id) { mutableStateOf(photo.isViewed) }
+
+    LaunchedEffect(photo.id, isOpeningTransition) {
+        if (!isOpeningTransition && !isMarkedViewed) {
+            delay(3000)
+            isMarkedViewed = true
+            viewModel.onMemoryViewed(photo.id)
+        }
+    }
+
     // State for long-press hold detection to freeze spin & pause timer
     var isPressed by remember { mutableStateOf(false) }
-    val isScrolling = pagerState.isScrollInProgress || abs(pagerState.currentPageOffsetFraction) > 0.05f
-    val isClosing = photoList.isNotEmpty() && (pagerState.targetPage == 0 || pagerState.targetPage == photoList.size + 1)
-    val shouldAnimateSpin = !isPressed && !isScrolling && !isClosing && !isOpeningTransition
+    val shouldAnimateSpin = !isPressed && !isOpeningTransition
 
     var rotationAngle by remember { mutableFloatStateOf(0f) }
 
@@ -215,7 +164,7 @@ fun MemoryScreen(
                     val deltaNano = frameTime - lastTime
                     lastTime = frameTime
                     val deltaMs = deltaNano / 1_000_000f
-                    
+
                     val deltaDegrees = deltaMs * (360f / 60000f)
                     rotationAngle = (rotationAngle + deltaDegrees) % 360f
                 }
@@ -223,21 +172,19 @@ fun MemoryScreen(
         }
     }
 
-    // Story Progress Timer (10 seconds total per memory)
+    // Story Progress Timer (10 seconds total for this individual memory)
     var currentMemoryProgress by remember { mutableFloatStateOf(0f) }
     var wavePhase by remember { mutableFloatStateOf(0f) }
 
-    // Story Progress Timer and Auto-Advance Loop bound to settledPage to prevent mid-animation cancellation
-    LaunchedEffect(pagerState.settledPage, isClosing, isOpeningTransition) {
-        val activeSettled = pagerState.settledPage
-        if (activeSettled >= 1 && activeSettled <= photoList.size && !isClosing && !isOpeningTransition) {
+    LaunchedEffect(photo.id, isOpeningTransition) {
+        if (!isOpeningTransition) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
             currentMemoryProgress = 0f
 
             var lastTime = 0L
-            while (currentMemoryProgress < 1f && !isClosing && !isOpeningTransition) {
+            while (currentMemoryProgress < 1f && !isOpeningTransition) {
                 withFrameNanos { frameTime ->
-                    if (!isPressed && !isScrolling && !isClosing && !isOpeningTransition) {
+                    if (!isPressed && !isOpeningTransition) {
                         if (lastTime != 0L) {
                             val deltaNano = frameTime - lastTime
                             val deltaSec = (deltaNano / 1_000_000_000f).coerceAtMost(0.05f)
@@ -247,239 +194,183 @@ fun MemoryScreen(
                     }
                     lastTime = frameTime
                 }
-            }
-            if (currentMemoryProgress >= 1f && !isClosing && !isOpeningTransition) {
-                snapshotFlow { pagerState.isScrollInProgress }
-                    .first { !it }
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(
-                        activeSettled + 1,
-                        animationSpec = tween(durationMillis = Motion.NavDuration, easing = FastOutSlowInEasing)
-                    )
+                if (!isMarkedViewed && currentMemoryProgress >= 0.3f) {
+                    isMarkedViewed = true
+                    viewModel.onMemoryViewed(photo.id)
                 }
+            }
+            if (currentMemoryProgress >= 1f && !isOpeningTransition) {
+                if (!isMarkedViewed) {
+                    isMarkedViewed = true
+                    viewModel.onMemoryViewed(photo.id)
+                }
+                activity?.finish()
             }
         }
     }
+
+    val hazeState = rememberHazeState()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .clipToBounds()
+            .graphicsLayer { clip = true }
+            .pointerInput(photo.id) {
+                detectTapGestures(
+                    onPress = { offset ->
+                        isPressed = true
+                        val released = tryAwaitRelease()
+                        isPressed = false
+                        if (released) {
+                            if (offset.x < size.width * 0.3f) {
+                                if (currentMemoryProgress > 0.15f) {
+                                    currentMemoryProgress = 0f
+                                } else {
+                                    activity?.finish()
+                                }
+                            } else {
+                                activity?.finish()
+                            }
+                        }
+                    },
+                    onLongPress = {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    }
+                )
+            }
     ) {
-        HorizontalPager(
-            state = pagerState,
-            pageSpacing = 2.dp,
+        // Blurred background photo with hazeSource
+        Box(
             modifier = Modifier
                 .fillMaxSize()
+                .clipToBounds()
                 .graphicsLayer { clip = true }
-        ) { pageIndex ->
-            val photo = photoList.getOrNull(pageIndex - 1)
-            if (photo == null) {
-                Box(modifier = Modifier.fillMaxSize())
-                return@HorizontalPager
-            }
+                .hazeSource(state = hazeState)
+        ) {
+            AsyncImage(
+                model = photo.uriString,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = 1.08f
+                        scaleY = 1.08f
+                    }
+                    .then(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            Modifier.blur(
+                                BlurRadiusSpec.verticalGradient(
+                                    startRadius = 4.dp,
+                                    endRadius = 24.dp
+                                ),
+                                edgeTreatment = BlurredEdgeTreatment.Rectangle
+                            )
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            Modifier.blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Rectangle)
+                        } else {
+                            Modifier
+                        }
+                    )
+            )
 
-            val isSettled = pagerState.settledPage == pageIndex
-            LaunchedEffect(isSettled) {
-                if (isSettled) {
-                    viewModel.onMemoryViewed(photo.id)
-                }
-            }
-
+            // Dim/Tint overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clipToBounds()
-                    .graphicsLayer { clip = true }
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = { offset ->
-                                isPressed = true
-                                val released = tryAwaitRelease()
-                                isPressed = false
-                                if (released) {
-                                    viewModel.onMemoryViewed(photo.id)
-                                    if (offset.x < size.width * 0.3f) {
-                                        coroutineScope.launch {
-                                            pagerState.animateScrollToPage(
-                                                pagerState.settledPage - 1,
-                                                animationSpec = tween(durationMillis = Motion.NavDuration, easing = FastOutSlowInEasing)
-                                            )
-                                        }
-                                    } else {
-                                        coroutineScope.launch {
-                                            pagerState.animateScrollToPage(
-                                                pagerState.settledPage + 1,
-                                                animationSpec = tween(durationMillis = Motion.NavDuration, easing = FastOutSlowInEasing)
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            onLongPress = {
-                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                            }
-                        )
+                    .background(Color.Black.copy(alpha = 0.5f))
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Spacer to clear the status bar / date header (progress bar + rating icon + date row ≈ 100dp)
+            Spacer(modifier = Modifier.height(140.dp))
+
+            val pageRotation = if (!isOpeningTransition) rotationAngle else 0f
+
+            Card(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                    val intent = Intent(context, com.android.snippets.MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        putExtra("open_photo_id", photo.id)
                     }
+                    context.startActivity(intent)
+                    activity?.finish()
+                },
+                shape = CookieShape,
+                border = BorderStroke(4.dp, Color.White),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .aspectRatio(1f)
+                    .graphicsLayer {
+                        rotationZ = pageRotation
+                    }
+                    .clip(CookieShape)
             ) {
-                val pageHazeState = remember { dev.chrisbanes.haze.HazeState() }
-
-                val density = LocalDensity.current
-                val slideOffsetPx = remember(density) { with(density) { 30.dp.toPx() } }
-                val pageOffset = ((pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
-                val absOffset = kotlin.math.abs(pageOffset)
-
-                // Blurred background photo with hazeSource
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clipToBounds()
-                        .graphicsLayer { clip = true }
-                        .hazeSource(state = pageHazeState)
-                ) {
-                    AsyncImage(
-                        model = photo.uriString,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = 1.08f
-                                scaleY = 1.08f
-                                alpha = 1f - (absOffset * 0.4f)
-                            }
-                            .then(
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    Modifier.blur(
-                                        BlurRadiusSpec.verticalGradient(
-                                            startRadius = 4.dp,
-                                            endRadius = 24.dp
-                                        ),
-                                        edgeTreatment = BlurredEdgeTreatment.Rectangle
-                                    )
-                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                    Modifier.blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Rectangle)
-                                } else {
-                                    Modifier
-                                }
-                            )
-                    )
-
-                    // Dim/Tint overlay
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.5f))
-                    )
+                val imageRequest = remember(photo.uriString) {
+                    ImageRequest.Builder(context)
+                        .data(photo.uriString)
+                        .crossfade(false)
+                        .allowHardware(false)
+                        .memoryCacheKey(photo.uriString)
+                        .build()
                 }
-
-                Column(
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxSize()
-                        .systemBarsPadding(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .graphicsLayer {
+                            rotationZ = -pageRotation
+                            scaleX = 1.25f
+                            scaleY = 1.25f
+                        }
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Snippets Cloud overlaid at the bottom
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 48.dp, top = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val cloudWidth = 360.dp
+                val cloudHeight = 240.dp
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                androidx.compose.foundation.layout.FlowRow(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
                 ) {
-                    // Spacer to clear the status bar / date header (progress bar + rating icon + date row ≈ 100dp)
-                    Spacer(modifier = Modifier.height(140.dp))
-
-                    val isCurrent = pageIndex == pagerState.currentPage && !isScrolling
-                    val pageRotation = if (isCurrent && !isClosing && !isOpeningTransition) rotationAngle else 0f
-
-                    Card(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                            val intent = Intent(context, com.android.snippets.MainActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                putExtra("open_photo_id", photo.id)
-                            }
-                            context.startActivity(intent)
-                            activity?.finish()
-                        },
-                        shape = CookieShape,
-                        border = BorderStroke(4.dp, Color.White),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                            .aspectRatio(1f)
-                            .graphicsLayer {
-                                rotationZ = pageRotation
-                                alpha = 1f - (absOffset * 0.45f)
-                                translationX = pageOffset * slideOffsetPx * 0.5f
-                            }
-                            .clip(CookieShape)
-                    ) {
-                        val imageRequest = remember(photo.uriString) {
-                            ImageRequest.Builder(context)
-                                .data(photo.uriString)
-                                .crossfade(false)
-                                .allowHardware(false)
-                                .memoryCacheKey(photo.uriString)
-                                .build()
-                        }
-                        AsyncImage(
-                            model = imageRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            onSuccess = { state ->
-                                val bitmap = state.result.image.toBitmap()
-                                if (bitmap != null) {
-                                    val topHeight = (bitmap.height * 0.1f).toInt().coerceIn(1, bitmap.height)
-                                    Palette.from(bitmap)
-                                        .setRegion(0, 0, bitmap.width, topHeight)
-                                        .generate { palette ->
-                                            palette?.let { p ->
-                                                val rgb = p.getDominantColor(android.graphics.Color.BLACK)
-                                                val isLight = ColorUtils.calculateLuminance(rgb) > 0.5
-                                                photoLightnessMap[pageIndex] = isLight
-                                            }
-                                        }
-                                }
-                            },
-                            alignment = Alignment.Center,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    rotationZ = -pageRotation
-                                    scaleX = 1.25f
-                                    scaleY = 1.25f
-                                }
+                    photo.snippets.forEachIndexed { index, snippet ->
+                        FloatingSnippet(
+                            text = snippet,
+                            index = index,
+                            total = photo.snippets.size,
+                            photoColors = emptyList(),
+                            screenWidth = cloudWidth,
+                            screenHeight = cloudHeight,
+                            hazeState = hazeState
                         )
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // Snippets Cloud overlaid at the bottom
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 48.dp, top = 24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val cloudWidth = 360.dp
-                        val cloudHeight = 240.dp
-                        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-                        androidx.compose.foundation.layout.FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
-                        ) {
-                            photo.snippets.forEachIndexed { index, snippet ->
-                                FloatingSnippet(
-                                    text = snippet,
-                                    index = index,
-                                    total = photo.snippets.size,
-                                    photoColors = emptyList(),
-                                    screenWidth = cloudWidth,
-                                    screenHeight = cloudHeight,
-                                    hazeState = pageHazeState
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -494,14 +385,9 @@ fun MemoryScreen(
                 .alpha(uiAlpha)
                 .zIndex(1f)
         ) {
-            val maxIndex = (photoList.size - 1).coerceAtLeast(0)
-            val activeIndex = (pagerState.settledPage - 1).coerceIn(0, maxIndex)
-
-            // Segmented M3 Wavy / Flat Progress Bar
+            // M3 Wavy / Flat Progress Bar across full memory duration width
             MemoryStoryProgressBar(
-                count = photoList.size,
-                currentIndex = activeIndex,
-                currentProgress = currentMemoryProgress,
+                progress = currentMemoryProgress,
                 wavePhase = wavePhase,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -509,9 +395,7 @@ fun MemoryScreen(
                     .padding(bottom = 8.dp)
             )
 
-            val photo = photoList.getOrNull(activeIndex)
-
-            if (photo != null && photo.rating > 0) {
+            if (photo.rating > 0) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
@@ -544,16 +428,12 @@ fun MemoryScreen(
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val dateString = if (photo != null) {
-                    val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
-                    val timeFormat = if (is24Hour) "HH:mm" else "h:mm a"
-                    val pattern = "EEE, d MMM • $timeFormat"
-                    SimpleDateFormat(pattern, Locale.getDefault()).format(Date(photo.date))
-                } else ""
-                val locationText = if (photo != null) {
-                    com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
-                } else null
-                val photoName = photo?.name?.takeIf { it.isNotBlank() }
+                val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
+                val timeFormat = if (is24Hour) "HH:mm" else "h:mm a"
+                val pattern = "EEE, d MMM • $timeFormat"
+                val dateString = SimpleDateFormat(pattern, Locale.getDefault()).format(Date(photo.date))
+                val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
+                val photoName = photo.name?.takeIf { it.isNotBlank() }
 
                 // Left: Label icon and Photo name (2dp gap from calendar pill)
                 Box(
@@ -671,105 +551,89 @@ fun MemoryScreen(
 
 @Composable
 fun MemoryStoryProgressBar(
+    progress: Float,
+    wavePhase: Float,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier
+    ) {
+        val width = size.width
+        val height = size.height
+        val centerY = height / 2f
+        val cornerRadius = height / 2f
+
+        val activeWidth = width * progress.coerceIn(0f, 1f)
+        val remainingWidth = width - activeWidth
+
+        // Draw background track for remaining upcoming portion
+        if (remainingWidth > 0f) {
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.35f),
+                topLeft = androidx.compose.ui.geometry.Offset(activeWidth, 0f),
+                size = Size(remainingWidth, height),
+                cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+            )
+        }
+
+        // Active memory progress bar (M3 Expressive specs): 8dp height, 4dp stroke, 40dp wavelength, 3dp amplitude
+        val maxAmplitude = 3.dp.toPx()
+        val amplitude = when {
+            progress <= 0.1f -> 0f
+            progress <= 0.15f -> maxAmplitude * ((progress - 0.1f) / 0.05f)
+            progress <= 0.6f -> maxAmplitude
+            else -> maxAmplitude * (1f - (progress - 0.6f) / 0.4f)
+        }
+
+        if (amplitude > 0.1f) {
+            val path = Path()
+            val wavelengthPx = 40.dp.toPx()
+            val numPoints = (activeWidth / 2.dp.toPx()).toInt().coerceIn(30, 300)
+            for (step in 0..numPoints) {
+                val x = (activeWidth * step) / numPoints
+                val wave = sin((x / wavelengthPx) * 2 * PI + wavePhase).toFloat()
+                val y = centerY + wave * amplitude
+                if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            drawPath(
+                path = path,
+                color = Color.White,
+                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+            )
+        } else {
+            // Flattened state
+            if (activeWidth > 0f) {
+                drawRoundRect(
+                    color = Color.White,
+                    size = Size(activeWidth, height),
+                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                )
+            }
+        }
+
+        // 4dp circle stop indicator at the end of the memory's progress bar (at the right edge)
+        val dotColor = if (progress >= 1f) Color.White else Color.White.copy(alpha = 0.6f)
+        drawCircle(
+            color = dotColor,
+            radius = 2.dp.toPx(),
+            center = androidx.compose.ui.geometry.Offset(width - 2.dp.toPx(), centerY)
+        )
+    }
+}
+
+@Composable
+fun MemoryStoryProgressBar(
     count: Int,
     currentIndex: Int,
     currentProgress: Float,
     wavePhase: Float,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        for (i in 0 until count) {
-            val progress = when {
-                i < currentIndex -> 1f
-                i == currentIndex -> currentProgress
-                else -> 0f
-            }
-            val isActive = (i == currentIndex)
-
-            Canvas(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(8.dp)
-            ) {
-                val width = size.width
-                val height = size.height
-                val centerY = height / 2f
-                val cornerRadius = height / 2f
-
-                if (!isActive) {
-                    // Inactive or completed memory segments
-                    val trackColor = if (i < currentIndex) Color.White else Color.White.copy(alpha = 0.35f)
-                    drawRoundRect(
-                        color = trackColor,
-                        size = size,
-                        cornerRadius = CornerRadius(cornerRadius, cornerRadius)
-                    )
-                } else {
-                    // Active memory segment
-                    val activeWidth = width * progress
-                    val remainingWidth = width - activeWidth
-
-                    // Draw background track ONLY for the remaining upcoming portion so no flat bar appears behind the squiggly wave
-                    if (remainingWidth > 0f) {
-                        drawRoundRect(
-                            color = Color.White.copy(alpha = 0.35f),
-                            topLeft = androidx.compose.ui.geometry.Offset(activeWidth, 0f),
-                            size = Size(remainingWidth, height),
-                            cornerRadius = CornerRadius(cornerRadius, cornerRadius)
-                        )
-                    }
-
-                    // Active memory progress bar (M3 Expressive specs): 8dp height, 4dp stroke, 40dp wavelength, 3dp amplitude
-                    val maxAmplitude = 3.dp.toPx()
-                    val amplitude = when {
-                        progress <= 0.1f -> 0f
-                        progress <= 0.15f -> maxAmplitude * ((progress - 0.1f) / 0.05f)
-                        progress <= 0.6f -> maxAmplitude
-                        else -> maxAmplitude * (1f - (progress - 0.6f) / 0.4f)
-                    }
-
-                    if (amplitude > 0.1f) {
-                        val path = Path()
-                        val numPoints = 60
-                        for (step in 0..numPoints) {
-                            val x = (activeWidth * step) / numPoints
-                            val wave = sin((x / 40.dp.toPx()) * 2 * PI + wavePhase).toFloat()
-                            val y = centerY + wave * amplitude
-                            if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                        }
-                        drawPath(
-                            path = path,
-                            color = Color.White,
-                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                    } else {
-                        // Flattened state
-                        if (activeWidth > 0f) {
-                            drawRoundRect(
-                                color = Color.White,
-                                size = Size(activeWidth, height),
-                                cornerRadius = CornerRadius(cornerRadius, cornerRadius)
-                            )
-                        }
-                    }
-                }
-
-                // 4dp circle stop indicator at the end of the last memory's progress bar
-                if (i == count - 1) {
-                    val dotColor = if (i <= currentIndex) Color.White else Color.White.copy(alpha = 0.6f)
-                    drawCircle(
-                        color = dotColor,
-                        radius = 2.dp.toPx(),
-                        center = androidx.compose.ui.geometry.Offset(width - 2.dp.toPx(), centerY)
-                    )
-                }
-            }
-        }
-    }
+    MemoryStoryProgressBar(
+        progress = currentProgress,
+        wavePhase = wavePhase,
+        modifier = modifier
+    )
 }
 
 @Composable
