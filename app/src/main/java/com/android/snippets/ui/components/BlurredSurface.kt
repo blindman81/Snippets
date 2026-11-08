@@ -1,7 +1,6 @@
 package com.android.snippets.ui.components
 
 import android.os.Build
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
@@ -320,8 +319,6 @@ fun BlurredAlertDialog(
             }
         }
     }
-
-    BackHandler(enabled = !isDismissing, onBack = { triggerDismiss() })
 
     Box(
         modifier = Modifier

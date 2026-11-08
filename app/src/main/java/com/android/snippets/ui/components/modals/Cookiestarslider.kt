@@ -2,7 +2,6 @@ package com.android.snippets.ui.components
 
 import android.os.Build
 import android.view.HapticFeedbackConstants
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -137,8 +136,6 @@ fun Cookiestarslider(
             }
         }
     }
-
-    BackHandler(enabled = !isDismissing) { closeAndConfirm() }
 
     // Fullscreen in-tree overlay spanning true edge-to-edge behind status bar & navigation bar
     Box(

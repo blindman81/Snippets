@@ -5,7 +5,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mood
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.InsertEmoticon
 import androidx.compose.material.icons.rounded.Mood
 import androidx.compose.material.icons.rounded.SortByAlpha
 import androidx.compose.material3.MaterialTheme
@@ -52,7 +51,7 @@ fun FilterFloatingSheet(
                         SnippetSortType.New, SnippetSortType.Old -> 0
                         SnippetSortType.Emoji -> 1
                         SnippetSortType.AZ -> 2
-                        SnippetSortType.Emoticons -> 3
+                        else -> -1
                     },
                     cookieSize = 44.dp,
                     items = listOf(
@@ -85,15 +84,6 @@ fun FilterFloatingSheet(
                             isSelected = viewModel.snippetSortType == SnippetSortType.AZ,
                             onClick = {
                                 viewModel.snippetSortType = SnippetSortType.AZ
-                            }
-                        ),
-                        cookieButtonItem(
-                            icon = Icons.Rounded.InsertEmoticon,
-                            contentDescription = "Emoticons",
-                            tooltip = "Emoticons",
-                            isSelected = viewModel.snippetSortType == SnippetSortType.Emoticons,
-                            onClick = {
-                                viewModel.snippetSortType = SnippetSortType.Emoticons
                             }
                         )
                     )

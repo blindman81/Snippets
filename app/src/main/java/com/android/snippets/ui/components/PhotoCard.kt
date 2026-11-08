@@ -95,11 +95,11 @@ fun PhotoCard(
     onDeletePhoto: () -> Unit = {}
 ) {
     val saturation by animateFloatAsState(
-        targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
+        targetValue = if (grayOutIfViewed && photo.isViewed) 0f else 1f,
         label = "saturation"
     )
     val animatedAlpha by animateFloatAsState(
-        targetValue = if (grayOutIfViewed && photo.isViewed) 0.8f else 1f,
+        targetValue = if (grayOutIfViewed && photo.isViewed) 0.5f else 1f,
         label = "alpha"
     )
     val animatedScale by animateFloatAsState(

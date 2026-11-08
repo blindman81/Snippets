@@ -66,7 +66,7 @@ fun ManageFloatingSheet(
                 listOfNotNull(
                     ActionItemData(
                         id = "ADD",
-                        label = if (currentCollection == "Library") "Add photo" else "Add photos",
+                        label = "Add photos",
                         icon = Icons.Rounded.AddPhotoAlternate,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -87,7 +87,7 @@ fun ManageFloatingSheet(
                     if (currentCollection != "Library" && currentCollection != "Favorites") ActionItemData(
                         id = "EDIT_EMOJI",
                         label = "Edit emoji",
-                        icon = Icons.Rounded.AddReaction,
+                        icon = R.drawable.ic_edit,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             viewModel.startEditingCollectionEmoji(currentCollection)
@@ -97,7 +97,7 @@ fun ManageFloatingSheet(
                     if (currentCollection != "Library" && currentCollection != "Favorites") ActionItemData(
                         id = "DELETE",
                         label = "Delete",
-                        icon = R.drawable.ic_delete,
+                        icon = R.drawable.ic_folder_delete,
                         onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                             onStartDeleteCollection(currentCollection)

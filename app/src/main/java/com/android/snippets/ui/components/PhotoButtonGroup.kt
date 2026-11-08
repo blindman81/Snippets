@@ -1,6 +1,7 @@
 package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -29,7 +30,9 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -460,6 +463,15 @@ fun SplitButton(
     var expanded by remember { mutableStateOf(false) }
     val view = LocalView.current
 
+    PredictiveBackHandler(enabled = expanded) { progress ->
+        try {
+            progress.collect { }
+            expanded = false
+        } catch (e: CancellationException) {
+            // cancelled
+        }
+    }
+
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         label = "arrowRotation"
@@ -509,6 +521,11 @@ fun SplitButton(
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
+                        properties = PopupProperties(
+                            focusable = true,
+                            dismissOnBackPress = false,
+                            dismissOnClickOutside = true
+                        ),
                         shape = RoundedCornerShape(12.dp),
                         offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

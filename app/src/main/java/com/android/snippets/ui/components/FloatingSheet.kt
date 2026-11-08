@@ -1,6 +1,5 @@
 package com.android.snippets.ui.components
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
@@ -9,7 +8,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -61,7 +59,6 @@ fun FloatingSheet(
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (visible) {
-        BackHandler { onDismissRequest() }
         DisposableEffect(Unit) {
             CookieTiltController.beginTiltModalFocus()
             onDispose {
@@ -126,13 +123,6 @@ fun FloatingSheet(
             ) + fadeIn(animationSpec = tween(180)),
             exit = slideOutVertically(
                 targetOffsetY = { pillSlideDistance },
-                animationSpec = tween(
-                    durationMillis = 320,
-                    easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
-                )
-            ) + scaleOut(
-                targetScale = 0.85f,
-                transformOrigin = TransformOrigin(0.5f, 1f),
                 animationSpec = tween(
                     durationMillis = 320,
                     easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)

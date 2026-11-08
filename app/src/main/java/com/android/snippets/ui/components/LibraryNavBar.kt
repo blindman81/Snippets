@@ -8,6 +8,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.Icon
@@ -166,6 +167,13 @@ fun LibraryNavBar(
                                         fontSize = 16.sp,
                                         modifier = iconModifier
                                     )
+                                } else {
+                                    Icon(
+                                        Icons.Rounded.Add,
+                                        contentDescription = tabName,
+                                        modifier = iconModifier.size(20.dp),
+                                        tint = tint
+                                    )
                                 }
                                 else -> Icon(
                                     Icons.Rounded.Folder,
@@ -188,21 +196,10 @@ fun LibraryNavBar(
                     val pageIndex = pageTabs.indexOf(tabName)
                     if (pageIndex != -1) {
                         if (tabName == currentTab) {
-                            if (tabName.isBlank() || viewModel.getCollectionIcon(tabName) == "") {
-                                viewModel.startEditingCollectionEmoji(tabName)
-                            } else {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                onScrollCarouselToTop?.invoke()
-                            }
+                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            onScrollCarouselToTop?.invoke()
                         } else {
-                            if (tabName.isBlank() || viewModel.getCollectionIcon(tabName) == "") {
-                                viewModel.startEditingCollectionEmoji(tabName)
-                            }
                             scope.launch {
-                                val current = pagerState.currentPage
-                                if (kotlin.math.abs(pageIndex - current) > 1) {
-                                    pagerState.scrollToPage(if (pageIndex > current) pageIndex - 1 else pageIndex + 1)
-                                }
                                 pagerState.animateScrollToPage(pageIndex)
                             }
                         }

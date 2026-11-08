@@ -4,7 +4,6 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,7 +32,7 @@ import kotlinx.coroutines.launch
  * - thickness: 8.dp (Compose default)
  * - shape: RoundedCornerShape(4.dp)
  * - minThumbLength: 36.dp
- * - touch-friendly draggable & tappable track
+ * - works strictly through drag (tapping does not trigger jumps to top or bottom)
  * - smooth color transition between idle and active states
  */
 @Composable
@@ -52,6 +51,7 @@ fun VerticalScrollbar(
     val coroutineScope = rememberCoroutineScope()
     val view = LocalView.current
     var isDragging by remember { mutableStateOf(false) }
+    var dragThumbOffsetY by remember { mutableFloatStateOf(0f) }
     var scrollJob by remember { mutableStateOf<Job?>(null) }
 
     val isScrollInProgress = state.isScrollInProgress || isDragging
@@ -62,7 +62,7 @@ fun VerticalScrollbar(
     )
 
     BoxWithConstraints(
-        modifier = modifier.width(thickness + 16.dp)
+        modifier = modifier.width(thickness + 12.dp)
     ) {
         val trackHeightPx = constraints.maxHeight.toFloat()
         if (trackHeightPx <= 0f) return@BoxWithConstraints
@@ -88,6 +88,9 @@ fun VerticalScrollbar(
         val thumbHeightPx = (trackHeightPx * (trackHeightPx / estimatedTotalHeight))
             .coerceIn(minThumbLengthPx, trackHeightPx)
 
+        val maxThumbOffset = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
+
+        // When not dragging, compute thumb position from state
         val firstItem = visibleItems.firstOrNull()
         val firstItemIndex = firstItem?.index ?: state.firstVisibleItemIndex
         val firstItemOffset = state.firstVisibleItemScrollOffset.toFloat()
@@ -96,8 +99,13 @@ fun VerticalScrollbar(
         val scrollProgress = ((firstItemIndex + (firstItemOffset / firstItemHeight)) / (totalItemsCount - 1).coerceAtLeast(1))
             .coerceIn(0f, 1f)
 
-        val maxThumbOffset = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
-        val thumbOffsetY = scrollProgress * maxThumbOffset
+        val computedThumbOffsetY = scrollProgress * maxThumbOffset
+
+        val currentThumbOffsetY = if (isDragging) {
+            dragThumbOffsetY.coerceIn(0f, maxThumbOffset)
+        } else {
+            computedThumbOffsetY
+        }
 
         fun scrollToFraction(fraction: Float) {
             val clampedFraction = fraction.coerceIn(0f, 1f)
@@ -111,22 +119,24 @@ fun VerticalScrollbar(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(totalItemsCount, trackHeightPx) {
-                    detectTapGestures(
-                        onPress = { offset ->
-                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                            val fraction = (offset.y / trackHeightPx).coerceIn(0f, 1f)
-                            scrollToFraction(fraction)
-                        }
-                    )
-                }
-                .pointerInput(totalItemsCount, trackHeightPx) {
+                .pointerInput(totalItemsCount, trackHeightPx, maxThumbOffset, thumbHeightPx) {
+                    var dragOffsetWithinThumb = thumbHeightPx / 2f
                     detectVerticalDragGestures(
                         onDragStart = { offset ->
                             isDragging = true
                             view.performHapticFeedback(HapticFeedbackConstants.DRAG_START)
-                            val fraction = (offset.y / trackHeightPx).coerceIn(0f, 1f)
-                            scrollToFraction(fraction)
+                            val currentTop = currentThumbOffsetY
+                            val currentBottom = currentTop + thumbHeightPx
+                            dragOffsetWithinThumb = if (offset.y in currentTop..currentBottom) {
+                                offset.y - currentTop
+                            } else {
+                                thumbHeightPx / 2f
+                            }
+                            val initialThumbY = (offset.y - dragOffsetWithinThumb).coerceIn(0f, maxThumbOffset)
+                            dragThumbOffsetY = initialThumbY
+                            if (maxThumbOffset > 0f) {
+                                scrollToFraction(initialThumbY / maxThumbOffset)
+                            }
                         },
                         onDragEnd = {
                             isDragging = false
@@ -136,8 +146,12 @@ fun VerticalScrollbar(
                         },
                         onVerticalDrag = { change, _ ->
                             change.consume()
-                            val fraction = (change.position.y / trackHeightPx).coerceIn(0f, 1f)
-                            scrollToFraction(fraction)
+                            val newThumbY = (change.position.y - dragOffsetWithinThumb).coerceIn(0f, maxThumbOffset)
+                            dragThumbOffsetY = newThumbY
+                            if (maxThumbOffset > 0f) {
+                                val fraction = newThumbY / maxThumbOffset
+                                scrollToFraction(fraction)
+                            }
                         }
                     )
                 }
@@ -145,7 +159,7 @@ fun VerticalScrollbar(
             val x = size.width - thicknessPx
             drawRoundRect(
                 color = thumbColor,
-                topLeft = Offset(x = x, y = thumbOffsetY),
+                topLeft = Offset(x = x, y = currentThumbOffsetY),
                 size = Size(width = thicknessPx, height = thumbHeightPx),
                 cornerRadius = CornerRadius(thicknessPx / 2f, thicknessPx / 2f)
             )
