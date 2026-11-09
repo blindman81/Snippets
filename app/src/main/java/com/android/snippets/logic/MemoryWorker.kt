@@ -296,7 +296,8 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         if (canPostNotifications(applicationContext) && !isInMemoryScreen) {
             val curated = MemoryManager.getCuratedMemories(finalPhotos, now).take(MemoryManager.MEMORIES_PER_CYCLE)
-            for (photo in curated) {
+            val unviewed = curated.filter { !it.isViewed }
+            for (photo in unviewed) {
                 clearPostedNotificationState(applicationContext, photo.id)
                 postNotification(photo.id, TYPE_NEW)
             }
