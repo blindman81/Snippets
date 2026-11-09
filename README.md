@@ -13,10 +13,10 @@ Rate food you eat upto 5 cookiestars.
 UI and UX design ideas by me, code by agentic tools.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/5ecfbc27-c4f2-49cb-9d9d-a2c831e3dd7d" width="18%">
-  <img src="https://github.com/user-attachments/assets/13688a7a-54c7-42fa-a0be-523238f45b96" width="18%">
-  <img src="https://github.com/user-attachments/assets/78714c70-6a4b-4e0a-b0bc-7598ae44d30d" width="18%">
-  <img src="https://github.com/user-attachments/assets/fc9861a7-9610-4abe-a7fc-85125824b185" width="18%">
+  <img src="https://github.com/user-attachments/assets/df907ea3-53d7-4e66-9c00-93e93e018746" width="18%">
+  <img src="https://github.com/user-attachments/assets/966aa908-e6db-4483-a7a4-bf9c4e8a4ecc" width="18%">
+  <img src="https://github.com/user-attachments/assets/5001d9bb-08a7-4ff4-9a82-acb0046dff53" width="18%">
+  <img src="https://github.com/user-attachments/assets/28f935f0-7a28-40c4-9d4c-0227a16f629b" width="18%">
 </p>
 
 <p align="center">
