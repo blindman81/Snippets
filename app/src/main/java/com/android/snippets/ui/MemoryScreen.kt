@@ -447,7 +447,7 @@ fun MemoryScreen(
                             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
                             modifier = Modifier
                                 .padding(end = 2.dp)
-                                .height(24.dp)
+                                .heightIn(min = 24.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -464,11 +464,14 @@ fun MemoryScreen(
                                     text = photoName,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.SemiBold,
+                                        lineHeight = 14.sp
                                     ),
                                     color = Color.White,
                                     maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    softWrap = false,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
+                                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
                                 )
                             }
                         }
@@ -517,7 +520,7 @@ fun MemoryScreen(
                             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
                             modifier = Modifier
                                 .padding(start = 2.dp)
-                                .height(24.dp)
+                                .heightIn(min = 24.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -534,11 +537,14 @@ fun MemoryScreen(
                                     text = locationText,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.SemiBold,
+                                        lineHeight = 14.sp
                                     ),
                                     color = Color.White,
                                     maxLines = 1,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    softWrap = false,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
+                                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
                                 )
                             }
                         }

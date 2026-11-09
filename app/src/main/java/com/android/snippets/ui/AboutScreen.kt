@@ -130,7 +130,7 @@ fun AboutScreen() {
                     }
                 )
             },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { padding ->
             Surface(
@@ -138,7 +138,7 @@ fun AboutScreen() {
                     .fillMaxSize()
                     .padding(top = padding.calculateTopPadding()),
                 shape = RectangleShape,
-                color = MaterialTheme.colorScheme.surface,
+                color = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp
             ) {
                 if (showLicenses) {

@@ -216,8 +216,8 @@ fun LibraryScreen(
                         try {
                             carouselLazyListState.scrollToItem(0)
                         } catch (_: Exception) {}
+                        isFabVisible = true
                     }
-                    isFabVisible = true
                 }
             }
     }
@@ -301,13 +301,28 @@ fun LibraryScreen(
             private var scrollBuffer = 0f
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (isAnyPopupActive) return Offset.Zero
-                scrollBuffer += available.y
-                if (scrollBuffer < -20f) {
+
+                if (source == NestedScrollSource.UserInput) {
+                    if (available.y > 0f) {
+                        // Scrolling up: reset negative buffer and accumulate upward scroll
+                        if (scrollBuffer < 0f) scrollBuffer = 0f
+                        scrollBuffer += available.y
+                        if (scrollBuffer > 20f) {
+                            if (!isFabVisible) isFabVisible = true
+                            scrollBuffer = 0f
+                        }
+                    } else if (available.y < 0f) {
+                        // Scrolling down: reset positive buffer and accumulate downward scroll
+                        if (scrollBuffer > 0f) scrollBuffer = 0f
+                        scrollBuffer += available.y
+                        if (scrollBuffer < -20f) {
+                            if (isFabVisible) isFabVisible = false
+                            scrollBuffer = 0f
+                        }
+                    }
+                } else if (available.y < -20f) {
+                    // Fast fling downward can also hide the toolbar
                     if (isFabVisible) isFabVisible = false
-                    scrollBuffer = 0f
-                } else if (scrollBuffer > 20f) {
-                    if (!isFabVisible) isFabVisible = true
-                    scrollBuffer = 0f
                 }
                 return Offset.Zero
             }

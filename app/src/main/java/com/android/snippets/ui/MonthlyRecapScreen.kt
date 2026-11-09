@@ -84,7 +84,7 @@ fun MonthlyRecapScreen(
                 isScrolled = isScrolled
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.surfaceContainer
     ) { paddingValues ->
         Box(
             modifier = Modifier

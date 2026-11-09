@@ -269,7 +269,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         LocalHazeState provides hazeState
     ) {
         Scaffold(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
                 MainTopBar(
                     title = "Settings",
@@ -289,7 +289,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     .fillMaxSize()
                     .hazeSource(state = hazeState),
                 shape = RectangleShape,
-                color = MaterialTheme.colorScheme.surface,
+                color = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp
             ) {
                 Column(

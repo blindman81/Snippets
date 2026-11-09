@@ -68,7 +68,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
             LibraryScreen(
                 viewModel = viewModel,

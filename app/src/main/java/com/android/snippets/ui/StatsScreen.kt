@@ -177,6 +177,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             MainTopBar(
                 title = "Stats",
@@ -222,6 +223,13 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         )
                     },
                     pillContent = {
+                        Icon(
+                            imageVector = Icons.Rounded.Photo,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Photos",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -242,6 +250,13 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         )
                     },
                     pillContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.TextSnippet,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Snippets",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -262,6 +277,13 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         )
                     },
                     pillContent = {
+                        Icon(
+                            imageVector = Icons.Rounded.Celebration,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Streak",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -271,30 +293,32 @@ fun StatsScreen(viewModel: StatsViewModel) {
                 )
             }
 
-            // --- INSIGHTS SECTION (2 cookies per row) ---
+            // --- INSIGHTS SECTION (3 cookies per row) ---
             SectionHeader(title = "Insights")
 
-            // Row 1: Top Snippet & Favorite Snippet
+            // Row 1: Top Snippet, Favorite, Top Location
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    cookieSize = 82.dp,
                     cookieContent = {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 4.dp)
                         ) {
                             Text(
                                 text = mostUsedSnippetEntry?.key ?: "None",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center,
                                 maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 4.dp)
+                                overflow = TextOverflow.Ellipsis
                             )
                             if (mostUsedSnippetEntry != null) {
                                 Spacer(modifier = Modifier.height(2.dp))
@@ -314,30 +338,34 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "Top Snippet",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 )
 
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    cookieSize = 82.dp,
                     cookieContent = {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 4.dp)
                         ) {
                             Text(
                                 text = favoriteSnippetEntry?.key ?: "None",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center,
                                 maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 4.dp)
+                                overflow = TextOverflow.Ellipsis
                             )
                             if (favoriteSnippetEntry != null) {
                                 Spacer(modifier = Modifier.height(2.dp))
@@ -357,24 +385,19 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "Favorite",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 )
-            }
 
-
-
-            // Row 3: Top Location & Photos This Month
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    cookieSize = 82.dp,
                     onClick = mostPhotographedLocationEntry?.key?.let { locName ->
                         { onOpenSearch(locName) }
                     },
@@ -382,16 +405,17 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 4.dp)
                         ) {
                             Text(
                                 text = mostPhotographedLocationEntry?.key ?: "None",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center,
                                 maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 4.dp)
+                                overflow = TextOverflow.Ellipsis
                             )
                             if (mostPhotographedLocationEntry != null) {
                                 Spacer(modifier = Modifier.height(2.dp))
@@ -411,20 +435,29 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "Top Location",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 )
+            }
 
+            // Row 2: This Month, Avg / Photo, Max Streak
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    cookieSize = 82.dp,
                     cookieContent = {
                         Text(
                             text = photosThisMonthCount.toString(),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
@@ -436,26 +469,23 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "This Month",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 )
-            }
 
-            // Row 4: Average Snippets & Longest Streak
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    cookieSize = 82.dp,
                     cookieContent = {
                         Text(
                             text = String.format(Locale.US, "%.1f", averageSnippets),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
@@ -467,51 +497,57 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "Avg / Photo",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 )
 
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    cookieSize = 82.dp,
                     cookieContent = {
                         Text(
                             text = "$longestStreakDays d",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.Rounded.Whatshot,
+                            imageVector = Icons.Rounded.Celebration,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "Max Streak",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 )
             }
 
-            // Row 5: Most Snippets on a Photo & Least Snippets on a Photo
+            // Row 3: Max Snippets, Min Snippets, Spacer
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    cookieSize = 82.dp,
                     cookieContent = {
                         Text(
                             text = maxSnippetsOnPhoto.toString(),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
@@ -523,20 +559,23 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "Max Snippets",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 )
 
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
+                    cookieSize = 82.dp,
                     cookieContent = {
                         Text(
                             text = minSnippetsOnPhoto.toString(),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
@@ -548,16 +587,20 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "Min Snippets",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 )
+
+                Spacer(modifier = Modifier.weight(1f))
             }
 
-            // --- RATINGS SECTION (2 cookies per row) ---
+            // --- RATINGS SECTION (3 cookies per row) ---
             SectionHeader(title = "Ratings")
 
             val ratingCounts = remember(photos) {
@@ -569,56 +612,40 @@ fun StatsScreen(viewModel: StatsViewModel) {
                 counts
             }
 
-            val ratingPairs = listOf(
-                5 to 4,
-                3 to 2,
-                1 to 0
+            val ratingTriplets = listOf(
+                listOf(5, 4, 3),
+                listOf(2, 1, 0)
             )
 
-            ratingPairs.forEach { (r1, r2) ->
+            ratingTriplets.forEach { triplet ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val count1 = ratingCounts[r1]
-                    val ratingQuery1 = if (r1 == 1) "1 star" else "$r1 stars"
-                    CookieStatItem(
-                        modifier = Modifier.weight(1f),
-                        onClick = { onOpenSearch(ratingQuery1) },
-                        cookieContent = {
-                            Text(
-                                text = count1.toString(),
-                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                color = if (r1 > 0 && count1 > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center
-                            )
-                        },
-                        pillContent = {
-                            StarRatingBadge(rating = r1)
-                        }
-                    )
-
-                    val count2 = ratingCounts[r2]
-                    val ratingQuery2 = if (r2 == 1) "1 star" else "$r2 stars"
-                    CookieStatItem(
-                        modifier = Modifier.weight(1f),
-                        onClick = { onOpenSearch(ratingQuery2) },
-                        cookieContent = {
-                            Text(
-                                text = count2.toString(),
-                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                color = if (r2 > 0 && count2 > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center
-                            )
-                        },
-                        pillContent = {
-                            StarRatingBadge(rating = r2)
-                        }
-                    )
+                    triplet.forEach { r ->
+                        val count = ratingCounts[r]
+                        val ratingQuery = if (r == 1) "1 star" else "$r stars"
+                        CookieStatItem(
+                            modifier = Modifier.weight(1f),
+                            cookieSize = 82.dp,
+                            onClick = { onOpenSearch(ratingQuery) },
+                            cookieContent = {
+                                Text(
+                                    text = count.toString(),
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = if (r > 0 && count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center
+                                )
+                            },
+                            pillContent = {
+                                StarRatingBadge(rating = r)
+                            }
+                        )
+                    }
                 }
             }
 
-            // --- LOCATION SECTION (2 cookies per row) ---
+            // --- LOCATION SECTION (3 cookies per row) ---
             SectionHeader(title = "Location")
 
             val topLocations = remember(photos, context) {
@@ -646,49 +673,20 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     )
                 }
             } else {
-                topLocations.chunked(2).forEach { row ->
+                topLocations.chunked(3).forEach { row ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val (name1, count1) = row[0]
-                        CookieStatItem(
-                            modifier = Modifier.weight(1f),
-                            onClick = { onOpenSearch(name1) },
-                            cookieContent = {
-                                Text(
-                                    text = count1.toString(),
-                                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center
-                                )
-                            },
-                            pillContent = {
-                                Icon(
-                                    imageVector = Icons.Rounded.LocationOn,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = name1,
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        )
-
-                        if (row.size > 1) {
-                            val (name2, count2) = row[1]
+                        row.forEach { (name, count) ->
                             CookieStatItem(
                                 modifier = Modifier.weight(1f),
-                                onClick = { onOpenSearch(name2) },
+                                cookieSize = 82.dp,
+                                onClick = { onOpenSearch(name) },
                                 cookieContent = {
                                     Text(
-                                        text = count2.toString(),
-                                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                        text = count.toString(),
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                                         color = MaterialTheme.colorScheme.primary,
                                         textAlign = TextAlign.Center
                                     )
@@ -698,18 +696,23 @@ fun StatsScreen(viewModel: StatsViewModel) {
                                         imageVector = Icons.Rounded.LocationOn,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(13.dp)
+                                        modifier = Modifier.size(12.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
                                     Text(
-                                        text = name2,
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        text = name,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            lineHeight = 14.sp
+                                        ),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center
                                     )
                                 }
                             )
-                        } else {
+                        }
+                        repeat(3 - row.size) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
                     }
@@ -763,7 +766,7 @@ private fun StarRatingBadge(
 @Composable
 private fun CookieStatItem(
     modifier: Modifier = Modifier,
-    cookieSize: Dp = 104.dp,
+    cookieSize: Dp = 82.dp,
     cookieColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     pillColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
     onClick: (() -> Unit)? = null,
@@ -785,7 +788,7 @@ private fun CookieStatItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(8.dp),
+                    .padding(6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 cookieContent()
@@ -800,7 +803,7 @@ private fun CookieStatItem(
             enabled = onClick != null
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
