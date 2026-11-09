@@ -12,15 +12,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.core.view.WindowCompat
 import com.android.snippets.ui.theme.SnippetsTheme
+import com.android.snippets.ui.theme.configurePredictiveBackTransition
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SettingsViewModel
 import com.android.snippets.viewmodel.ThemePreference
@@ -34,6 +33,7 @@ class MonthlyRecapActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        configurePredictiveBackTransition()
 
         val targetMonth = if (intent.hasExtra("month")) intent.getIntExtra("month", -1).takeIf { it != -1 } else null
         val targetYear = if (intent.hasExtra("year")) intent.getIntExtra("year", -1).takeIf { it != -1 } else null
@@ -43,12 +43,6 @@ class MonthlyRecapActivity : ComponentActivity() {
                 ThemePreference.LIGHT -> false
                 ThemePreference.DARK -> true
                 ThemePreference.SYSTEM -> isSystemInDarkTheme()
-            }
-
-            SideEffect {
-                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.isAppearanceLightStatusBars = !isDarkTheme
-                insetsController.isAppearanceLightNavigationBars = !isDarkTheme
             }
 
             var recapInitialized by remember { mutableStateOf(false) }
@@ -65,7 +59,7 @@ class MonthlyRecapActivity : ComponentActivity() {
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.surface
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
                     if (viewModel.isInitialLoading || !recapInitialized) {
                         Box(

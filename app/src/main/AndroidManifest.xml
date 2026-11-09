@@ -72,7 +72,7 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.Snippets" />
+            android:theme="@style/Theme.Snippets.Memory" />
 
         <activity
             android:name="com.android.snippets.ui.SettingsActivity"

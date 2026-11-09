@@ -9,10 +9,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
-import androidx.core.view.WindowCompat
 import com.android.snippets.ui.theme.SnippetsTheme
+import com.android.snippets.ui.theme.configurePredictiveBackTransition
 import com.android.snippets.viewmodel.SettingsViewModel
 import com.android.snippets.viewmodel.ThemePreference
 import dagger.hilt.android.AndroidEntryPoint
@@ -24,6 +23,7 @@ class AboutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        configurePredictiveBackTransition()
 
         setContent {
             val isDarkTheme = when (viewModel.themePreference) {
@@ -32,18 +32,12 @@ class AboutActivity : ComponentActivity() {
                 ThemePreference.SYSTEM -> isSystemInDarkTheme()
             }
 
-            SideEffect {
-                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.isAppearanceLightStatusBars = !isDarkTheme
-                insetsController.isAppearanceLightNavigationBars = !isDarkTheme
-            }
-
             SnippetsTheme(
                 darkTheme = isDarkTheme
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.surface
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
                     AboutScreen()
                 }

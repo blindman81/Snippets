@@ -16,6 +16,7 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import com.android.snippets.ui.SnippetsApp
 import com.android.snippets.ui.theme.SnippetsTheme
+import com.android.snippets.ui.theme.configurePredictiveBackTransition
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SettingsViewModel
 import com.android.snippets.viewmodel.MemoryViewModel
@@ -179,6 +180,7 @@ class MainActivity : ComponentActivity() {
         
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        configurePredictiveBackTransition()
         
         splashScreen.setKeepOnScreenCondition {
             viewModel.isInitialLoading
@@ -204,15 +206,6 @@ class MainActivity : ComponentActivity() {
                 com.android.snippets.viewmodel.ThemePreference.DARK -> true
                 com.android.snippets.viewmodel.ThemePreference.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
             }
-            val view = androidx.compose.ui.platform.LocalView.current
-            val activity = view.context as androidx.activity.ComponentActivity
-            
-            androidx.compose.runtime.SideEffect {
-                val window = activity.window
-                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.isAppearanceLightStatusBars = !isDarkTheme
-                insetsController.isAppearanceLightNavigationBars = !isDarkTheme
-            }
             
             var showSplashOverlay by remember { mutableStateOf(true) }
 
@@ -221,7 +214,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             val uiState by viewModel.uiState.collectAsState()
