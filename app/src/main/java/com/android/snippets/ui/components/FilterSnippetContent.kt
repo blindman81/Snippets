@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.android.snippets.viewmodel.SnippetsUiState
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SnippetSortType
 import com.android.snippets.viewmodel.SnippetStyle
@@ -33,14 +34,15 @@ fun FilterSnippetContent(
     showDisplay: Boolean = false,
     showSort: Boolean = true,
     scrollState: androidx.compose.foundation.ScrollState? = null,
-    selectedTabIndex: Int = 0
+    selectedTabIndex: Int = 0,
+    uiState: SnippetsUiState = viewModel.uiState.collectAsState().value
 ) {
     val view = LocalView.current
     val internalScrollState = rememberScrollState()
     val effectiveScrollState = scrollState ?: internalScrollState
-    val allSnippets = remember(viewModel.photos, viewModel.filteringCategory) {
-        val cat = viewModel.filteringCategory ?: "Library"
-        viewModel.photos.filter { photo ->
+    val allSnippets = remember(uiState.photos, uiState.filteringCategory) {
+        val cat = uiState.filteringCategory ?: "Library"
+        uiState.photos.filter { photo ->
             when (cat) {
                 "Library" -> true
                 "Favorites" -> photo.isFavorite
@@ -49,14 +51,14 @@ fun FilterSnippetContent(
         }.flatMap { it.snippets }.distinct()
     }
 
-    val snippetCreationDates = remember(viewModel.photos, viewModel.snippetFirstSeenTimes) {
+    val snippetCreationDates = remember(uiState.photos, uiState.snippetFirstSeenTimes) {
         val map = mutableMapOf<String, Long>()
-        viewModel.photos.flatMap { it.snippets }.distinct().forEach { snippet ->
+        uiState.photos.flatMap { it.snippets }.distinct().forEach { snippet ->
             val time = viewModel.getSnippetFirstSeenTime(snippet)
             if (time != null && time > 0L) {
                 map[snippet] = time
             } else {
-                val earliestPhotoTime = viewModel.photos.filter { it.snippets.contains(snippet) }.minOfOrNull {
+                val earliestPhotoTime = uiState.photos.filter { it.snippets.contains(snippet) }.minOfOrNull {
                     if (it.snippetsAddedTime > 0L) it.snippetsAddedTime else it.date
                 }
                 if (earliestPhotoTime != null) {
@@ -69,15 +71,15 @@ fun FilterSnippetContent(
 
     val monthFormat = remember { java.text.SimpleDateFormat("MMM, yyyy", java.util.Locale.getDefault()) }
 
-    val filteredSnippets = remember(allSnippets, viewModel.snippetSortType) {
-        when (viewModel.snippetSortType) {
+    val filteredSnippets = remember(allSnippets, uiState.snippetSortType) {
+        when (uiState.snippetSortType) {
             SnippetSortType.Emoji -> allSnippets.filter { viewModel.containsEmoji(it) }
             SnippetSortType.Emoticons -> allSnippets.filter { viewModel.containsEmoticon(it) }
             else -> allSnippets
         }
     }
 
-    val isOld = viewModel.snippetSortType == SnippetSortType.Old
+    val isOld = uiState.snippetSortType == SnippetSortType.Old
 
     val grouped = remember(filteredSnippets, snippetCreationDates, monthFormat) {
         filteredSnippets.groupBy { snippet ->
@@ -100,7 +102,7 @@ fun FilterSnippetContent(
             .verticalScroll(effectiveScrollState)
             .padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
-        if (viewModel.snippetSortType == SnippetSortType.AZ) {
+        if (uiState.snippetSortType == SnippetSortType.AZ) {
             val groupedByChar = remember(allSnippets) {
                 allSnippets.groupBy { it.firstOrNull()?.uppercaseChar() ?: '#' }
             }
@@ -125,7 +127,8 @@ fun FilterSnippetContent(
                 ) {
                     val snippetsInChar = groupedByChar[char]?.sortedWith(String.CASE_INSENSITIVE_ORDER)
                     snippetsInChar?.forEach { snippet ->
-                        SnippetFilterChip(viewModel, snippet, view)
+                        val isSelected = uiState.selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
+                        SnippetFilterChip(viewModel, snippet, isSelected, view)
                     }
                 }
             }
@@ -151,7 +154,8 @@ fun FilterSnippetContent(
                         grouped[key]?.sortedByDescending { snippetCreationDates[it] ?: 0L }
                     }
                     snippetsInGroup?.forEach { snippet ->
-                        SnippetFilterChip(viewModel, snippet, view)
+                        val isSelected = uiState.selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
+                        SnippetFilterChip(viewModel, snippet, isSelected, view)
                     }
                 }
             }
@@ -161,8 +165,12 @@ fun FilterSnippetContent(
 }
 
 @Composable
-private fun SnippetFilterChip(viewModel: SnippetsViewModel, snippet: String, view: android.view.View) {
-    val isSelected = viewModel.selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
+private fun SnippetFilterChip(
+    viewModel: SnippetsViewModel,
+    snippet: String,
+    isSelected: Boolean,
+    view: android.view.View
+) {
     FilterChip(
         selected = isSelected,
         onClick = {

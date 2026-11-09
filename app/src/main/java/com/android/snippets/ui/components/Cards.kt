@@ -16,7 +16,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.verticalScroll
@@ -24,7 +23,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,6 +37,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.LibraryAdd
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
@@ -68,6 +67,7 @@ import com.android.snippets.ui.util.*
 import com.android.snippets.ui.components.*
 import androidx.compose.material3.carousel.rememberCarouselState
 import com.android.snippets.viewmodel.SnippetsViewModel
+import dev.chrisbanes.haze.HazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.launch
@@ -334,8 +334,7 @@ fun PhotoMasonryItem(
         label = "photoSelectionBlur"
     )
 
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else if (isDark) Color.White else Color.Black
+    val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
     val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
 
     Column(
@@ -826,7 +825,7 @@ fun PhotoMasonryItem(
                     .wrapContentWidth(align = Alignment.Start)
                     .align(Alignment.Start),
                 shape = bottomCardShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                color = MaterialTheme.colorScheme.surfaceContainer,
                 shadowElevation = 0.dp,
                 border = null
             ) {
@@ -874,19 +873,36 @@ fun ExpandableCardPillIcon(
     modifier: Modifier = Modifier,
     alignEnd: Boolean = false,
     defaultExpanded: Boolean = false,
-    key: Any? = null
+    key: Any? = null,
+    maxChars: Int = 25,
+    hazeState: HazeState? = null
 ) {
     val view = LocalView.current
     var isExpanded by remember(key, defaultExpanded) { mutableStateOf(defaultExpanded) }
 
+    val effectiveContainerColor by animateColorAsState(
+        targetValue = if (isExpanded) MaterialTheme.colorScheme.primary else containerColor,
+        animationSpec = tween(durationMillis = 150),
+        label = "pillContainerColor"
+    )
+    val effectiveContentColor by animateColorAsState(
+        targetValue = if (isExpanded) MaterialTheme.colorScheme.onPrimary else iconColor,
+        animationSpec = tween(durationMillis = 150),
+        label = "pillContentColor"
+    )
+
+    val displayText = remember(text, maxChars) {
+        if (maxChars > 0 && text.length > maxChars) text.take(maxChars) else text
+    }
+
     Surface(
-        color = containerColor.copy(alpha = 0.9f),
         shape = RoundedCornerShape(14.dp),
+        color = effectiveContainerColor,
+        contentColor = effectiveContentColor,
         modifier = modifier
             .padding(8.dp)
             .height(28.dp)
             .widthIn(min = 28.dp)
-            .clip(RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -907,7 +923,7 @@ fun ExpandableCardPillIcon(
                     Icon(
                         imageVector = icon,
                         contentDescription = contentDescription,
-                        tint = iconColor,
+                        tint = effectiveContentColor,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -932,18 +948,17 @@ fun ExpandableCardPillIcon(
                     )
                 ) {
                     Text(
-                        text = text,
+                        text = displayText,
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
-                        color = iconColor,
+                        color = effectiveContentColor,
                         maxLines = 1,
                         softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Clip,
                         modifier = Modifier
                             .padding(
                                 start = if (alignEnd) 8.dp else 2.dp,
                                 end = if (alignEnd) 2.dp else 8.dp
                             )
-                            .widthIn(max = 140.dp)
                     )
                 }
             }

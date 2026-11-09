@@ -10,6 +10,7 @@ import androidx.compose.material.icons.rounded.SortByAlpha
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,14 +18,17 @@ import androidx.compose.ui.unit.dp
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.ui.util.LocalTiltModalFocus
 import com.android.snippets.viewmodel.SnippetSortType
+import com.android.snippets.viewmodel.SnippetsUiState
 import com.android.snippets.viewmodel.SnippetsViewModel
 
 @Composable
 fun FilterFloatingSheet(
     viewModel: SnippetsViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    uiState: SnippetsUiState = viewModel.uiState.collectAsState().value
 ) {
-    val sortIcon = if (viewModel.snippetSortType == SnippetSortType.Old) {
+    val currentSortType = uiState.snippetSortType
+    val sortIcon = if (currentSortType == SnippetSortType.Old) {
         Icons.Rounded.ArrowDownward
     } else {
         Icons.Rounded.ArrowUpward
@@ -47,7 +51,7 @@ fun FilterFloatingSheet(
             ) {
                 // Button group on the right
                 CookieButtonGroup(
-                    selectedIndex = when (viewModel.snippetSortType) {
+                    selectedIndex = when (currentSortType) {
                         SnippetSortType.New, SnippetSortType.Old -> 0
                         SnippetSortType.Emoji -> 1
                         SnippetSortType.AZ -> 2
@@ -57,11 +61,11 @@ fun FilterFloatingSheet(
                     items = listOf(
                         cookieButtonItem(
                             icon = sortIcon,
-                            contentDescription = if (viewModel.snippetSortType == SnippetSortType.Old) "Oldest snippets" else "Newest snippets",
-                            tooltip = if (viewModel.snippetSortType == SnippetSortType.Old) "Oldest snippets" else "Newest snippets",
-                            isSelected = viewModel.snippetSortType == SnippetSortType.New || viewModel.snippetSortType == SnippetSortType.Old,
+                            contentDescription = if (currentSortType == SnippetSortType.Old) "Oldest snippets" else "Newest snippets",
+                            tooltip = if (currentSortType == SnippetSortType.Old) "Oldest snippets" else "Newest snippets",
+                            isSelected = currentSortType == SnippetSortType.New || currentSortType == SnippetSortType.Old,
                             onClick = {
-                                if (viewModel.snippetSortType == SnippetSortType.New) {
+                                if (currentSortType == SnippetSortType.New) {
                                     viewModel.snippetSortType = SnippetSortType.Old
                                 } else {
                                     viewModel.snippetSortType = SnippetSortType.New
@@ -69,10 +73,10 @@ fun FilterFloatingSheet(
                             }
                         ),
                         cookieButtonItem(
-                            icon = if (viewModel.snippetSortType == SnippetSortType.Emoji) Icons.Filled.Mood else Icons.Rounded.Mood,
+                            icon = if (currentSortType == SnippetSortType.Emoji) Icons.Filled.Mood else Icons.Rounded.Mood,
                             contentDescription = "Emojis",
                             tooltip = "Emojis",
-                            isSelected = viewModel.snippetSortType == SnippetSortType.Emoji,
+                            isSelected = currentSortType == SnippetSortType.Emoji,
                             onClick = {
                                 viewModel.snippetSortType = SnippetSortType.Emoji
                             }
@@ -81,7 +85,7 @@ fun FilterFloatingSheet(
                             icon = Icons.Rounded.SortByAlpha,
                             contentDescription = "Sort A-Z",
                             tooltip = "Sort A-Z",
-                            isSelected = viewModel.snippetSortType == SnippetSortType.AZ,
+                            isSelected = currentSortType == SnippetSortType.AZ,
                             onClick = {
                                 viewModel.snippetSortType = SnippetSortType.AZ
                             }
@@ -97,6 +101,7 @@ fun FilterFloatingSheet(
             ) {
                 FilterSnippetContent(
                     viewModel = viewModel,
+                    uiState = uiState,
                     onDismiss = { viewModel.closeFilter() },
                     showDisplay = true,
                     showSort = false,

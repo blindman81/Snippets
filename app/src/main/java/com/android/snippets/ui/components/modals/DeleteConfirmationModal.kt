@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 
 @Composable
 fun DeleteConfirmationModal(
@@ -27,6 +28,7 @@ fun DeleteConfirmationModal(
                 text = if (count > 1) "Delete $count photos?" else "Delete photo?",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.SemiBold,
+                    fontFamily = GoogleSansFlexRound,
                     letterSpacing = (-0.5).sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -36,7 +38,7 @@ fun DeleteConfirmationModal(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = if (count > 1) "Deleting these photos also deletes the snippets you created for them." else "Deleting this photo also deletes the snippets you created for this photo.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontFamily = GoogleSansFlexRound),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (hasPublicPhotos) {
@@ -49,7 +51,7 @@ fun DeleteConfirmationModal(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Also remove from public community feed",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = GoogleSansFlexRound),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.android.snippets.model.Photo
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.viewmodel.SnippetsViewModel
 
 @Composable
@@ -44,6 +45,7 @@ fun LibraryModalsHost(
                     text = "Delete collection?",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.SemiBold,
+                        fontFamily = GoogleSansFlexRound,
                         letterSpacing = (-0.5).sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -52,7 +54,7 @@ fun LibraryModalsHost(
             text = {
                 Text(
                     text = "Are you sure you want to delete this collection? Your photos will be saved.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontFamily = GoogleSansFlexRound),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

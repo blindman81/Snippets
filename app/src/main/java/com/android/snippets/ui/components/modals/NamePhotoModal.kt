@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import kotlinx.coroutines.launch
 
 @Composable
@@ -41,6 +42,7 @@ fun NamePhotoModal(
                 text = "Name photo",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.SemiBold,
+                    fontFamily = GoogleSansFlexRound,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             )
@@ -54,7 +56,8 @@ fun NamePhotoModal(
                             nameValue = it
                         }
                     },
-                    placeholder = { Text("Photo name") },
+                    textStyle = LocalTextStyle.current.copy(fontFamily = GoogleSansFlexRound),
+                    placeholder = { Text("Photo name", fontFamily = GoogleSansFlexRound) },
                     singleLine = true,
                     leadingIcon = {
                         IconButton(onClick = {
@@ -92,7 +95,7 @@ fun NamePhotoModal(
                 )
                 Text(
                     text = "${nameValue.length}/25",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = GoogleSansFlexRound),
                     color = if (nameValue.length >= 25) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)

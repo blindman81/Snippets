@@ -46,8 +46,8 @@ fun MainTopBar(
         Color.Transparent
     } else {
         lerp(
-            MaterialTheme.colorScheme.surface,
             MaterialTheme.colorScheme.surfaceContainer,
+            MaterialTheme.colorScheme.surfaceContainerHigh,
             scrollProgress
         )
     }

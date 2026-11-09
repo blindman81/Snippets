@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.util.LocationUtils
 import kotlinx.coroutines.launch
 
@@ -175,6 +176,7 @@ fun LocationLinkModal(
                 text = "Link to a place",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.SemiBold,
+                    fontFamily = GoogleSansFlexRound,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             )
@@ -186,16 +188,20 @@ fun LocationLinkModal(
             ) {
                 Text(
                     text = "Enter a place name or paste a Google Maps link.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = GoogleSansFlexRound),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 OutlinedTextField(
                     value = textValue,
                     onValueChange = { handleInput(it) },
-                    label = { Text("Place or location") },
+                    textStyle = LocalTextStyle.current.copy(fontFamily = GoogleSansFlexRound),
+                    label = { Text("Place or location", fontFamily = GoogleSansFlexRound) },
                     placeholder = {
-                        Text(if (isResolving) "Finding place name..." else "Enter place name (or paste Maps link)")
+                        Text(
+                            text = if (isResolving) "Finding place name..." else "Enter place name (or paste Maps link)",
+                            fontFamily = GoogleSansFlexRound
+                        )
                     },
                     singleLine = true,
                     leadingIcon = {
@@ -247,7 +253,7 @@ fun LocationLinkModal(
                                 text = "Linked: " + targetLink!!.removePrefix("https://").removePrefix("http://"),
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelSmall
+                                style = MaterialTheme.typography.labelSmall.copy(fontFamily = GoogleSansFlexRound)
                             )
                         },
                         leadingIcon = {
@@ -291,7 +297,7 @@ fun LocationLinkModal(
                                 label = {
                                     Text(
                                         text = displayName,
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.labelMedium.copy(fontFamily = GoogleSansFlexRound),
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )

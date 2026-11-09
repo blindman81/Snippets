@@ -278,7 +278,7 @@ private fun CookiestarRatingBarVertical(
         ) {
             // Unselected Segment at the TOP (Cookiestars 5 downTo (rating + 1) + endpoint dot at top)
             if (rating < 5) {
-                val unselectedBg = MaterialTheme.colorScheme.secondaryContainer
+                val unselectedBg = MaterialTheme.colorScheme.surfaceContainer
                 val unselectedModifier = if (hazeState != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     Modifier
                         .clip(unselectedShape)
@@ -320,9 +320,9 @@ private fun CookiestarRatingBarVertical(
                                 CookiestarItem(
                                     cookiestarIndex = index,
                                     rotation = cookiestarRotations[index - 1].value,
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    kidStarColor = MaterialTheme.colorScheme.primaryContainer,
-                                    countTextColor = MaterialTheme.colorScheme.primary,
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    kidStarColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    countTextColor = MaterialTheme.colorScheme.secondary,
                                     onCookiestarClick = onCookiestarClick
                                 )
                             }
@@ -370,7 +370,7 @@ private fun CookiestarRatingBarVertical(
 
             // Selected Segment at the BOTTOM (Cookiestars rating downTo 1)
             if (rating > 0) {
-                val selectedBg = MaterialTheme.colorScheme.primary
+                val selectedBg = MaterialTheme.colorScheme.secondaryContainer
                 val selectedModifier = if (hazeState != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     Modifier
                         .clip(selectedShape)
@@ -410,9 +410,9 @@ private fun CookiestarRatingBarVertical(
                                 CookiestarItem(
                                     cookiestarIndex = index,
                                     rotation = cookiestarRotations[index - 1].value,
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    kidStarColor = MaterialTheme.colorScheme.primary,
-                                    countTextColor = MaterialTheme.colorScheme.primaryContainer,
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    kidStarColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    countTextColor = MaterialTheme.colorScheme.secondary,
                                     onCookiestarClick = onCookiestarClick
                                 )
                             }

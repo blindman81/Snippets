@@ -43,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.ui.util.LocalTiltModalFocus
 import com.android.snippets.ui.util.Motion
@@ -400,6 +401,7 @@ fun BlurredAlertDialog(
                                     ProvideTextStyle(
                                         MaterialTheme.typography.headlineSmall.copy(
                                             fontWeight = FontWeight.SemiBold,
+                                            fontFamily = GoogleSansFlexRound,
                                             color = titleContentColor
                                         )
                                     ) {
@@ -445,7 +447,11 @@ fun BlurredAlertDialog(
                                 .align(Alignment.Start)
                         ) {
                             CompositionLocalProvider(LocalContentColor provides textContentColor) {
-                                ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+                                ProvideTextStyle(
+                                    MaterialTheme.typography.bodyMedium.copy(
+                                        fontFamily = GoogleSansFlexRound
+                                    )
+                                ) {
                                     text()
                                 }
                             }
