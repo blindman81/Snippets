@@ -55,7 +55,8 @@ data class UserPreferences(
     val lastNotifiedMonthlyRecapPeriod: String = "",
     val snippetFirstSeenJson: String = "{}",
     val memoryPostedNotificationIds: Set<String> = emptySet(),
-    val hasPromptedNotificationPermission: Boolean = false
+    val hasPromptedNotificationPermission: Boolean = false,
+    val lastSeenAppVersionCode: Int = 0
 )
 
 /**
@@ -92,6 +93,7 @@ class UserPreferencesRepository(private val context: Context) {
         val SNIPPET_FIRST_SEEN_JSON = stringPreferencesKey("snippet_first_seen_json")
         val MEMORY_POSTED_IDS = stringSetPreferencesKey("posted_ids")
         val HAS_PROMPTED_NOTIFICATION_PERMISSION = booleanPreferencesKey("has_prompted_notification_permission")
+        val LAST_SEEN_APP_VERSION_CODE = intPreferencesKey("last_seen_app_version_code")
     }
 
     /**
@@ -180,8 +182,15 @@ class UserPreferencesRepository(private val context: Context) {
             lastNotifiedMonthlyRecapPeriod = preferences[PreferencesKeys.LAST_NOTIFIED_MONTHLY_RECAP_PERIOD] ?: "",
             snippetFirstSeenJson = preferences[PreferencesKeys.SNIPPET_FIRST_SEEN_JSON] ?: "{}",
             memoryPostedNotificationIds = preferences[PreferencesKeys.MEMORY_POSTED_IDS] ?: emptySet(),
-            hasPromptedNotificationPermission = preferences[PreferencesKeys.HAS_PROMPTED_NOTIFICATION_PERMISSION] ?: false
+            hasPromptedNotificationPermission = preferences[PreferencesKeys.HAS_PROMPTED_NOTIFICATION_PERMISSION] ?: false,
+            lastSeenAppVersionCode = preferences[PreferencesKeys.LAST_SEEN_APP_VERSION_CODE] ?: 0
         )
+    }
+
+    suspend fun updateLastSeenAppVersionCode(versionCode: Int) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_SEEN_APP_VERSION_CODE] = versionCode
+        }
     }
 
     suspend fun updateThemePreference(theme: String) {
