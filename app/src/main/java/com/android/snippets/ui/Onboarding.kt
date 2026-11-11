@@ -405,7 +405,7 @@ private fun CookiebuttonPage(
         // 3 second gap between lines in the sentence
         delay(3000L)
 
-        // Part 2: "the buttons use the Material 3 shape 9 sided cookie."
+        // Part 2: "buttons use the Material 3 shape 9 sided cookie."
         textStage = 2
 
         // 5 seconds wait before next action
@@ -603,7 +603,7 @@ private fun CookiebuttonPage(
             ) { stage ->
                 val text = when (stage) {
                     1 -> "In Snippets,"
-                    2 -> "the buttons use the Material 3 shape 9 sided cookie."
+                    2 -> "buttons use the Material 3 shape 9 sided cookie."
                     3 -> "Tap to make them turn primary and spin."
                     4 -> "Hold them to morph the cookie into other Material 3 shapes."
                     else -> ""
