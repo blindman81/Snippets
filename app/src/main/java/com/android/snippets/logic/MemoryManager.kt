@@ -148,11 +148,32 @@ object MemoryManager {
                 .thenByDescending { it.date }
         )
 
-        if (queueCandidates.isNotEmpty()) {
+        // 1. Current cycle allocation: ensure up to MEMORIES_PER_CYCLE (5) memories are active
+        val currentCycleCount = updatedPhotos.count { photo ->
+            photo.isLibraryUpload &&
+                    photo.snippets.isNotEmpty() &&
+                    photo.surfacedTime == currentCycleStart
+        }
+        val neededCurrent = (MEMORIES_PER_CYCLE - currentCycleCount).coerceAtLeast(0)
+        val toAssignCurrent = queueCandidates.take(neededCurrent)
+        for (candidate in toAssignCurrent) {
+            val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
+            if (index != -1 && updatedPhotos[index].surfacedTime != currentCycleStart) {
+                updatedPhotos[index] = updatedPhotos[index].copy(surfacedTime = currentCycleStart)
+                if (currentCycleStart > now) {
+                    scheduledNotifications.add(candidate.id to currentCycleStart)
+                }
+                changed = true
+            }
+        }
+
+        // 2. Future cycle queue allocation for remaining candidates
+        val remainingQueue = queueCandidates.drop(neededCurrent)
+        if (remainingQueue.isNotEmpty()) {
             var targetCycle = getNextCycleStart(now)
             // Assign candidates in batches of MEMORIES_PER_CYCLE (5) to upcoming cycles.
             // When newer snippets enter the queue, older ones are pushed into subsequent cycle slots.
-            for (chunk in queueCandidates.chunked(MEMORIES_PER_CYCLE)) {
+            for (chunk in remainingQueue.chunked(MEMORIES_PER_CYCLE)) {
                 for (candidate in chunk) {
                     val index = updatedPhotos.indexOfFirst { it.id == candidate.id }
                     if (index != -1 && updatedPhotos[index].surfacedTime != targetCycle) {
@@ -291,6 +312,13 @@ object MemoryManager {
         photos: List<Photo>
     ) {
         scheduleNextCycleWork(context)
+    }
+
+    fun triggerImmediateCycleWork(context: Context) {
+        val workRequest = OneTimeWorkRequestBuilder<MemoryWorker>()
+            .setInputData(workDataOf(MemoryWorker.INPUT_IS_CYCLE_TRIGGER to true))
+            .build()
+        WorkManager.getInstance(context).enqueue(workRequest)
     }
 
     fun testNotification(context: Context, photos: List<Photo>) {

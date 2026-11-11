@@ -96,6 +96,13 @@
             android:theme="@style/Theme.Snippets" />
 
         <activity
+            android:name="com.android.snippets.ui.OnboardingActivity"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
             android:name="com.android.snippets.ui.MonthlyRecapActivity"
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
@@ -140,6 +147,14 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name="com.android.snippets.logic.MemoryNotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.android.snippets.action.MARK_MEMORY_AS_VIEWED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

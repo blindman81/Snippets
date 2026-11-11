@@ -14,12 +14,15 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.os.Build
 import androidx.graphics.shapes.toPath
+import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.shapes.CookiePolygon
 import com.android.snippets.ui.theme.getSnippetBackgroundColorInt
 import com.android.snippets.ui.theme.getSnippetTextColorInt
 import com.android.snippets.ui.util.LocationUtils
 import com.ln.android.snippets.R
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -62,7 +65,27 @@ object MemoryNotificationRenderer {
         }
     }
 
-    fun createMemoryCardBitmap(context: Context, photo: Photo, photoBitmap: Bitmap): Bitmap {
+    fun isDarkTheme(context: Context): Boolean {
+        val isSystemDark = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        return try {
+            val repo = UserPreferencesRepository.getInstance(context)
+            val themePref = runBlocking { repo.themePreferenceFlow.first() }
+            when (themePref.uppercase()) {
+                "LIGHT" -> false
+                "DARK" -> true
+                else -> isSystemDark
+            }
+        } catch (_: Exception) {
+            isSystemDark
+        }
+    }
+
+    fun createMemoryCardBitmap(
+        context: Context,
+        photo: Photo,
+        photoBitmap: Bitmap,
+        isDark: Boolean = isDarkTheme(context)
+    ): Bitmap {
         val targetWidth = 1024
         val targetHeight = 576 // 16:9 standard notification banner ratio
 
@@ -282,19 +305,19 @@ object MemoryNotificationRenderer {
                 val snippetAreaBottom = targetHeight - 36f
                 val snippetAreaHeight = (snippetAreaBottom - snippetAreaTop).coerceAtLeast(0f)
 
-                val chipHeight = 46f
+                val chipHeight = 58f
                 val chipRadius = chipHeight / 2f
-                val chipPaddingX = 20f
-                val chipSpacing = 12f
+                val chipPaddingX = 26f
+                val chipSpacing = 14f
                 val maxChipW = rightAreaWidth
 
-                val textColor = getSnippetTextColorInt(context, isDark = true)
-                val bgColor = getSnippetBackgroundColorInt(context, isDark = true)
+                val textColor = getSnippetTextColorInt(context, isDark = isDark)
+                val bgColor = getSnippetBackgroundColorInt(context, isDark = isDark)
 
                 val textPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = textColor
-                    textSize = 20f
-                    typeface = getCustomTypeface(context, "'wght' 550, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+                    textSize = 28f
+                    typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
                 }
                 val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = bgColor

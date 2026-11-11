@@ -2,29 +2,18 @@ package com.android.snippets.logic
 
 import android.Manifest
 import android.app.Notification
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.LinearGradient
-import android.graphics.Matrix
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
-import android.graphics.RectF
-import android.graphics.Shader
-import android.graphics.Typeface
-import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.graphics.shapes.toPath
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -36,15 +25,10 @@ import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.data.toPhoto
 import com.android.snippets.data.toEntity
 import com.android.snippets.model.Photo
-import com.android.snippets.ui.shapes.CookiePolygon
-import com.android.snippets.ui.theme.getSnippetBackgroundColorInt
-import com.android.snippets.ui.theme.getSnippetTextColorInt
-import com.android.snippets.ui.util.LocationUtils
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import com.ln.android.snippets.R
 import java.io.File
-import java.io.FileOutputStream
-import kotlin.random.Random
 
 /**
  * Handles memory notifications with rich metadata (day & date, favorite status,
@@ -82,7 +66,20 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val notificationManager =
                     context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                val channel = notificationManager.getNotificationChannel(CHANNEL_ID)
+                var channel = notificationManager.getNotificationChannel(CHANNEL_ID)
+                if (channel == null) {
+                    val memoryChannel = NotificationChannel(
+                        CHANNEL_ID,
+                        "New memory",
+                        NotificationManager.IMPORTANCE_HIGH
+                    ).apply {
+                        description = "Notifications when a new memory is ready"
+                        enableVibration(true)
+                        setShowBadge(true)
+                    }
+                    notificationManager.createNotificationChannel(memoryChannel)
+                    channel = notificationManager.getNotificationChannel(CHANNEL_ID)
+                }
                 if (channel?.importance == NotificationManager.IMPORTANCE_NONE) return false
             }
 
@@ -120,7 +117,37 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             return kotlinx.coroutines.runBlocking { repo.removeMemoryPostedId(photoId) }
         }
 
-        private fun notificationId(photoId: String): Int = photoId.hashCode()
+        internal fun notificationId(photoId: String): Int = photoId.hashCode()
+
+        suspend fun markMemoryAsViewed(context: Context, photoId: String) {
+            if (photoId.isBlank()) return
+            try {
+                val db = com.android.snippets.data.SnippetsDatabase.getInstance(context)
+                val entity = db.photoDao().getPhotoById(photoId)
+                val now = System.currentTimeMillis()
+                if (entity != null) {
+                    val safeLastViewed = maxOf(now, entity.snippetsAddedTime)
+                    if (!entity.isViewed || entity.lastViewedTime < safeLastViewed) {
+                        val updated = entity.copy(isViewed = true, lastViewedTime = safeLastViewed)
+                        db.photoDao().updatePhoto(updated)
+                    }
+                } else {
+                    val photos = loadAllPhotos(context)
+                    val photo = photos.firstOrNull { it.id == photoId }
+                    if (photo != null) {
+                        val safeLastViewed = maxOf(now, photo.snippetsAddedTime)
+                        val updated = photo.copy(isViewed = true, lastViewedTime = safeLastViewed)
+                        saveAllPhotos(context, photos.map { if (it.id == photoId) updated else it })
+                    }
+                }
+                try {
+                    android.app.backup.BackupManager(context).dataChanged()
+                } catch (_: Exception) {}
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            cancelPostedNotification(context, photoId)
+        }
 
         @Synchronized
         fun markNotificationPosted(context: Context, photoId: String): Set<String> {
@@ -172,30 +199,12 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             context: Context? = null,
             photo: Photo?,
             notificationType: String
-        ): Pair<String, String> {
-            if (photo == null) {
-                return notificationFallbackText(notificationType)
+        ): Pair<String, String?> {
+            val photoName = photo?.name?.trim()?.takeIf { it.isNotBlank() }
+            if (photoName != null) {
+                return photoName to null
             }
-
-            // Photo name in notification title (only the photo name)
-            val photoName = photo.name?.trim()?.takeIf { it.isNotBlank() }
-            val title = photoName ?: notificationFallbackText(notificationType).first
-
-            // plus location
-            val locationStr = LocationUtils.getLocationFromExif(context, photo) ?: photo.locationName
-
-            // Metadata: location, favorite status, star rating
-            val favoriteStr = if (photo.isFavorite) "❤️ Favorite" else null
-            val ratingStr = if (photo.rating > 0) "★ ${photo.rating}" else null
-
-            val metaParts = listOfNotNull(locationStr, favoriteStr, ratingStr)
-            val text = if (metaParts.isNotEmpty()) {
-                metaParts.joinToString(" • ")
-            } else {
-                notificationFallbackText(notificationType).second
-            }
-
-            return title to text
+            return notificationFallbackText(notificationType)
         }
 
         fun buildSummaryNotification(
@@ -320,13 +329,45 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         val photo = loadPhoto(applicationContext, photoId)
         val rawBitmap = photo?.let { loadPhotoBitmap(it) }
+        val isDark = try {
+            val repo = UserPreferencesRepository.getInstance(applicationContext)
+            val themePref = repo.themePreferenceFlow.first()
+            val isSystemDark = (applicationContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            when (themePref.uppercase()) {
+                "LIGHT" -> false
+                "DARK" -> true
+                else -> isSystemDark
+            }
+        } catch (_: Exception) {
+            MemoryNotificationRenderer.isDarkTheme(applicationContext)
+        }
         val memoryCardBitmap = if (photo != null && rawBitmap != null) {
-            createMemoryCardBitmap(applicationContext, photo, rawBitmap)
+            createMemoryCardBitmap(applicationContext, photo, rawBitmap, isDark)
         } else {
             rawBitmap?.let { createMemoryCardBitmap(it) }
         }
 
         val (title, text) = buildNotificationMetadata(applicationContext, photo, notificationType)
+
+        val markViewedIntent = Intent(applicationContext, MemoryNotificationActionReceiver::class.java).apply {
+            action = "${MemoryNotificationActionReceiver.ACTION_MARK_AS_VIEWED}.$photoId"
+            data = Uri.parse("snippets://memory/mark_as_viewed/$photoId")
+            putExtra(MemoryNotificationActionReceiver.EXTRA_PHOTO_ID, photoId)
+        }
+        val markViewedPendingIntent = PendingIntent.getBroadcast(
+            applicationContext,
+            notificationId(photoId),
+            markViewedIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val markViewedAction = NotificationCompat.Action.Builder(
+            0,
+            applicationContext.getString(R.string.mark_as_viewed),
+            markViewedPendingIntent
+        )
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
+            .setShowsUserInterface(false)
+            .build()
 
         val notificationBuilder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -337,17 +378,24 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             .setGroup(GROUP_KEY)
             .setContentIntent(pendingIntent)
             .setContentTitle(title)
-            .setContentText(text)
+
+        if (!text.isNullOrBlank()) {
+            notificationBuilder.setContentText(text)
+        }
+        notificationBuilder.addAction(markViewedAction)
 
         if (memoryCardBitmap != null) {
             val bigPictureStyle = NotificationCompat.BigPictureStyle()
                 .bigPicture(memoryCardBitmap)
                 .bigLargeIcon(rawBitmap)
                 .setBigContentTitle(title)
-                .setSummaryText(text)
+
+            if (!text.isNullOrBlank()) {
+                bigPictureStyle.setSummaryText(text)
+            }
 
             notificationBuilder.setStyle(bigPictureStyle)
-        } else {
+        } else if (!text.isNullOrBlank()) {
             notificationBuilder.setStyle(NotificationCompat.BigTextStyle().bigText(text))
         }
 
@@ -376,8 +424,13 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         }
     }
 
-    internal fun createMemoryCardBitmap(context: Context, photo: Photo, photoBitmap: Bitmap): Bitmap =
-        MemoryNotificationRenderer.createMemoryCardBitmap(context, photo, photoBitmap)
+    internal fun createMemoryCardBitmap(
+        context: Context,
+        photo: Photo,
+        photoBitmap: Bitmap,
+        isDark: Boolean = MemoryNotificationRenderer.isDarkTheme(context)
+    ): Bitmap =
+        MemoryNotificationRenderer.createMemoryCardBitmap(context, photo, photoBitmap, isDark)
 
     internal fun createMemoryCardBitmap(photoBitmap: Bitmap): Bitmap =
         MemoryNotificationRenderer.createMemoryCardBitmap(photoBitmap)

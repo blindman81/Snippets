@@ -1,6 +1,7 @@
 package com.android.snippets.logic
 
 import android.Manifest
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -44,7 +45,20 @@ object RecapManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channel = notificationManager.getNotificationChannel(CHANNEL_ID)
+            var channel = notificationManager.getNotificationChannel(CHANNEL_ID)
+            if (channel == null) {
+                val recapChannel = NotificationChannel(
+                    CHANNEL_ID,
+                    "Recaps",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notifications for monthly and yearly photo recaps"
+                    enableVibration(true)
+                    setShowBadge(true)
+                }
+                notificationManager.createNotificationChannel(recapChannel)
+                channel = notificationManager.getNotificationChannel(CHANNEL_ID)
+            }
             if (channel?.importance == NotificationManager.IMPORTANCE_NONE) return false
         }
 
