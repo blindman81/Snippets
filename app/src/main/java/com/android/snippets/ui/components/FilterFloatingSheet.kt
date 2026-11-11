@@ -10,7 +10,7 @@ import androidx.compose.material.icons.rounded.SortByAlpha
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +25,7 @@ import com.android.snippets.viewmodel.SnippetsViewModel
 fun FilterFloatingSheet(
     viewModel: SnippetsViewModel,
     modifier: Modifier = Modifier,
-    uiState: SnippetsUiState = viewModel.uiState.collectAsState().value
+    uiState: SnippetsUiState = viewModel.uiState.collectAsStateWithLifecycle().value
 ) {
     val currentSortType = uiState.snippetSortType
     val sortIcon = if (currentSortType == SnippetSortType.Old) {

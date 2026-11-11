@@ -3,7 +3,9 @@ package com.android.snippets.ui.components
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import com.android.snippets.ui.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
@@ -63,7 +65,9 @@ fun LibraryPhotoPager(
             .fillMaxSize()
             .then(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    Modifier.hazeSource(state = hazeState)
+                    Modifier
+                        .hazeSource(state = hazeState)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                 } else Modifier
             ),
         pageSpacing = 16.dp

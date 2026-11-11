@@ -134,7 +134,7 @@ fun ManageFloatingSheet(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     when (val icon = action.icon) {
-                                        is ImageVector -> AnimatedCookieButton(
+                                        is ImageVector -> Cookiebutton(
                                             onClick = action.onClick,
                                             icon = icon,
                                             contentDescription = action.label.replace("\n", " "),
@@ -143,7 +143,7 @@ fun ManageFloatingSheet(
                                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                         )
-                                        is Int -> AnimatedCookieButton(
+                                        is Int -> Cookiebutton(
                                             onClick = action.onClick,
                                             icon = icon,
                                             contentDescription = action.label.replace("\n", " "),

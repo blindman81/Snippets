@@ -64,8 +64,8 @@ fun BusyOverlay() {
     ) {
         BlurredSurface(
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 8.dp
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shadowElevation = 8.dp
         ) {
             Box(
                 modifier = Modifier.padding(32.dp),

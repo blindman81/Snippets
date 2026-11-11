@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  * Spec:
  * - thickness: 8.dp (Compose default)
  * - shape: RoundedCornerShape(4.dp)
- * - minThumbLength: 36.dp
+ * - thumbLength: uniform 48.dp thumb height across all tabs
  * - works strictly through drag (tapping does not trigger jumps to top or bottom)
  * - smooth color transition between idle and active states
  */
@@ -42,7 +42,8 @@ fun VerticalScrollbar(
     modifier: Modifier = Modifier,
     thickness: Dp = 8.dp,
     shape: Shape = RoundedCornerShape(4.dp),
-    minThumbLength: Dp = 36.dp,
+    thumbLength: Dp = 48.dp,
+    minThumbLength: Dp = thumbLength,
     thumbColorIdle: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.28f),
     thumbColorActive: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
 ) {
@@ -85,11 +86,10 @@ fun VerticalScrollbar(
         } else {
             100f
         }
-        val estimatedTotalHeight = (avgItemHeight * totalItemsCount).coerceAtLeast(trackHeightPx)
-        val calculatedThumbHeightPx = (trackHeightPx * (trackHeightPx / estimatedTotalHeight))
+        val uniformThumbHeightPx = with(density) { thumbLength.toPx() }
             .coerceIn(minThumbLengthPx, trackHeightPx)
 
-        val thumbHeightPx = if (isDragging && activeThumbHeightPx > 0f) activeThumbHeightPx else calculatedThumbHeightPx
+        val thumbHeightPx = if (isDragging && activeThumbHeightPx > 0f) activeThumbHeightPx else uniformThumbHeightPx
         val maxThumbOffset = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
 
         // When not dragging, compute thumb position from state
@@ -116,7 +116,7 @@ fun VerticalScrollbar(
 
         val currentTotalItemsCount by rememberUpdatedState(totalItemsCount)
         val currentTrackHeightPx by rememberUpdatedState(trackHeightPx)
-        val currentCalculatedThumbHeightPx by rememberUpdatedState(calculatedThumbHeightPx)
+        val currentUniformThumbHeightPx by rememberUpdatedState(uniformThumbHeightPx)
         val currentComputedThumbOffsetY by rememberUpdatedState(computedThumbOffsetY)
         val currentVisibleItemsCount by rememberUpdatedState(visibleItems.size)
         val currentAvgItemHeight by rememberUpdatedState(avgItemHeight)
@@ -151,7 +151,7 @@ fun VerticalScrollbar(
                         onDragStart = { offset ->
                             isDragging = true
                             view.performHapticFeedback(HapticFeedbackConstants.DRAG_START)
-                            activeThumbHeightPx = currentCalculatedThumbHeightPx
+                            activeThumbHeightPx = currentUniformThumbHeightPx
                             val maxOffset = (currentTrackHeightPx - activeThumbHeightPx).coerceAtLeast(0f)
                             val currentTop = currentComputedThumbOffsetY
                             val currentBottom = currentTop + activeThumbHeightPx

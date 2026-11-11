@@ -20,6 +20,7 @@ import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.util.LocationUtils
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationLinkModal(
     initialLink: String?,
@@ -186,20 +187,14 @@ fun LocationLinkModal(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "Enter a place name or paste a Google Maps link.",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = GoogleSansFlexRound),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
                 OutlinedTextField(
                     value = textValue,
                     onValueChange = { handleInput(it) },
                     textStyle = LocalTextStyle.current.copy(fontFamily = GoogleSansFlexRound),
-                    label = { Text("Place or location", fontFamily = GoogleSansFlexRound) },
+                    label = { Text("Place name or link", fontFamily = GoogleSansFlexRound) },
                     placeholder = {
                         Text(
-                            text = if (isResolving) "Finding place name..." else "Enter place name (or paste Maps link)",
+                            text = if (isResolving) "Finding place name..." else "Place name or link",
                             fontFamily = GoogleSansFlexRound
                         )
                     },
@@ -288,34 +283,38 @@ fun LocationLinkModal(
                             val displayName = remember(suggestion, resolvedNames[suggestion]) {
                                 resolvedNames[suggestion] ?: LocationUtils.extractPlaceNameFromLink(suggestion, context) ?: LocationUtils.cleanLocationName(suggestion)
                             }
-                            SuggestionChip(
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                    textValue = displayName
-                                    targetLink = suggestion
-                                },
-                                label = {
-                                    Text(
-                                        text = displayName,
-                                        style = MaterialTheme.typography.labelMedium.copy(fontFamily = GoogleSansFlexRound),
-                                        maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Place,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = SuggestionChipDefaults.suggestionChipColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    labelColor = MaterialTheme.colorScheme.onSurface
-                                ),
-                                border = null
-                            )
+                            CompositionLocalProvider(
+                                LocalRippleConfiguration provides RippleConfiguration(color = MaterialTheme.colorScheme.primary)
+                            ) {
+                                SuggestionChip(
+                                    onClick = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                        textValue = displayName
+                                        targetLink = suggestion
+                                    },
+                                    label = {
+                                        Text(
+                                            text = displayName,
+                                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = GoogleSansFlexRound),
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    icon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Place,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = SuggestionChipDefaults.suggestionChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        labelColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    border = null
+                                )
+                            }
                         }
                     }
                 }

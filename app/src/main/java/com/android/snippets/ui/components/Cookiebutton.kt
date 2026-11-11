@@ -58,7 +58,7 @@ private fun RenderIcon(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnimatedCookieButton(
+fun Cookiebutton(
     onClick: () -> Unit,
     icon: ImageVector,
     modifier: Modifier = Modifier,
@@ -81,7 +81,7 @@ fun AnimatedCookieButton(
     isOpen: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
-    AnimatedCookieButtonImpl(
+    CookiebuttonImpl(
         onClick = onClick,
         iconContent = { iconModifier, tint ->
             Icon(
@@ -114,7 +114,55 @@ fun AnimatedCookieButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnimatedCookieButton(
+fun CookieButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    tooltip: String? = null,
+    isSelected: Boolean? = null,
+    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+    size: androidx.compose.ui.unit.Dp = 56.dp,
+    shape: androidx.compose.ui.graphics.Shape = CookieShape,
+    isSpinning: Boolean = true,
+    spinOnEntry: Boolean = false,
+    enabled: Boolean = true,
+    hapticOnHold: Boolean = true,
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    enableTilt: Boolean = true,
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    holdScale: Float = 1.45f,
+    closeIcon: Any? = null,
+    isOpen: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+) = Cookiebutton(
+    onClick = onClick,
+    icon = icon,
+    modifier = modifier,
+    contentDescription = contentDescription,
+    tooltip = tooltip,
+    isSelected = isSelected,
+    containerColor = containerColor,
+    contentColor = contentColor,
+    size = size,
+    shape = shape,
+    isSpinning = isSpinning,
+    spinOnEntry = spinOnEntry,
+    enabled = enabled,
+    hapticOnHold = hapticOnHold,
+    iconSize = iconSize,
+    enableTilt = enableTilt,
+    badge = badge,
+    holdScale = holdScale,
+    closeIcon = closeIcon,
+    isOpen = isOpen,
+    isOnBlurredSurface = isOnBlurredSurface
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Cookiebutton(
     onClick: () -> Unit,
     icon: Int,
     modifier: Modifier = Modifier,
@@ -137,7 +185,7 @@ fun AnimatedCookieButton(
     isOpen: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
-    AnimatedCookieButtonImpl(
+    CookiebuttonImpl(
         onClick = onClick,
         iconContent = { iconModifier, tint ->
             Icon(
@@ -170,7 +218,55 @@ fun AnimatedCookieButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnimatedCookieButton(
+fun CookieButton(
+    onClick: () -> Unit,
+    icon: Int,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    tooltip: String? = null,
+    isSelected: Boolean? = null,
+    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+    size: androidx.compose.ui.unit.Dp = 56.dp,
+    shape: androidx.compose.ui.graphics.Shape = CookieShape,
+    isSpinning: Boolean = true,
+    spinOnEntry: Boolean = false,
+    enabled: Boolean = true,
+    hapticOnHold: Boolean = true,
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    enableTilt: Boolean = true,
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    holdScale: Float = 1.45f,
+    closeIcon: Any? = null,
+    isOpen: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+) = Cookiebutton(
+    onClick = onClick,
+    icon = icon,
+    modifier = modifier,
+    contentDescription = contentDescription,
+    tooltip = tooltip,
+    isSelected = isSelected,
+    containerColor = containerColor,
+    contentColor = contentColor,
+    size = size,
+    shape = shape,
+    isSpinning = isSpinning,
+    spinOnEntry = spinOnEntry,
+    enabled = enabled,
+    hapticOnHold = hapticOnHold,
+    iconSize = iconSize,
+    enableTilt = enableTilt,
+    badge = badge,
+    holdScale = holdScale,
+    closeIcon = closeIcon,
+    isOpen = isOpen,
+    isOnBlurredSurface = isOnBlurredSurface
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Cookiebutton(
     onClick: () -> Unit,
     iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
     modifier: Modifier = Modifier,
@@ -192,7 +288,7 @@ fun AnimatedCookieButton(
     isOpen: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
-    AnimatedCookieButtonImpl(
+    CookiebuttonImpl(
         onClick = onClick,
         iconContent = iconContent,
         modifier = modifier,
@@ -218,7 +314,53 @@ fun AnimatedCookieButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AnimatedCookieButtonImpl(
+fun CookieButton(
+    onClick: () -> Unit,
+    iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
+    modifier: Modifier = Modifier,
+    tooltip: String? = null,
+    isSelected: Boolean? = null,
+    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+    size: androidx.compose.ui.unit.Dp = 56.dp,
+    shape: androidx.compose.ui.graphics.Shape = CookieShape,
+    isSpinning: Boolean = true,
+    spinOnEntry: Boolean = false,
+    enabled: Boolean = true,
+    hapticOnHold: Boolean = true,
+    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
+    enableTilt: Boolean = true,
+    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
+    holdScale: Float = 1.45f,
+    closeIcon: Any? = null,
+    isOpen: Boolean = false,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
+) = Cookiebutton(
+    onClick = onClick,
+    iconContent = iconContent,
+    modifier = modifier,
+    tooltip = tooltip,
+    isSelected = isSelected,
+    containerColor = containerColor,
+    contentColor = contentColor,
+    size = size,
+    shape = shape,
+    isSpinning = isSpinning,
+    spinOnEntry = spinOnEntry,
+    enabled = enabled,
+    hapticOnHold = hapticOnHold,
+    iconSize = iconSize,
+    enableTilt = enableTilt,
+    badge = badge,
+    holdScale = holdScale,
+    closeIcon = closeIcon,
+    isOpen = isOpen,
+    isOnBlurredSurface = isOnBlurredSurface
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CookiebuttonImpl(
     onClick: () -> Unit,
     iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
     modifier: Modifier = Modifier,

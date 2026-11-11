@@ -31,7 +31,8 @@ fun DeleteConfirmationModal(
                     fontFamily = GoogleSansFlexRound,
                     letterSpacing = (-0.5).sp,
                     color = MaterialTheme.colorScheme.onSurface
-                )
+                ),
+                fontFamily = GoogleSansFlexRound
             )
         },
         text = {
@@ -39,6 +40,7 @@ fun DeleteConfirmationModal(
                 Text(
                     text = if (count > 1) "Deleting these photos also deletes the snippets you created for them." else "Deleting this photo also deletes the snippets you created for this photo.",
                     style = MaterialTheme.typography.bodyLarge.copy(fontFamily = GoogleSansFlexRound),
+                    fontFamily = GoogleSansFlexRound,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (hasPublicPhotos) {
@@ -52,6 +54,7 @@ fun DeleteConfirmationModal(
                         Text(
                             text = "Also remove from public community feed",
                             style = MaterialTheme.typography.bodyMedium.copy(fontFamily = GoogleSansFlexRound),
+                            fontFamily = GoogleSansFlexRound,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

@@ -181,8 +181,7 @@ fun PhotoCard(
                         .padding(start = 16.dp, end = 16.dp)
                         .height(240.dp),
                     shape = finalShape,
-                    color = blockColor,
-                    shadowElevation = if (isSelected) 4.dp else 1.dp
+                    color = blockColor
                 ) {
                     Box(
                         modifier = Modifier
@@ -255,8 +254,7 @@ fun PhotoCard(
                 Surface(
                     modifier = photoModifier,
                     shape = photoShape,
-                    color = blockColor,
-                    shadowElevation = if (isSelected) 4.dp else 1.dp
+                    color = blockColor
                 ) {
                     Box(
                         modifier = Modifier

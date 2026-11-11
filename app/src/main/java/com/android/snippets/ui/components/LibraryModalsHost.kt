@@ -48,13 +48,15 @@ fun LibraryModalsHost(
                         fontFamily = GoogleSansFlexRound,
                         letterSpacing = (-0.5).sp,
                         color = MaterialTheme.colorScheme.onSurface
-                    )
+                    ),
+                    fontFamily = GoogleSansFlexRound
                 )
             },
             text = {
                 Text(
                     text = "Are you sure you want to delete this collection? Your photos will be saved.",
                     style = MaterialTheme.typography.bodyLarge.copy(fontFamily = GoogleSansFlexRound),
+                    fontFamily = GoogleSansFlexRound,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

@@ -120,6 +120,8 @@ fun PhotoButtonGroup(
     var wiggleLeadingJob by remember { mutableStateOf<Job?>(null) }
     var spinLeadingJob by remember { mutableStateOf<Job?>(null) }
     var tappedLeading by remember { mutableStateOf(false) }
+    var isLeadingPressed by remember { mutableStateOf(false) }
+    var isLeadingHeld by remember { mutableStateOf(false) }
 
     // Trailing button animatables
     val rotationTrailing = remember { Animatable(0f) }
@@ -129,6 +131,8 @@ fun PhotoButtonGroup(
     var wiggleTrailingJob by remember { mutableStateOf<Job?>(null) }
     var spinTrailingJob by remember { mutableStateOf<Job?>(null) }
     var tappedTrailing by remember { mutableStateOf(false) }
+    var isTrailingPressed by remember { mutableStateOf(false) }
+    var isTrailingHeld by remember { mutableStateOf(false) }
 
     LaunchedEffect(isPrimaryActive) {
         morphProgressLeading.animateTo(if (isPrimaryActive) 1f else 0f, Motion.BouncySpring)
@@ -155,7 +159,7 @@ fun PhotoButtonGroup(
     }
 
     // Colors
-    val isLeadingPrimary = isPrimaryActive || tappedLeading
+    val isLeadingPrimary = isPrimaryActive || tappedLeading || isLeadingPressed || isLeadingHeld
     val isLeadingCallerPrimary = unselectedContainerColor == MaterialTheme.colorScheme.primary
     val leadingPrimaryAlpha by animateFloatAsState(
         targetValue = if (isLeadingPrimary || isLeadingCallerPrimary) 1f else 0f,
@@ -174,7 +178,7 @@ fun PhotoButtonGroup(
         label = "split_leading_content"
     )
 
-    val isTrailingPrimary = expanded || tappedTrailing
+    val isTrailingPrimary = expanded || tappedTrailing || isTrailingPressed || isTrailingHeld
     val isTrailingCallerPrimary = unselectedContainerColor == MaterialTheme.colorScheme.primary
     val trailingPrimaryAlpha by animateFloatAsState(
         targetValue = if (isTrailingPrimary || isTrailingCallerPrimary) 1f else 0f,
@@ -225,12 +229,15 @@ fun PhotoButtonGroup(
                     .semantics { role = Role.Button }
                     .pointerInput(enabled, isPrimaryActive) {
                         if (!enabled) return@pointerInput
+                        var holdTriggered = false
                         detectTapGestures(
                             onPress = {
-                                var isHeld = false
+                                holdTriggered = false
+                                isLeadingPressed = true
                                 val holdJob = scope.launch {
                                     kotlinx.coroutines.delay(120L)
-                                    isHeld = true
+                                    holdTriggered = true
+                                    isLeadingHeld = true
                                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                     launch {
                                         morphProgressLeading.animateTo(1f, Motion.BouncySpring)
@@ -243,7 +250,9 @@ fun PhotoButtonGroup(
                                     awaitRelease()
                                 } finally {
                                     holdJob.cancel()
-                                    if (isHeld) {
+                                    isLeadingPressed = false
+                                    isLeadingHeld = false
+                                    if (holdTriggered) {
                                         scope.launch {
                                             launch { morphProgressLeading.animateTo(if (isPrimaryActive) 1f else 0f, Motion.BouncySpring) }
                                             launch { morphProgressTrailing.animateTo(if (expanded) 1f else 0f, Motion.BouncySpring) }
@@ -251,7 +260,11 @@ fun PhotoButtonGroup(
                                     }
                                 }
                             },
+                            onLongPress = {
+                                // Absorbs long-press gesture so releasing after hold does not fire tap
+                            },
                             onTap = {
+                                if (holdTriggered) return@detectTapGestures
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                 tappedLeading = true
 
@@ -324,7 +337,7 @@ fun PhotoButtonGroup(
             Box(
                 modifier = Modifier
                     .size(buttonSize)
-                    .zIndex(if (morphProgressTrailing.value > 0.001f || pressScaleTrailing.value < 0.99f || expanded) 2f else 0f)
+                    .zIndex(if (morphProgressTrailing.value > 0.001f || pressScaleTrailing.value < 0.99f || isTrailingPrimary) 2f else 0f)
             ) {
                 Box(
                     modifier = Modifier
@@ -336,12 +349,15 @@ fun PhotoButtonGroup(
                         .semantics { role = Role.Button }
                         .pointerInput(enabled) {
                             if (!enabled) return@pointerInput
+                            var holdTriggered = false
                             detectTapGestures(
                                 onPress = {
-                                    var isHeld = false
+                                    holdTriggered = false
+                                    isTrailingPressed = true
                                     val holdJob = scope.launch {
                                         kotlinx.coroutines.delay(120L)
-                                        isHeld = true
+                                        holdTriggered = true
+                                        isTrailingHeld = true
                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         launch {
                                             morphProgressTrailing.animateTo(1f, Motion.BouncySpring)
@@ -354,7 +370,9 @@ fun PhotoButtonGroup(
                                         awaitRelease()
                                     } finally {
                                         holdJob.cancel()
-                                        if (isHeld) {
+                                        isTrailingPressed = false
+                                        isTrailingHeld = false
+                                        if (holdTriggered) {
                                             scope.launch {
                                                 launch { morphProgressTrailing.animateTo(if (expanded) 1f else 0f, Motion.BouncySpring) }
                                                 launch { morphProgressLeading.animateTo(if (isPrimaryActive) 1f else 0f, Motion.BouncySpring) }
@@ -362,7 +380,11 @@ fun PhotoButtonGroup(
                                         }
                                     }
                                 },
+                                onLongPress = {
+                                    // Absorbs long-press gesture so releasing after hold does not fire tap
+                                },
                                 onTap = {
+                                    if (holdTriggered) return@detectTapGestures
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     tappedTrailing = true
 
@@ -526,7 +548,7 @@ fun SplitButton(
                             dismissOnBackPress = false,
                             dismissOnClickOutside = true
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         shadowElevation = 6.dp

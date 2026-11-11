@@ -7,19 +7,29 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import com.android.snippets.ui.AboutActivity
+import com.android.snippets.ui.OnboardingActivity
 import com.android.snippets.ui.SettingsActivity
 import com.android.snippets.ui.StatsActivity
 import com.android.snippets.ui.theme.GoogleSansFlexRound
@@ -33,9 +43,30 @@ fun MenuFloatingSheet(
     view: android.view.View
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var animateExit by remember { mutableStateOf(true) }
+
+    LaunchedEffect(show) {
+        if (show) {
+            animateExit = true
+        }
+    }
+
+    val launchActivity: (Class<*>) -> Unit = { activityClass ->
+        animateExit = false
+        onDismissRequest()
+        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        scope.launch {
+            // Wait 1 frame (~20ms) for Compose to recompose & render without the menu before starting the Activity
+            delay(20L)
+            context.startActivity(Intent(context, activityClass))
+        }
+    }
+
     FloatingSheet(
         visible = show,
         onDismissRequest = onDismissRequest,
+        animateExit = animateExit,
         sheetModifier = Modifier
             .padding(horizontal = 16.dp)
             .width(316.dp),
@@ -48,7 +79,7 @@ fun MenuFloatingSheet(
         )
 
         val marqueeIcon = ImageVector.vectorResource(com.ln.android.snippets.R.drawable.ic_marquee_select)
-        val menuItems = remember(marqueeIcon, context) {
+        val menuItems = remember(marqueeIcon, context, view) {
             listOf(
                 MenuItemInfo(
                     label = "Create",
@@ -72,27 +103,28 @@ fun MenuFloatingSheet(
                     label = "Stats",
                     icon = com.ln.android.snippets.R.drawable.ic_leaderboard,
                     onClick = {
-                        onDismissRequest()
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        context.startActivity(Intent(context, StatsActivity::class.java))
+                        launchActivity(StatsActivity::class.java)
+                    }
+                ),
+                MenuItemInfo(
+                    label = "On\nboarding",
+                    icon = Icons.Rounded.Cookie,
+                    onClick = {
+                        launchActivity(OnboardingActivity::class.java)
                     }
                 ),
                 MenuItemInfo(
                     label = "Settings",
                     icon = Icons.Rounded.Settings,
                     onClick = {
-                        onDismissRequest()
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        context.startActivity(Intent(context, SettingsActivity::class.java))
+                        launchActivity(SettingsActivity::class.java)
                     }
                 ),
                 MenuItemInfo(
                     label = "About",
                     icon = Icons.Rounded.Info,
                     onClick = {
-                        onDismissRequest()
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        context.startActivity(Intent(context, AboutActivity::class.java))
+                        launchActivity(AboutActivity::class.java)
                     }
                 )
             )
@@ -123,7 +155,7 @@ fun MenuFloatingSheet(
                                 contentAlignment = Alignment.Center
                             ) {
                                 when (val icon = item.icon) {
-                                    is ImageVector -> AnimatedCookieButton(
+                                    is ImageVector -> Cookiebutton(
                                         onClick = item.onClick,
                                         icon = icon,
                                         contentDescription = item.label,
@@ -132,7 +164,7 @@ fun MenuFloatingSheet(
                                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
-                                    is Int -> AnimatedCookieButton(
+                                    is Int -> Cookiebutton(
                                         onClick = item.onClick,
                                         icon = icon,
                                         contentDescription = item.label,
@@ -157,9 +189,12 @@ fun MenuFloatingSheet(
                                         text = item.label,
                                         style = MaterialTheme.typography.labelMedium.copy(
                                             fontWeight = FontWeight.Bold,
-                                            fontFamily = GoogleSansFlexRound
+                                            fontFamily = GoogleSansFlexRound,
+                                            textAlign = TextAlign.Center,
+                                            lineHeight = 14.sp
                                         ),
-                                        maxLines = 1,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }

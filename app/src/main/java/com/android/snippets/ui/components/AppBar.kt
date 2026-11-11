@@ -21,7 +21,7 @@ import com.android.snippets.ui.util.Motion
 import com.android.snippets.viewmodel.SnippetsViewModel
 
 @Composable
-fun MainTopBar(
+fun MainAppBar(
     viewModel: SnippetsViewModel? = null,
     title: String? = null,
     onNavigationClick: () -> Unit,
@@ -33,6 +33,7 @@ fun MainTopBar(
     titleIcon: ImageVector? = null,
     forceTransparentBackground: Boolean = false,
     showDividerOnScroll: Boolean = true,
+    scrolledColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
@@ -47,7 +48,7 @@ fun MainTopBar(
     } else {
         lerp(
             MaterialTheme.colorScheme.surfaceContainer,
-            MaterialTheme.colorScheme.surfaceContainerHigh,
+            scrolledColor,
             scrollProgress
         )
     }
@@ -68,7 +69,7 @@ fun MainTopBar(
             ) {
                 // Left Navigation Button
                 if (showNavigationIcon) {
-                    AnimatedCookieButton(
+                    Cookiebutton(
                         onClick = {
                             focusManager.clearFocus()
                             onNavigationClick()
@@ -166,3 +167,35 @@ fun MainTopBar(
         }
     }
 }
+
+@Deprecated("Use MainAppBar instead", ReplaceWith("MainAppBar(viewModel, title, onNavigationClick, navigationIcon, isSpinning, isScrolled, showNavigationIcon, leftAlignTitle, titleIcon, forceTransparentBackground, showDividerOnScroll, scrolledColor, actions)"))
+@Composable
+fun MainTopBar(
+    viewModel: SnippetsViewModel? = null,
+    title: String? = null,
+    onNavigationClick: () -> Unit,
+    navigationIcon: ImageVector = Icons.Rounded.Menu,
+    isSpinning: Boolean = true,
+    isScrolled: Boolean = false,
+    showNavigationIcon: Boolean = true,
+    leftAlignTitle: Boolean = true,
+    titleIcon: ImageVector? = null,
+    forceTransparentBackground: Boolean = false,
+    showDividerOnScroll: Boolean = true,
+    scrolledColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    actions: @Composable RowScope.() -> Unit = {}
+) = MainAppBar(
+    viewModel = viewModel,
+    title = title,
+    onNavigationClick = onNavigationClick,
+    navigationIcon = navigationIcon,
+    isSpinning = isSpinning,
+    isScrolled = isScrolled,
+    showNavigationIcon = showNavigationIcon,
+    leftAlignTitle = leftAlignTitle,
+    titleIcon = titleIcon,
+    forceTransparentBackground = forceTransparentBackground,
+    showDividerOnScroll = showDividerOnScroll,
+    scrolledColor = scrolledColor,
+    actions = actions
+)

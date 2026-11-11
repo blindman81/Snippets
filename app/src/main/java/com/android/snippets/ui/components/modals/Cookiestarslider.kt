@@ -447,7 +447,7 @@ private fun CookiestarItem(
             .size(cookiestarSize)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = false, radius = 22.dp)
+                indication = ripple(bounded = false, radius = 22.dp, color = MaterialTheme.colorScheme.primary)
             ) {
                 onCookiestarClick(cookiestarIndex)
             },

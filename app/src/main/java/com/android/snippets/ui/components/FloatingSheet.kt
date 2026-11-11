@@ -1,8 +1,10 @@
 package com.android.snippets.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -56,6 +58,7 @@ fun FloatingSheet(
     showScrim: Boolean = true,
     scrimColor: Color = Color.Black.copy(alpha = 0.35f),
     contentPadding: PaddingValues = PaddingValues(16.dp),
+    animateExit: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (visible) {
@@ -72,7 +75,7 @@ fun FloatingSheet(
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(animationSpec = tween(200)),
-            exit = fadeOut(animationSpec = tween(300)),
+            exit = if (animateExit) fadeOut(animationSpec = tween(300)) else ExitTransition.None,
             modifier = Modifier.zIndex(15f)
         ) {
             Box(
@@ -91,7 +94,7 @@ fun FloatingSheet(
 
     val contentAlphaState = androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 160),
+        animationSpec = if (animateExit) tween(durationMillis = 160) else snap(),
         label = "floating_sheet_content_alpha"
     )
 
@@ -121,18 +124,22 @@ fun FloatingSheet(
                     stiffness = Spring.StiffnessMediumLow
                 )
             ) + fadeIn(animationSpec = tween(180)),
-            exit = slideOutVertically(
-                targetOffsetY = { pillSlideDistance },
-                animationSpec = tween(
-                    durationMillis = 320,
-                    easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
+            exit = if (animateExit) {
+                slideOutVertically(
+                    targetOffsetY = { pillSlideDistance },
+                    animationSpec = tween(
+                        durationMillis = 320,
+                        easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
+                    )
+                ) + fadeOut(
+                    animationSpec = tween(
+                        durationMillis = 280,
+                        easing = androidx.compose.animation.core.LinearEasing
+                    )
                 )
-            ) + fadeOut(
-                animationSpec = tween(
-                    durationMillis = 280,
-                    easing = androidx.compose.animation.core.LinearEasing
-                )
-            )
+            } else {
+                ExitTransition.None
+            }
         ) {
             CompositionLocalProvider(
                 LocalTiltActive provides visible,

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.rounded.HeartBroken
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -105,10 +106,11 @@ fun EmptyFavoritesState() {
 
 @Composable
 fun EmptyCollectionState(
+    icon: ImageVector = Icons.Outlined.FolderOpen,
     onClick: (() -> Unit)? = null
 ) {
     PremiumEmptyState(
-        icon = ImageVector.vectorResource(id = R.drawable.ic_folder_open_empty),
+        icon = icon,
         onClick = onClick
     )
 }

@@ -170,7 +170,7 @@ fun BlurredSurface(
         Surface(
             modifier = modifier,
             shape = shape,
-            color = color,
+            color = color.copy(alpha = alpha),
             border = border,
             shadowElevation = shadowElevation,
             tonalElevation = tonalElevation,
@@ -236,11 +236,12 @@ fun BlurredAlertDialog(
     title: @Composable (() -> Unit)? = null,
     text: @Composable (() -> Unit)? = null,
     shape: Shape = RoundedCornerShape(28.dp),
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    alpha: Float = HazeDefaults.tintAlpha,
     iconContentColor: Color = MaterialTheme.colorScheme.primary,
     titleContentColor: Color = MaterialTheme.colorScheme.onSurface,
     textContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    tonalElevation: Dp = 6.dp,
+    tonalElevation: Dp = 0.dp,
     properties: DialogProperties = DialogProperties(),
     hazeState: HazeState? = LocalHazeState.current,
     moveUpOnKeyboardOverlap: Boolean = true
@@ -360,7 +361,7 @@ fun BlurredAlertDialog(
                 BlurredSurface(
                 shape = shape,
                 color = containerColor,
-                alpha = 0.65f,
+                alpha = alpha,
                 shadowElevation = 8.dp,
                 tonalElevation = tonalElevation,
                 hazeState = hazeState,
@@ -417,7 +418,7 @@ fun BlurredAlertDialog(
                             horizontalArrangement = Arrangement.spacedBy(18.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AnimatedCookieButton(
+                            Cookiebutton(
                                 onClick = { triggerDismiss() },
                                 icon = Icons.Rounded.Close,
                                 contentDescription = "Close",
@@ -426,7 +427,7 @@ fun BlurredAlertDialog(
                                 size = 40.dp
                             )
                             if (onConfirm != null) {
-                                AnimatedCookieButton(
+                                Cookiebutton(
                                     onClick = { triggerConfirm() },
                                     icon = Icons.Rounded.Check,
                                     contentDescription = "Confirm",

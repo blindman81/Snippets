@@ -5,6 +5,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -197,7 +198,8 @@ fun CookieButtonGroup(
     wiggleNeighborOnToggleOn: Boolean = false,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
-    onItemClick: ((Int) -> Unit)? = null
+    onItemClick: ((Int) -> Unit)? = null,
+    heldIndex: Int = -1
 ) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
@@ -217,6 +219,8 @@ fun CookieButtonGroup(
     val spinJobs = remember(items.size) { arrayOfNulls<Job>(items.size) }
     var spinningIndex by remember { mutableIntStateOf(-1) }
     var lastSelectedIndex by remember { mutableIntStateOf(selectedIndex) }
+    var internalHeldIndex by remember { mutableIntStateOf(-1) }
+    val effectiveHeldIndex = if (heldIndex >= 0) heldIndex else internalHeldIndex
 
     fun triggerWiggle(targetIndex: Int, direction: Float = 1f) {
         if (!enableWiggle || targetIndex !in wiggleRotations.indices) return
@@ -266,6 +270,44 @@ fun CookieButtonGroup(
                 heldIndex - 1
             } else {
                 null
+            }
+        }
+    }
+
+    val morphSpring = remember {
+        spring<Float>(
+            dampingRatio = 0.6f,
+            stiffness = 160f
+        )
+    }
+
+    LaunchedEffect(heldIndex) {
+        if (heldIndex in currentItems.indices) {
+            val targetIndex = getTargetMorphIndex(heldIndex)
+            launch {
+                morphProgresses[heldIndex].animateTo(
+                    targetValue = 1f,
+                    animationSpec = morphSpring
+                )
+            }
+            if (targetIndex != null && targetIndex != heldIndex && targetIndex in morphProgresses.indices) {
+                launch {
+                    morphProgresses[targetIndex].animateTo(
+                        targetValue = 1f,
+                        animationSpec = morphSpring
+                    )
+                }
+            }
+        } else {
+            currentItems.indices.forEach { idx ->
+                if (morphProgresses[idx].value > 0f && internalHeldIndex < 0) {
+                    launch {
+                        morphProgresses[idx].animateTo(
+                            targetValue = 0f,
+                            animationSpec = morphSpring
+                        )
+                    }
+                }
             }
         }
     }
@@ -467,8 +509,9 @@ fun CookieButtonGroup(
     }
 
     val renderCookieItem = @Composable { index: Int, item: CookieButtonItem ->
+        val isHeld = index == effectiveHeldIndex
         val isSelected = item.isSelected ?: (index == currentSelectedIndex)
-        val isPrimary = isSelected && (selectedContainerColor == MaterialTheme.colorScheme.primary)
+        val isPrimary = (isSelected || isHeld) && (selectedContainerColor == MaterialTheme.colorScheme.primary)
         val isCallerPrimary = unselectedContainerColor == MaterialTheme.colorScheme.primary
 
         val primaryAlpha by animateFloatAsState(
@@ -478,12 +521,12 @@ fun CookieButtonGroup(
         )
 
         val animatedContainerColor by animateColorAsState(
-            targetValue = if (isSelected) selectedContainerColor else unselectedContainerColor,
+            targetValue = if (isSelected || isHeld) selectedContainerColor else unselectedContainerColor,
             animationSpec = tween(durationMillis = 200),
             label = "cookie_container_color_$index"
         )
         val animatedContentColor by animateColorAsState(
-            targetValue = if (isSelected || isCallerPrimary) selectedContentColor else unselectedContentColor,
+            targetValue = if (isSelected || isHeld || isCallerPrimary) selectedContentColor else unselectedContentColor,
             animationSpec = tween(durationMillis = 200),
             label = "cookie_content_color_$index"
         )
@@ -508,7 +551,7 @@ fun CookieButtonGroup(
                     .then(item.modifier)
                     .width(cookieWidth)
                     .height(cookieHeight)
-                    .zIndex(if (morphProgresses[index].value > 0.001f || pressScales[index].value < 0.99f) 1f else 0f)
+                    .zIndex(if (isHeld || morphProgresses[index].value > 0.001f || pressScales[index].value < 0.99f) 1f else 0f)
                     .graphicsLayer {
                         scaleX = pressScales[index].value
                         scaleY = pressScales[index].value
@@ -526,22 +569,23 @@ fun CookieButtonGroup(
                         detectTapGestures(
                             onPress = {
                                 val targetIndex = getTargetMorphIndex(index)
-                                var isHeld = false
+                                var holdTriggered = false
                                 val holdJob = scope.launch {
                                     kotlinx.coroutines.delay(120L)
-                                    isHeld = true
+                                    holdTriggered = true
+                                    internalHeldIndex = index
                                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                     launch {
                                         morphProgresses[index].animateTo(
                                             targetValue = 1f,
-                                            animationSpec = Motion.BouncySpring
+                                            animationSpec = morphSpring
                                         )
                                     }
                                     if (targetIndex != null && targetIndex != index && targetIndex in morphProgresses.indices) {
                                         launch {
                                             morphProgresses[targetIndex].animateTo(
                                                 targetValue = 1f,
-                                                animationSpec = Motion.BouncySpring
+                                                animationSpec = morphSpring
                                             )
                                         }
                                     }
@@ -550,19 +594,22 @@ fun CookieButtonGroup(
                                     awaitRelease()
                                 } finally {
                                     holdJob.cancel()
-                                    if (isHeld) {
+                                    if (internalHeldIndex == index) {
+                                        internalHeldIndex = -1
+                                    }
+                                    if (holdTriggered) {
                                         scope.launch {
                                             launch {
                                                 morphProgresses[index].animateTo(
                                                     targetValue = 0f,
-                                                    animationSpec = Motion.BouncySpring
+                                                    animationSpec = morphSpring
                                                 )
                                             }
                                             if (targetIndex != null && targetIndex != index && targetIndex in morphProgresses.indices) {
                                                 launch {
                                                     morphProgresses[targetIndex].animateTo(
                                                         targetValue = 0f,
-                                                        animationSpec = Motion.BouncySpring
+                                                        animationSpec = morphSpring
                                                     )
                                                 }
                                             }
@@ -589,15 +636,29 @@ fun CookieButtonGroup(
                         }
                 ) {
                     if (isOnBlurredSurface) {
+                        val currentProgress = morphProgresses[index].value
+                        val itemShape = if (currentProgress > 0.001f) {
+                            MorphShape(effectiveMorph, currentProgress)
+                        } else {
+                            shape
+                        }
                         // Outline variant (bottom layer)
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .clip(currentShape)
+                                .graphicsLayer {
+                                    val progress = morphProgresses[index].value
+                                    this.shape = if (progress > 0.001f) {
+                                        MorphShape(effectiveMorph, progress)
+                                    } else {
+                                        shape
+                                    }
+                                    this.clip = true
+                                }
                                 .background(if (item.enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
                                 .border(
                                     border = ButtonDefaults.outlinedButtonBorder(enabled = item.enabled),
-                                    shape = currentShape
+                                    shape = itemShape
                                 )
                         )
                         // Primary layer (drawn OVER outline variant)
@@ -606,9 +667,17 @@ fun CookieButtonGroup(
                             Box(
                                 modifier = Modifier
                                     .matchParentSize()
-                                    .graphicsLayer { alpha = primaryAlpha }
-                                    .border(1.dp, primaryBg, currentShape)
-                                    .clip(currentShape)
+                                    .graphicsLayer {
+                                        alpha = primaryAlpha
+                                        val progress = morphProgresses[index].value
+                                        this.shape = if (progress > 0.001f) {
+                                            MorphShape(effectiveMorph, progress)
+                                        } else {
+                                            shape
+                                        }
+                                        this.clip = true
+                                    }
+                                    .border(1.dp, primaryBg, itemShape)
                                     .background(primaryBg)
                             )
                         }
@@ -616,7 +685,15 @@ fun CookieButtonGroup(
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .clip(currentShape)
+                                .graphicsLayer {
+                                    val progress = morphProgresses[index].value
+                                    this.shape = if (progress > 0.001f) {
+                                        MorphShape(effectiveMorph, progress)
+                                    } else {
+                                        shape
+                                    }
+                                    this.clip = true
+                                }
                                 .background(if (item.enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
                         )
                     }

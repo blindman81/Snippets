@@ -17,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInParent
@@ -31,52 +30,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.ln.android.snippets.R
 import com.android.snippets.viewmodel.SnippetsViewModel
-import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeProgressive
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.launch
-
-@Composable
-fun LibraryStatusBarBlur(
-    statusBarTop: Dp,
-    alpha: () -> Float,
-    hazeState: HazeState,
-    style: HazeStyle,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(statusBarTop)
-            .graphicsLayer { this.alpha = alpha() }
-            .then(
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    Modifier.hazeEffect(
-                        state = hazeState,
-                        style = style
-                    ) {
-                        progressive = HazeProgressive.verticalGradient(
-                            startIntensity = 1f,
-                            endIntensity = 0f
-                        )
-                    }
-                } else {
-                    Modifier.background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surfaceContainer,
-                                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.7f),
-                                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.3f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-                }
-            )
-    )
-}
 
 @Composable
 fun LibraryNavBar(
@@ -114,7 +68,7 @@ fun LibraryNavBar(
                 .fillMaxWidth()
                 .horizontalScroll(tabRowScrollState)
                 .graphicsLayer { clip = false }
-                .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -195,12 +149,21 @@ fun LibraryNavBar(
                     val tabName = allTabs.getOrNull(index) ?: return@selectTab
                     val pageIndex = pageTabs.indexOf(tabName)
                     if (pageIndex != -1) {
+                        val isCollection = tabName != "Library" && tabName != "Favorites"
+                        val isCollectionEmpty = isCollection && viewModel.photos.none { it.collections.contains(tabName) }
                         if (tabName == currentTab) {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            onScrollCarouselToTop?.invoke()
+                            if (isCollectionEmpty) {
+                                viewModel.startEditingCollectionEmoji(tabName)
+                            } else {
+                                onScrollCarouselToTop?.invoke()
+                            }
                         } else {
                             scope.launch {
                                 pagerState.animateScrollToPage(pageIndex)
+                                if (isCollectionEmpty) {
+                                    viewModel.startEditingCollectionEmoji(tabName)
+                                }
                             }
                         }
                     }

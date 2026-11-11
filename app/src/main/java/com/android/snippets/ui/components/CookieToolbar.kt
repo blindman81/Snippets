@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -48,7 +49,7 @@ import com.ln.android.snippets.R
 @Composable
 fun SelectionToolbarContent(
     viewModel: SnippetsViewModel,
-    uiState: SnippetsUiState = viewModel.uiState.collectAsState().value,
+    uiState: SnippetsUiState = viewModel.uiState.collectAsStateWithLifecycle().value,
     onDeleteClick: () -> Unit,
     isSpinning: Boolean = true,
     isScrolled: Boolean = false,
@@ -64,7 +65,7 @@ fun SelectionToolbarContent(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        AnimatedCookieButton(
+        Cookiebutton(
             onClick = {
                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                 viewModel.clearSelection()
@@ -86,12 +87,12 @@ fun SelectionToolbarContent(
             Text(
                 text = textToShow,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         } else {
-            AnimatedCookieButton(
+            Cookiebutton(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     viewModel.shareSelectedPhotos(context)
@@ -106,7 +107,7 @@ fun SelectionToolbarContent(
         }
 
         if (uiState.pendingCollectionAssignment != null || uiState.pendingCollectionRemoval != null) {
-            AnimatedCookieButton(
+            Cookiebutton(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     if (uiState.pendingCollectionAssignment != null) {
@@ -124,7 +125,7 @@ fun SelectionToolbarContent(
                 isSpinning = isSpinning
             )
         } else {
-            AnimatedCookieButton(
+            Cookiebutton(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                     onDeleteClick()
@@ -174,7 +175,7 @@ fun ExpandedSearchContent(
         }
 
         // Close / back
-        AnimatedCookieButton(
+        Cookiebutton(
             onClick = {
                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                 searchTextFieldState.clearText()
@@ -226,7 +227,7 @@ fun ExpandedSearchContent(
             enter = fadeIn(animationSpec = tween(150)) + scaleIn(initialScale = 0.8f, animationSpec = tween(150)),
             exit = fadeOut(animationSpec = tween(200)) + scaleOut(targetScale = 0.8f, animationSpec = tween(200))
         ) {
-            AnimatedCookieButton(
+            Cookiebutton(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     searchTextFieldState.clearText()
@@ -266,7 +267,7 @@ fun CookieToolbar(
     onBulkDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
@@ -376,7 +377,7 @@ fun CookieToolbar(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Menu
-                            AnimatedCookieButton(
+                            Cookiebutton(
                                 onClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     onMenuClick()
@@ -400,7 +401,7 @@ fun CookieToolbar(
                                 }
                             }
                             val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
-                            AnimatedCookieButton(
+                            Cookiebutton(
                                 onClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     onSearchOpenChange(true)
@@ -415,7 +416,7 @@ fun CookieToolbar(
                             )
 
                             // Manage (Middle)
-                            AnimatedCookieButton(
+                            Cookiebutton(
                                 onClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     onManageClick()
@@ -431,7 +432,7 @@ fun CookieToolbar(
                             val hasFilterSnippets = uiState.selectedFilterSnippets.isNotEmpty()
                             val isFilterHighlighted = isFilterOpen || hasFilterSnippets
                             val filterContentDescription = if (isFilterOpen) "Close Filters" else "Filters"
-                            AnimatedCookieButton(
+                            Cookiebutton(
                                 onClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                                     onFilterClick()

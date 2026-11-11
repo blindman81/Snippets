@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
@@ -35,7 +36,7 @@ fun FilterSnippetContent(
     showSort: Boolean = true,
     scrollState: androidx.compose.foundation.ScrollState? = null,
     selectedTabIndex: Int = 0,
-    uiState: SnippetsUiState = viewModel.uiState.collectAsState().value
+    uiState: SnippetsUiState = viewModel.uiState.collectAsStateWithLifecycle().value
 ) {
     val view = LocalView.current
     val internalScrollState = rememberScrollState()

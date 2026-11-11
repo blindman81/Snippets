@@ -67,6 +67,7 @@ fun PhotoActionDropdownMenu(
             dismissOnBackPress = false,
             dismissOnClickOutside = true
         ),
+        shape = RoundedCornerShape(16.dp),
         containerColor = Color.Transparent,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp,
@@ -81,7 +82,7 @@ fun PhotoActionDropdownMenu(
             }
     ) {
         BlurredSurface(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
             contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 3.dp,

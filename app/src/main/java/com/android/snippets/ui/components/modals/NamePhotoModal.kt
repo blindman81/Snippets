@@ -44,7 +44,8 @@ fun NamePhotoModal(
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = GoogleSansFlexRound,
                     color = MaterialTheme.colorScheme.onSurface
-                )
+                ),
+                fontFamily = GoogleSansFlexRound
             )
         },
         text = {
@@ -57,6 +58,7 @@ fun NamePhotoModal(
                         }
                     },
                     textStyle = LocalTextStyle.current.copy(fontFamily = GoogleSansFlexRound),
+                    label = { Text("Photo name", fontFamily = GoogleSansFlexRound) },
                     placeholder = { Text("Photo name", fontFamily = GoogleSansFlexRound) },
                     singleLine = true,
                     leadingIcon = {
@@ -96,6 +98,7 @@ fun NamePhotoModal(
                 Text(
                     text = "${nameValue.length}/25",
                     style = MaterialTheme.typography.labelSmall.copy(fontFamily = GoogleSansFlexRound),
+                    fontFamily = GoogleSansFlexRound,
                     color = if (nameValue.length >= 25) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
