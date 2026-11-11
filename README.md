@@ -1,7 +1,7 @@
 # Snippets
 
 <p align="center">
-  <img width="1024" height="1024" alt="Image" src="https://github.com/user-attachments/assets/4adf12a0-1587-4f96-9d54-7f176d894f7c" />
+  <img width="1024" height="1024" alt="Image" src="https://github.com/user-attachments/assets/13b18b51-3c5d-4fbe-b058-c3ce6919533f" />
 </p>
 
 A beautiful Material 3 Expressive app with hold a button to shape morph and button rotation tilt. Write upto 15 letters of snippets to your photos. View and share them in an expressive way.
