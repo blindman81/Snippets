@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -36,7 +37,7 @@ fun MonthlyRecapScreen(
     viewModel: SnippetsViewModel,
     onBack: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val view = LocalView.current
     val isDark = isSystemInDarkTheme()
@@ -64,18 +65,23 @@ fun MonthlyRecapScreen(
         }
     }
 
+    val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val handleBack = {
-        val act = context as? androidx.activity.ComponentActivity
-        if (act != null) {
-            act.finish()
+        if (backDispatcher != null) {
+            backDispatcher.onBackPressed()
         } else {
-            onBack()
+            val act = context as? androidx.activity.ComponentActivity
+            if (act != null) {
+                act.onBackPressedDispatcher.onBackPressed()
+            } else {
+                onBack()
+            }
         }
     }
 
     Scaffold(
         topBar = {
-            MainTopBar(
+            MainAppBar(
                 viewModel = viewModel,
                 title = title,
                 onNavigationClick = handleBack,

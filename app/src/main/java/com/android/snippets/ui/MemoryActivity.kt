@@ -56,11 +56,6 @@ class MemoryActivity : ComponentActivity() {
                 insetsController.isAppearanceLightNavigationBars = false
             }
 
-            LaunchedEffect(Unit) {
-                MemoryWorker.isInMemoryScreen = true
-                MemoryWorker.cancelSummaryNotification(this@MemoryActivity)
-            }
-
             LaunchedEffect(viewModel.curatedMemories, viewModel.photos, photoId) {
                 if (photoId != null) {
                     viewModel.openMemoryForPhoto(photoId)
@@ -84,8 +79,14 @@ class MemoryActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun onStart() {
+        super.onStart()
+        MemoryWorker.isInMemoryScreen = true
+        MemoryWorker.cancelSummaryNotification(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
         MemoryWorker.isInMemoryScreen = false
     }
 }

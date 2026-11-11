@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -75,6 +76,7 @@ fun MemoryScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val activity = context as? androidx.activity.ComponentActivity
+    val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
     val photo = viewModel.currentPhoto
 
@@ -204,7 +206,7 @@ fun MemoryScreen(
                     isMarkedViewed = true
                     viewModel.onMemoryViewed(photo.id)
                 }
-                activity?.finish()
+                backDispatcher?.onBackPressed() ?: activity?.onBackPressedDispatcher?.onBackPressed() ?: activity?.finish()
             }
         }
     }
@@ -228,10 +230,10 @@ fun MemoryScreen(
                                 if (currentMemoryProgress > 0.15f) {
                                     currentMemoryProgress = 0f
                                 } else {
-                                    activity?.finish()
+                                    backDispatcher?.onBackPressed() ?: activity?.onBackPressedDispatcher?.onBackPressed() ?: activity?.finish()
                                 }
                             } else {
-                                activity?.finish()
+                                backDispatcher?.onBackPressed() ?: activity?.onBackPressedDispatcher?.onBackPressed() ?: activity?.finish()
                             }
                         }
                     },
@@ -450,7 +452,7 @@ fun MemoryScreen(
                                 .heightIn(min = 24.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.padding(start = 7.dp, end = 6.dp, top = 2.dp, bottom = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
@@ -460,7 +462,7 @@ fun MemoryScreen(
                                     tint = Color.White,
                                     modifier = Modifier.size(12.dp)
                                 )
-                                Text(
+                                WrappingPillText(
                                     text = photoName,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 11.sp,
@@ -468,10 +470,8 @@ fun MemoryScreen(
                                         lineHeight = 14.sp
                                     ),
                                     color = Color.White,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
-                                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -523,7 +523,7 @@ fun MemoryScreen(
                                 .heightIn(min = 24.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.padding(start = 7.dp, end = 6.dp, top = 2.dp, bottom = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
@@ -533,7 +533,7 @@ fun MemoryScreen(
                                     tint = Color.White,
                                     modifier = Modifier.size(12.dp)
                                 )
-                                Text(
+                                WrappingPillText(
                                     text = locationText,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 11.sp,
@@ -541,10 +541,8 @@ fun MemoryScreen(
                                         lineHeight = 14.sp
                                     ),
                                     color = Color.White,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
-                                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -553,6 +551,43 @@ fun MemoryScreen(
             }
         }
     }
+}
+
+@Composable
+private fun WrappingPillText(
+    text: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    maxLines: Int,
+    overflow: TextOverflow,
+    modifier: Modifier = Modifier
+) {
+    var textWidthDp by remember(text) { mutableStateOf<androidx.compose.ui.unit.Dp?>(null) }
+    val density = LocalDensity.current
+
+    Text(
+        text = text,
+        style = style,
+        color = color,
+        maxLines = maxLines,
+        overflow = overflow,
+        onTextLayout = { layoutResult ->
+            val maxLineWidth = (0 until layoutResult.lineCount).maxOfOrNull { line ->
+                layoutResult.getLineRight(line) - layoutResult.getLineLeft(line)
+            } ?: 0f
+            if (maxLineWidth > 0f) {
+                val calculatedDp = with(density) { (ceil(maxLineWidth).toInt() + 1).toDp() }
+                if (textWidthDp != calculatedDp) {
+                    textWidthDp = calculatedDp
+                }
+            }
+        },
+        modifier = if (textWidthDp != null) {
+            modifier.width(textWidthDp!!)
+        } else {
+            modifier
+        }
+    )
 }
 
 @Composable

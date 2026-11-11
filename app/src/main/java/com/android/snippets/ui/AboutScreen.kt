@@ -1,64 +1,44 @@
 package com.android.snippets.ui
-import com.android.snippets.ui.components.*
-
-import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
-import androidx.compose.ui.window.PopupProperties
-import kotlin.coroutines.cancellation.CancellationException
-
-
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ContactMail
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.ui.platform.LocalView
 import android.view.HapticFeedbackConstants
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.DpOffset
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ContactMail
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.android.snippets.ui.components.*
+import com.android.snippets.ui.util.fadingEdge
+import com.ln.android.snippets.R
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen() {
     val context = LocalContext.current
     val view = LocalView.current
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val scope = rememberCoroutineScope()
     val hazeState = LocalHazeState.current ?: rememberHazeState()
-    var showMenu by remember { mutableStateOf(false) }
     var showLicenses by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val isScrolled by remember { derivedStateOf<Boolean> { scrollState.value > 0 } }
@@ -71,83 +51,56 @@ fun AboutScreen() {
         }
     }
 
+    PredictiveBackHandler(enabled = showLicenses) { progress ->
+        try {
+            progress.collect { }
+            showLicenses = false
+        } catch (e: CancellationException) {
+            // cancelled
+        }
+    }
+
     CompositionLocalProvider(
         LocalHazeState provides hazeState
     ) {
-        Scaffold(
-            modifier = Modifier.nestedScroll(nestedScrollConnection),
-            topBar = {
-                MainTopBar(
-                    title = "About",
-                    onNavigationClick = { 
-                        view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                        (view.context as? androidx.activity.ComponentActivity)?.finish()
-                    },
-                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
-                    isSpinning = !(showMenu || showLicenses),
-                    isScrolled = isScrolled,
-                    leftAlignTitle = true,
-                    actions = {
-                        Box {
-                            AnimatedCookieButton(
-                                onClick = { showMenu = true },
-                                icon = Icons.Rounded.MoreVert,
-                                contentDescription = "More",
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                isSpinning = !(showMenu || showLicenses)
-                            )
-                            PredictiveBackHandler(enabled = showMenu) { progress ->
-                                try {
-                                    progress.collect { }
-                                    showMenu = false
-                                } catch (e: CancellationException) {
-                                    // cancelled
-                                }
-                            }
-
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                                properties = PopupProperties(
-                                    focusable = true,
-                                    dismissOnBackPress = false,
-                                    dismissOnClickOutside = true
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                offset = DpOffset(x = (-16).dp, y = 8.dp),
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Open source licenses", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) },
-                                    onClick = {
-                                        showMenu = false
-                                        showLicenses = true
-                                    }
-                                )
-                            }
-                        }
-                    }
-                )
-            },
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0)
-        ) { padding ->
-            Surface(
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Scaffold(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding()),
-                shape = RectangleShape,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                tonalElevation = 0.dp
-            ) {
-                if (showLicenses) {
-                    LicenseDialog(onDismiss = { showLicenses = false })
-                }
+                    .hazeSource(state = hazeState)
+                    .nestedScroll(nestedScrollConnection),
+                topBar = {
+                    MainTopBar(
+                        title = "About",
+                        onNavigationClick = { 
+                            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                            backDispatcher?.onBackPressed() ?: (view.context as? androidx.activity.ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() ?: (view.context as? androidx.activity.ComponentActivity)?.finish()
+                        },
+                        navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
+                        isSpinning = !showLicenses,
+                        isScrolled = isScrolled,
+                        leftAlignTitle = true,
+                        actions = {
+                            Cookiebutton(
+                                onClick = { showLicenses = true },
+                                icon = R.drawable.ic_license,
+                                contentDescription = "Open source licenses",
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                isSpinning = !showLicenses
+                            )
+                        }
+                    )
+                },
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                contentWindowInsets = WindowInsets(0, 0, 0, 0)
+            ) { padding ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeSource(state = hazeState),
+                        .padding(top = padding.calculateTopPadding()),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -188,7 +141,7 @@ fun AboutScreen() {
                             modifier = Modifier.widthIn(max = 280.dp)
                         )
 
-                        AnimatedCookieButton(
+                        Cookiebutton(
                             onClick = {
                                 val email = "lnsnippets2026@gmail.com"
                                 val intent = Intent(Intent.ACTION_SENDTO).apply {
@@ -215,13 +168,29 @@ fun AboutScreen() {
                         )
                     }
                 }
+            }
+
+            if (showLicenses) {
+                LicenseDialog(onDismiss = { showLicenses = false })
+            }
+        }
     }
-}
-}
 }
 
 @Composable
 fun LicenseDialog(onDismiss: () -> Unit) {
+    val scrollState = rememberScrollState()
+    val bottomFade by animateDpAsState(
+        targetValue = if (scrollState.canScrollForward) 32.dp else 0.dp,
+        animationSpec = tween(durationMillis = 200),
+        label = "licenseBottomFade"
+    )
+    val topFade by animateDpAsState(
+        targetValue = if (scrollState.canScrollBackward) 20.dp else 0.dp,
+        animationSpec = tween(durationMillis = 200),
+        label = "licenseTopFade"
+    )
+
     BlurredAlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -236,8 +205,9 @@ fun LicenseDialog(onDismiss: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 400.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .heightIn(max = 420.dp)
+                    .fadingEdge(top = topFade, bottom = bottomFade)
+                    .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 LicenseItem(
@@ -246,14 +216,24 @@ fun LicenseDialog(onDismiss: () -> Unit) {
                     copyright = "Copyright (c) 2018-2026 The Android Open Source Project"
                 )
                 LicenseItem(
-                    name = "Material Components for Android",
+                    name = "Material Components & Material 3",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2018-2026 The Android Open Source Project"
+                    copyright = "Copyright (c) 2018-2026 Google LLC & The Android Open Source Project"
                 )
                 LicenseItem(
-                    name = "Kotlin, Kotlin Coroutines & Serialization",
+                    name = "Google Material Symbols",
+                    license = "Apache License 2.0",
+                    copyright = "Copyright (c) 2020-2026 Google LLC"
+                )
+                LicenseItem(
+                    name = "Kotlin & Kotlinx Coroutines",
                     license = "Apache License 2.0",
                     copyright = "Copyright (c) 2010-2026 JetBrains s.r.o. and Kotlin Programming Language contributors"
+                )
+                LicenseItem(
+                    name = "Kotlinx Serialization",
+                    license = "Apache License 2.0",
+                    copyright = "Copyright (c) 2017-2026 JetBrains s.r.o."
                 )
                 LicenseItem(
                     name = "Dagger Hilt",
@@ -263,7 +243,12 @@ fun LicenseDialog(onDismiss: () -> Unit) {
                 LicenseItem(
                     name = "Coil",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2024-2026 Coil Contributors"
+                    copyright = "Copyright (c) 2020-2026 Coil Contributors"
+                )
+                LicenseItem(
+                    name = "OkHttp",
+                    license = "Apache License 2.0",
+                    copyright = "Copyright (c) 2013-2026 Square, Inc."
                 )
                 LicenseItem(
                     name = "Haze",
@@ -271,13 +256,18 @@ fun LicenseDialog(onDismiss: () -> Unit) {
                     copyright = "Copyright (c) 2023-2026 Chris Banes"
                 )
                 LicenseItem(
-                    name = "Kotlinx Serialization",
+                    name = "AndroidX Graphics Shapes",
                     license = "Apache License 2.0",
-                    copyright = "Copyright (c) 2017-2026 JetBrains s.r.o."
+                    copyright = "Copyright (c) 2023-2026 The Android Open Source Project"
                 )
+                LicenseItem(
+                    name = "Google Sans Flex",
+                    license = "SIL Open Font License 1.1",
+                    copyright = "Copyright (c) Google LLC"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
-        },
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        }
     )
 }
 

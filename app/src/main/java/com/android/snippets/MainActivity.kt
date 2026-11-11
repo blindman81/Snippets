@@ -20,7 +20,7 @@ import com.android.snippets.ui.theme.configurePredictiveBackTransition
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SettingsViewModel
 import com.android.snippets.viewmodel.MemoryViewModel
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -39,6 +39,9 @@ import androidx.compose.animation.core.tween
 import com.android.snippets.ui.components.LoadingIndicator
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import androidx.core.content.pm.PackageInfoCompat
+import com.android.snippets.ui.OnboardingActivity
 
 
 
@@ -169,9 +172,12 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) {
+    ) { isGranted ->
         viewModel.requestNotificationPermission = false
         viewModel.markNotificationPermissionPrompted()
+        if (isGranted) {
+            viewModel.onNotificationPermissionGranted()
+        }
     }
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -217,7 +223,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.surfaceContainer
                 ) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            val uiState by viewModel.uiState.collectAsState()
+                            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                             val photos = uiState.photos
                             val targetPhotoId = pendingNotificationPhotoId
                             val notificationToken = pendingNotificationToken
@@ -293,6 +299,24 @@ class MainActivity : ComponentActivity() {
                             }
 
                             val hasPromptedPermission = uiState.hasPromptedNotificationPermission
+                            androidx.compose.runtime.LaunchedEffect(uiState.isInitialLoading, showSplashOverlay) {
+                                if (!uiState.isInitialLoading && !showSplashOverlay) {
+                                    val currentVersionCode = try {
+                                        PackageInfoCompat.getLongVersionCode(
+                                            packageManager.getPackageInfo(packageName, 0)
+                                        ).toInt()
+                                    } catch (e: Exception) {
+                                        0
+                                    }
+                                    val prefs = viewModel.userPreferencesRepository.userPreferencesFlow.first()
+                                    val lastSeenVersion = prefs.lastSeenAppVersionCode
+                                    if (lastSeenVersion == 0 || lastSeenVersion < currentVersionCode) {
+                                        viewModel.userPreferencesRepository.updateLastSeenAppVersionCode(currentVersionCode)
+                                        startActivity(android.content.Intent(this@MainActivity, OnboardingActivity::class.java))
+                                    }
+                                }
+                            }
+
                             androidx.compose.runtime.LaunchedEffect(uiState.isInitialLoading, showSplashOverlay, hasPromptedPermission) {
                                 if (!uiState.isInitialLoading && !showSplashOverlay) {
                                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -316,14 +340,15 @@ class MainActivity : ComponentActivity() {
                                             android.Manifest.permission.POST_NOTIFICATIONS
                                         )
                                         if (permissionState != PackageManager.PERMISSION_GRANTED) {
-                                            viewModel.markNotificationPermissionPrompted()
                                             requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                                         } else {
                                             viewModel.requestNotificationPermission = false
                                             viewModel.markNotificationPermissionPrompted()
+                                            viewModel.onNotificationPermissionGranted()
                                         }
                                     } else {
                                         viewModel.requestNotificationPermission = false
+                                        viewModel.onNotificationPermissionGranted()
                                     }
                                 }
                             }

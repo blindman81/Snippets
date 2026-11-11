@@ -1,9 +1,11 @@
 package com.android.snippets.ui
 
+import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -70,7 +74,7 @@ fun LibraryScreen(
     animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onAddPhotos: (String) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
@@ -153,6 +157,24 @@ fun LibraryScreen(
         } catch (_: CancellationException) {}
     }
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE || event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                showMenuPopup = false
+            }
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP && viewModel.editingCollectionEmoji != null) {
+                keyboardController?.hide()
+                focusManager.clearFocus(force = true)
+                viewModel.cancelEditingCollectionEmoji()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val pageTabs = remember(uiState.userCollections) {
         listOf("Library", "Favorites") + uiState.userCollections
     }
@@ -206,11 +228,12 @@ fun LibraryScreen(
     }
 
     // Only commit active tab to ViewModel & reset carousel once the pager settles
-    LaunchedEffect(pagerState, pageTabs) {
+    val currentTabs by rememberUpdatedState(pageTabs)
+    LaunchedEffect(pagerState) {
         snapshotFlow { Pair(pagerState.isScrollInProgress, pagerState.settledPage) }
             .collect { (isScrolling, settled) ->
                 if (!isScrolling) {
-                    val settledTab = pageTabs.getOrNull(settled) ?: "Library"
+                    val settledTab = currentTabs.getOrNull(settled) ?: "Library"
                     if (viewModel.libraryCurrentTab != settledTab) {
                         viewModel.libraryCurrentTab = settledTab
                         try {
@@ -234,7 +257,7 @@ fun LibraryScreen(
 
     LaunchedEffect(viewModel.libraryCurrentTab, pageTabs) {
         val targetIndex = pageTabs.indexOf(viewModel.libraryCurrentTab)
-        if (targetIndex != -1 && targetIndex != pagerState.currentPage && !pagerState.isScrollInProgress) {
+        if (targetIndex != -1 && targetIndex != pagerState.currentPage) {
             pagerState.animateScrollToPage(targetIndex)
         }
     }
@@ -356,166 +379,32 @@ fun LibraryScreen(
 
     val currentGridState = listStates[currentTab] ?: listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
 
+    val currentTabMemories = remember(memoryViewModel.historyMemories, currentTab) {
+        if (currentTab == "Library") memoryViewModel.historyMemories else emptyList()
+    }
+    val hasTabMemories = currentTabMemories.isNotEmpty()
+
     val isCurrentTabScrolled by remember(currentTab, currentGridState) {
         derivedStateOf {
-            currentGridState.firstVisibleItemIndex > 0 || currentGridState.firstVisibleItemScrollOffset > 10
+            currentGridState.firstVisibleItemIndex > 0 || currentGridState.firstVisibleItemScrollOffset > 4
         }
     }
 
-    val getCollapseDistanceForTab = remember(density, statusBarTop, memoryViewModel.historyMemories) {
-        { tabName: String? ->
-            if (tabName == null) {
-                with(density) { (statusBarTop + 72.dp).toPx() }
-            } else {
-                val hasMemories = tabName == "Library" && memoryViewModel.historyMemories.isNotEmpty()
-                val paddingDp = if (hasMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
-                with(density) { paddingDp.toPx() }
-            }
-        }
-    }
+    val maxCarouselCollapsePx = with(density) { 104.dp.toPx() }
 
-    val getScrollOffsetForTab = remember(listStates, getCollapseDistanceForTab) {
-        { tabName: String? ->
-            if (tabName == null) {
-                0f
-            } else {
-                val state = listStates[tabName]
-                if (state == null) {
-                    0f
-                } else {
-                    val maxCollapse = getCollapseDistanceForTab(tabName)
-                    if (state.firstVisibleItemIndex > 0) {
-                        maxCollapse
-                    } else {
-                        state.firstVisibleItemScrollOffset.toFloat().coerceIn(0f, maxCollapse)
-                    }
-                }
-            }
-        }
-    }
-
-    val isTabScrolled = remember(listStates) {
-        { tabName: String? ->
-            if (tabName == null) false
-            else {
-                val state = listStates[tabName]
-                state != null && (state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 10)
-            }
-        }
-    }
-
-    var isSwipeTransitionActive by remember { mutableStateOf(false) }
-    var swipeTargetOffset by remember { mutableFloatStateOf(0f) }
-
-    val swipeAnimOffset by animateFloatAsState(
-        targetValue = swipeTargetOffset,
-        animationSpec = if (swipeTargetOffset > 0f) {
-            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
-        } else {
-            spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)
-        },
-        label = "swipe_header_offset",
-        finishedListener = {
-            if (!pagerState.isScrollInProgress) {
-                isSwipeTransitionActive = false
-            }
-        }
-    )
-
-    LaunchedEffect(
+    val carouselCollapseProgress by remember(
+        currentTab,
+        currentGridState,
+        hasTabMemories,
         pagerState.isScrollInProgress,
         pagerState.currentPage,
         pagerState.targetPage,
         pagerState.currentPageOffsetFraction
     ) {
-        val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
-        val isCurrentScrolled = isTabScrolled(currentTabName)
-
-        if (pagerState.isScrollInProgress) {
-            val swipingTargetPage = when {
-                pagerState.targetPage != pagerState.currentPage -> pagerState.targetPage
-                pagerState.currentPageOffsetFraction > 0.001f -> (pagerState.currentPage + 1).coerceAtMost(pageTabs.size - 1)
-                pagerState.currentPageOffsetFraction < -0.001f -> (pagerState.currentPage - 1).coerceAtLeast(0)
-                else -> pagerState.currentPage
-            }
-            val targetTabName = pageTabs.getOrNull(swipingTargetPage)
-            val isTargetScrolled = isTabScrolled(targetTabName)
-
-            if (!isCurrentScrolled && isTargetScrolled) {
-                isSwipeTransitionActive = true
-                swipeTargetOffset = getCollapseDistanceForTab(targetTabName)
-            } else if (isCurrentScrolled && !isTargetScrolled) {
-                isSwipeTransitionActive = true
-                swipeTargetOffset = getCollapseDistanceForTab(currentTabName)
-            } else if (isCurrentScrolled && isTargetScrolled) {
-                isSwipeTransitionActive = true
-                swipeTargetOffset = getCollapseDistanceForTab(targetTabName)
-            } else {
-                if (isSwipeTransitionActive) {
-                    swipeTargetOffset = 0f
-                }
-            }
-        } else {
-            val settledTabName = pageTabs.getOrNull(pagerState.settledPage) ?: currentTabName
-            val isSettledScrolled = isTabScrolled(settledTabName)
-            if (isSwipeTransitionActive) {
-                if (!isSettledScrolled) {
-                    swipeTargetOffset = 0f
-                } else {
-                    swipeTargetOffset = getCollapseDistanceForTab(settledTabName)
-                }
-            }
-        }
-    }
-
-    val currentHeaderScrollOffset by remember(
-        isSwipeTransitionActive,
-        swipeAnimOffset,
-        pagerState,
-        pageTabs,
-        getScrollOffsetForTab
-    ) {
         derivedStateOf {
-            if (isSwipeTransitionActive) {
-                swipeAnimOffset
-            } else {
-                val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
-                getScrollOffsetForTab(currentTabName)
-            }
-        }
-    }
-
-    val currentMaxCollapseDistance by remember(pagerState, pageTabs, getCollapseDistanceForTab) {
-        derivedStateOf {
-            val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
-            getCollapseDistanceForTab(currentTabName)
-        }
-    }
-
-    val headerCollapseProgress by remember {
-        derivedStateOf {
-            val maxCollapse = currentMaxCollapseDistance
-            if (maxCollapse > 0f) {
-                (currentHeaderScrollOffset / maxCollapse).coerceIn(0f, 1f)
-            } else {
-                0f
-            }
-        }
-    }
-
-    val isCarouselCollapsed by remember(
-        headerCollapseProgress,
-        pagerState.isScrollInProgress,
-        pagerState.currentPage,
-        pagerState.targetPage,
-        pagerState.currentPageOffsetFraction,
-        pageTabs
-    ) {
-        derivedStateOf {
-            if (headerCollapseProgress > 0.85f) {
-                true
+            if (!hasTabMemories) {
+                1f
             } else if (pagerState.isScrollInProgress) {
-                val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
                 val swipingTargetPage = when {
                     pagerState.targetPage != pagerState.currentPage -> pagerState.targetPage
                     pagerState.currentPageOffsetFraction > 0.001f -> (pagerState.currentPage + 1).coerceAtMost(pageTabs.size - 1)
@@ -523,21 +412,32 @@ fun LibraryScreen(
                     else -> pagerState.currentPage
                 }
                 val targetTabName = pageTabs.getOrNull(swipingTargetPage)
-                if (currentTabName == "Library") {
-                    targetTabName != "Library" || kotlin.math.abs(pagerState.currentPageOffsetFraction) > 0.001f
+                val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
+                if (currentTabName == "Library" && targetTabName != "Library") {
+                    kotlin.math.abs(pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
+                } else if (currentTabName != "Library" && targetTabName == "Library") {
+                    (1f - kotlin.math.abs(pagerState.currentPageOffsetFraction)).coerceIn(0f, 1f)
+                } else if (currentTabName != "Library") {
+                    1f
                 } else {
-                    true
+                    if (currentGridState.firstVisibleItemIndex > 0) 1f
+                    else (currentGridState.firstVisibleItemScrollOffset.toFloat() / maxCarouselCollapsePx).coerceIn(0f, 1f)
                 }
             } else {
-                false
+                if (currentGridState.firstVisibleItemIndex > 0) {
+                    1f
+                } else {
+                    (currentGridState.firstVisibleItemScrollOffset.toFloat() / maxCarouselCollapsePx).coerceIn(0f, 1f)
+                }
             }
         }
     }
 
-    val isHeaderScrolled by remember {
-        derivedStateOf {
-            headerCollapseProgress > 0.05f
-        }
+    val carouselHeightDp = 104.dp * (1f - carouselCollapseProgress)
+    val carouselAlpha = (1f - carouselCollapseProgress * 1.3f).coerceIn(0f, 1f)
+
+    val isHeaderScrolled by remember(isCurrentTabScrolled) {
+        derivedStateOf { isCurrentTabScrolled }
     }
 
     LaunchedEffect(isHeaderScrolled) {
@@ -546,10 +446,34 @@ fun LibraryScreen(
         }
     }
 
-    val statusBarBlurAlpha by remember {
-        derivedStateOf {
-            (headerCollapseProgress * 1.5f).coerceIn(0f, 1f)
-        }
+    val appBarBlurRadius by animateDpAsState(
+        targetValue = if (isCurrentTabScrolled) 20.dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "app_bar_blur_radius"
+    )
+
+    val appBarContainerColor by animateColorAsState(
+        targetValue = if (isCurrentTabScrolled) {
+            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "app_bar_container_color"
+    )
+
+    val appBarHazeStyle = remember(appBarContainerColor, appBarBlurRadius) {
+        HazeStyle(
+            tint = HazeTint(appBarContainerColor),
+            blurRadius = appBarBlurRadius,
+            noiseFactor = HazeDefaults.noiseFactor
+        )
     }
 
     val hazeState = LocalHazeState.current ?: dev.chrisbanes.haze.rememberHazeState()
@@ -583,20 +507,7 @@ fun LibraryScreen(
                                 (com.android.snippets.ui.util.LocalTiltActive.current && !isAnyPopupActive)
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            val currentTabMemories = remember(memoryViewModel.historyMemories, currentTab) {
-                                if (currentTab == "Library") memoryViewModel.historyMemories else emptyList()
-                            }
-                            val hasTabMemories = currentTabMemories.isNotEmpty()
                             val topGridPadding = if (hasTabMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
-
-                            val statusBarBaseColor = MaterialTheme.colorScheme.surfaceContainer
-                            val statusBarHazeStyle = remember(statusBarBaseColor) {
-                                HazeStyle(
-                                    tint = HazeTint(statusBarBaseColor.copy(alpha = HazeDefaults.tintAlpha)),
-                                    blurRadius = HazeDefaults.blurRadius,
-                                    noiseFactor = HazeDefaults.noiseFactor
-                                )
-                            }
 
                             val targetPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
                             val activeTabTarget = pageTabs.getOrNull(targetPage) ?: "Library"
@@ -672,58 +583,76 @@ fun LibraryScreen(
                                 }
                             )
 
-                            // 2. Status Bar Progressive Blur
-                            LibraryStatusBarBlur(
-                                statusBarTop = statusBarTop,
-                                alpha = { statusBarBlurAlpha },
-                                hazeState = hazeState,
-                                style = statusBarHazeStyle,
-                                modifier = Modifier.align(Alignment.TopCenter)
-                            )
-
-                            // 3. Memories Carousel & Cookie Nav Bar
-                            Column(
+                            // 2. Full-width App Bar Box (takes full space behind memories carousel and cookienavbar)
+                            Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopStart)
+                                    .align(Alignment.TopCenter)
                                     .fillMaxWidth()
-                                    .padding(top = statusBarTop)
-                                    .graphicsLayer {
-                                        translationY = -currentHeaderScrollOffset
-                                        alpha = (1f - (headerCollapseProgress - 0.4f) / 0.6f).coerceIn(0f, 1f)
-                                        clip = false
-                                    }
-                            ) {
-                                MemoriesCarousel(
-                                    currentTab = currentTab,
-                                    viewModel = memoryViewModel,
-                                    lazyListState = carouselLazyListState,
-                                    sharedTransitionScope = sharedTransitionScope,
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    isCollapsed = isCarouselCollapsed,
-                                    pageTabs = pageTabs,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                LibraryNavBar(
-                                    allTabs = pageTabs,
-                                    activeTabTarget = activeTabTarget,
-                                    currentTab = currentTab,
-                                    pageTabs = pageTabs,
-                                    pagerState = pagerState,
-                                    viewModel = viewModel,
-                                    tabRowScrollState = tabRowScrollState,
-                                    tabPositions = tabPositions,
-                                    tabWidths = tabWidths,
-                                    statusBarTop = 0.dp,
-                                    cookieNavBarOffset = 0.dp,
-                                    cookieNavBarAlpha = 1f,
-                                    onScrollCarouselToTop = {
-                                        scope.launch {
-                                            carouselLazyListState.animateScrollToItem(0)
+                                    .zIndex(10f)
+                                    .then(
+                                        if (appBarBlurRadius > 0.dp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            Modifier.hazeEffect(state = hazeState, style = appBarHazeStyle)
+                                        } else {
+                                            Modifier.background(appBarContainerColor)
                                         }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                    )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = statusBarTop)
+                                ) {
+                                    // Memories Carousel inside the App Bar (shrinks 1:1 with scroll distance)
+                                    if (hasTabMemories && carouselHeightDp > 0.dp) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(carouselHeightDp)
+                                                .graphicsLayer {
+                                                    alpha = carouselAlpha
+                                                    clip = true
+                                                }
+                                        ) {
+                                            MemoriesCarousel(
+                                                currentTab = currentTab,
+                                                viewModel = memoryViewModel,
+                                                lazyListState = carouselLazyListState,
+                                                sharedTransitionScope = sharedTransitionScope,
+                                                animatedVisibilityScope = animatedVisibilityScope,
+                                                isCollapsed = carouselCollapseProgress >= 1f,
+                                                pageTabs = pageTabs,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+
+                                    // Cookie Nav Bar (readjusts to the top as carousel minimizes)
+                                    LibraryNavBar(
+                                        allTabs = pageTabs,
+                                        activeTabTarget = activeTabTarget,
+                                        currentTab = currentTab,
+                                        pageTabs = pageTabs,
+                                        pagerState = pagerState,
+                                        viewModel = viewModel,
+                                        tabRowScrollState = tabRowScrollState,
+                                        tabPositions = tabPositions,
+                                        tabWidths = tabWidths,
+                                        statusBarTop = 0.dp,
+                                        cookieNavBarOffset = 0.dp,
+                                        cookieNavBarAlpha = 1f,
+                                        onScrollCarouselToTop = {
+                                            scope.launch {
+                                                try {
+                                                    currentGridState.animateScrollToItem(0)
+                                                } catch (_: Exception) {}
+                                                try {
+                                                    carouselLazyListState.animateScrollToItem(0)
+                                                } catch (_: Exception) {}
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
                             }
 
                             // 4. Floating Cookie Toolbar
@@ -880,7 +809,7 @@ fun LibraryScreen(
 private object EmojiInputTransformation : InputTransformation {
     override fun TextFieldBuffer.transformInput() {
         val emojiOnly = asCharSequence().filter { char ->
-            val type = Character.getType(char).toInt()
+            val type = Character.getType(char)
             type == Character.SURROGATE.toInt() || 
             type == Character.OTHER_SYMBOL.toInt() ||
             char.code > 0x2000 // Catch many more complex emojis

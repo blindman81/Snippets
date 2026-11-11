@@ -1,6 +1,5 @@
 package com.android.snippets.ui.theme
 
-import android.app.Activity
 import android.app.ActivityManager
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
@@ -81,15 +80,6 @@ fun SnippetsTheme(
                         .build()
                     activity.setTaskDescription(taskDesc)
                 }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    activity.overrideActivityTransition(
-                        Activity.OVERRIDE_TRANSITION_CLOSE,
-                        0,
-                        0,
-                        argbColor
-                    )
-                }
             }
         }
     }
@@ -122,15 +112,6 @@ fun ComponentActivity.configurePredictiveBackTransition(surfaceContainerColor: I
             .setPrimaryColor(color)
             .build()
         setTaskDescription(taskDesc)
-    }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        overrideActivityTransition(
-            Activity.OVERRIDE_TRANSITION_CLOSE,
-            0,
-            0,
-            color
-        )
     }
 }
 

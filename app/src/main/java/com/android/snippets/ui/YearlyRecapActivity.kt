@@ -70,7 +70,7 @@ class YearlyRecapActivity : ComponentActivity() {
                     } else {
                         MonthlyRecapScreen(
                             viewModel = viewModel,
-                            onBack = { finish() }
+                            onBack = { onBackPressedDispatcher.onBackPressed() }
                         )
                     }
                 }

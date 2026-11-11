@@ -138,4 +138,9 @@ class MemoryViewModel @Inject constructor(
             MemoryWorker.cancelPostedNotification(getApplication(), id)
         }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        MemoryWorker.isInMemoryScreen = false
+    }
 }

@@ -2,7 +2,6 @@ package com.android.snippets.ui
 
 import android.content.Intent
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -27,13 +25,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.android.snippets.ui.components.MainTopBar
+import com.android.snippets.logic.SnippetManager
+import com.android.snippets.ui.components.MainAppBar
 import com.android.snippets.ui.shapes.CookieShape
-import com.android.snippets.viewmodel.SnippetStyle
 import com.android.snippets.viewmodel.StatsViewModel
 import com.ln.android.snippets.R
 import java.util.Calendar
-import java.util.Locale
 
 /**
  * Snippet stats and fun insights screen composable redesigned with cookie9sided.
@@ -41,18 +38,15 @@ import java.util.Locale
 @Composable
 fun StatsScreen(viewModel: StatsViewModel) {
     val view = LocalView.current
+    val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val scrollState = rememberScrollState()
 
     val photos = viewModel.photos
 
     // Summary Insights Calculations
     val totalPhotos = photos.size
-    val allSnippets = remember(photos) { photos.flatMap { it.snippets } }
-    val totalSnippetsCount = allSnippets.size
-
-    // 1. Most used snippet
-    val mostUsedSnippetEntry = remember(allSnippets) {
-        allSnippets.groupingBy { it }.eachCount().maxByOrNull { it.value }
+    val uniqueSnippetsCount = remember(photos) {
+        photos.flatMap { it.snippets }.distinct().size
     }
 
     val context = LocalContext.current
@@ -65,15 +59,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
         context.startActivity(intent)
     }
 
-    // 2. Most photographed location
-    val mostPhotographedLocationEntry = remember(photos, context) {
-        photos.mapNotNull { photo ->
-            val loc = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)?.trim()
-            if (!loc.isNullOrEmpty()) loc else null
-        }.groupingBy { it }.eachCount().maxByOrNull { it.value }
-    }
-
-    // 3a. Current active streak (resets to 0 if streak is broken)
+    // 1. Current active streak (resets to 0 if streak is broken)
     val currentStreakDays = remember(photos) {
         if (photos.isEmpty()) 0
         else {
@@ -106,7 +92,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
         }
     }
 
-    // 3b. Longest streak (properly handles 365-day and 366-day leap year boundaries)
+    // 2. Longest streak (properly handles 365-day and 366-day leap year boundaries)
     val longestStreakDays = remember(photos) {
         if (photos.isEmpty()) 0
         else {
@@ -136,54 +122,44 @@ fun StatsScreen(viewModel: StatsViewModel) {
         }
     }
 
-    // 4. Photos this month
+    // 3. Photos this month
     val photosThisMonthCount = remember(photos) {
         val nowCal = Calendar.getInstance()
         val currentMonth = nowCal.get(Calendar.MONTH)
         val currentYear = nowCal.get(Calendar.YEAR)
 
         photos.count { photo ->
-            val photoCal = Calendar.getInstance()
-            photoCal.timeInMillis = photo.date
+            val photoCal = Calendar.getInstance().apply { timeInMillis = photo.date }
             photoCal.get(Calendar.MONTH) == currentMonth && photoCal.get(Calendar.YEAR) == currentYear
         }
     }
 
-    // 5. Favorite snippet
-    val favoriteSnippetEntry = remember(photos) {
-        photos.filter { it.isFavorite }
-            .flatMap { it.snippets }
-            .groupingBy { it }
-            .eachCount()
-            .maxByOrNull { it.value }
-    }
+    // 4. New snippets this month
+    val newSnippetsThisMonthCount = remember(photos, viewModel.snippetFirstSeenTimes) {
+        val nowCal = Calendar.getInstance()
+        val currentMonth = nowCal.get(Calendar.MONTH)
+        val currentYear = nowCal.get(Calendar.YEAR)
+        val firstSeenMap = viewModel.snippetFirstSeenTimes.ifEmpty {
+            SnippetManager.rebuildSnippetFirstSeenTimes(photos)
+        }
 
-    // 6. Average snippets per photo
-    val averageSnippets = remember(totalPhotos, totalSnippetsCount) {
-        if (totalPhotos == 0) 0f else totalSnippetsCount.toFloat() / totalPhotos
-    }
-
-    // 6b. Most snippets on a photo
-    val maxSnippetsOnPhoto = remember(photos) {
-        if (photos.isEmpty()) 0 else photos.maxOf { it.snippets.size }
-    }
-
-    // 6c. Least snippets on a photo
-    val minSnippetsOnPhoto = remember(photos) {
-        if (photos.isEmpty()) 0 else {
-            val nonZero = photos.map { it.snippets.size }.filter { it > 0 }
-            if (nonZero.isNotEmpty()) nonZero.minOrNull() ?: 0 else 0
+        firstSeenMap.count { (_, time) ->
+            if (time <= 0L) false
+            else {
+                val cal = Calendar.getInstance().apply { timeInMillis = time }
+                cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear
+            }
         }
     }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            MainTopBar(
+            MainAppBar(
                 title = "Stats",
                 onNavigationClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                    (view.context as? androidx.activity.ComponentActivity)?.finish()
+                    backDispatcher?.onBackPressed() ?: (view.context as? androidx.activity.ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() ?: (view.context as? androidx.activity.ComponentActivity)?.finish()
                 },
                 navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                 isSpinning = true,
@@ -205,7 +181,10 @@ fun StatsScreen(viewModel: StatsViewModel) {
                 ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- OVERVIEW SECTION (3 small cookies in a single row) ---
+            // --- INSIGHTS SECTION (3 cookies per row) ---
+            SectionHeader(title = "Insights")
+
+            // Row 1: Photos, Snippets, Streak
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -243,7 +222,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     cookieSize = 82.dp,
                     cookieContent = {
                         Text(
-                            text = totalSnippetsCount.toString(),
+                            text = uniqueSnippetsCount.toString(),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
@@ -293,163 +272,11 @@ fun StatsScreen(viewModel: StatsViewModel) {
                 )
             }
 
-            // --- INSIGHTS SECTION (3 cookies per row) ---
-            SectionHeader(title = "Insights")
-
-            // Row 1: Top Snippet, Favorite, Top Location
+            // Row 2: New Photos, New Snippets, Max Streak
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CookieStatItem(
-                    modifier = Modifier.weight(1f),
-                    cookieSize = 82.dp,
-                    cookieContent = {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 4.dp)
-                        ) {
-                            Text(
-                                text = mostUsedSnippetEntry?.key ?: "None",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (mostUsedSnippetEntry != null) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = mostUsedSnippetEntry.value.toString(),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    },
-                    pillContent = {
-                        Icon(
-                            imageVector = Icons.Rounded.AutoAwesome,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = "Top Snippet",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                )
-
-                CookieStatItem(
-                    modifier = Modifier.weight(1f),
-                    cookieSize = 82.dp,
-                    cookieContent = {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 4.dp)
-                        ) {
-                            Text(
-                                text = favoriteSnippetEntry?.key ?: "None",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (favoriteSnippetEntry != null) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = favoriteSnippetEntry.value.toString(),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    },
-                    pillContent = {
-                        Icon(
-                            imageVector = Icons.Rounded.Favorite,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = "Favorite",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                )
-
-                CookieStatItem(
-                    modifier = Modifier.weight(1f),
-                    cookieSize = 82.dp,
-                    onClick = mostPhotographedLocationEntry?.key?.let { locName ->
-                        { onOpenSearch(locName) }
-                    },
-                    cookieContent = {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 4.dp)
-                        ) {
-                            Text(
-                                text = mostPhotographedLocationEntry?.key ?: "None",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (mostPhotographedLocationEntry != null) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = mostPhotographedLocationEntry.value.toString(),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    },
-                    pillContent = {
-                        Icon(
-                            imageVector = Icons.Rounded.LocationOn,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = "Top Location",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                )
-            }
-
-            // Row 2: This Month, Avg / Photo, Max Streak
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 CookieStatItem(
                     modifier = Modifier.weight(1f),
@@ -471,7 +298,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = "This Month",
+                            text = "New Photos",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -484,7 +311,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     cookieSize = 82.dp,
                     cookieContent = {
                         Text(
-                            text = String.format(Locale.US, "%.1f", averageSnippets),
+                            text = newSnippetsThisMonthCount.toString(),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
@@ -492,14 +319,14 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     },
                     pillContent = {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.TextSnippet,
+                            imageVector = Icons.Rounded.CalendarMonth,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
-                            text = "Avg / Photo",
+                            text = "New Snippets",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -534,70 +361,6 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         )
                     }
                 )
-            }
-
-            // Row 3: Max Snippets, Min Snippets, Spacer
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CookieStatItem(
-                    modifier = Modifier.weight(1f),
-                    cookieSize = 82.dp,
-                    cookieContent = {
-                        Text(
-                            text = maxSnippetsOnPhoto.toString(),
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
-                    },
-                    pillContent = {
-                        Icon(
-                            imageVector = Icons.Rounded.VerticalAlignTop,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = "Max Snippets",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                )
-
-                CookieStatItem(
-                    modifier = Modifier.weight(1f),
-                    cookieSize = 82.dp,
-                    cookieContent = {
-                        Text(
-                            text = minSnippetsOnPhoto.toString(),
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
-                    },
-                    pillContent = {
-                        Icon(
-                            imageVector = Icons.Rounded.VerticalAlignBottom,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = "Min Snippets",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
             }
 
             // --- RATINGS SECTION (3 cookies per row) ---
@@ -763,51 +526,57 @@ private fun StarRatingBadge(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CookieStatItem(
     modifier: Modifier = Modifier,
     cookieSize: Dp = 82.dp,
     cookieColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     pillColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    rippleColor: Color = MaterialTheme.colorScheme.primary,
     onClick: (() -> Unit)? = null,
     cookieContent: @Composable BoxScope.() -> Unit,
     pillContent: @Composable RowScope.() -> Unit
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+    CompositionLocalProvider(
+        LocalRippleConfiguration provides RippleConfiguration(color = rippleColor)
     ) {
-        Surface(
-            modifier = Modifier.size(cookieSize),
-            shape = CookieShape,
-            color = cookieColor,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            onClick = onClick ?: {},
-            enabled = onClick != null
+        Column(
+            modifier = modifier,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(6.dp),
-                contentAlignment = Alignment.Center
+            Surface(
+                modifier = Modifier.size(cookieSize),
+                shape = CookieShape,
+                color = cookieColor,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                onClick = onClick ?: {},
+                enabled = onClick != null
             ) {
-                cookieContent()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    cookieContent()
+                }
             }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Surface(
-            shape = CircleShape,
-            color = pillColor,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            onClick = onClick ?: {},
-            enabled = onClick != null
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                shape = CircleShape,
+                color = pillColor,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = onClick ?: {},
+                enabled = onClick != null
             ) {
-                pillContent()
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    pillContent()
+                }
             }
         }
     }

@@ -1188,6 +1188,19 @@ class SnippetsViewModel @Inject constructor(
         MemoryManager.cancelMemoryNotification(getApplication(), photoId)
     }
 
+    fun onNotificationPermissionGranted() {
+        reconcileSurfacedMemories()
+        reconcileMemoryNotifications()
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            val curated = MemoryManager.getCuratedMemories(photos, now).take(MemoryManager.MEMORIES_PER_CYCLE)
+            val unviewed = curated.filter { !it.isViewed }
+            if (unviewed.isNotEmpty() && MemoryWorker.canPostNotifications(getApplication())) {
+                MemoryManager.triggerImmediateCycleWork(getApplication())
+            }
+        }
+    }
+
     fun markNotificationPermissionPrompted() {
         hasPromptedNotificationPermission = true
         viewModelScope.launch {

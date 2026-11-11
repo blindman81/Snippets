@@ -115,7 +115,7 @@ private fun SettingItemView(
             modifier = Modifier.zIndex(10f),
             contentAlignment = Alignment.Center
         ) {
-            AnimatedCookieButton(
+            Cookiebutton(
                 onClick = item.onClick,
                 icon = item.icon,
                 contentDescription = item.title.replace("\n", " "),
@@ -245,6 +245,7 @@ private fun SettingsRow(
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val view = LocalView.current
     val context = LocalContext.current
+    val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
@@ -271,11 +272,11 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
-                MainTopBar(
+                MainAppBar(
                     title = "Settings",
                     onNavigationClick = { 
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
-                        (view.context as? androidx.activity.ComponentActivity)?.finish()
+                        backDispatcher?.onBackPressed() ?: (view.context as? androidx.activity.ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() ?: (view.context as? androidx.activity.ComponentActivity)?.finish()
                     },
                     navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                     isScrolled = scrollState.value > 0,
