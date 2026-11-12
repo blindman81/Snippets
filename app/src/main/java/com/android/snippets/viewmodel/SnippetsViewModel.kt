@@ -508,22 +508,20 @@ class SnippetsViewModel @Inject constructor(
             photos = com.android.snippets.logic.CollectionManager.assignPhotosToCollection(photos, selectedPhotoIds, collection)
             savePhotos()
             
-            if (collection != "Favorites") {
-                showSnackbar(
-                    message = "Added to collection",
-                    actionLabel = "View",
-                    onAction = {
-                        libraryCurrentTab = collection
-                        navigateLibrary()
-                    }
-                )
-            }
+            val message = if (collection == "Favorites") "Added to Favorites" else "Added to collection"
+            showSnackbar(
+                message = message,
+                actionLabel = "View",
+                onAction = {
+                    libraryCurrentTab = collection
+                    navigateLibrary()
+                }
+            )
         }
         _uiState.update {
             it.copy(
                 pendingCollectionAssignment = null,
-                selectedPhotoIds = emptySet(),
-                libraryCurrentTab = collection
+                selectedPhotoIds = emptySet()
             )
         }
         navigateLibrary()
