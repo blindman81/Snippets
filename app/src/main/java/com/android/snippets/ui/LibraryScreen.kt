@@ -379,6 +379,10 @@ fun LibraryScreen(
 
     val currentGridState = listStates[currentTab] ?: listStates.getOrPut(currentTab) { LazyStaggeredGridState() }
 
+    val hasLibraryMemories = remember(memoryViewModel.historyMemories) {
+        memoryViewModel.historyMemories.isNotEmpty()
+    }
+
     val currentTabMemories = remember(memoryViewModel.historyMemories, currentTab) {
         if (currentTab == "Library") memoryViewModel.historyMemories else emptyList()
     }
@@ -390,45 +394,32 @@ fun LibraryScreen(
         }
     }
 
+    val libraryGridState = listStates.getOrPut("Library") { LazyStaggeredGridState() }
     val maxCarouselCollapsePx = with(density) { 104.dp.toPx() }
 
     val carouselCollapseProgress by remember(
-        currentTab,
-        currentGridState,
-        hasTabMemories,
-        pagerState.isScrollInProgress,
-        pagerState.currentPage,
-        pagerState.targetPage,
-        pagerState.currentPageOffsetFraction
+        hasLibraryMemories,
+        libraryGridState,
+        maxCarouselCollapsePx,
+        pageTabs,
+        pagerState
     ) {
         derivedStateOf {
-            if (!hasTabMemories) {
+            if (!hasLibraryMemories) {
                 1f
-            } else if (pagerState.isScrollInProgress) {
-                val swipingTargetPage = when {
-                    pagerState.targetPage != pagerState.currentPage -> pagerState.targetPage
-                    pagerState.currentPageOffsetFraction > 0.001f -> (pagerState.currentPage + 1).coerceAtMost(pageTabs.size - 1)
-                    pagerState.currentPageOffsetFraction < -0.001f -> (pagerState.currentPage - 1).coerceAtLeast(0)
-                    else -> pagerState.currentPage
-                }
-                val targetTabName = pageTabs.getOrNull(swipingTargetPage)
-                val currentTabName = pageTabs.getOrNull(pagerState.currentPage)
-                if (currentTabName == "Library" && targetTabName != "Library") {
-                    kotlin.math.abs(pagerState.currentPageOffsetFraction).coerceIn(0f, 1f)
-                } else if (currentTabName != "Library" && targetTabName == "Library") {
-                    (1f - kotlin.math.abs(pagerState.currentPageOffsetFraction)).coerceIn(0f, 1f)
-                } else if (currentTabName != "Library") {
-                    1f
-                } else {
-                    if (currentGridState.firstVisibleItemIndex > 0) 1f
-                    else (currentGridState.firstVisibleItemScrollOffset.toFloat() / maxCarouselCollapsePx).coerceIn(0f, 1f)
-                }
             } else {
-                if (currentGridState.firstVisibleItemIndex > 0) {
+                val libraryScrollProgress = if (libraryGridState.firstVisibleItemIndex > 0) {
                     1f
                 } else {
-                    (currentGridState.firstVisibleItemScrollOffset.toFloat() / maxCarouselCollapsePx).coerceIn(0f, 1f)
+                    (libraryGridState.firstVisibleItemScrollOffset.toFloat() / maxCarouselCollapsePx).coerceIn(0f, 1f)
                 }
+
+                val libraryIndex = pageTabs.indexOf("Library").let { if (it >= 0) it.toFloat() else 0f }
+                val continuousPage = (pagerState.currentPage + pagerState.currentPageOffsetFraction).coerceAtLeast(0f)
+                val distanceFromLibrary = kotlin.math.abs(continuousPage - libraryIndex).coerceIn(0f, 1f)
+
+                // Smoothly interpolate between Library's scroll-based collapse progress and fully collapsed (1f)
+                libraryScrollProgress + (1f - libraryScrollProgress) * distanceFromLibrary
             }
         }
     }
@@ -603,7 +594,7 @@ fun LibraryScreen(
                                         .padding(top = statusBarTop)
                                 ) {
                                     // Memories Carousel inside the App Bar (shrinks 1:1 with scroll distance)
-                                    if (hasTabMemories && carouselHeightDp > 0.dp) {
+                                    if (hasLibraryMemories && carouselHeightDp > 0.dp) {
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()

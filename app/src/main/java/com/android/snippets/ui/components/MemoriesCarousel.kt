@@ -76,7 +76,7 @@ fun MemoriesCarousel(
     pageTabs: List<String> = emptyList()
 ) {
     val allMemories = viewModel.historyMemories
-    val isVisible = !isCollapsed && currentTab == "Library" && allMemories.isNotEmpty()
+    val isVisible = !isCollapsed && allMemories.isNotEmpty()
 
     AnimatedVisibility(
         visible = isVisible,
