@@ -34,7 +34,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,12 +50,17 @@ fun SelectionToolbarContent(
     viewModel: SnippetsViewModel,
     uiState: SnippetsUiState = viewModel.uiState.collectAsStateWithLifecycle().value,
     onDeleteClick: () -> Unit,
+    onSearchClick: () -> Unit = {},
+    flatPhotosRaw: List<Photo> = emptyList(),
+    currentTab: String = "",
     isSpinning: Boolean = true,
     isScrolled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
     val context = LocalContext.current
+
+    val isAddOrRemovePhotos = uiState.pendingCollectionAssignment != null || uiState.pendingCollectionRemoval != null
 
     Row(
         modifier = modifier
@@ -78,18 +82,30 @@ fun SelectionToolbarContent(
             isSpinning = isSpinning
         )
 
-        val textToShow = when {
-            uiState.pendingCollectionAssignment != null -> "Add photos"
-            uiState.pendingCollectionRemoval != null -> "Remove photos"
-            else -> ""
-        }
-        if (textToShow.isNotEmpty()) {
-            Text(
-                text = textToShow,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+        if (isAddOrRemovePhotos) {
+            val isSearchActive = uiState.searchQuery.isNotEmpty()
+            val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
+                isSearchActive && flatPhotosRaw.any { photo ->
+                    when (currentTab) {
+                        "Library" -> true
+                        "Favorites" -> photo.isFavorite
+                        else -> photo.collections.contains(currentTab)
+                    }
+                }
+            }
+            val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
+            Cookiebutton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    onSearchClick()
+                },
+                icon = searchIcon,
+                contentDescription = "Search",
+                isSelected = isSearchActive,
+                containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                size = 44.dp,
+                isSpinning = isSpinning
             )
         } else {
             Cookiebutton(
@@ -106,7 +122,7 @@ fun SelectionToolbarContent(
             )
         }
 
-        if (uiState.pendingCollectionAssignment != null || uiState.pendingCollectionRemoval != null) {
+        if (isAddOrRemovePhotos) {
             Cookiebutton(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
@@ -174,6 +190,13 @@ fun ExpandedSearchContent(
             }
         }
 
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(100L)
+            try {
+                searchFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+
         // Close / back
         Cookiebutton(
             onClick = {
@@ -209,13 +232,6 @@ fun ExpandedSearchContent(
             },
             decorator = { innerTextField ->
                 Box(contentAlignment = Alignment.CenterStart) {
-                    if (searchTextFieldState.text.isEmpty()) {
-                        Text(
-                            text = "Search",
-                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    }
                     innerTextField()
                 }
             }
@@ -272,9 +288,6 @@ fun CookieToolbar(
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
 
-    val isAddOrRemovePhotos = uiState.isSelectionMode && (uiState.pendingCollectionAssignment != null || uiState.pendingCollectionRemoval != null)
-    val selectionSearchFocusRequester = remember { FocusRequester() }
-
     CompositionLocalProvider(
         LocalTiltActive provides true,
         LocalTiltModalFocus provides true
@@ -294,33 +307,6 @@ fun CookieToolbar(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AnimatedVisibility(
-                visible = isAddOrRemovePhotos,
-                enter = fadeIn(Motion.StandardFade) + slideInVertically(Motion.ToolbarSlideEnterInt) { it / 2 },
-                exit = fadeOut(Motion.FastFade) + slideOutVertically(Motion.ToolbarSlideExitInt) { it / 2 }
-            ) {
-                BlurredSurface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    shadowElevation = 8.dp,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(84.dp)
-                ) {
-                    ExpandedSearchContent(
-                        viewModel = viewModel,
-                        searchFocusRequester = selectionSearchFocusRequester,
-                        onCloseOrBack = {
-                            focusManager.clearFocus()
-                            viewModel.searchQuery = ""
-                        },
-                        isSpinning = !isAnyPopupActive
-                    )
-                }
-            }
-
             BlurredSurface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainer,
@@ -333,8 +319,8 @@ fun CookieToolbar(
             ) {
                 AnimatedContent(
                     targetState = when {
-                        uiState.isSelectionMode -> 2
                         isSearchOpen -> 1
+                        uiState.isSelectionMode -> 2
                         else -> 0
                     },
                     transitionSpec = {
@@ -350,6 +336,9 @@ fun CookieToolbar(
                             viewModel = viewModel,
                             uiState = uiState,
                             onDeleteClick = onBulkDeleteClick,
+                            onSearchClick = { onSearchOpenChange(true) },
+                            flatPhotosRaw = flatPhotosRaw,
+                            currentTab = currentTab,
                             isSpinning = !isAnyPopupActive,
                             isScrolled = isScrolled
                         )
