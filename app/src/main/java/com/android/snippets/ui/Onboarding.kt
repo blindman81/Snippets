@@ -159,15 +159,31 @@ fun OnboardingScreen(
             .fillMaxSize()
             .clipToBounds()
     ) {
-        val bgCookieSize = 320.dp
+        val bigCookieSize = 320.dp
+        val cornerCookieSize = 240.dp
         val cookieColor = MaterialTheme.colorScheme.surfaceContainerHighest
+
+        // Top-left cut-off 9-sided cookie (centered on top-left corner)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = -cornerCookieSize / 2, y = -cornerCookieSize / 2)
+                .size(cornerCookieSize)
+                .graphicsLayer {
+                    rotationZ = bgRotation.value
+                    shape = CookieShape
+                    clip = true
+                    alpha = 0.7f
+                }
+                .background(cookieColor)
+        )
 
         // Top-right cut-off 9-sided cookie (flush with top edge, cut off on right)
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .offset(x = bgCookieSize * 0.38f, y = 0.dp)
-                .size(bgCookieSize)
+                .offset(x = bigCookieSize * 0.38f, y = 0.dp)
+                .size(bigCookieSize)
                 .graphicsLayer {
                     rotationZ = bgRotation.value
                     shape = CookieShape
@@ -181,8 +197,23 @@ fun OnboardingScreen(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .offset(x = -bgCookieSize * 0.44f, y = 0.dp)
-                .size(bgCookieSize)
+                .offset(x = -bigCookieSize * 0.44f, y = 0.dp)
+                .size(bigCookieSize)
+                .graphicsLayer {
+                    rotationZ = -bgRotation.value
+                    shape = CookieShape
+                    clip = true
+                    alpha = 0.7f
+                }
+                .background(cookieColor)
+        )
+
+        // Bottom-right cut-off 9-sided cookie (centered on bottom-right corner)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = cornerCookieSize / 2, y = cornerCookieSize / 2)
+                .size(cornerCookieSize)
                 .graphicsLayer {
                     rotationZ = -bgRotation.value
                     shape = CookieShape
