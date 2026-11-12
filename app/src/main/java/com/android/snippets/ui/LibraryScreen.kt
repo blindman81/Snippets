@@ -198,8 +198,9 @@ fun LibraryScreen(
             if (uiState.libraryCurrentTab == previousPendingAssignment) {
                 tabRowScrollState.scrollTo(savedCollectionsScrollPosition)
             } else {
-                val tabX = tabPositions[activeTabTarget]
-                val tabW = tabWidths[activeTabTarget]
+                val currentTabName = uiState.libraryCurrentTab
+                val tabX = tabPositions[currentTabName]
+                val tabW = tabWidths[currentTabName]
                 if (tabX != null && tabW != null) {
                     val rowW = tabRowScrollState.maxValue + 0f
                     val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
