@@ -195,7 +195,20 @@ fun LibraryScreen(
         if (currentAssignment != null && previousPendingAssignment == null) {
             savedCollectionsScrollPosition = tabRowScrollState.value
         } else if (currentAssignment == null && previousPendingAssignment != null) {
-            tabRowScrollState.scrollTo(savedCollectionsScrollPosition)
+            if (uiState.libraryCurrentTab == previousPendingAssignment) {
+                tabRowScrollState.scrollTo(savedCollectionsScrollPosition)
+            } else {
+                val tabX = tabPositions[activeTabTarget]
+                val tabW = tabWidths[activeTabTarget]
+                if (tabX != null && tabW != null) {
+                    val rowW = tabRowScrollState.maxValue + 0f
+                    val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
+                        .coerceIn(0f, rowW)
+                    tabRowScrollState.animateScrollTo(target.toInt())
+                } else {
+                    tabRowScrollState.animateScrollTo(0)
+                }
+            }
         }
         previousPendingAssignment = currentAssignment
     }
