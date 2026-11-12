@@ -25,23 +25,24 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
- * Standard Jetpack Compose Vertical Scrollbar component.
+ * Standard Jetpack Compose Scrollbar component.
  * Spec:
- * - thickness: 8.dp (Compose default)
- * - shape: RoundedCornerShape(4.dp)
+ * - thickness: 12.dp (touch fast-scroll standard)
+ * - shape: RoundedCornerShape(6.dp)
  * - thumbLength: uniform 48.dp thumb height across all tabs
  * - works strictly through drag (tapping does not trigger jumps to top or bottom)
  * - smooth color transition between idle and active states
  */
 @Composable
-fun VerticalScrollbar(
+fun Scrollbar(
     state: LazyStaggeredGridState,
     totalItemsCount: Int,
     modifier: Modifier = Modifier,
-    thickness: Dp = 8.dp,
-    shape: Shape = RoundedCornerShape(4.dp),
+    thickness: Dp = 12.dp,
+    shape: Shape = RoundedCornerShape(6.dp),
     thumbLength: Dp = 48.dp,
     minThumbLength: Dp = thumbLength,
     thumbColorIdle: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.28f),
@@ -121,26 +122,27 @@ fun VerticalScrollbar(
         val currentVisibleItemsCount by rememberUpdatedState(visibleItems.size)
         val currentAvgItemHeight by rememberUpdatedState(avgItemHeight)
 
-        fun scrollToFraction(fraction: Float) {
-            val clampedFraction = fraction.coerceIn(0f, 1f)
+        fun jumpToThumbOffset(targetThumbY: Float, maxOffset: Float) {
+            if (maxOffset <= 0f) return
+            val fraction = (targetThumbY / maxOffset).coerceIn(0f, 1f)
             val maxScrollable = (currentTotalItemsCount - currentVisibleItemsCount).coerceAtLeast(1)
             scrollJob?.cancel()
             scrollJob = coroutineScope.launch {
-                if (clampedFraction <= 0.001f) {
-                    state.scrollToItem(0, 0)
-                } else if (clampedFraction >= 0.999f) {
-                    state.scrollToItem(currentTotalItemsCount - 1, 0)
-                } else {
-                    val exactIndex = clampedFraction * maxScrollable
-                    val targetIndex = exactIndex.toInt().coerceIn(0, currentTotalItemsCount - 1)
-                    val itemFraction = exactIndex - targetIndex
-                    val targetOffsetPx = (itemFraction * currentAvgItemHeight).toInt()
-                    state.scrollToItem(targetIndex, targetOffsetPx)
-                }
+                try {
+                    if (fraction <= 0.001f) {
+                        state.scrollToItem(0, 0)
+                    } else if (fraction >= 0.999f) {
+                        state.scrollToItem((currentTotalItemsCount - 1).coerceAtLeast(0), 0)
+                    } else {
+                        val exactIndex = fraction * maxScrollable
+                        val targetIndex = exactIndex.toInt().coerceIn(0, currentTotalItemsCount - 1)
+                        val itemFraction = exactIndex - targetIndex
+                        val targetOffsetPx = (itemFraction * currentAvgItemHeight).toInt()
+                        state.scrollToItem(targetIndex, targetOffsetPx)
+                    }
+                } catch (_: Exception) {}
             }
         }
-
-        val currentScrollToFraction by rememberUpdatedState(::scrollToFraction)
 
         Canvas(
             modifier = Modifier
@@ -155,34 +157,59 @@ fun VerticalScrollbar(
                             val maxOffset = (currentTrackHeightPx - activeThumbHeightPx).coerceAtLeast(0f)
                             val currentTop = currentComputedThumbOffsetY
                             val currentBottom = currentTop + activeThumbHeightPx
-                            dragOffsetWithinThumb = if (offset.y in currentTop..currentBottom) {
+                            val isTouchOnThumb = offset.y in currentTop..currentBottom
+                            dragOffsetWithinThumb = if (isTouchOnThumb) {
                                 offset.y - currentTop
                             } else {
                                 activeThumbHeightPx / 2f
                             }
                             val initialThumbY = (offset.y - dragOffsetWithinThumb).coerceIn(0f, maxOffset)
                             dragThumbOffsetY = initialThumbY
-                            if (maxOffset > 0f) {
-                                currentScrollToFraction(initialThumbY / maxOffset)
+
+                            if (maxOffset > 0f && !isTouchOnThumb) {
+                                jumpToThumbOffset(initialThumbY, maxOffset)
                             }
                         },
                         onDragEnd = {
-                            coroutineScope.launch {
-                                scrollJob?.join()
-                                isDragging = false
+                            isDragging = false
+                            val maxOffset = (currentTrackHeightPx - activeThumbHeightPx).coerceAtLeast(0f)
+                            if (dragThumbOffsetY <= 0f) {
+                                jumpToThumbOffset(0f, maxOffset)
+                            } else if (maxOffset > 0f && dragThumbOffsetY >= maxOffset) {
+                                jumpToThumbOffset(maxOffset, maxOffset)
                             }
                         },
                         onDragCancel = {
                             isDragging = false
                         },
-                        onVerticalDrag = { change, _ ->
+                        onVerticalDrag = { change, dragAmount ->
                             change.consume()
                             val maxOffset = (currentTrackHeightPx - activeThumbHeightPx).coerceAtLeast(0f)
-                            val newThumbY = (change.position.y - dragOffsetWithinThumb).coerceIn(0f, maxOffset)
-                            dragThumbOffsetY = newThumbY
                             if (maxOffset > 0f) {
-                                val fraction = newThumbY / maxOffset
-                                currentScrollToFraction(fraction)
+                                val prevThumbY = dragThumbOffsetY
+                                val newThumbY = (prevThumbY + dragAmount).coerceIn(0f, maxOffset)
+                                dragThumbOffsetY = newThumbY
+
+                                val effectiveThumbDelta = newThumbY - prevThumbY
+                                if (effectiveThumbDelta != 0f) {
+                                    if (newThumbY <= 0f) {
+                                        jumpToThumbOffset(0f, maxOffset)
+                                    } else if (newThumbY >= maxOffset) {
+                                        jumpToThumbOffset(maxOffset, maxOffset)
+                                    } else {
+                                        val maxScrollableItems = (currentTotalItemsCount - currentVisibleItemsCount).coerceAtLeast(1)
+                                        val totalContentPx = maxScrollableItems * currentAvgItemHeight
+                                        val scrollRatio = totalContentPx / maxOffset
+                                        val deltaContentPx = effectiveThumbDelta * scrollRatio
+                                        val jumpThresholdPx = (currentTrackHeightPx * 1.0f).coerceAtLeast(1000f)
+
+                                        if (abs(deltaContentPx) > jumpThresholdPx || scrollJob?.isActive == true) {
+                                            jumpToThumbOffset(newThumbY, maxOffset)
+                                        } else {
+                                            state.dispatchRawDelta(deltaContentPx)
+                                        }
+                                    }
+                                }
                             }
                         }
                     )
@@ -198,3 +225,4 @@ fun VerticalScrollbar(
         }
     }
 }
+
