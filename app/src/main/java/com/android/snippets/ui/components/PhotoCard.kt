@@ -268,6 +268,7 @@ fun PhotoCard(
                                         .data(photo.uriString)
                                         .crossfade(false)
                                         .memoryCacheKey(photo.uriString)
+                                        .placeholderMemoryCacheKey(photo.uriString)
                                         .build()
                                 }
 

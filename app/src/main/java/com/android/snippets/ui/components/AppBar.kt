@@ -1,7 +1,12 @@
 package com.android.snippets.ui.components
 
+import android.os.Build
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Menu
@@ -16,12 +21,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.android.snippets.ui.theme.titleEmphasized
 import com.android.snippets.ui.util.Motion
 import com.android.snippets.viewmodel.SnippetsViewModel
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 
 @Composable
-fun MainAppBar(
+fun AppBar(
     viewModel: SnippetsViewModel? = null,
     title: String? = null,
     onNavigationClick: () -> Unit,
@@ -34,6 +45,8 @@ fun MainAppBar(
     forceTransparentBackground: Boolean = false,
     showDividerOnScroll: Boolean = true,
     scrolledColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    enableBlur: Boolean = false,
+    hazeState: HazeState? = LocalHazeState.current,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
@@ -43,23 +56,56 @@ fun MainAppBar(
         animationSpec = Motion.MediumFade,
         label = "headerScrollProgress"
     )
+
+    val blurRadius by animateDpAsState(
+        targetValue = if (isScrolled && enableBlur) 20.dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "app_bar_blur_radius"
+    )
+
+    val baseScrolledColor = if (enableBlur) scrolledColor.copy(alpha = 0.85f) else scrolledColor
     val headerColor = if (forceTransparentBackground) {
         Color.Transparent
     } else {
         lerp(
             MaterialTheme.colorScheme.surfaceContainer,
-            scrolledColor,
+            baseScrolledColor,
             scrollProgress
+        )
+    }
+
+    val isHazeActive = enableBlur && hazeState != null && blurRadius > 0.dp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+
+    val appBarHazeStyle = remember(headerColor, blurRadius) {
+        HazeStyle(
+            tint = HazeTint(headerColor),
+            blurRadius = blurRadius,
+            noiseFactor = HazeDefaults.noiseFactor
         )
     }
     
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = if (forceTransparentBackground) Color.Transparent else headerColor,
+        modifier = Modifier
+            .fillMaxWidth()
+            .zIndex(1f)
+            .then(
+                if (isHazeActive && hazeState != null) {
+                    Modifier.hazeEffect(state = hazeState, style = appBarHazeStyle)
+                } else {
+                    Modifier.background(headerColor)
+                }
+            ),
+        color = Color.Transparent,
         shape = RectangleShape,
         tonalElevation = 0.dp
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        CompositionLocalProvider(
+            LocalIsOnBlurredSurface provides isHazeActive
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .statusBarsPadding()
@@ -165,12 +211,13 @@ fun MainAppBar(
                 )
             }
         }
+        }
     }
 }
 
-@Deprecated("Use MainAppBar instead", ReplaceWith("MainAppBar(viewModel, title, onNavigationClick, navigationIcon, isSpinning, isScrolled, showNavigationIcon, leftAlignTitle, titleIcon, forceTransparentBackground, showDividerOnScroll, scrolledColor, actions)"))
+@Deprecated("Use AppBar instead", ReplaceWith("AppBar(viewModel, title, onNavigationClick, navigationIcon, isSpinning, isScrolled, showNavigationIcon, leftAlignTitle, titleIcon, forceTransparentBackground, showDividerOnScroll, scrolledColor, enableBlur, hazeState, actions)"))
 @Composable
-fun MainTopBar(
+fun MainAppBar(
     viewModel: SnippetsViewModel? = null,
     title: String? = null,
     onNavigationClick: () -> Unit,
@@ -183,8 +230,10 @@ fun MainTopBar(
     forceTransparentBackground: Boolean = false,
     showDividerOnScroll: Boolean = true,
     scrolledColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    enableBlur: Boolean = false,
+    hazeState: HazeState? = LocalHazeState.current,
     actions: @Composable RowScope.() -> Unit = {}
-) = MainAppBar(
+) = AppBar(
     viewModel = viewModel,
     title = title,
     onNavigationClick = onNavigationClick,
@@ -197,5 +246,9 @@ fun MainTopBar(
     forceTransparentBackground = forceTransparentBackground,
     showDividerOnScroll = showDividerOnScroll,
     scrolledColor = scrolledColor,
+    enableBlur = enableBlur,
+    hazeState = hazeState,
     actions = actions
 )
+
+

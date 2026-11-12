@@ -424,7 +424,8 @@ fun BlurredAlertDialog(
                                 contentDescription = "Close",
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                size = 40.dp
+                                size = 40.dp,
+                                iconSize = 28.dp
                             )
                             if (onConfirm != null) {
                                 Cookiebutton(

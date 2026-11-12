@@ -407,6 +407,7 @@ fun PhotoMasonryItem(
                                 .data(photo.uriString)
                                 .crossfade(false)
                                 .memoryCacheKey(photo.uriString)
+                                .placeholderMemoryCacheKey(photo.uriString)
                                 .build()
                         }
 
@@ -663,6 +664,7 @@ fun PhotoMasonryItem(
                             .data(photo.uriString)
                             .crossfade(false)
                             .memoryCacheKey(photo.uriString)
+                            .placeholderMemoryCacheKey(photo.uriString)
                             .build()
                     }
 

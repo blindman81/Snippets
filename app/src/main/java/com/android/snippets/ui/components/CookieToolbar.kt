@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -34,7 +33,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.snippets.model.Photo
@@ -270,8 +268,6 @@ fun CookieToolbar(
     searchFocusRequester: FocusRequester,
     isScrolled: Boolean,
     isAnyPopupActive: Boolean,
-    cookieToolbarOffset: () -> Dp = { 0.dp },
-    cookieToolbarScale: () -> Float = { 1f },
     isMenuOpen: Boolean = false,
     isManageOpen: Boolean = false,
     isFilterOpen: Boolean = false,
@@ -295,13 +291,7 @@ fun CookieToolbar(
                 .safeDrawingPadding()
                 .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                 .widthIn(max = 320.dp)
-                .fillMaxWidth()
-                .graphicsLayer {
-                    translationY = cookieToolbarOffset().toPx()
-                    scaleX = cookieToolbarScale()
-                    scaleY = cookieToolbarScale()
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
-                },
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {

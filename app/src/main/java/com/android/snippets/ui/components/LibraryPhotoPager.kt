@@ -201,7 +201,7 @@ fun LibraryPhotoPager(
                     }
                 }
 
-                VerticalScrollbar(
+                Scrollbar(
                     state = pageListState,
                     totalItemsCount = pageFilteredPhotos.size,
                     modifier = Modifier

@@ -216,6 +216,7 @@ private fun MemoryCarouselCard(
                     .data(photo.uriString)
                     .crossfade(false)
                     .memoryCacheKey(photo.uriString)
+                    .placeholderMemoryCacheKey(photo.uriString)
                     .build()
             }
 

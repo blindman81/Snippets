@@ -46,26 +46,6 @@ object Motion {
         stiffness = Spring.StiffnessMedium
     )
 
-    // Spatial Springs for Layout Offsets
-    val ToolbarEnterSpring = spring<Dp>(
-        dampingRatio = 0.65f,
-        stiffness = Spring.StiffnessMediumLow
-    )
-
-    val ToolbarExitSpring = spring<Dp>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
-    )
-
-    val ToolbarScaleEnterSpring = spring<Float>(
-        dampingRatio = 0.65f,
-        stiffness = Spring.StiffnessMediumLow
-    )
-
-    val ToolbarScaleExitSpring = spring<Float>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
-    )
 
     val NavBarEnterSpring = spring<Dp>(
         dampingRatio = 0.65f,
