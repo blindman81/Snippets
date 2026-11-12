@@ -65,9 +65,9 @@ fun SelectionToolbarContent(
     Row(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Cookiebutton(
             onClick = {
@@ -78,49 +78,34 @@ fun SelectionToolbarContent(
             contentDescription = "Clear Selection",
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            size = 44.dp,
+            size = 48.dp,
             isSpinning = isSpinning
         )
 
-        if (isAddOrRemovePhotos) {
-            val isSearchActive = uiState.searchQuery.isNotEmpty()
-            val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
-                isSearchActive && flatPhotosRaw.any { photo ->
-                    when (currentTab) {
-                        "Library" -> true
-                        "Favorites" -> photo.isFavorite
-                        else -> photo.collections.contains(currentTab)
-                    }
+        val isSearchActive = uiState.searchQuery.isNotEmpty()
+        val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
+            isSearchActive && flatPhotosRaw.any { photo ->
+                when (currentTab) {
+                    "Library" -> true
+                    "Favorites" -> photo.isFavorite
+                    else -> photo.collections.contains(currentTab)
                 }
             }
-            val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
-            Cookiebutton(
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    onSearchClick()
-                },
-                icon = searchIcon,
-                contentDescription = "Search",
-                isSelected = isSearchActive,
-                containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-                size = 44.dp,
-                isSpinning = isSpinning
-            )
-        } else {
-            Cookiebutton(
-                onClick = {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    viewModel.shareSelectedPhotos(context)
-                },
-                icon = R.drawable.ic_share,
-                contentDescription = "Share Selection",
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                size = 44.dp,
-                isSpinning = isSpinning
-            )
         }
+        val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
+        Cookiebutton(
+            onClick = {
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                onSearchClick()
+            },
+            icon = searchIcon,
+            contentDescription = "Search",
+            isSelected = isSearchActive,
+            containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+            size = 48.dp,
+            isSpinning = isSpinning
+        )
 
         if (isAddOrRemovePhotos) {
             Cookiebutton(
@@ -137,10 +122,23 @@ fun SelectionToolbarContent(
                 isSelected = true,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                size = 44.dp,
+                size = 48.dp,
                 isSpinning = isSpinning
             )
         } else {
+            Cookiebutton(
+                onClick = {
+                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    viewModel.shareSelectedPhotos(context)
+                },
+                icon = R.drawable.ic_share,
+                contentDescription = "Share Selection",
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                size = 48.dp,
+                isSpinning = isSpinning
+            )
+
             Cookiebutton(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.REJECT)
@@ -150,7 +148,7 @@ fun SelectionToolbarContent(
                 contentDescription = "Delete",
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                size = 44.dp,
+                size = 48.dp,
                 isSpinning = isSpinning
             )
         }
