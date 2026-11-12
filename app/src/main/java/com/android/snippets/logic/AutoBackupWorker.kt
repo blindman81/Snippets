@@ -5,12 +5,14 @@ import android.os.Environment
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.android.snippets.data.backup.SnippetsBackupManager
 import com.android.snippets.data.toPhoto
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.model.Photo
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -18,8 +20,8 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.io.File
-import java.io.FileOutputStream
 import java.util.Calendar
+import java.util.zip.ZipFile
 
 class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     companion object {
@@ -53,11 +55,33 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
             isLenient = true
         }
 
+        private val VOLATILE_KEYS = setOf("exportedAt", "surfacedTime", "lastViewedTime", "isViewed")
+
+        fun sanitizeForComparison(element: JsonElement): JsonElement {
+            return when (element) {
+                is JsonObject -> {
+                    buildJsonObject {
+                        for ((key, value) in element) {
+                            if (key !in VOLATILE_KEYS) {
+                                put(key, sanitizeForComparison(value))
+                            }
+                        }
+                    }
+                }
+                is JsonArray -> {
+                    JsonArray(element.map { sanitizeForComparison(it) })
+                }
+                else -> element
+            }
+        }
+
         fun hasNewChanges(existing: JsonObject, current: JsonObject): Boolean {
-            val allKeys = (existing.keys + current.keys) - "exportedAt"
+            val sanitizedExisting = sanitizeForComparison(existing) as JsonObject
+            val sanitizedCurrent = sanitizeForComparison(current) as JsonObject
+            val allKeys = sanitizedExisting.keys + sanitizedCurrent.keys
             for (key in allKeys) {
-                val existingElem = existing[key]
-                val currentElem = current[key]
+                val existingElem = sanitizedExisting[key]
+                val currentElem = sanitizedCurrent[key]
                 if (existingElem != currentElem) {
                     return true
                 }
@@ -65,17 +89,44 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
             return false
         }
 
+        fun readBackupJson(file: File): String? {
+            return try {
+                if (file.name.endsWith(".zip", ignoreCase = true)) {
+                    ZipFile(file).use { zipFile ->
+                        val entry = zipFile.getEntry("backup.json")
+                            ?: zipFile.entries().asSequence().firstOrNull { it.name.endsWith(".json", ignoreCase = true) }
+                        entry?.let {
+                            zipFile.getInputStream(it).bufferedReader(Charsets.UTF_8).use { reader -> reader.readText() }
+                        }
+                    }
+                } else {
+                    file.readText()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error reading backup JSON from ${file.name}", e)
+                null
+            }
+        }
+
         fun getReferenceBackupFile(backupDir: File, suffix: String): File? {
-            val backupFile = File(backupDir, "snippets_backup_auto_$suffix.json")
+            val backupFile = File(backupDir, "snippets_backup_auto_$suffix.zip")
             if (backupFile.exists()) return backupFile
 
             val otherFiles = backupDir.listFiles { _, name ->
-                name.startsWith("snippets_backup_auto_") && name.endsWith(".json")
+                name.startsWith("snippets_backup_auto_") && (name.endsWith(".zip") || name.endsWith(".json"))
             } ?: return null
             return otherFiles.filter { it.isFile }.maxByOrNull { it.lastModified() }
         }
 
-        suspend fun buildBackupData(context: Context): JsonObject {
+        data class BackupData(
+            val jsonObject: JsonObject,
+            val photos: List<Photo>,
+            val collections: List<String>,
+            val collectionIcons: Map<String, String>,
+            val snippetFirstSeenTimes: Map<String, Long>
+        )
+
+        suspend fun buildBackupData(context: Context): BackupData {
             val db = com.android.snippets.data.SnippetsDatabase.getInstance(context)
             val roomPhotos = try {
                 db.photoDao().getAllPhotosSync().map { it.toPhoto() }
@@ -98,7 +149,7 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 emptyMap()
             }
 
-            return buildJsonObject {
+            val jsonObject = buildJsonObject {
                 put("version", 2)
                 put("photos", json.encodeToJsonElement(roomPhotos))
                 put("collections", json.encodeToJsonElement(collectionNames))
@@ -126,6 +177,14 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
                     put("last_seen_monthly_recap_period", prefs.lastSeenMonthlyRecapPeriod)
                 }
             }
+
+            return BackupData(
+                jsonObject = jsonObject,
+                photos = roomPhotos,
+                collections = collectionNames,
+                collectionIcons = collectionIcons,
+                snippetFirstSeenTimes = snippetFirstSeenTimes
+            )
         }
     }
 
@@ -135,6 +194,7 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         Log.d(TAG, "AutoBackupWorker triggered. Schedule: $schedule")
 
         if (schedule == "Disabled") {
+            androidx.work.WorkManager.getInstance(applicationContext).cancelUniqueWork("auto_backup_work")
             return Result.success()
         }
 
@@ -169,32 +229,65 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val backupDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SnippetsBackups")
         if (!backupDir.exists()) backupDir.mkdirs()
 
-        val backupFile = File(backupDir, "snippets_backup_auto_$suffix.json")
-        val currentBackupData = buildBackupData(applicationContext)
+        val backupZipFile = File(backupDir, "snippets_backup_auto_$suffix.zip")
+        val backupData = buildBackupData(applicationContext)
 
         val referenceFile = getReferenceBackupFile(backupDir, suffix)
-        if (referenceFile != null && referenceFile.exists()) {
+        if (backupZipFile.exists() && referenceFile != null && referenceFile.exists()) {
             try {
-                val existingJson: JsonObject = json.decodeFromString(referenceFile.readText())
-                if (!hasNewChanges(existingJson, currentBackupData)) {
-                    Log.d(TAG, "No new changes detected compared to ${referenceFile.name}. Skipping auto backup.")
-                    return false
+                val existingJsonString = readBackupJson(referenceFile)
+                if (existingJsonString != null) {
+                    val existingJson: JsonObject = json.decodeFromString(existingJsonString)
+                    if (!hasNewChanges(existingJson, backupData.jsonObject)) {
+                        Log.d(TAG, "No new changes detected compared to ${referenceFile.name}. Skipping auto backup.")
+                        return false
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to read or parse existing backup file ${referenceFile.name}, continuing with backup", e)
             }
         }
 
-        Log.d(TAG, "New changes detected or no existing backup. Creating auto backup file: ${backupFile.absolutePath}")
-        val backupJsonObj = buildJsonObject {
-            currentBackupData.forEach { (k, v) -> put(k, v) }
-            put("exportedAt", System.currentTimeMillis())
-        }
+        Log.d(TAG, "New changes detected or no existing backup. Creating auto backup file: ${backupZipFile.absolutePath}")
+        val tempFile = File(backupDir, "snippets_backup_auto_$suffix.zip.tmp")
 
-        FileOutputStream(backupFile).use { outputStream ->
-            outputStream.write(json.encodeToString(backupJsonObj).toByteArray(Charsets.UTF_8))
+        return try {
+            val db = com.android.snippets.data.SnippetsDatabase.getInstance(applicationContext)
+            val prefsRepo = UserPreferencesRepository(applicationContext)
+            val backupManager = SnippetsBackupManager(db, prefsRepo)
+
+            backupManager.exportBackup(
+                context = applicationContext,
+                file = tempFile,
+                photos = backupData.photos,
+                userCollections = backupData.collections,
+                collectionIcons = backupData.collectionIcons,
+                snippetFirstSeenTimes = backupData.snippetFirstSeenTimes
+            )
+
+            if (tempFile.exists()) {
+                if (backupZipFile.exists()) {
+                    backupZipFile.delete()
+                }
+                if (!tempFile.renameTo(backupZipFile)) {
+                    tempFile.copyTo(backupZipFile, overwrite = true)
+                    tempFile.delete()
+                }
+            }
+
+            // Clean up obsolete legacy .json auto backup file if present
+            val legacyJsonFile = File(backupDir, "snippets_backup_auto_$suffix.json")
+            if (legacyJsonFile.exists()) {
+                legacyJsonFile.delete()
+            }
+
+            Log.d(TAG, "Auto backup completed successfully.")
+            true
+        } catch (e: Exception) {
+            if (tempFile.exists()) {
+                tempFile.delete()
+            }
+            throw e
         }
-        Log.d(TAG, "Auto backup completed successfully.")
-        return true
     }
 }

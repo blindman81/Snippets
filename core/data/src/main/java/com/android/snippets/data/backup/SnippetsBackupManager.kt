@@ -29,6 +29,7 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -286,6 +287,85 @@ class SnippetsBackupManager @Inject constructor(
 
     suspend fun exportBackup(
         context: Context,
+        outputStream: OutputStream,
+        photos: List<Photo>,
+        userCollections: List<String>,
+        collectionIcons: Map<String, String>,
+        snippetFirstSeenTimes: Map<String, Long>
+    ) {
+        val jsonString = generateBackupJson(
+            photos = photos,
+            userCollections = userCollections,
+            collectionIcons = collectionIcons,
+            snippetFirstSeenTimes = snippetFirstSeenTimes
+        )
+
+        ZipOutputStream(outputStream.buffered(65536)).use { zipOut ->
+            zipOut.setLevel(java.util.zip.Deflater.BEST_SPEED)
+            // 1. Write JSON metadata
+            zipOut.putNextEntry(ZipEntry("backup.json"))
+            zipOut.write(jsonString.toByteArray(Charsets.UTF_8))
+            zipOut.closeEntry()
+
+            // 2. Bundle all photo files from internal storage
+            val addedFileNames = mutableSetOf<String>()
+            for (photo in photos) {
+                val uriStr = photo.uriString
+                val file = when {
+                    uriStr.startsWith("file://") -> File(uriStr.substring(7))
+                    uriStr.startsWith("/") -> File(uriStr)
+                    else -> null
+                }
+                if (file != null && file.exists() && file.isFile && addedFileNames.add(file.name)) {
+                    try {
+                        zipOut.putNextEntry(ZipEntry("photos/${file.name}"))
+                        file.inputStream().buffered(65536).use { input ->
+                            input.copyTo(zipOut, bufferSize = 65536)
+                        }
+                        zipOut.closeEntry()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                } else if (uriStr.startsWith("content://")) {
+                    val fileName = "photo_${photo.date}.jpg"
+                    if (addedFileNames.add(fileName)) {
+                        try {
+                            context.contentResolver.openInputStream(Uri.parse(uriStr))?.use { input ->
+                                zipOut.putNextEntry(ZipEntry("photos/$fileName"))
+                                input.buffered(65536).copyTo(zipOut, bufferSize = 65536)
+                                zipOut.closeEntry()
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    suspend fun exportBackup(
+        context: Context,
+        file: File,
+        photos: List<Photo>,
+        userCollections: List<String>,
+        collectionIcons: Map<String, String>,
+        snippetFirstSeenTimes: Map<String, Long>
+    ) {
+        FileOutputStream(file).use { outputStream ->
+            exportBackup(
+                context = context,
+                outputStream = outputStream,
+                photos = photos,
+                userCollections = userCollections,
+                collectionIcons = collectionIcons,
+                snippetFirstSeenTimes = snippetFirstSeenTimes
+            )
+        }
+    }
+
+    suspend fun exportBackup(
+        context: Context,
         uri: Uri,
         photos: List<Photo>,
         userCollections: List<String>,
@@ -293,42 +373,14 @@ class SnippetsBackupManager @Inject constructor(
         snippetFirstSeenTimes: Map<String, Long>
     ) {
         context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-            val jsonString = generateBackupJson(
+            exportBackup(
+                context = context,
+                outputStream = outputStream,
                 photos = photos,
                 userCollections = userCollections,
                 collectionIcons = collectionIcons,
                 snippetFirstSeenTimes = snippetFirstSeenTimes
             )
-
-            ZipOutputStream(outputStream.buffered(65536)).use { zipOut ->
-                zipOut.setLevel(java.util.zip.Deflater.BEST_SPEED)
-                // 1. Write JSON metadata
-                zipOut.putNextEntry(ZipEntry("backup.json"))
-                zipOut.write(jsonString.toByteArray(Charsets.UTF_8))
-                zipOut.closeEntry()
-
-                // 2. Bundle all photo files from internal storage
-                val addedFileNames = mutableSetOf<String>()
-                for (photo in photos) {
-                    val uriStr = photo.uriString
-                    val file = when {
-                        uriStr.startsWith("file://") -> File(uriStr.substring(7))
-                        uriStr.startsWith("/") -> File(uriStr)
-                        else -> null
-                    }
-                    if (file != null && file.exists() && file.isFile && addedFileNames.add(file.name)) {
-                        try {
-                            zipOut.putNextEntry(ZipEntry("photos/${file.name}"))
-                            file.inputStream().buffered(65536).use { input ->
-                                input.copyTo(zipOut, bufferSize = 65536)
-                            }
-                            zipOut.closeEntry()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
-            }
         } ?: throw IOException("Unable to open output stream")
     }
 
