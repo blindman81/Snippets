@@ -28,11 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -229,7 +225,6 @@ fun LibraryScreen(
 
     val currentTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Library"
 
-    var isFabVisible by remember { mutableStateOf(true) }
     var isFirstTabLoad by remember { mutableStateOf(true) }
 
     // Instant tactile haptic feedback on page boundary switch (without mutating ViewModel state)
@@ -253,7 +248,6 @@ fun LibraryScreen(
                         try {
                             carouselLazyListState.scrollToItem(0)
                         } catch (_: Exception) {}
-                        isFabVisible = true
                     }
                 }
             }
@@ -333,61 +327,6 @@ fun LibraryScreen(
         }
     }
 
-    val nestedScrollConnection = remember(isAnyPopupActive) {
-        object : NestedScrollConnection {
-            private var scrollBuffer = 0f
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (isAnyPopupActive) return Offset.Zero
-
-                if (source == NestedScrollSource.UserInput) {
-                    if (available.y > 0f) {
-                        // Scrolling up: reset negative buffer and accumulate upward scroll
-                        if (scrollBuffer < 0f) scrollBuffer = 0f
-                        scrollBuffer += available.y
-                        if (scrollBuffer > 20f) {
-                            if (!isFabVisible) isFabVisible = true
-                            scrollBuffer = 0f
-                        }
-                    } else if (available.y < 0f) {
-                        // Scrolling down: reset positive buffer and accumulate downward scroll
-                        if (scrollBuffer > 0f) scrollBuffer = 0f
-                        scrollBuffer += available.y
-                        if (scrollBuffer < -20f) {
-                            if (isFabVisible) isFabVisible = false
-                            scrollBuffer = 0f
-                        }
-                    }
-                } else if (available.y < -20f) {
-                    // Fast fling downward can also hide the toolbar
-                    if (isFabVisible) isFabVisible = false
-                }
-                return Offset.Zero
-            }
-        }
-    }
-
-    val isCookieToolbarVisible = uiState.isSelectionMode || isFabVisible || isAnyPopupActive
-
-    val cookieToolbarOffset by animateDpAsState(
-        targetValue = if (isCookieToolbarVisible) 0.dp else 200.dp,
-        animationSpec = if (isCookieToolbarVisible) {
-            Motion.ToolbarEnterSpring
-        } else {
-            Motion.ToolbarExitSpring
-        },
-        label = "cookie_toolbar_offset"
-    )
-
-    val cookieToolbarScale by animateFloatAsState(
-        targetValue = if (isCookieToolbarVisible) 1f else 0.88f,
-        animationSpec = if (isCookieToolbarVisible) {
-            Motion.ToolbarScaleEnterSpring
-        } else {
-            Motion.ToolbarScaleExitSpring
-        },
-        label = "cookie_toolbar_scale"
-    )
-
     val density = LocalDensity.current
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
@@ -441,16 +380,6 @@ fun LibraryScreen(
     val carouselHeightDp = 104.dp * (1f - carouselCollapseProgress)
     val carouselAlpha = (1f - carouselCollapseProgress * 1.3f).coerceIn(0f, 1f)
 
-    val isHeaderScrolled by remember(isCurrentTabScrolled) {
-        derivedStateOf { isCurrentTabScrolled }
-    }
-
-    LaunchedEffect(isHeaderScrolled) {
-        if (!isHeaderScrolled) {
-            isFabVisible = true
-        }
-    }
-
     val appBarBlurRadius by animateDpAsState(
         targetValue = if (isCurrentTabScrolled) 20.dp else 0.dp,
         animationSpec = spring(
@@ -487,7 +416,6 @@ fun LibraryScreen(
         LocalHazeState provides hazeState
     ) {
         Scaffold(
-            modifier = Modifier.nestedScroll(nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { _ ->
@@ -670,8 +598,6 @@ fun LibraryScreen(
                                 searchFocusRequester = searchFocusRequester,
                                 isScrolled = isCurrentTabScrolled,
                                 isAnyPopupActive = isAnyPopupActive,
-                                cookieToolbarOffset = { cookieToolbarOffset },
-                                cookieToolbarScale = { cookieToolbarScale },
                                 isMenuOpen = showMenuPopup,
                                 isManageOpen = longPressedCollection != null,
                                 isFilterOpen = uiState.showFilterSheet,

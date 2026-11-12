@@ -443,6 +443,12 @@ fun MemoryScreen(
                     contentAlignment = Alignment.CenterEnd
                 ) {
                     if (photoName != null) {
+                        var photoNameLineCount by remember(photo.id, photoName) { mutableIntStateOf(1) }
+                        val endPadding = when {
+                            photoNameLineCount == 2 -> 10.dp
+                            photoNameLineCount >= 3 -> 14.dp
+                            else -> 6.dp
+                        }
                         Surface(
                             shape = CircleShape,
                             color = Color.White.copy(alpha = 0.25f),
@@ -452,7 +458,7 @@ fun MemoryScreen(
                                 .heightIn(min = 24.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(start = 7.dp, end = 6.dp, top = 2.dp, bottom = 2.dp),
+                                modifier = Modifier.padding(start = 7.dp, end = endPadding, top = 2.dp, bottom = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
@@ -471,7 +477,8 @@ fun MemoryScreen(
                                     ),
                                     color = Color.White,
                                     maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
+                                    onLineCountChange = { photoNameLineCount = it }
                                 )
                             }
                         }
@@ -514,6 +521,12 @@ fun MemoryScreen(
                     contentAlignment = Alignment.CenterStart
                 ) {
                     if (!locationText.isNullOrBlank()) {
+                        var locationLineCount by remember(photo.id, locationText) { mutableIntStateOf(1) }
+                        val endPadding = when {
+                            locationLineCount == 2 -> 10.dp
+                            locationLineCount >= 3 -> 14.dp
+                            else -> 6.dp
+                        }
                         Surface(
                             shape = CircleShape,
                             color = Color.White.copy(alpha = 0.25f),
@@ -523,7 +536,7 @@ fun MemoryScreen(
                                 .heightIn(min = 24.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(start = 7.dp, end = 6.dp, top = 2.dp, bottom = 2.dp),
+                                modifier = Modifier.padding(start = 7.dp, end = endPadding, top = 2.dp, bottom = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
@@ -542,7 +555,8 @@ fun MemoryScreen(
                                     ),
                                     color = Color.White,
                                     maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
+                                    onLineCountChange = { locationLineCount = it }
                                 )
                             }
                         }
@@ -560,7 +574,8 @@ private fun WrappingPillText(
     color: Color,
     maxLines: Int,
     overflow: TextOverflow,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLineCountChange: (Int) -> Unit = {}
 ) {
     var textWidthDp by remember(text) { mutableStateOf<androidx.compose.ui.unit.Dp?>(null) }
     val density = LocalDensity.current
@@ -572,6 +587,9 @@ private fun WrappingPillText(
         maxLines = maxLines,
         overflow = overflow,
         onTextLayout = { layoutResult ->
+            if (layoutResult.lineCount > 0) {
+                onLineCountChange(layoutResult.lineCount)
+            }
             val maxLineWidth = (0 until layoutResult.lineCount).maxOfOrNull { line ->
                 layoutResult.getLineRight(line) - layoutResult.getLineLeft(line)
             } ?: 0f

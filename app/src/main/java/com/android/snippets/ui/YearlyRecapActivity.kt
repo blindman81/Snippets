@@ -68,7 +68,7 @@ class YearlyRecapActivity : ComponentActivity() {
                             CircularProgressIndicator()
                         }
                     } else {
-                        MonthlyRecapScreen(
+                        RecapScreen(
                             viewModel = viewModel,
                             onBack = { onBackPressedDispatcher.onBackPressed() }
                         )

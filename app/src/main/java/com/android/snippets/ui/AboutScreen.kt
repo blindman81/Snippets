@@ -72,7 +72,7 @@ fun AboutScreen() {
                     .hazeSource(state = hazeState)
                     .nestedScroll(nestedScrollConnection),
                 topBar = {
-                    MainTopBar(
+                    AppBar(
                         title = "About",
                         onNavigationClick = { 
                             view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)

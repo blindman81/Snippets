@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.snippets.logic.SnippetManager
-import com.android.snippets.ui.components.MainAppBar
+import com.android.snippets.ui.components.AppBar
 import com.android.snippets.ui.shapes.CookieShape
 import com.android.snippets.viewmodel.StatsViewModel
 import com.ln.android.snippets.R
@@ -40,6 +40,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
     val view = LocalView.current
     val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val scrollState = rememberScrollState()
+    val isScrolled by remember { derivedStateOf { scrollState.value > 0 } }
 
     val photos = viewModel.photos
 
@@ -155,7 +156,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            MainAppBar(
+            AppBar(
                 title = "Stats",
                 onNavigationClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
@@ -163,9 +164,10 @@ fun StatsScreen(viewModel: StatsViewModel) {
                 },
                 navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack,
                 isSpinning = true,
-                isScrolled = scrollState.value > 0,
+                isScrolled = isScrolled,
                 leftAlignTitle = true,
-                showDividerOnScroll = false
+                showDividerOnScroll = false,
+                scrolledColor = MaterialTheme.colorScheme.surfaceContainerHighest
             )
         }
     ) { innerPadding ->

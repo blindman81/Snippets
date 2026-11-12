@@ -272,7 +272,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
-                MainAppBar(
+                AppBar(
                     title = "Settings",
                     onNavigationClick = { 
                         view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
