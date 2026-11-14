@@ -59,18 +59,25 @@ class StatsViewModel @Inject constructor(
     }
 
     private fun updateSnippetFirstSeen() {
-        val loadedFirstSeen = if (storedFirstSeenJson.isNotBlank() && storedFirstSeenJson != "{}") {
-            try {
-                json.decodeFromString<Map<String, Long>>(storedFirstSeenJson)
-            } catch (e: Exception) {
+        val currentPhotos = photos
+        val jsonStr = storedFirstSeenJson
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val loadedFirstSeen = if (jsonStr.isNotBlank() && jsonStr != "{}") {
+                try {
+                    json.decodeFromString<Map<String, Long>>(jsonStr)
+                } catch (e: Exception) {
+                    emptyMap()
+                }
+            } else {
                 emptyMap()
             }
-        } else {
-            emptyMap()
-        }
-        val rebuiltFirstSeen = SnippetManager.rebuildSnippetFirstSeenTimes(photos)
-        snippetFirstSeenTimes = rebuiltFirstSeen.mapValues { (snippet, rebuiltTime) ->
-            loadedFirstSeen[snippet] ?: rebuiltTime
+            val rebuiltFirstSeen = SnippetManager.rebuildSnippetFirstSeenTimes(currentPhotos)
+            val combined = rebuiltFirstSeen.mapValues { (snippet, rebuiltTime) ->
+                loadedFirstSeen[snippet] ?: rebuiltTime
+            }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                snippetFirstSeenTimes = combined
+            }
         }
     }
 }

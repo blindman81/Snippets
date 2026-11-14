@@ -144,7 +144,25 @@ class SnippetsViewModel @Inject constructor(
 
     var photos: List<Photo>
         get() = _uiState.value.photos
-        private set(value) { _uiState.update { it.copy(photos = value) } }
+        private set(value) {
+            val locMap = com.android.snippets.ui.util.LocationUtils.buildLocationNameMap(value)
+            val uniqueLocs = com.android.snippets.ui.util.LocationUtils.buildUniqueLocations(value)
+            val favSnippets = com.android.snippets.logic.SnippetManager.extractFavoritesUniqueSnippets(value)
+            val allSnippets = com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
+                value,
+                _uiState.value.snippetSortType,
+                _uiState.value.snippetFirstSeenTimes
+            )
+            _uiState.update {
+                it.copy(
+                    photos = value,
+                    locationNameMap = locMap,
+                    allUniqueLocations = uniqueLocs,
+                    favoritesUniqueSnippets = favSnippets,
+                    allUniqueSnippets = allSnippets
+                )
+            }
+        }
 
     var isInitialLoading: Boolean
         get() = _uiState.value.isInitialLoading
@@ -558,7 +576,14 @@ class SnippetsViewModel @Inject constructor(
     var snippetSortType: SnippetSortType
         get() = _uiState.value.snippetSortType
         set(value) {
-            _uiState.update { it.copy(snippetSortType = value) }
+            _uiState.update { current ->
+                val allSnippets = com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
+                    current.photos,
+                    value,
+                    current.snippetFirstSeenTimes
+                )
+                current.copy(snippetSortType = value, allUniqueSnippets = allSnippets)
+            }
             saveFilterState()
         }
 
@@ -629,15 +654,26 @@ class SnippetsViewModel @Inject constructor(
                 } else emptyMap()
 
                 _uiState.update { current ->
+                    val resolvedSnippetSort = try { SnippetSortType.valueOf(userPrefs.snippetSortType) } catch (e: Exception) { SnippetSortType.New }
+                    val allSnippets = if (resolvedSnippetSort != current.snippetSortType && current.photos.isNotEmpty()) {
+                        com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
+                            current.photos,
+                            resolvedSnippetSort,
+                            current.snippetFirstSeenTimes
+                        )
+                    } else {
+                        current.allUniqueSnippets
+                    }
                     current.copy(
                         hasPromptedNotificationPermission = userPrefs.hasPromptedNotificationPermission,
                         lastSeenYearlyRecapYear = userPrefs.lastSeenYearlyRecapYear,
                         lastSeenMonthlyRecapPeriod = userPrefs.lastSeenMonthlyRecapPeriod,
-                        snippetSortType = try { SnippetSortType.valueOf(userPrefs.snippetSortType) } catch (e: Exception) { SnippetSortType.New },
+                        snippetSortType = resolvedSnippetSort,
                         isSortAscending = userPrefs.isSortAscending,
                         selectedFilterSnippets = userPrefs.selectedFilterSnippets.toList(),
                         photoSortType = try { PhotoSortType.valueOf(userPrefs.photoSortType) } catch (e: Exception) { PhotoSortType.DateNewest },
-                        collectionPhotoSortTypes = sortMap
+                        collectionPhotoSortTypes = sortMap,
+                        allUniqueSnippets = allSnippets
                     )
                 }
             }
@@ -666,8 +702,9 @@ class SnippetsViewModel @Inject constructor(
             photoRepository.allPhotosFlow.collect { roomPhotos ->
                 val current = photos
                 if (current.isNotEmpty() && current.size == roomPhotos.size) {
+                    val currentMap = current.associateBy { it.id }
                     val isIdentical = roomPhotos.all { rp ->
-                        val p = current.find { it.id == rp.id }
+                        val p = currentMap[rp.id]
                         p != null && p.date == rp.date && p.snippets == (rp.snippets ?: emptyList<String>()) &&
                                 p.isFavorite == rp.isFavorite && p.rating == rp.rating &&
                                 p.name == rp.name && p.locationName == rp.locationName &&
@@ -708,11 +745,28 @@ class SnippetsViewModel @Inject constructor(
                     )
                 }.sortedByDescending { it.date }
 
+                val rebuiltFirstSeen = rebuildSnippetFirstSeenTimes(processedPhotos)
+                val locMap = com.android.snippets.ui.util.LocationUtils.buildLocationNameMap(processedPhotos)
+                val uniqueLocs = com.android.snippets.ui.util.LocationUtils.buildUniqueLocations(processedPhotos)
+                val favSnippets = com.android.snippets.logic.SnippetManager.extractFavoritesUniqueSnippets(processedPhotos)
+                val allSnippets = com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
+                    processedPhotos,
+                    _uiState.value.snippetSortType,
+                    rebuiltFirstSeen
+                )
+
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (photos != processedPhotos) {
-                        photos = processedPhotos
-                        val rebuiltFirstSeen = rebuildSnippetFirstSeenTimes(processedPhotos)
-                        snippetFirstSeenTimes = rebuiltFirstSeen
+                        _uiState.update {
+                            it.copy(
+                                photos = processedPhotos,
+                                snippetFirstSeenTimes = rebuiltFirstSeen,
+                                locationNameMap = locMap,
+                                allUniqueLocations = uniqueLocs,
+                                favoritesUniqueSnippets = favSnippets,
+                                allUniqueSnippets = allSnippets
+                            )
+                        }
                     }
                 }
             }
@@ -771,6 +825,14 @@ class SnippetsViewModel @Inject constructor(
             val mergedFirstSeen = rebuiltFirstSeen.mapValues { (snippet, rebuiltTime) ->
                 loadedFirstSeen[snippet] ?: rebuiltTime
             }
+            val locMap = com.android.snippets.ui.util.LocationUtils.buildLocationNameMap(processedPhotos)
+            val uniqueLocs = com.android.snippets.ui.util.LocationUtils.buildUniqueLocations(processedPhotos)
+            val favSnippets = com.android.snippets.logic.SnippetManager.extractFavoritesUniqueSnippets(processedPhotos)
+            val allSnippets = com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
+                processedPhotos,
+                _uiState.value.snippetSortType,
+                mergedFirstSeen
+            )
 
             _uiState.update {
                 it.copy(
@@ -778,6 +840,10 @@ class SnippetsViewModel @Inject constructor(
                     userCollections = roomCollections,
                     collectionIcons = loadedIcons,
                     snippetFirstSeenTimes = mergedFirstSeen,
+                    locationNameMap = locMap,
+                    allUniqueLocations = uniqueLocs,
+                    favoritesUniqueSnippets = favSnippets,
+                    allUniqueSnippets = allSnippets,
                     isInitialLoading = false
                 )
             }

@@ -61,7 +61,11 @@ data class SnippetsUiState(
     val hasPromptedNotificationPermission: Boolean = false,
     val requestNotificationPermission: Boolean = false,
     val pendingFavoriteIntent: Boolean = false,
-    val pendingAddPhotoIntentToken: Long = 0L
+    val pendingAddPhotoIntentToken: Long = 0L,
+    val locationNameMap: Map<String, String> = emptyMap(),
+    val allUniqueLocations: List<String> = emptyList(),
+    val favoritesUniqueSnippets: List<String> = emptyList(),
+    val allUniqueSnippets: List<String> = emptyList()
 ) {
     val isSelectionMode: Boolean
         get() = forceSelectionMode || selectedPhotoIds.isNotEmpty() || pendingCollectionAssignment != null || pendingCollectionRemoval != null
@@ -87,33 +91,28 @@ data class SnippetsUiState(
     val effectivePhotoSortType: PhotoSortType
         get() = currentSearchSortType ?: photoSortType
 
-    val filteredPhotos: List<Photo>
-        get() {
-            val parsed = parsedSearchQuery
-            val hasSearchCriteria = parsed.textTokens.isNotEmpty() || parsed.directives.isNotEmpty()
-            val baseList = com.android.snippets.logic.PhotoSearchHelper.filterPhotos(
-                photos = photos,
-                parsed = parsed,
-                selectedFilterSnippets = selectedFilterSnippets,
-                locationNameMap = locationNameMap
-            )
-            val effectiveSort = effectivePhotoSortType
-            return if (!hasSearchCriteria && selectedFilterSnippets.isEmpty() && effectiveSort == PhotoSortType.DateNewest) {
-                baseList
-            } else {
-                com.android.snippets.logic.PhotoSearchHelper.sortPhotos(baseList, effectiveSort)
-            }
+    fun getEffectivePhotoSortTypeFor(tab: String): PhotoSortType {
+        return currentSearchSortType ?: if (tab == "Library") photoSortType else collectionPhotoSortTypes[tab] ?: PhotoSortType.DateNewest
+    }
+
+    fun getFilteredPhotosForTab(tab: String): List<Photo> {
+        val parsed = parsedSearchQuery
+        val hasSearchCriteria = parsed.textTokens.isNotEmpty() || parsed.directives.isNotEmpty()
+        val baseList = com.android.snippets.logic.PhotoSearchHelper.filterPhotos(
+            photos = photos,
+            parsed = parsed,
+            selectedFilterSnippets = selectedFilterSnippets,
+            locationNameMap = locationNameMap,
+            tab = tab
+        )
+        val effectiveSort = getEffectivePhotoSortTypeFor(tab)
+        return if (!hasSearchCriteria && selectedFilterSnippets.isEmpty() && effectiveSort == PhotoSortType.DateNewest) {
+            baseList
+        } else {
+            com.android.snippets.logic.PhotoSearchHelper.sortPhotos(baseList, effectiveSort)
         }
+    }
 
-    val favoritesUniqueSnippets: List<String>
-        get() = SnippetManager.extractFavoritesUniqueSnippets(photos)
-
-    val allUniqueSnippets: List<String>
-        get() = SnippetManager.extractAllUniqueSnippets(photos, snippetSortType, snippetFirstSeenTimes)
-
-    val locationNameMap: Map<String, String>
-        get() = LocationUtils.buildLocationNameMap(photos)
-
-    val allUniqueLocations: List<String>
-        get() = LocationUtils.buildUniqueLocations(photos)
+    val filteredPhotos: List<Photo>
+        get() = getFilteredPhotosForTab("Library")
 }
