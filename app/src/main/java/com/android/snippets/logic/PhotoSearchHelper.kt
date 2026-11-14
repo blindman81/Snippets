@@ -9,27 +9,45 @@ import java.util.Locale
 
 object PhotoSearchHelper {
 
-    private val groupDateFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
-    private val weekDateFormat = SimpleDateFormat("'Week' w, yyyy", Locale.getDefault())
-    private val monthDateFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-    private val yearDateFormat = SimpleDateFormat("yyyy", Locale.getDefault())
-    private val dayOfWeekFormat = SimpleDateFormat("EEEE", Locale.getDefault())
+    private val groupDateFormat = ThreadLocal.withInitial { SimpleDateFormat("EEE, d MMM", Locale.getDefault()) }
+    private val weekDateFormat = ThreadLocal.withInitial { SimpleDateFormat("'Week' w, yyyy", Locale.getDefault()) }
+    private val monthDateFormat = ThreadLocal.withInitial { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
+    private val yearDateFormat = ThreadLocal.withInitial { SimpleDateFormat("yyyy", Locale.getDefault()) }
+    private val dayOfWeekFormat = ThreadLocal.withInitial { SimpleDateFormat("EEEE", Locale.getDefault()) }
+
+    fun matchesTab(photo: Photo, tab: String): Boolean = when (tab) {
+        "Library" -> true
+        "Favorites" -> photo.isFavorite
+        else -> photo.collections.contains(tab)
+    }
+
+    fun filterPhotosByTab(photos: List<Photo>, tab: String): List<Photo> {
+        if (tab == "Library") return photos
+        return photos.filter { matchesTab(it, tab) }
+    }
 
     fun filterPhotos(
         photos: List<Photo>,
         parsed: ParsedSearchQuery,
         selectedFilterSnippets: List<String>,
-        locationNameMap: Map<String, String> = emptyMap()
+        locationNameMap: Map<String, String> = emptyMap(),
+        tab: String? = null
     ): List<Photo> {
+        val baseList = if (tab != null && tab != "Library") {
+            photos.filter { matchesTab(it, tab) }
+        } else {
+            photos
+        }
+
         val textTokens = parsed.textTokens
         val directives = parsed.directives
         val hasSearchCriteria = textTokens.isNotEmpty() || directives.isNotEmpty()
 
         if (!hasSearchCriteria && selectedFilterSnippets.isEmpty()) {
-            return photos
+            return baseList
         }
 
-        return photos.filter { photo ->
+        return baseList.filter { photo ->
             var dateObj: Date? = null
             var dayName: String? = null
             var monthName: String? = null
@@ -82,11 +100,11 @@ object PhotoSearchHelper {
                     run {
                         if (dateObj == null) {
                             dateObj = Date(photo.date)
-                            dayName = dayOfWeekFormat.format(dateObj)
-                            monthName = monthDateFormat.format(dateObj)
-                            yearName = yearDateFormat.format(dateObj)
-                            weekName = weekDateFormat.format(dateObj)
-                            fullDate = groupDateFormat.format(dateObj)
+                            dayName = dayOfWeekFormat.get()?.format(dateObj) ?: ""
+                            monthName = monthDateFormat.get()?.format(dateObj) ?: ""
+                            yearName = yearDateFormat.get()?.format(dateObj) ?: ""
+                            weekName = weekDateFormat.get()?.format(dateObj) ?: ""
+                            fullDate = groupDateFormat.get()?.format(dateObj) ?: ""
                         }
                         dayName!!.contains(part, ignoreCase = true) ||
                         monthName!!.contains(part, ignoreCase = true) ||
