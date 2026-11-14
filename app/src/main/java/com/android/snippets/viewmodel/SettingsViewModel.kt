@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -14,25 +13,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.android.snippets.data.backup.SnippetsBackupManager
 import com.android.snippets.data.preferences.UserPreferencesRepository
-import com.android.snippets.data.repository.CollectionRepository
-import com.android.snippets.data.repository.PhotoRepository
+import com.android.snippets.logic.ExportBackupWorker
 import com.android.snippets.logic.RestoreBackupWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     application: Application,
-    private val photoRepository: PhotoRepository,
-    private val collectionRepository: CollectionRepository,
-    private val userPreferencesRepository: UserPreferencesRepository,
-    private val backupManager: SnippetsBackupManager
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : AndroidViewModel(application) {
 
     var themePreference by mutableStateOf(ThemePreference.SYSTEM)
@@ -102,32 +94,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun exportBackupToFile(context: Context, uri: Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val photos = photoRepository.getAllPhotos()
-                val collections = collectionRepository.getAllCollections()
-                val userCollections = collections.map { it.name }
-                val collectionIcons = collections.associate { it.name to (it.icon ?: "") }
-                val snippetFirstSeenTimes = SnippetsViewModel.rebuildSnippetFirstSeenTimes(photos)
+        val appContext = context.applicationContext
+        appContext.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
 
-                backupManager.exportBackup(
-                    context = context,
-                    uri = uri,
-                    photos = photos,
-                    userCollections = userCollections,
-                    collectionIcons = collectionIcons,
-                    snippetFirstSeenTimes = snippetFirstSeenTimes
-                )
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Backup file exported successfully!", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
+        val request = OneTimeWorkRequestBuilder<ExportBackupWorker>()
+            .setInputData(workDataOf(ExportBackupWorker.OUTPUT_URI to uri.toString()))
+            .build()
+
+        WorkManager.getInstance(appContext).enqueueUniqueWork(
+            ExportBackupWorker.UNIQUE_WORK_NAME,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            request
+        )
     }
 
     fun restoreBackupFromFile(context: Context, uri: Uri) {
