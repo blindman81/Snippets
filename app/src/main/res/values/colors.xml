@@ -12,4 +12,6 @@
     <color name="splash_bg_dark">#141218</color>
 
     <color name="splash_background">@color/splash_bg_light</color>
+    <color name="splash_icon_container">#EADDFF</color>
+    <color name="splash_icon_glyph">#21005D</color>
 </resources>
