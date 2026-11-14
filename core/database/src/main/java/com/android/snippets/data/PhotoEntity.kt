@@ -1,10 +1,18 @@
 package com.android.snippets.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.android.snippets.model.Photo
 
-@Entity(tableName = "photos")
+@Entity(
+    tableName = "photos",
+    indices = [
+        Index(value = ["date"]),
+        Index(value = ["isFavorite", "date"]),
+        Index(value = ["dateAdded"])
+    ]
+)
 data class PhotoEntity(
     @PrimaryKey
     val id: String,

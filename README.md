@@ -10,7 +10,7 @@ Relive moments with memories that cycles photos every day.
 
 Rate food you eat upto 5 cookiestars.
 
-UI and UX design ideas by me, code by agentic tools.
+UI and UX ideas by me, code by Agentic tools.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/df907ea3-53d7-4e66-9c00-93e93e018746" width="18%">
