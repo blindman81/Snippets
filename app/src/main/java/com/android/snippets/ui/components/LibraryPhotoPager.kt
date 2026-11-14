@@ -159,11 +159,11 @@ fun LibraryPhotoPager(
                             selectedCount = selectedCount,
                             userCollections = uiState.userCollections,
                             locationNameMap = uiState.locationNameMap,
+                            collectionIcons = uiState.collectionIcons,
                             showFavoriteIcon = tabForPage != "Favorites",
                             tab = tabForPage,
                             isMostSnippets = isMost,
                             isLeastSnippets = isLeast,
-                            viewModel = viewModel,
                             expandLocationIcon = settingsViewModel.expandLocationIcon,
                             expandLabelIcon = settingsViewModel.expandLabelIcon,
                             expandCalendarIcon = settingsViewModel.expandCalendarIcon,
@@ -209,7 +209,7 @@ fun LibraryPhotoPager(
                         .padding(
                             top = effectiveTopPadding + 4.dp,
                             bottom = 144.dp,
-                            end = 4.dp
+                            end = 2.dp
                         )
                         .fillMaxHeight()
                 )

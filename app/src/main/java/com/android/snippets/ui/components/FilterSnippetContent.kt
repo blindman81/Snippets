@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.android.snippets.logic.PhotoSearchHelper
 import com.android.snippets.viewmodel.SnippetsUiState
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SnippetSortType
@@ -43,13 +44,9 @@ fun FilterSnippetContent(
     val effectiveScrollState = scrollState ?: internalScrollState
     val allSnippets = remember(uiState.photos, uiState.filteringCategory) {
         val cat = uiState.filteringCategory ?: "Library"
-        uiState.photos.filter { photo ->
-            when (cat) {
-                "Library" -> true
-                "Favorites" -> photo.isFavorite
-                else -> photo.collections.contains(cat)
-            }
-        }.flatMap { it.snippets }.distinct()
+        PhotoSearchHelper.filterPhotosByTab(uiState.photos, cat)
+            .flatMap { it.snippets }
+            .distinct()
     }
 
     val snippetCreationDates = remember(uiState.photos, uiState.snippetFirstSeenTimes) {

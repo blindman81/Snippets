@@ -7,6 +7,7 @@ import com.android.snippets.ui.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
@@ -27,6 +28,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
@@ -35,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.snippets.logic.PhotoSearchHelper
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.ui.util.LocalTiltModalFocus
@@ -83,11 +86,7 @@ fun SelectionToolbarContent(
         val isSearchActive = uiState.searchQuery.isNotEmpty()
         val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
             isSearchActive && flatPhotosRaw.any { photo ->
-                when (currentTab) {
-                    "Library" -> true
-                    "Favorites" -> photo.isFavorite
-                    else -> photo.collections.contains(currentTab)
-                }
+                PhotoSearchHelper.matchesTab(photo, currentTab)
             }
         }
         val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
@@ -304,6 +303,13 @@ fun CookieToolbar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(84.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = { /* consume double tap on toolbar surface */ },
+                            onLongPress = { /* consume long press on toolbar surface */ },
+                            onTap = { /* consume tap on toolbar surface */ }
+                        )
+                    }
             ) {
                 AnimatedContent(
                     targetState = when {
@@ -370,11 +376,7 @@ fun CookieToolbar(
                             val isSearchActive = uiState.searchQuery.isNotEmpty()
                             val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
                                 isSearchActive && flatPhotosRaw.any { photo ->
-                                    when (currentTab) {
-                                        "Library" -> true
-                                        "Favorites" -> photo.isFavorite
-                                        else -> photo.collections.contains(currentTab)
-                                    }
+                                    PhotoSearchHelper.matchesTab(photo, currentTab)
                                 }
                             }
                             val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search

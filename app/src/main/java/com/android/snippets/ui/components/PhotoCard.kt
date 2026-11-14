@@ -7,8 +7,6 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -24,7 +22,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -33,16 +30,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -54,7 +47,6 @@ import com.android.snippets.ui.theme.rememberSnippetBackgroundColor
 import com.android.snippets.ui.theme.rememberSnippetTextColor
 import com.android.snippets.ui.util.LocationUtils
 import com.android.snippets.ui.util.Motion
-import com.android.snippets.viewmodel.SnippetsViewModel
 import com.ln.android.snippets.R
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -77,6 +69,7 @@ fun PhotoCard(
     selectedCount: Int = 0,
     userCollections: List<String> = emptyList(),
     locationNameMap: Map<String, String> = emptyMap(),
+    collectionIcons: Map<String, String> = emptyMap(),
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -85,7 +78,6 @@ fun PhotoCard(
     isMostSnippets: Boolean = false,
     isLeastSnippets: Boolean = false,
     grayOutIfViewed: Boolean = false,
-    viewModel: SnippetsViewModel,
     expandLocationIcon: Boolean = false,
     expandLabelIcon: Boolean = false,
     expandCalendarIcon: Boolean = false,
@@ -150,8 +142,8 @@ fun PhotoCard(
             .graphicsLayer {
                 scaleX = animatedScale
                 scaleY = animatedScale
+                alpha = animatedAlpha
             }
-            .alpha(animatedAlpha)
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -203,7 +195,6 @@ fun PhotoCard(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 photo.snippets.forEach { snippet ->
-                                    val forcedStyle = viewModel.getSnippetStyle(snippet)
                                     val snippetColor = rememberSnippetBackgroundColor()
 
                                     Surface(
@@ -221,7 +212,7 @@ fun PhotoCard(
                                             Text(
                                                 text = snippet,
                                                 style = getSnippetTextStyle(
-                                                    forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                                    com.android.snippets.model.SnippetStyle.Default,
                                                     MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                                     isCloud = true
                                                 ),
@@ -300,7 +291,7 @@ fun PhotoCard(
                                     )
                                 }
 
-                                val effectiveCount = if (selectedCount > 0) selectedCount else (viewModel.selectedPhotoIds.indexOf(photo.id) + 1)
+                                val effectiveCount = if (selectedCount > 0) selectedCount else 1
                                 SelectedPhotoIndicator(
                                     isSelected = isSelected,
                                     selectionMode = selectionMode,
@@ -312,7 +303,7 @@ fun PhotoCard(
                             val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
 
                             val showCollectionBadges = tab == "Library" || tab == "Favorites"
-                            val effectiveUserCollections = if (userCollections.isNotEmpty()) userCollections else viewModel.userCollections
+                            val effectiveUserCollections = userCollections
                             val validCollections = remember(photo.collections, effectiveUserCollections, showCollectionBadges) {
                                 if (showCollectionBadges) {
                                     photo.collections.filter { effectiveUserCollections.isEmpty() || it in effectiveUserCollections }
@@ -378,7 +369,12 @@ fun PhotoCard(
                                     }
 
                                     validCollections.forEach { col ->
-                                        val iconOrEmoji = viewModel.getCollectionIcon(col)
+                                        val iconOrEmoji = com.android.snippets.logic.CollectionManager.getCollectionIcon(
+                                            collection = col,
+                                            editingCollectionEmoji = null,
+                                            editingEmojiPreview = null,
+                                            collectionIcons = collectionIcons
+                                        )
                                         Surface(
                                             modifier = Modifier.size(28.dp),
                                             shape = CircleShape,
@@ -428,7 +424,7 @@ fun PhotoCard(
                                 }
                             }
 
-                            val effectiveLocationNameMap = if (locationNameMap.isNotEmpty()) locationNameMap else viewModel.locationNameMap
+                            val effectiveLocationNameMap = locationNameMap
                             val locationName = remember(photo.locationName, photo.locationLink, effectiveLocationNameMap) {
                                 val rawName = photo.locationName?.trim()?.takeIf { it.isNotBlank() }
                                     ?: photo.locationLink?.let { effectiveLocationNameMap[it] }
@@ -529,39 +525,16 @@ fun PhotoCard(
                         )
                     }
                 } else {
-                    val stopNestedScrollConnection = remember {
-                        object : NestedScrollConnection {
-                            override fun onPostScroll(
-                                consumed: Offset,
-                                available: Offset,
-                                source: NestedScrollSource
-                            ): Offset {
-                                return Offset(available.x, 0f)
-                            }
-
-                            override suspend fun onPostFling(
-                                consumed: Velocity,
-                                available: Velocity
-                            ): Velocity {
-                                return Velocity(available.x, 0f)
-                            }
-                        }
-                    }
-
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
+                    Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.Start),
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
                             .graphicsLayer { clip = false }
-                            .nestedScroll(stopNestedScrollConnection)
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp)
                     ) {
-                        itemsIndexed(
-                            items = photo.snippets,
-                            key = { index, snippet -> "${index}_$snippet" }
-                        ) { _, snippet ->
-                            val forcedStyle = viewModel.getSnippetStyle(snippet)
+                        photo.snippets.forEach { snippet ->
                             val snippetColor = rememberSnippetBackgroundColor()
 
                             Surface(
@@ -577,7 +550,7 @@ fun PhotoCard(
                                     Text(
                                         text = snippet,
                                         style = getSnippetTextStyle(
-                                            forcedStyle ?: com.android.snippets.viewmodel.SnippetStyle.Default,
+                                            com.android.snippets.model.SnippetStyle.Default,
                                             MaterialTheme.typography.labelLarge,
                                             isCloud = true
                                         ),

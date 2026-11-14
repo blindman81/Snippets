@@ -307,17 +307,7 @@ fun LibraryScreen(
     LaunchedEffect(uiState.activePhotoId, currentTab) {
         val activeId = uiState.activePhotoId
         if (activeId != null) {
-            val tabSort = viewModel.getPhotoSortTypeFor(currentTab)
-            val tabPhotos = viewModel.sortPhotos(
-                flatPhotosRaw.filter { photo ->
-                    when (currentTab) {
-                        "Library" -> true
-                        "Favorites" -> photo.isFavorite
-                        else -> photo.collections.contains(currentTab)
-                    }
-                },
-                tabSort
-            )
+            val tabPhotos = uiState.getFilteredPhotosForTab(currentTab)
             val targetIndex = tabPhotos.indexOfFirst { it.id == activeId }
             if (targetIndex != -1) {
                 val gridState = listStates.getOrPut(currentTab) { LazyStaggeredGridState() }

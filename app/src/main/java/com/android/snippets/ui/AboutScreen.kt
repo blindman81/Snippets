@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -29,7 +28,6 @@ import com.android.snippets.ui.util.fadingEdge
 import com.ln.android.snippets.R
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlin.coroutines.cancellation.CancellationException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +35,6 @@ fun AboutScreen() {
     val context = LocalContext.current
     val view = LocalView.current
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-    val scope = rememberCoroutineScope()
     val hazeState = LocalHazeState.current ?: rememberHazeState()
     var showLicenses by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
@@ -48,15 +45,6 @@ fun AboutScreen() {
             override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
                 return androidx.compose.ui.geometry.Offset.Zero
             }
-        }
-    }
-
-    PredictiveBackHandler(enabled = showLicenses) { progress ->
-        try {
-            progress.collect { }
-            showLicenses = false
-        } catch (e: CancellationException) {
-            // cancelled
         }
     }
 
@@ -116,7 +104,7 @@ fun AboutScreen() {
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "DIRECTOR",
+                                text = "UI and UX ideas",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold
                                 ),
@@ -134,7 +122,7 @@ fun AboutScreen() {
                         }
 
                         Text(
-                            text = "UI and UX design ideas by me, code by agentic tools.",
+                            text = "Code by Agentic tools.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
