@@ -17,7 +17,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.vectorResource
@@ -62,7 +61,7 @@ fun PremiumEmptyState(
                             imageVector = icon,
                             contentDescription = null,
                             modifier = Modifier.size(72.dp),
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
@@ -81,7 +80,7 @@ fun PremiumEmptyState(
                             imageVector = icon,
                             contentDescription = null,
                             modifier = Modifier.size(72.dp),
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }

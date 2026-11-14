@@ -5,6 +5,8 @@ import android.view.HapticFeedbackConstants
 import com.android.snippets.ui.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
@@ -114,7 +116,7 @@ fun LibraryPhotoPager(
                     "Library" -> EmptyLibraryState()
                     else -> {
                         if (!uiState.isSearching) {
-                            EmptyCollectionState()
+                            EmptyCollectionState(icon = Icons.Outlined.FolderOpen)
                         }
                     }
                 }

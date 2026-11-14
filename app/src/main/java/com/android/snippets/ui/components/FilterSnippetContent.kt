@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.outlined.FilterListOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -100,7 +101,21 @@ fun FilterSnippetContent(
             .verticalScroll(effectiveScrollState)
             .padding(horizontal = 24.dp, vertical = 8.dp)
     ) {
-        if (uiState.snippetSortType == SnippetSortType.AZ) {
+        if (allSnippets.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 180.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.FilterListOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else if (uiState.snippetSortType == SnippetSortType.AZ) {
             val groupedByChar = remember(allSnippets) {
                 allSnippets.groupBy { it.firstOrNull()?.uppercaseChar() ?: '#' }
             }
