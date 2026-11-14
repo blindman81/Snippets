@@ -1,6 +1,7 @@
 package com.android.snippets.ui.components
 
 import android.os.Build
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
@@ -37,11 +38,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.util.LocalTiltActive
@@ -302,7 +304,8 @@ fun BlurredAlertDialog(
                 scrimAlpha.animateTo(0f, animationSpec = Motion.StandardFade)
             }
             coroutineScope.launch {
-                delay(220)
+                snapshotFlow { visibleState.isIdle && !visibleState.currentState }
+                    .first { it }
                 onDismissRequest()
             }
         }
@@ -316,9 +319,19 @@ fun BlurredAlertDialog(
                 scrimAlpha.animateTo(0f, animationSpec = Motion.StandardFade)
             }
             coroutineScope.launch {
-                delay(220)
+                snapshotFlow { visibleState.isIdle && !visibleState.currentState }
+                    .first { it }
                 onConfirm?.invoke()
             }
+        }
+    }
+
+    PredictiveBackHandler(enabled = !isDismissing) { progress ->
+        try {
+            progress.collect { }
+            triggerDismiss()
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            // The gesture was cancelled, so keep the dialog open.
         }
     }
 
@@ -424,7 +437,7 @@ fun BlurredAlertDialog(
                                 contentDescription = "Close",
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                size = 40.dp,
+                                size = 48.dp,
                                 iconSize = 28.dp
                             )
                             if (onConfirm != null) {
@@ -434,7 +447,8 @@ fun BlurredAlertDialog(
                                     contentDescription = "Confirm",
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                                    size = 40.dp
+                                    size = 48.dp,
+                                    iconSize = 28.dp
                                 )
                             }
                         }

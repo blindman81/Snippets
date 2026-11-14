@@ -1,7 +1,9 @@
 package com.android.snippets.ui.components
 
+import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -18,12 +20,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -45,8 +49,12 @@ fun Scrollbar(
     shape: Shape = RoundedCornerShape(6.dp),
     thumbLength: Dp = 48.dp,
     minThumbLength: Dp = thumbLength,
-    thumbColorIdle: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.28f),
-    thumbColorActive: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+    thumbColorIdle: Color = MaterialTheme.colorScheme.primary,
+    thumbColorActive: Color = MaterialTheme.colorScheme.primary,
+    throttleWindowMs: Long = 16L,
+    debounceMode: Boolean = false,
+    debounceTimeoutMs: Long = 120L,
+    isScrolled: Boolean? = null
 ) {
     if (totalItemsCount <= 0) return
 
@@ -56,6 +64,22 @@ fun Scrollbar(
     var dragThumbOffsetY by remember { mutableFloatStateOf(0f) }
     var activeThumbHeightPx by remember { mutableFloatStateOf(0f) }
     var scrollJob by remember { mutableStateOf<Job?>(null) }
+    var pendingJumpJob by remember { mutableStateOf<Job?>(null) }
+    var lastJumpTimestamp by remember { mutableLongStateOf(0L) }
+
+    val derivedIsScrolled by remember(state) {
+        derivedStateOf {
+            state.firstVisibleItemIndex > 0 || state.firstVisibleItemScrollOffset > 0
+        }
+    }
+    val effectiveIsScrolled = isScrolled ?: derivedIsScrolled
+    val isVisible = effectiveIsScrolled || isDragging || state.isScrollInProgress
+
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "scrollbarAlpha"
+    )
 
     val thumbColor by animateColorAsState(
         targetValue = if (isDragging) thumbColorActive else thumbColorIdle,
@@ -64,7 +88,9 @@ fun Scrollbar(
     )
 
     BoxWithConstraints(
-        modifier = modifier.width(thickness + 12.dp)
+        modifier = modifier
+            .width(thickness + 12.dp)
+            .graphicsLayer { this.alpha = alpha }
     ) {
         val trackHeightPx = constraints.maxHeight.toFloat()
         if (trackHeightPx <= 0f) return@BoxWithConstraints
@@ -109,12 +135,6 @@ fun Scrollbar(
 
         val computedThumbOffsetY = scrollProgress * maxThumbOffset
 
-        val currentThumbOffsetY = if (isDragging) {
-            dragThumbOffsetY.coerceIn(0f, maxThumbOffset)
-        } else {
-            computedThumbOffsetY
-        }
-
         val currentTotalItemsCount by rememberUpdatedState(totalItemsCount)
         val currentTrackHeightPx by rememberUpdatedState(trackHeightPx)
         val currentUniformThumbHeightPx by rememberUpdatedState(uniformThumbHeightPx)
@@ -122,32 +142,79 @@ fun Scrollbar(
         val currentVisibleItemsCount by rememberUpdatedState(visibleItems.size)
         val currentAvgItemHeight by rememberUpdatedState(avgItemHeight)
 
-        fun jumpToThumbOffset(targetThumbY: Float, maxOffset: Float) {
+        fun jumpToThumbOffset(targetThumbY: Float, maxOffset: Float, immediate: Boolean = false) {
             if (maxOffset <= 0f) return
             val fraction = (targetThumbY / maxOffset).coerceIn(0f, 1f)
             val maxScrollable = (currentTotalItemsCount - currentVisibleItemsCount).coerceAtLeast(1)
-            scrollJob?.cancel()
-            scrollJob = coroutineScope.launch {
-                try {
-                    if (fraction <= 0.001f) {
-                        state.scrollToItem(0, 0)
-                    } else if (fraction >= 0.999f) {
-                        state.scrollToItem((currentTotalItemsCount - 1).coerceAtLeast(0), 0)
-                    } else {
-                        val exactIndex = fraction * maxScrollable
-                        val targetIndex = exactIndex.toInt().coerceIn(0, currentTotalItemsCount - 1)
-                        val itemFraction = exactIndex - targetIndex
-                        val targetOffsetPx = (itemFraction * currentAvgItemHeight).toInt()
-                        state.scrollToItem(targetIndex, targetOffsetPx)
-                    }
-                } catch (_: Exception) {}
+
+            fun doScroll() {
+                scrollJob?.cancel()
+                scrollJob = coroutineScope.launch {
+                    try {
+                        if (fraction <= 0.001f) {
+                            state.scrollToItem(0, 0)
+                        } else if (fraction >= 0.999f) {
+                            state.scrollToItem((currentTotalItemsCount - 1).coerceAtLeast(0), 0)
+                        } else {
+                            val exactIndex = fraction * maxScrollable
+                            val targetIndex = exactIndex.toInt().coerceIn(0, currentTotalItemsCount - 1)
+                            val itemFraction = exactIndex - targetIndex
+                            val targetOffsetPx = (itemFraction * currentAvgItemHeight).toInt()
+                            state.scrollToItem(targetIndex, targetOffsetPx)
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+
+            if (immediate) {
+                pendingJumpJob?.cancel()
+                pendingJumpJob = null
+                lastJumpTimestamp = SystemClock.uptimeMillis()
+                doScroll()
+                return
+            }
+
+            if (debounceMode) {
+                pendingJumpJob?.cancel()
+                pendingJumpJob = coroutineScope.launch {
+                    delay(debounceTimeoutMs)
+                    lastJumpTimestamp = SystemClock.uptimeMillis()
+                    doScroll()
+                }
+                return
+            }
+
+            if (throttleWindowMs <= 0L) {
+                pendingJumpJob?.cancel()
+                pendingJumpJob = null
+                lastJumpTimestamp = SystemClock.uptimeMillis()
+                doScroll()
+                return
+            }
+
+            val now = SystemClock.uptimeMillis()
+            val elapsed = now - lastJumpTimestamp
+
+            if (elapsed >= throttleWindowMs) {
+                pendingJumpJob?.cancel()
+                pendingJumpJob = null
+                lastJumpTimestamp = now
+                doScroll()
+            } else {
+                pendingJumpJob?.cancel()
+                pendingJumpJob = coroutineScope.launch {
+                    delay(throttleWindowMs - elapsed)
+                    lastJumpTimestamp = SystemClock.uptimeMillis()
+                    doScroll()
+                }
             }
         }
 
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(state) {
+                .pointerInput(state, isVisible) {
+                    if (!isVisible) return@pointerInput
                     var dragOffsetWithinThumb = thumbHeightPx / 2f
                     detectVerticalDragGestures(
                         onDragStart = { offset ->
@@ -167,20 +234,20 @@ fun Scrollbar(
                             dragThumbOffsetY = initialThumbY
 
                             if (maxOffset > 0f && !isTouchOnThumb) {
-                                jumpToThumbOffset(initialThumbY, maxOffset)
+                                jumpToThumbOffset(initialThumbY, maxOffset, immediate = true)
                             }
                         },
                         onDragEnd = {
                             isDragging = false
                             val maxOffset = (currentTrackHeightPx - activeThumbHeightPx).coerceAtLeast(0f)
-                            if (dragThumbOffsetY <= 0f) {
-                                jumpToThumbOffset(0f, maxOffset)
-                            } else if (maxOffset > 0f && dragThumbOffsetY >= maxOffset) {
-                                jumpToThumbOffset(maxOffset, maxOffset)
+                            if (maxOffset > 0f) {
+                                jumpToThumbOffset(dragThumbOffsetY.coerceIn(0f, maxOffset), maxOffset, immediate = true)
                             }
                         },
                         onDragCancel = {
                             isDragging = false
+                            pendingJumpJob?.cancel()
+                            pendingJumpJob = null
                         },
                         onVerticalDrag = { change, dragAmount ->
                             change.consume()
@@ -203,7 +270,7 @@ fun Scrollbar(
                                         val deltaContentPx = effectiveThumbDelta * scrollRatio
                                         val jumpThresholdPx = (currentTrackHeightPx * 1.0f).coerceAtLeast(1000f)
 
-                                        if (abs(deltaContentPx) > jumpThresholdPx || scrollJob?.isActive == true) {
+                                        if (debounceMode || abs(deltaContentPx) > jumpThresholdPx || scrollJob?.isActive == true) {
                                             jumpToThumbOffset(newThumbY, maxOffset)
                                         } else {
                                             state.dispatchRawDelta(deltaContentPx)
@@ -215,14 +282,22 @@ fun Scrollbar(
                     )
                 }
         ) {
-            val x = size.width - thicknessPx
-            drawRoundRect(
-                color = thumbColor,
-                topLeft = Offset(x = x, y = currentThumbOffsetY),
-                size = Size(width = thicknessPx, height = thumbHeightPx),
-                cornerRadius = CornerRadius(thicknessPx / 2f, thicknessPx / 2f)
-            )
+            if (alpha > 0.001f) {
+                val drawThumbOffsetY = if (isDragging) {
+                    dragThumbOffsetY.coerceIn(0f, maxThumbOffset)
+                } else {
+                    computedThumbOffsetY
+                }
+                val x = size.width - thicknessPx
+                drawRoundRect(
+                    color = thumbColor.copy(alpha = thumbColor.alpha * alpha),
+                    topLeft = Offset(x = x, y = drawThumbOffsetY),
+                    size = Size(width = thicknessPx, height = thumbHeightPx),
+                    cornerRadius = CornerRadius(thicknessPx / 2f, thicknessPx / 2f)
+                )
+            }
         }
+
     }
 }
 

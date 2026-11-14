@@ -2,6 +2,7 @@ package com.android.snippets.ui.components
 
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -26,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +51,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -103,9 +105,34 @@ fun Cookiestarslider(
                 scrimAlpha.animateTo(0f, animationSpec = Motion.StandardFade)
             }
             coroutineScope.launch {
-                delay(220)
+                snapshotFlow { visibleState.isIdle && !visibleState.currentState }
+                    .first { it }
                 onConfirm(rating)
             }
+        }
+    }
+
+    val closeAndDismiss: () -> Unit = {
+        if (!isDismissing) {
+            isDismissing = true
+            visibleState.targetState = false
+            coroutineScope.launch {
+                scrimAlpha.animateTo(0f, animationSpec = Motion.StandardFade)
+            }
+            coroutineScope.launch {
+                snapshotFlow { visibleState.isIdle && !visibleState.currentState }
+                    .first { it }
+                onDismiss()
+            }
+        }
+    }
+
+    PredictiveBackHandler(enabled = !isDismissing) { progress ->
+        try {
+            progress.collect { }
+            closeAndDismiss()
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            // The gesture was cancelled, so keep the slider open.
         }
     }
 
