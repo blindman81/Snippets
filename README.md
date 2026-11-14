@@ -4,7 +4,7 @@
   <img width="100" height="100" alt="Snippets app icon round" src="https://github.com/user-attachments/assets/72300057-84e4-4367-91a7-031fecb87965" />
 </p>
 
-A beautiful Material 3 Expressive app with hold a button to shape morph and button rotation tilt. Write upto 15 letters of snippets describing feelings and thoughts of the food you eat.
+A beautiful Material 3 Expressive app with hold a button to shape morph and button rotation tilt. Write upto 15 letters of snippets describing your feelings and thoughts of the food you eat.
 
 Relive moments with memories that cycles photos every day.
 
