@@ -22,7 +22,12 @@ import java.io.File
 import java.util.Calendar
 import java.util.Locale
 import java.text.SimpleDateFormat
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import com.android.snippets.logic.MemoryWorker
 import com.android.snippets.logic.MemoryManager
 import android.app.backup.BackupManager
@@ -34,6 +39,7 @@ import javax.inject.Inject
 import com.android.snippets.data.DatabasePreloader
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.data.repository.PhotoRepository
 import com.android.snippets.data.repository.CollectionRepository
@@ -79,6 +85,9 @@ class SnippetsViewModel @Inject constructor(
 
         fun parseSearchQuery(query: String): ParsedSearchQuery =
             SearchQueryParser.parseSearchQuery(query)
+
+        private const val MIN_COLD_LAUNCH_LOADING_MS = 2000L
+        private const val PRELOAD_PHOTO_COUNT = 40
 
         const val SNACKBAR_NAME_PHOTO_FIRST = com.android.snippets.logic.SnippetManager.SNACKBAR_NAME_PHOTO_FIRST
         const val SNACKBAR_ACTION_OPEN = com.android.snippets.logic.SnippetManager.SNACKBAR_ACTION_OPEN
@@ -775,6 +784,8 @@ class SnippetsViewModel @Inject constructor(
 
     private fun loadAllData() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val startTime = System.currentTimeMillis()
+
             try {
                 DatabasePreloader.preloadIfNecessary(getApplication(), photoRepository, collectionRepository)
             } catch (e: Exception) {
@@ -789,13 +800,55 @@ class SnippetsViewModel @Inject constructor(
             }
 
             val app = getApplication<Application>()
-            val (roomPhotos, fileHealingNeeded) = com.android.snippets.logic.PhotoStorageManager.healFileUris(app, rawRoomPhotos)
-            if (fileHealingNeeded) {
-                try {
-                    photoRepository.insertPhotos(roomPhotos)
-                } catch (_: Exception) {}
+
+            // 1. Fully heal file URIs, content URIs, and backfill dimensions BEFORE surfacing to UI
+            val (fileHealedPhotos, fileHealingNeeded) = com.android.snippets.logic.PhotoStorageManager.healFileUris(app, rawRoomPhotos)
+            val (contentHealedPhotos, contentHealingNeeded) = com.android.snippets.logic.PhotoStorageManager.healContentUris(app, fileHealedPhotos)
+            val (dimensionHealedPhotos, dimensionsHealingNeeded) = com.android.snippets.logic.PhotoStorageManager.backfillMissingDimensions(app, contentHealedPhotos)
+
+            var workingPhotos = dimensionHealedPhotos
+            var dbNeedsUpdate = fileHealingNeeded || contentHealingNeeded || dimensionsHealingNeeded
+
+            // 2. Resolve place names for any photos with location links
+            val needsLocationResolution = workingPhotos.filter { !it.locationLink.isNullOrBlank() && it.locationName.isNullOrBlank() }
+            if (needsLocationResolution.isNotEmpty()) {
+                val updatedPhotos = workingPhotos.toMutableList()
+                var locationsChanged = false
+                needsLocationResolution.forEach { p ->
+                    val link = p.locationLink ?: return@forEach
+                    val name = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(link, app)
+                        ?: try {
+                            withTimeoutOrNull(1500L) {
+                                com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(link, app)
+                            }
+                        } catch (_: Exception) {
+                            null
+                        }
+                    if (!name.isNullOrBlank()) {
+                        val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(name)
+                        val idx = updatedPhotos.indexOfFirst { it.id == p.id }
+                        if (idx != -1 && updatedPhotos[idx].locationName.isNullOrBlank()) {
+                            updatedPhotos[idx] = updatedPhotos[idx].copy(locationName = clean)
+                            locationsChanged = true
+                        }
+                    }
+                }
+                if (locationsChanged) {
+                    workingPhotos = updatedPhotos
+                    dbNeedsUpdate = true
+                }
             }
 
+            // Persist all optimizations to Room once in a single transaction if changes occurred
+            if (dbNeedsUpdate) {
+                try {
+                    photoRepository.insertPhotos(workingPhotos)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            // 3. Load collections
             val collectionEntities = try {
                 collectionRepository.getAllCollections()
             } catch (e: Exception) {
@@ -805,7 +858,8 @@ class SnippetsViewModel @Inject constructor(
             val roomCollections = collectionEntities.map { it.name }
             val loadedIcons = collectionEntities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()
 
-            val processedPhotos = roomPhotos.map { p ->
+            // 4. Sort and process photos
+            val processedPhotos = workingPhotos.map { p ->
                 if (p.snippetsAddedTime == 0L && p.snippets.isNotEmpty()) {
                     p.copy(snippetsAddedTime = p.date)
                 } else p
@@ -834,6 +888,21 @@ class SnippetsViewModel @Inject constructor(
                 mergedFirstSeen
             )
 
+            // Clean up any filter snippets that no longer exist in any photo (prevents stuck empty state)
+            val allExistingSnippets = processedPhotos.flatMap { it.snippets }.toSet()
+            val validFilters = selectedFilterSnippets.filter { filter ->
+                allExistingSnippets.any { it.equals(filter, ignoreCase = true) }
+            }
+            if (validFilters.size != selectedFilterSnippets.size) {
+                selectedFilterSnippets = validFilters
+                saveFilterState()
+            }
+
+            if (mergedFirstSeen != loadedFirstSeen) {
+                saveSnippetFirstSeenTimes()
+            }
+
+            // 5. Update UI state with fully healed and stabilized data
             _uiState.update {
                 it.copy(
                     photos = processedPhotos,
@@ -843,88 +912,54 @@ class SnippetsViewModel @Inject constructor(
                     locationNameMap = locMap,
                     allUniqueLocations = uniqueLocs,
                     favoritesUniqueSnippets = favSnippets,
-                    allUniqueSnippets = allSnippets,
-                    isInitialLoading = false
+                    allUniqueSnippets = allSnippets
                 )
             }
 
+            // 6. Preload and warm up images in Coil's memory and disk cache concurrently
+            preloadPhotoImages(processedPhotos.take(PRELOAD_PHOTO_COUNT))
+
+            // 7. Reconcile memories and notifications
+            reconcileSurfacedMemories()
+            reconcileMemoryNotifications()
+            checkAndTriggerRecapOnLaunch()
+
+            // 8. Ensure cold launch loading indicator lasts long enough to guarantee complete stabilization
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < MIN_COLD_LAUNCH_LOADING_MS) {
+                delay(MIN_COLD_LAUNCH_LOADING_MS - elapsed)
+            }
+
+            // 9. Dismiss loading indicator
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-
-                // Pre-warm Coil's memory cache for the first batch of photos so they render instantly
-                val photosToPreload = processedPhotos.take(20)
-                if (photosToPreload.isNotEmpty()) {
-                    val loader = app.imageLoader
-                    photosToPreload.forEach { p ->
-                        val request = ImageRequest.Builder(app)
-                            .data(p.uriString)
-                            .memoryCacheKey(p.uriString)
-                            .build()
-                        loader.enqueue(request)
-                    }
-                }
-
-                // Auto-heal content URIs, dimensions, and resolve location links asynchronously in background
-                viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    val (healedContentPhotos, contentHealed) = com.android.snippets.logic.PhotoStorageManager.healContentUris(app, photos)
-                    val (finalPhotos, dimensionsHealed) = com.android.snippets.logic.PhotoStorageManager.backfillMissingDimensions(app, healedContentPhotos)
-                    if (contentHealed || dimensionsHealed) {
-                        try {
-                            photoRepository.insertPhotos(finalPhotos)
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                photos = finalPhotos
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    // Background resolution for photos with location link but missing place name
-                    val needsLocationResolution = photos.filter { !it.locationLink.isNullOrBlank() && it.locationName.isNullOrBlank() }
-                    if (needsLocationResolution.isNotEmpty()) {
-                        var locationChanged = false
-                        val currentPhotos = photos.toMutableList()
-                        needsLocationResolution.forEach { p ->
-                            val link = p.locationLink ?: return@forEach
-                            val name = com.android.snippets.ui.util.LocationUtils.extractPlaceNameFromLink(link, app)
-                                ?: com.android.snippets.ui.util.LocationUtils.resolveUrlLocation(link, app)
-                            if (!name.isNullOrBlank()) {
-                                val clean = com.android.snippets.ui.util.LocationUtils.cleanLocationName(name)
-                                val idx = currentPhotos.indexOfFirst { it.id == p.id }
-                                if (idx != -1 && currentPhotos[idx].locationName.isNullOrBlank()) {
-                                    currentPhotos[idx] = currentPhotos[idx].copy(locationName = clean)
-                                    locationChanged = true
-                                }
-                            }
-                        }
-                        if (locationChanged) {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                photos = currentPhotos
-                            }
-                            savePhotos()
-                        }
-                    }
-                }
                 isInitialLoading = false
-
-                // Clean up any filter snippets that no longer exist in any photo (prevents stuck empty state)
-                val allExistingSnippets = processedPhotos.flatMap { it.snippets }.toSet()
-                val validFilters = selectedFilterSnippets.filter { filter ->
-                    allExistingSnippets.any { it.equals(filter, ignoreCase = true) }
-                }
-                if (validFilters.size != selectedFilterSnippets.size) {
-                    selectedFilterSnippets = validFilters
-                    saveFilterState()
-                }
-
-                if (mergedFirstSeen != loadedFirstSeen) {
-                    saveSnippetFirstSeenTimes()
-                }
-
-                reconcileSurfacedMemories()
-                reconcileMemoryNotifications()
-                checkAndTriggerRecapOnLaunch()
             }
         }
+    }
+
+    private suspend fun preloadPhotoImages(photosToPreload: List<Photo>) = coroutineScope {
+        if (photosToPreload.isEmpty()) return@coroutineScope
+
+        val app = getApplication<Application>()
+        val loader = app.imageLoader
+        val dispatcher = kotlinx.coroutines.Dispatchers.IO.limitedParallelism(4)
+
+        photosToPreload.map { photo ->
+            async(dispatcher) {
+                try {
+                    val request = ImageRequest.Builder(app)
+                        .data(photo.uriString)
+                        .crossfade(false)
+                        .memoryCacheKey(photo.uriString)
+                        .placeholderMemoryCacheKey(photo.uriString)
+                        .build()
+                    loader.execute(request)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+            }
+        }.awaitAll()
     }
 
     private fun saveFilterState() {
@@ -1126,7 +1161,10 @@ class SnippetsViewModel @Inject constructor(
                     } else if (newPhotosList.isNotEmpty() && uris.size > 1) {
                         showSnackbar("${newPhotosList.size} photos added")
                     }
+                }
 
+                preloadPhotoImages(newPhotosList.take(8))
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     isAddingPhotos = false
                 }
 

@@ -2,77 +2,71 @@ package com.android.snippets.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicatorDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 
 /**
- * A wrapper around the official Material 3 LoadingIndicator to handle experimental API opt-ins.
- * Uses official Material 3 Expressive loading indicator specifications.
+ * Larger version of the official Material 3 Expressive loading indicator, without a container.
+ * Indicator color defaults to [ColorScheme.primaryContainer].
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun LoadingIndicator(
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    containerSize: Dp = LoadingIndicatorDefaults.ContainerHeight,
-    indicatorSize: Dp = LoadingIndicatorDefaults.IndicatorSize
+    color: Color = MaterialTheme.colorScheme.primaryContainer,
+    indicatorSize: Dp = 72.dp
 ) {
-    Surface(
-        modifier = modifier.then(Modifier.size(containerSize)),
-        shape = CircleShape,
-        color = containerColor,
-        shadowElevation = 0.dp
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            androidx.compose.material3.LoadingIndicator(
-                color = color,
-                modifier = Modifier.size(indicatorSize)
-            )
-        }
-    }
+    androidx.compose.material3.LoadingIndicator(
+        color = color,
+        modifier = modifier.size(indicatorSize)
+    )
 }
 
 /**
  * Global Busy Overlay used for bulk operations and imports.
- * Uses official Material 3 LoadingIndicator.
+ * Uses Haze backdrop blur for background blur behind the loading indicator.
  */
 @Composable
-fun BusyOverlay() {
+fun BusyOverlay(
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = LocalHazeState.current
+) {
+    val hazeStyle = remember {
+        HazeStyle(
+            tint = HazeTint(Color.Black.copy(alpha = 0.20f)),
+            blurRadius = 24.dp,
+            noiseFactor = HazeDefaults.noiseFactor
+        )
+    }
+
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .zIndex(9999f)
-            .background(Color.Black.copy(alpha = 0.32f)),
+            .background(Color.Black.copy(alpha = 0.16f))
+            .then(
+                if (hazeState != null) {
+                    Modifier.hazeEffect(state = hazeState, style = hazeStyle)
+                } else {
+                    Modifier
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
-        BlurredSurface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            shadowElevation = 8.dp
-        ) {
-            Box(
-                modifier = Modifier.padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                LoadingIndicator()
-            }
-        }
+        LoadingIndicator()
     }
 }

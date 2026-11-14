@@ -420,25 +420,36 @@ fun LibraryScreen(
                         } else Modifier
                     )
             ) {
-                if (uiState.isInitialLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        LoadingIndicator()
-                    }
-                } else {
-                    CompositionLocalProvider(
-                        com.android.snippets.ui.util.LocalTiltActive provides
-                                (com.android.snippets.ui.util.LocalTiltActive.current && !isAnyPopupActive)
-                    ) {
+                CompositionLocalProvider(
+                    com.android.snippets.ui.util.LocalTiltActive provides
+                            (com.android.snippets.ui.util.LocalTiltActive.current && !isAnyPopupActive)
+                ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             val topGridPadding = if (hasTabMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
 
                             val targetPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
-                            val activeTabTarget = pageTabs.getOrNull(targetPage) ?: "Library"
+                            val settledPage = pagerState.settledPage
+                            val scrollProgress = if (pagerState.isScrollInProgress) {
+                                val pageDistance = abs(targetPage - settledPage)
+                                if (pageDistance == 0) {
+                                    0f
+                                } else {
+                                    abs((pagerState.currentPage + pagerState.currentPageOffsetFraction) - settledPage) /
+                                        pageDistance.toFloat()
+                                }
+                            } else {
+                                1f
+                            }
+                            val selectionPage = if (
+                                pagerState.isScrollInProgress && scrollProgress < 0.7f
+                            ) settledPage else targetPage
+                            val activeTabTarget = pageTabs.getOrNull(selectionPage) ?: "Library"
+                            val targetTab = pageTabs.getOrNull(targetPage) ?: "Library"
 
-                            LaunchedEffect(activeTabTarget) {
+                            LaunchedEffect(targetTab) {
                                 if (uiState.pendingCollectionAssignment != null) return@LaunchedEffect
-                                val tabX = tabPositions[activeTabTarget] ?: return@LaunchedEffect
-                                val tabW = tabWidths[activeTabTarget] ?: return@LaunchedEffect
+                                val tabX = tabPositions[targetTab] ?: return@LaunchedEffect
+                                val tabW = tabWidths[targetTab] ?: return@LaunchedEffect
                                 val rowW = tabRowScrollState.maxValue + 0f
                                 val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
                                     .coerceIn(0f, rowW)
@@ -720,7 +731,6 @@ fun LibraryScreen(
                                 }
                             )
                         }
-                    }
                 }
             }
         }

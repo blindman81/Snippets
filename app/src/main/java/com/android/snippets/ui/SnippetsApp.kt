@@ -3,6 +3,10 @@ package com.android.snippets.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +27,7 @@ import com.android.snippets.ui.components.SnippetsSnackbarHost
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.viewmodel.SnippetsViewModel
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 
 @Composable
 fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) {
@@ -44,7 +49,8 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val isOverlayShowing = uiState.showBulkDeleteModal || uiState.showFilterSheet || uiState.isAddingPhotos || uiState.isBusy || uiState.isCuratingMemories
+    val showLoadingOverlay = uiState.isInitialLoading || uiState.isAddingPhotos || uiState.isBusy || uiState.isCuratingMemories
+    val isOverlayShowing = uiState.showBulkDeleteModal || uiState.showFilterSheet || showLoadingOverlay
 
     SnippetsSnackbarEffect(
         viewModel = viewModel,
@@ -60,6 +66,7 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
     }
 
     val rootHazeState = remember { HazeState() }
+    val loadingHazeState = remember { HazeState() }
     val isScreenActive = !isOverlayShowing
 
     CompositionLocalProvider(
@@ -71,44 +78,54 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
-            LibraryScreen(
-                viewModel = viewModel,
-                windowSizeClass = windowSizeClass,
-                onAddPhotos = { tab ->
-                    when (tab) {
-                        "Library" -> {
-                            viewModel.pendingFavoriteIntent = false
-                            pendingCollectionForPicker = null
-                            photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }
-                        "Favorites" -> viewModel.startCollectionAssignment("Favorites")
-                        else -> viewModel.startCollectionAssignment(tab)
-                    }
-                }
-            )
-
-            SnippetsSnackbarHost(
-                hostState = snackbarHostState,
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 16.dp)
-            )
-
-            if (uiState.showBulkDeleteModal) {
-                DeleteConfirmationModal(
-                    count = uiState.selectedPhotoIds.size,
-                    onDismiss = { viewModel.showBulkDeleteModal = false },
-                    onConfirm = {
-                        viewModel.showBulkDeleteModal = false
-                        viewModel.deleteSelectedPhotos(unpublish = false)
+                    .fillMaxSize()
+                    .hazeSource(state = loadingHazeState)
+            ) {
+                LibraryScreen(
+                    viewModel = viewModel,
+                    windowSizeClass = windowSizeClass,
+                    onAddPhotos = { tab ->
+                        when (tab) {
+                            "Library" -> {
+                                viewModel.pendingFavoriteIntent = false
+                                pendingCollectionForPicker = null
+                                photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+                            "Favorites" -> viewModel.startCollectionAssignment("Favorites")
+                            else -> viewModel.startCollectionAssignment(tab)
+                        }
                     }
                 )
+
+                SnippetsSnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 16.dp)
+                )
+
+                if (uiState.showBulkDeleteModal) {
+                    DeleteConfirmationModal(
+                        count = uiState.selectedPhotoIds.size,
+                        onDismiss = { viewModel.showBulkDeleteModal = false },
+                        onConfirm = {
+                            viewModel.showBulkDeleteModal = false
+                            viewModel.deleteSelectedPhotos(unpublish = false)
+                        }
+                    )
+                }
             }
 
-            // Global Busy Overlays
-            if (uiState.isAddingPhotos || uiState.isBusy || uiState.isCuratingMemories) {
-                BusyOverlay()
+            AnimatedVisibility(
+                visible = showLoadingOverlay,
+                enter = fadeIn(animationSpec = tween(200)),
+                exit = fadeOut(animationSpec = tween(350)),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                BusyOverlay(hazeState = loadingHazeState)
             }
         }
     }

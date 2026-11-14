@@ -26,19 +26,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.background
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.Color
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import com.android.snippets.ui.components.LoadingIndicator
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import androidx.core.content.pm.PackageInfoCompat
 import com.android.snippets.ui.OnboardingActivity
@@ -188,10 +177,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         configurePredictiveBackTransition()
         
-        splashScreen.setKeepOnScreenCondition {
-            viewModel.isInitialLoading
-        }
-        
         splashScreen.setOnExitAnimationListener { splashScreenView ->
             splashScreenView.remove()
         }
@@ -213,8 +198,6 @@ class MainActivity : ComponentActivity() {
                 com.android.snippets.viewmodel.ThemePreference.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
             }
             
-            var showSplashOverlay by remember { mutableStateOf(true) }
-
             SnippetsTheme(
                 darkTheme = isDarkTheme
             ) {
@@ -299,8 +282,8 @@ class MainActivity : ComponentActivity() {
                             }
 
                             val hasPromptedPermission = uiState.hasPromptedNotificationPermission
-                            androidx.compose.runtime.LaunchedEffect(uiState.isInitialLoading, showSplashOverlay) {
-                                if (!uiState.isInitialLoading && !showSplashOverlay) {
+                            androidx.compose.runtime.LaunchedEffect(uiState.isInitialLoading) {
+                                if (!uiState.isInitialLoading) {
                                     val currentVersionCode = try {
                                         PackageInfoCompat.getLongVersionCode(
                                             packageManager.getPackageInfo(packageName, 0)
@@ -317,8 +300,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                            androidx.compose.runtime.LaunchedEffect(uiState.isInitialLoading, showSplashOverlay, hasPromptedPermission) {
-                                if (!uiState.isInitialLoading && !showSplashOverlay) {
+                            androidx.compose.runtime.LaunchedEffect(uiState.isInitialLoading, hasPromptedPermission) {
+                                if (!uiState.isInitialLoading) {
                                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                                         val permissionGranted = ContextCompat.checkSelfPermission(
                                             this@MainActivity,
@@ -354,16 +337,6 @@ class MainActivity : ComponentActivity() {
                             }
                             val windowSizeClass = calculateWindowSizeClass(this@MainActivity)
                             SnippetsApp(viewModel, windowSizeClass)
-
-                            if (showSplashOverlay) {
-                                ComposeSplashScreen(
-                                    isDarkTheme = isDarkTheme,
-                                    isInitialLoading = uiState.isInitialLoading,
-                                    onAnimationFinished = {
-                                        showSplashOverlay = false
-                                    }
-                                )
-                            }
                         }
                     }
                 }
@@ -382,49 +355,4 @@ class MainActivity : ComponentActivity() {
         handleSearchIntent(intent)
     }
 }
-
-
-
-@Composable
-private fun ComposeSplashScreen(
-    isDarkTheme: Boolean,
-    isInitialLoading: Boolean,
-    onAnimationFinished: () -> Unit
-) {
-    val bgColor = MaterialTheme.colorScheme.background
-
-    var startExitAnimation by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isInitialLoading) {
-        if (!isInitialLoading) {
-            delay(200L)
-            startExitAnimation = true
-        }
-    }
-
-    val duration = 700
-
-    val bgAlpha by animateFloatAsState(
-        targetValue = if (startExitAnimation) 0f else 1f,
-        animationSpec = tween(durationMillis = duration),
-        finishedListener = {
-            if (it == 0f) {
-                onAnimationFinished()
-            }
-        }
-    )
-
-    if (bgAlpha > 0f) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = bgAlpha }
-                .background(bgColor),
-            contentAlignment = Alignment.Center
-        ) {
-            LoadingIndicator()
-        }
-    }
-}
-
 
