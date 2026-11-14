@@ -2,8 +2,13 @@ package com.android.snippets.viewmodel
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -13,6 +18,7 @@ import com.android.snippets.data.backup.SnippetsBackupManager
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.data.repository.CollectionRepository
 import com.android.snippets.data.repository.PhotoRepository
+import com.android.snippets.logic.RestoreBackupWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -125,19 +131,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun restoreBackupFromFile(context: Context, uri: Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                backupManager.importBackup(context, uri)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Backup restored successfully!", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Restore failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
+        val appContext = context.applicationContext
+        appContext.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
+
+        val request = OneTimeWorkRequestBuilder<RestoreBackupWorker>()
+            .setInputData(workDataOf(RestoreBackupWorker.INPUT_URI to uri.toString()))
+            .build()
+
+        WorkManager.getInstance(appContext).enqueueUniqueWork(
+            RestoreBackupWorker.UNIQUE_WORK_NAME,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            request
+        )
     }
 
     fun importBackupFromFile(context: Context, uri: Uri) = restoreBackupFromFile(context, uri)
