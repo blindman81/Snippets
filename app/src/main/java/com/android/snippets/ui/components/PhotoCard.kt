@@ -17,7 +17,6 @@ import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -433,7 +433,7 @@ fun PhotoCard(
 
                             if (!locationName.isNullOrBlank() && circleBadgesAlpha > 0f) {
                                 ExpandableCardPillIcon(
-                                    icon = Icons.Rounded.LocationOn,
+                                    icon = ImageVector.vectorResource(R.drawable.ic_location_on_filled),
                                     text = locationName,
                                     contentDescription = "Photo location",
                                     iconColor = iconColor,

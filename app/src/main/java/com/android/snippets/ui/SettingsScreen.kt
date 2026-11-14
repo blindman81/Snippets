@@ -19,8 +19,6 @@ import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
@@ -353,7 +351,11 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
                     val expandLabelIcon = if (viewModel.expandLabelIcon) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label
                     val expandCalendarIcon = if (viewModel.expandCalendarIcon) Icons.Rounded.CalendarMonth else Icons.Outlined.CalendarMonth
-                    val expandLocationIcon = if (viewModel.expandLocationIcon) Icons.Rounded.LocationOn else Icons.Outlined.LocationOn
+                    val expandLocationIcon = if (viewModel.expandLocationIcon) {
+                        ImageVector.vectorResource(R.drawable.ic_location_on_filled)
+                    } else {
+                        ImageVector.vectorResource(R.drawable.ic_location_on_outlined)
+                    }
 
                     val expandItems = remember(
                         viewModel.expandLabelIcon,
