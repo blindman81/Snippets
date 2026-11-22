@@ -1,18 +1,21 @@
 package com.android.snippets.viewmodel
 
 import android.app.Application
+import android.app.StatusBarManager
+import android.content.ComponentName
 import android.content.Context
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
+import androidx.core.content.ContextCompat
+import com.android.snippets.service.AddPhotoTileService
+import com.ln.android.snippets.R
 import android.provider.MediaStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.android.snippets.logic.SearchDirective
-import com.android.snippets.logic.ParsedSearchQuery
-import com.android.snippets.logic.SearchQueryParser
 import com.android.snippets.logic.SnippetStyleHelper
 import com.android.snippets.ui.util.PhotoCardExporter
 import com.android.snippets.model.Photo
@@ -43,13 +46,7 @@ import coil3.request.crossfade
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.data.repository.PhotoRepository
 import com.android.snippets.data.repository.CollectionRepository
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -57,12 +54,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 typealias SnippetSortType = com.android.snippets.model.SnippetSortType
 typealias PhotoSortType = com.android.snippets.model.PhotoSortType
-typealias ThemePreference = com.android.snippets.model.ThemePreference
 typealias SnippetStyle = com.android.snippets.model.SnippetStyle
-
-typealias SearchDirective = com.android.snippets.logic.SearchDirective
-typealias ParsedSearchQuery = com.android.snippets.logic.ParsedSearchQuery
-
 
 @HiltViewModel
 class SnippetsViewModel @Inject constructor(
@@ -78,73 +70,59 @@ class SnippetsViewModel @Inject constructor(
     }
 
     companion object {
+        @Volatile
+        var cachedPhotos: List<Photo> = emptyList()
+        @Volatile
+        var cachedSnippetFirstSeenTimes: Map<String, Long> = emptyMap()
+        @Volatile
+        var cachedLocationNameMap: Map<String, String> = emptyMap()
+        @Volatile
+        var cachedUniqueLocations: List<String> = emptyList()
+        @Volatile
+        var cachedAllUniqueSnippets: List<String> = emptyList()
+
         fun rebuildSnippetFirstSeenTimes(source: List<Photo>): Map<String, Long> =
             com.android.snippets.logic.SnippetManager.rebuildSnippetFirstSeenTimes(source)
-        fun matchSearchDirective(rawToken: String): SearchDirective? =
-            SearchQueryParser.matchSearchDirective(rawToken)
-
-        fun parseSearchQuery(query: String): ParsedSearchQuery =
-            SearchQueryParser.parseSearchQuery(query)
 
         private const val MIN_COLD_LAUNCH_LOADING_MS = 2000L
         private const val PRELOAD_PHOTO_COUNT = 40
-
-        const val SNACKBAR_NAME_PHOTO_FIRST = com.android.snippets.logic.SnippetManager.SNACKBAR_NAME_PHOTO_FIRST
-        const val SNACKBAR_ACTION_OPEN = com.android.snippets.logic.SnippetManager.SNACKBAR_ACTION_OPEN
-
-        fun validateAndExecuteAddSnippet(
-            photo: Photo,
-            showSnackbar: (message: String, actionLabel: String?, onAction: (() -> Unit)?) -> Unit,
-            onShowNameModal: (Photo) -> Unit,
-            onShowAddModal: (Photo) -> Unit
-        ) = com.android.snippets.logic.SnippetManager.validateAndExecuteAddSnippet(photo, showSnackbar, onShowNameModal, onShowAddModal)
-
-        const val MEMORY_REMINDER_PREFIX = MemoryManager.MEMORY_REMINDER_PREFIX
-        const val MEMORIES_PER_CYCLE = MemoryManager.MEMORIES_PER_CYCLE
-        const val CYCLE_MORNING_HOUR = MemoryManager.CYCLE_MORNING_HOUR
-        const val CYCLE_EVENING_HOUR = MemoryManager.CYCLE_EVENING_HOUR
-        const val CYCLE_WINDOW_HOURS = MemoryManager.CYCLE_WINDOW_HOURS
-        const val NEW_MEMORY_NOTIFICATION_DELAY_HOURS = MemoryManager.NEW_MEMORY_NOTIFICATION_DELAY_HOURS
-        const val VIEWED_MEMORY_VISIBLE_HOURS = MemoryManager.VIEWED_MEMORY_VISIBLE_HOURS
-        const val RECENTLY_VIEWED_MEMORY_HOURS = MemoryManager.RECENTLY_VIEWED_MEMORY_HOURS
-        const val VIEWED_MEMORY_RESET_DAYS = MemoryManager.VIEWED_MEMORY_RESET_DAYS
-        const val SURFACED_MEMORY_SPACING_HOURS = MemoryManager.SURFACED_MEMORY_SPACING_HOURS
-        const val TEST_NOTIFICATION_DELAY_SECONDS = MemoryManager.TEST_NOTIFICATION_DELAY_SECONDS
-        const val TEST_NOTIFICATION_PHOTO_ID = MemoryManager.TEST_NOTIFICATION_PHOTO_ID
-
-        val NEW_MEMORY_WAIT_MS: Long get() = MemoryManager.NEW_MEMORY_WAIT_MS
-        val VIEWED_MEMORY_VISIBLE_MS: Long get() = MemoryManager.VIEWED_MEMORY_VISIBLE_MS
-        val RECENTLY_VIEWED_MEMORY_MS: Long get() = MemoryManager.RECENTLY_VIEWED_MEMORY_MS
-        val VIEWED_MEMORY_RESET_MS: Long get() = MemoryManager.VIEWED_MEMORY_RESET_MS
-        val SURFACED_MEMORY_SPACING_MS: Long get() = MemoryManager.SURFACED_MEMORY_SPACING_MS
-        val CYCLE_WINDOW_MS: Long get() = MemoryManager.CYCLE_WINDOW_MS
-
-                val EMOTICONS_LIST: List<String> get() = SnippetStyleHelper.EMOTICONS_LIST
-
-        fun getCurrentCycleStart(now: Long = System.currentTimeMillis()): Long =
-            MemoryManager.getCurrentCycleStart(now)
-
-        fun getNextCycleStart(time: Long = System.currentTimeMillis()): Long =
-            MemoryManager.getNextCycleStart(time)
     }
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    val photosFlow: StateFlow<List<Photo>> = photoRepository.allPhotosFlow
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList()
-        )
-
-    val collectionsFlow: StateFlow<List<com.android.snippets.data.CollectionEntity>> = collectionRepository.allCollectionsFlow
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList()
-        )
-
-    private val _uiState = MutableStateFlow(SnippetsUiState())
+    private val _uiState = MutableStateFlow(
+        if (cachedPhotos.isNotEmpty()) {
+            val initialSnippets = if (cachedAllUniqueSnippets.isNotEmpty()) {
+                cachedAllUniqueSnippets
+            } else {
+                com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
+                    cachedPhotos,
+                    SnippetSortType.New,
+                    cachedSnippetFirstSeenTimes
+                )
+            }
+            val locMap = if (cachedLocationNameMap.isNotEmpty()) {
+                cachedLocationNameMap
+            } else {
+                com.android.snippets.ui.util.LocationUtils.buildLocationNameMap(cachedPhotos)
+            }
+            val uniqueLocs = if (cachedUniqueLocations.isNotEmpty()) {
+                cachedUniqueLocations
+            } else {
+                com.android.snippets.ui.util.LocationUtils.buildUniqueLocations(cachedPhotos)
+            }
+            SnippetsUiState(
+                photos = cachedPhotos,
+                snippetFirstSeenTimes = cachedSnippetFirstSeenTimes,
+                locationNameMap = locMap,
+                allUniqueLocations = uniqueLocs,
+                allUniqueSnippets = initialSnippets,
+                isInitialLoading = false
+            )
+        } else {
+            SnippetsUiState()
+        }
+    )
     val uiState: StateFlow<SnippetsUiState> = _uiState.asStateFlow()
 
     fun updateUiState(transform: (SnippetsUiState) -> SnippetsUiState) {
@@ -156,18 +134,20 @@ class SnippetsViewModel @Inject constructor(
         private set(value) {
             val locMap = com.android.snippets.ui.util.LocationUtils.buildLocationNameMap(value)
             val uniqueLocs = com.android.snippets.ui.util.LocationUtils.buildUniqueLocations(value)
-            val favSnippets = com.android.snippets.logic.SnippetManager.extractFavoritesUniqueSnippets(value)
             val allSnippets = com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
                 value,
                 _uiState.value.snippetSortType,
                 _uiState.value.snippetFirstSeenTimes
             )
+            cachedPhotos = value
+            cachedLocationNameMap = locMap
+            cachedUniqueLocations = uniqueLocs
+            cachedAllUniqueSnippets = allSnippets
             _uiState.update {
                 it.copy(
                     photos = value,
                     locationNameMap = locMap,
                     allUniqueLocations = uniqueLocs,
-                    favoritesUniqueSnippets = favSnippets,
                     allUniqueSnippets = allSnippets
                 )
             }
@@ -177,9 +157,9 @@ class SnippetsViewModel @Inject constructor(
         get() = _uiState.value.isInitialLoading
         private set(value) { _uiState.update { it.copy(isInitialLoading = value) } }
 
-    var userCollections: List<String>
-        get() = _uiState.value.userCollections
-        private set(value) { _uiState.update { it.copy(userCollections = value) } }
+    var userBoxes: List<String>
+        get() = _uiState.value.userBoxes
+        private set(value) { _uiState.update { it.copy(userBoxes = value) } }
 
     var libraryCurrentTab: String
         get() = _uiState.value.libraryCurrentTab
@@ -261,29 +241,21 @@ class SnippetsViewModel @Inject constructor(
     fun getMatchingSnippetsCount(photo: Photo): Int =
         com.android.snippets.logic.SnippetManager.getMatchingSnippetsCount(photo, _uiState.value.selectedFilterSnippets)
 
-    var activeCollection: String?
-        get() = _uiState.value.activeCollection
-        set(value) { _uiState.update { it.copy(activeCollection = value) } }
-
     var showCreateDialog: Boolean
         get() = _uiState.value.showCreateDialog
         set(value) { _uiState.update { it.copy(showCreateDialog = value) } }
 
-    var editingCollectionEmoji: String?
-        get() = _uiState.value.editingCollectionEmoji
-        set(value) { _uiState.update { it.copy(editingCollectionEmoji = value) } }
+    var editingBoxEmoji: String?
+        get() = _uiState.value.editingBoxEmoji
+        set(value) { _uiState.update { it.copy(editingBoxEmoji = value) } }
 
     var editingEmojiPreview: String?
         get() = _uiState.value.editingEmojiPreview
         set(value) { _uiState.update { it.copy(editingEmojiPreview = value) } }
 
-    var collectionIcons: Map<String, String>
-        get() = _uiState.value.collectionIcons
-        set(value) { _uiState.update { it.copy(collectionIcons = value) } }
-
-    var focusCreateCollection: Boolean
-        get() = _uiState.value.focusCreateCollection
-        set(value) { _uiState.update { it.copy(focusCreateCollection = value) } }
+    var boxIcons: Map<String, String>
+        get() = _uiState.value.boxIcons
+        set(value) { _uiState.update { it.copy(boxIcons = value) } }
 
     var snippetFirstSeenTimes: Map<String, Long>
         get() = _uiState.value.snippetFirstSeenTimes
@@ -354,7 +326,7 @@ class SnippetsViewModel @Inject constructor(
         onShowAddModal: (Photo) -> Unit
     ) {
         val targetPhoto = photos.find { it.id == photo.id } ?: photo
-        validateAndExecuteAddSnippet(
+        com.android.snippets.logic.SnippetManager.validateAndExecuteAddSnippet(
             photo = targetPhoto,
             showSnackbar = { message, actionLabel, onAction ->
                 showSnackbar(message, actionLabel, onAction)
@@ -367,80 +339,77 @@ class SnippetsViewModel @Inject constructor(
         )
     }
 
-    val sortedCollections: List<String>
-        get() = _uiState.value.userCollections
-
-    var showFilterSheet: Boolean
-        get() = _uiState.value.showFilterSheet
-        set(value) { _uiState.update { it.copy(showFilterSheet = value) } }
-
-
-    val separateCollectionSort = true
-    
-    
-    fun createNewCollection(): String {
-        val newName = com.android.snippets.logic.CollectionManager.generateNewPlaceholderName(userCollections)
-        userCollections = userCollections + newName
-        collectionIcons = collectionIcons + (newName to "")
+    fun createNewBox(): String {
+        val newName = com.android.snippets.logic.BoxManager.generateNextBoxName(userBoxes)
+        userBoxes = userBoxes + newName
+        boxIcons = boxIcons + (newName to "")
         saveCollections()
         libraryCurrentTab = newName
         navigateLibrary()
-        editingCollectionEmoji = newName
-        editingEmojiPreview = ""
-        _uiState.update { it.copy(emojiKeyboardRequestCount = it.emojiKeyboardRequestCount + 1) }
         return newName
     }
 
-    fun startEditingCollectionEmoji(collection: String) {
-        editingCollectionEmoji = collection
-        editingEmojiPreview = collectionIcons[collection] ?: if (collection.isBlank()) "" else collection
+    fun startEditingBoxEmoji(box: String) {
+        editingBoxEmoji = box
+        editingEmojiPreview = if (box == "Box 1" || box == "Favorites") {
+            val custom = boxIcons["Box 1"] ?: boxIcons["Favorites"]
+            if (custom != null && custom.none { it in 'a'..'z' || it in 'A'..'Z' }) custom else "❤️"
+        } else {
+            val custom = boxIcons[box]
+            if (custom != null && custom.none { it in 'a'..'z' || it in 'A'..'Z' }) custom else ""
+        }
         _uiState.update { it.copy(emojiKeyboardRequestCount = it.emojiKeyboardRequestCount + 1) }
     }
 
-    fun updateEditingEmojiPreview(collection: String, emoji: String) {
-        if (editingCollectionEmoji == collection) {
-            editingEmojiPreview = emoji
-            collectionIcons = collectionIcons + (collection to emoji)
+    fun updateEditingEmojiPreview(box: String, emoji: String) {
+        if (editingBoxEmoji == box) {
+            val clean = emoji.trim()
+            if (clean.none { it in 'a'..'z' || it in 'A'..'Z' }) {
+                editingEmojiPreview = clean
+                boxIcons = boxIcons + (box to clean)
+            }
         }
     }
 
-    fun finalizeCollectionEmoji(collection: String, emoji: String) {
-        val result = com.android.snippets.logic.CollectionManager.finalizeCollectionEmoji(
-            userCollections = userCollections,
-            collectionIcons = collectionIcons,
+    fun finalizeBoxEmoji(box: String, emoji: String) {
+        val result = com.android.snippets.logic.BoxManager.finalizeBoxEmoji(
+            userBoxes = userBoxes,
+            boxIcons = boxIcons,
             photos = photos,
-            collection = collection,
+            box = box,
             emoji = emoji
         ) ?: run {
-            if (collection.isBlank() && userCollections.contains(collection)) {
-                deleteCollection(collection)
+            if (box.isBlank() && userBoxes.contains(box)) {
+                deleteBox(box)
             }
-            editingCollectionEmoji = null
+            editingBoxEmoji = null
             editingEmojiPreview = null
             return
         }
 
-        userCollections = result.updatedCollections
-        collectionIcons = result.updatedIcons
+        userBoxes = result.updatedBoxes
+        boxIcons = result.updatedIcons
         val finalName = result.finalName
         val oldIndex = result.oldIndex
 
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            storageMutex.withLock {
-                try {
-                    val existing = collectionRepository.getCollectionByName(collection)
-                    if (existing != null) {
-                        collectionRepository.deleteCollection(existing)
-                    }
-                    collectionRepository.insertCollection(
-                        com.android.snippets.data.CollectionEntity(
-                            name = finalName,
-                            icon = result.updatedIcons[finalName] ?: emoji.trim(),
-                            orderIndex = if (oldIndex != -1) oldIndex else userCollections.size - 1
+        if (finalName != "Box 1" && finalName != "Favorites") {
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                storageMutex.withLock {
+                    try {
+                        val existing = collectionRepository.getCollectionByName(box)
+                        if (existing != null) {
+                            collectionRepository.deleteCollection(existing)
+                        }
+                        collectionRepository.insertCollection(
+                            com.android.snippets.data.CollectionEntity(
+                                name = finalName,
+                                icon = result.updatedIcons[finalName] ?: emoji.trim(),
+                                orderIndex = if (oldIndex != -1) oldIndex else userBoxes.size - 1
+                            )
                         )
-                    )
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
         }
@@ -450,41 +419,24 @@ class SnippetsViewModel @Inject constructor(
             savePhotos()
         }
 
-        if (libraryCurrentTab == collection) {
+        if (libraryCurrentTab == box) {
             libraryCurrentTab = finalName
         }
 
         saveCollections()
-        editingCollectionEmoji = null
+        editingBoxEmoji = null
         editingEmojiPreview = null
     }
 
-    fun cancelEditingCollectionEmoji() {
-        val col = editingCollectionEmoji
-        editingCollectionEmoji = null
+    fun cancelEditingBoxEmoji() {
+        val col = editingBoxEmoji
+        editingBoxEmoji = null
         editingEmojiPreview = null
-        if (col != null && col.isBlank() && userCollections.contains(col)) {
-            deleteCollection(col)
+        if (col != null && col.isBlank() && userBoxes.contains(col)) {
+            deleteBox(col)
         }
     }
 
-
-
-
-
-    
-    fun updateCollectionIcon(collection: String, iconOrEmoji: String) {
-        collectionIcons = collectionIcons + (collection to iconOrEmoji)
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val existing = collectionRepository.getCollectionByName(collection)
-            if (existing != null) {
-                collectionRepository.updateCollection(existing.copy(icon = iconOrEmoji))
-            } else {
-                collectionRepository.insertCollection(com.android.snippets.data.CollectionEntity(name = collection, icon = iconOrEmoji))
-            }
-        }
-    }
-    
     var requestNotificationPermission: Boolean
         get() = _uiState.value.requestNotificationPermission
         set(value) { _uiState.update { it.copy(requestNotificationPermission = value) } }
@@ -505,82 +457,87 @@ class SnippetsViewModel @Inject constructor(
     val isSelectionMode: Boolean
         get() = _uiState.value.isSelectionMode
 
-    var pendingCollectionAssignment: String?
-        get() = _uiState.value.pendingCollectionAssignment
-        private set(value) { _uiState.update { it.copy(pendingCollectionAssignment = value) } }
+    var pendingBoxAssignment: String?
+        get() = _uiState.value.pendingBoxAssignment
+        private set(value) { _uiState.update { it.copy(pendingBoxAssignment = value) } }
 
-    var pendingCollectionRemoval: String?
-        get() = _uiState.value.pendingCollectionRemoval
-        private set(value) { _uiState.update { it.copy(pendingCollectionRemoval = value) } }
+    var pendingBoxRemoval: String?
+        get() = _uiState.value.pendingBoxRemoval
+        private set(value) { _uiState.update { it.copy(pendingBoxRemoval = value) } }
 
-    fun startCollectionAssignment(collection: String) {
+    fun startBoxAssignment(box: String) {
         _uiState.update {
             it.copy(
-                pendingCollectionAssignment = collection,
+                pendingBoxAssignment = box,
                 selectedPhotoIds = emptySet(),
-                libraryCurrentTab = "Library"
+                libraryCurrentTab = "Box"
             )
         }
     }
 
-    fun startCollectionRemoval(collection: String) {
+    fun startBoxRemoval(box: String) {
         _uiState.update {
-            it.copy(pendingCollectionRemoval = collection, selectedPhotoIds = emptySet())
+            it.copy(pendingBoxRemoval = box, selectedPhotoIds = emptySet())
         }
     }
 
-    fun confirmCollectionAssignment() {
-        val collection = pendingCollectionAssignment ?: return
+    fun confirmBoxAssignment() {
+        val box = pendingBoxAssignment ?: return
         if (selectedPhotoIds.isNotEmpty()) {
-            photos = com.android.snippets.logic.CollectionManager.assignPhotosToCollection(photos, selectedPhotoIds, collection)
+            photos = com.android.snippets.logic.BoxManager.assignPhotosToBox(photos, selectedPhotoIds, box)
             savePhotos()
             
-            val message = if (collection == "Favorites") "Added to Favorites" else "Added to collection"
+            val boxDisplayName = com.android.snippets.logic.BoxManager.getBoxDisplayName(box, userBoxes)
+            val message = if (box == "Box 1" || box == "Favorites") "Added to Box 1" else if (box == "Box" || box == "Library") "Added to Box" else "Added to $boxDisplayName"
             showSnackbar(
                 message = message,
                 actionLabel = "View",
                 onAction = {
-                    libraryCurrentTab = collection
+                    libraryCurrentTab = box
                     navigateLibrary()
                 }
             )
         }
         _uiState.update {
             it.copy(
-                pendingCollectionAssignment = null,
+                pendingBoxAssignment = null,
                 selectedPhotoIds = emptySet()
             )
         }
         navigateLibrary()
     }
 
-    fun confirmCollectionRemoval() {
-        val collection = pendingCollectionRemoval ?: return
+    fun confirmBoxRemoval() {
+        val box = pendingBoxRemoval ?: return
         if (selectedPhotoIds.isNotEmpty()) {
-            photos = com.android.snippets.logic.CollectionManager.removePhotosFromCollection(photos, selectedPhotoIds, collection)
+            photos = com.android.snippets.logic.BoxManager.removePhotosFromBox(photos, selectedPhotoIds, box)
             savePhotos()
             
-            if (collection != "Favorites") {
-                showSnackbar(message = "Removed from collection")
-            }
+            val boxDisplayName = com.android.snippets.logic.BoxManager.getBoxDisplayName(box, userBoxes)
+            val message = if (box == "Box 1" || box == "Favorites") "Removed from Box 1" else if (box == "Box" || box == "Library") "Removed from Box" else "Removed from $boxDisplayName"
+            showSnackbar(message = message)
         }
         _uiState.update {
             it.copy(
-                pendingCollectionRemoval = null,
+                pendingBoxRemoval = null,
                 selectedPhotoIds = emptySet(),
-                libraryCurrentTab = collection
+                libraryCurrentTab = box
             )
         }
         navigateLibrary()
     }
 
-    var showBulkAddToCollectionDialog: Boolean
-        get() = _uiState.value.showBulkAddToCollectionDialog
-        set(value) { _uiState.update { it.copy(showBulkAddToCollectionDialog = value) } }
+    var showBulkAddToBoxDialog: Boolean
+        get() = _uiState.value.showBulkAddToBoxDialog
+        set(value) { _uiState.update { it.copy(showBulkAddToBoxDialog = value) } }
 
     var showBulkDeleteModal: Boolean
         get() = _uiState.value.showBulkDeleteModal
         set(value) { _uiState.update { it.copy(showBulkDeleteModal = value) } }
+
+    var showRequestTileDialog: Boolean
+        get() = _uiState.value.showRequestTileDialog
+        set(value) { _uiState.update { it.copy(showRequestTileDialog = value) } }
 
     var snippetSortType: SnippetSortType
         get() = _uiState.value.snippetSortType
@@ -603,9 +560,6 @@ class SnippetsViewModel @Inject constructor(
             saveFilterState()
         }
 
-    val parsedSearchQuery: ParsedSearchQuery
-        get() = _uiState.value.parsedSearchQuery
-
     val currentSearchSortType: PhotoSortType?
         get() = _uiState.value.currentSearchSortType
 
@@ -618,17 +572,17 @@ class SnippetsViewModel @Inject constructor(
 
     fun getPhotoSortTypeFor(tabName: String): PhotoSortType {
         currentSearchSortType?.let { return it }
-        if (tabName == "Library") return _uiState.value.photoSortType
-        return _uiState.value.collectionPhotoSortTypes[tabName] ?: PhotoSortType.DateNewest
+        if (tabName == "Box" || tabName == "Library") return _uiState.value.photoSortType
+        return _uiState.value.boxPhotoSortTypes[tabName] ?: PhotoSortType.DateNewest
     }
 
     fun setPhotoSortTypeFor(tabName: String, sortType: PhotoSortType) {
-        if (tabName == "Library") {
+        if (tabName == "Box" || tabName == "Library") {
             _uiState.update { it.copy(photoSortType = sortType, scrollToTopTrigger = System.currentTimeMillis()) }
         } else {
             _uiState.update {
                 it.copy(
-                    collectionPhotoSortTypes = it.collectionPhotoSortTypes + (tabName to sortType),
+                    boxPhotoSortTypes = it.boxPhotoSortTypes + (tabName to sortType),
                     scrollToTopTrigger = System.currentTimeMillis()
                 )
             }
@@ -638,12 +592,6 @@ class SnippetsViewModel @Inject constructor(
 
     fun sortPhotos(baseList: List<Photo>, sort: PhotoSortType): List<Photo> =
         com.android.snippets.logic.PhotoSearchHelper.sortPhotos(baseList, sort)
-
-    val pagedPhotos: Flow<PagingData<com.android.snippets.data.PhotoEntity>> = Pager(
-        config = PagingConfig(pageSize = 30, enablePlaceholders = false)
-    ) {
-        photoRepository.getPagingPhotos()
-    }.flow
 
     var pendingFavoriteIntent: Boolean
         get() = _uiState.value.pendingFavoriteIntent
@@ -675,33 +623,77 @@ class SnippetsViewModel @Inject constructor(
                     }
                     current.copy(
                         hasPromptedNotificationPermission = userPrefs.hasPromptedNotificationPermission,
+                        hasRequestedTileService = userPrefs.hasRequestedTileService,
                         lastSeenYearlyRecapYear = userPrefs.lastSeenYearlyRecapYear,
                         lastSeenMonthlyRecapPeriod = userPrefs.lastSeenMonthlyRecapPeriod,
                         snippetSortType = resolvedSnippetSort,
                         isSortAscending = userPrefs.isSortAscending,
-                        selectedFilterSnippets = userPrefs.selectedFilterSnippets.toList(),
+                        selectedFilterSnippets = if (current.filteringCategory != null) current.selectedFilterSnippets else userPrefs.selectedFilterSnippets.toList(),
                         photoSortType = try { PhotoSortType.valueOf(userPrefs.photoSortType) } catch (e: Exception) { PhotoSortType.DateNewest },
-                        collectionPhotoSortTypes = sortMap,
+                        boxPhotoSortTypes = sortMap,
                         allUniqueSnippets = allSnippets
                     )
                 }
             }
         }
         observeRepositoryFlows()
-        loadAllData()
+        if (cachedPhotos.isEmpty()) {
+            loadAllData()
+        }
     }
 
     private fun observeRepositoryFlows() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             collectionRepository.allCollectionsFlow.collect { entities ->
-                val names = entities.sortedBy { it.orderIndex }.map { it.name }
-                val icons = entities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (userCollections != names) {
-                        userCollections = names
+                val sorted = entities.sortedBy { it.orderIndex }
+                val mappedNames = mutableListOf<String>()
+                val mappedIcons = mutableMapOf<String, String>()
+                var hasLegacyBox1 = false
+
+                sorted.forEachIndexed { idx, entity ->
+                    val expectedName = "Box ${idx + 2}"
+                    val match = Regex("^Box (\\d+)$", RegexOption.IGNORE_CASE).find(entity.name)
+                    val boxNum = match?.groupValues?.get(1)?.toIntOrNull()
+
+                    if (entity.name == "Favorites") {
+                        entity.icon?.takeIf { it.isNotBlank() && it.none { c -> c in 'a'..'z' || c in 'A'..'Z' } }?.let { mappedIcons["Favorites"] = it }
+                    } else if (boxNum != null && boxNum >= 2) {
+                        mappedNames.add(entity.name)
+                        entity.icon?.takeIf { it.isNotBlank() && it.none { c -> c in 'a'..'z' || c in 'A'..'Z' } }?.let { mappedIcons[entity.name] = it }
+                    } else {
+                        hasLegacyBox1 = true
+                        mappedNames.add(expectedName)
+                        val icon = entity.icon?.takeIf { it.isNotBlank() && it.none { c -> c in 'a'..'z' || c in 'A'..'Z' } }
+                            ?: if (entity.name.none { it in 'a'..'z' || it in 'A'..'Z' }) entity.name else ""
+                        if (icon.isNotBlank()) {
+                            mappedIcons[expectedName] = icon
+                        }
                     }
-                    if (collectionIcons != icons) {
-                        collectionIcons = icons
+                }
+
+                if (hasLegacyBox1) {
+                    try {
+                        sorted.filter { it.name != "Favorites" }.forEach { collectionRepository.deleteCollection(it) }
+                        mappedNames.forEachIndexed { idx, name ->
+                            collectionRepository.insertCollection(
+                                com.android.snippets.data.CollectionEntity(
+                                    name = name,
+                                    icon = mappedIcons[name] ?: "",
+                                    orderIndex = idx
+                                )
+                            )
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (userBoxes != mappedNames) {
+                        userBoxes = mappedNames
+                    }
+                    if (boxIcons != mappedIcons) {
+                        boxIcons = mappedIcons
                     }
                 }
             }
@@ -709,10 +701,57 @@ class SnippetsViewModel @Inject constructor(
 
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             photoRepository.allPhotosFlow.collect { roomPhotos ->
+                val currentBoxes = _uiState.value.userBoxes
+                val currentIcons = _uiState.value.boxIcons
+                val targetFirstBox = currentBoxes.firstOrNull() ?: "Box 2"
+                val iconToBoxMap = currentIcons.filter { (_, v) -> v.isNotBlank() && v.none { c -> c in 'a'..'z' || c in 'A'..'Z' } }
+                    .entries.associate { (k, v) -> v to k }
+
+                var needsPhotoUpdate = false
+                val healedPhotos = roomPhotos.map { rp ->
+                    val cols = (rp.collections ?: emptyList()).toMutableList()
+                    var changed = false
+                    var isFav = rp.isFavorite
+                    if (cols.contains("Favorites")) {
+                        cols.remove("Favorites")
+                        isFav = true
+                        changed = true
+                    }
+                    if (cols.contains("Box 1")) {
+                        cols.remove("Box 1")
+                        if (!isFav) {
+                            if (!cols.contains(targetFirstBox)) cols.add(targetFirstBox)
+                        }
+                        changed = true
+                    }
+                    val emojis = cols.filter { it.isNotBlank() && it.none { c -> c in 'a'..'z' || c in 'A'..'Z' } }
+                    if (emojis.isNotEmpty()) {
+                        emojis.forEach { em ->
+                            cols.remove(em)
+                            val b = iconToBoxMap[em] ?: targetFirstBox
+                            if (!cols.contains(b)) cols.add(b)
+                        }
+                        changed = true
+                    }
+                    if (changed) {
+                        needsPhotoUpdate = true
+                        rp.copy(isFavorite = isFav, collections = cols.distinct())
+                    } else rp
+                }
+
+                if (needsPhotoUpdate) {
+                    try {
+                        photoRepository.insertPhotos(healedPhotos)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                val activePhotos = if (needsPhotoUpdate) healedPhotos else roomPhotos
                 val current = photos
-                if (current.isNotEmpty() && current.size == roomPhotos.size) {
+                if (current.isNotEmpty() && current.size == activePhotos.size) {
                     val currentMap = current.associateBy { it.id }
-                    val isIdentical = roomPhotos.all { rp ->
+                    val isIdentical = activePhotos.all { rp ->
                         val p = currentMap[rp.id]
                         p != null && p.date == rp.date && p.snippets == (rp.snippets ?: emptyList<String>()) &&
                                 p.isFavorite == rp.isFavorite && p.rating == rp.rating &&
@@ -726,7 +765,7 @@ class SnippetsViewModel @Inject constructor(
                     if (isIdentical) return@collect
                 }
 
-                val processedPhotos = roomPhotos.map { p ->
+                val processedPhotos = activePhotos.map { p ->
                     val (widthPx, heightPx) = if (p.widthPx > 0 && p.heightPx > 0) {
                         p.widthPx to p.heightPx
                     } else {
@@ -757,7 +796,6 @@ class SnippetsViewModel @Inject constructor(
                 val rebuiltFirstSeen = rebuildSnippetFirstSeenTimes(processedPhotos)
                 val locMap = com.android.snippets.ui.util.LocationUtils.buildLocationNameMap(processedPhotos)
                 val uniqueLocs = com.android.snippets.ui.util.LocationUtils.buildUniqueLocations(processedPhotos)
-                val favSnippets = com.android.snippets.logic.SnippetManager.extractFavoritesUniqueSnippets(processedPhotos)
                 val allSnippets = com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
                     processedPhotos,
                     _uiState.value.snippetSortType,
@@ -765,6 +803,11 @@ class SnippetsViewModel @Inject constructor(
                 )
 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    cachedPhotos = processedPhotos
+                    cachedSnippetFirstSeenTimes = rebuiltFirstSeen
+                    cachedLocationNameMap = locMap
+                    cachedUniqueLocations = uniqueLocs
+                    cachedAllUniqueSnippets = allSnippets
                     if (photos != processedPhotos) {
                         _uiState.update {
                             it.copy(
@@ -772,7 +815,6 @@ class SnippetsViewModel @Inject constructor(
                                 snippetFirstSeenTimes = rebuiltFirstSeen,
                                 locationNameMap = locMap,
                                 allUniqueLocations = uniqueLocs,
-                                favoritesUniqueSnippets = favSnippets,
                                 allUniqueSnippets = allSnippets
                             )
                         }
@@ -855,8 +897,113 @@ class SnippetsViewModel @Inject constructor(
                 e.printStackTrace()
                 emptyList()
             }
-            val roomCollections = collectionEntities.map { it.name }
-            val loadedIcons = collectionEntities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()
+
+            var needsMigration = false
+            val migratedNames = mutableListOf<String>()
+            val migratedIcons = collectionEntities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap().toMutableMap()
+            val oldToNewNameMap = mutableMapOf<String, String>()
+
+            collectionEntities.sortedBy { it.orderIndex }.forEachIndexed { idx, entity ->
+                val oldName = entity.name
+                val match = Regex("^Box (\\d+)$", RegexOption.IGNORE_CASE).find(oldName)
+                val boxNum = match?.groupValues?.get(1)?.toIntOrNull()
+                val expectedName = "Box ${idx + 2}"
+                val newName = if (boxNum != null && boxNum >= 2) {
+                    oldName
+                } else {
+                    needsMigration = true
+                    expectedName
+                }
+                migratedNames.add(newName)
+                if (oldName != newName) {
+                    oldToNewNameMap[oldName] = newName
+                    val existingIcon = entity.icon?.takeIf { it.isNotBlank() } ?: oldName
+                    migratedIcons.remove(oldName)
+                    migratedIcons[newName] = existingIcon
+                }
+            }
+
+            val roomCollections = (if (needsMigration) migratedNames else collectionEntities.map { it.name })
+                .filter { it != "Box" && it != "Library" && it != "Box 1" && it != "Favorites" }
+            val loadedIcons = (if (needsMigration) migratedIcons else collectionEntities.mapNotNull { it.icon?.let { icon -> it.name to icon } }.toMap()).toMutableMap()
+            loadedIcons.remove("Box 1")
+            loadedIcons.remove("Favorites")
+            loadedIcons.keys.toList().forEach { k ->
+                val v = loadedIcons[k] ?: ""
+                if (v.any { it in 'a'..'z' || it in 'A'..'Z' }) {
+                    loadedIcons[k] = ""
+                }
+            }
+
+            val targetFirstBox = roomCollections.firstOrNull() ?: "Box 2"
+            val iconToBoxMap = loadedIcons.filter { (_, v) -> v.isNotBlank() && v.none { c -> c in 'a'..'z' || c in 'A'..'Z' } }
+                .entries.associate { (k, v) -> v to k }
+
+            var photosRestored = false
+            workingPhotos = workingPhotos.map { photo ->
+                val cols = photo.collections.toMutableList()
+                var pChanged = false
+                var isFav = photo.isFavorite
+
+                if (cols.contains("Favorites")) {
+                    cols.remove("Favorites")
+                    isFav = true
+                    pChanged = true
+                }
+                if (cols.contains("Box 1")) {
+                    cols.remove("Box 1")
+                    if (!isFav) {
+                        if (!cols.contains(targetFirstBox)) cols.add(targetFirstBox)
+                    }
+                    pChanged = true
+                }
+                oldToNewNameMap.forEach { (oldName, newName) ->
+                    if (cols.contains(oldName)) {
+                        cols.remove(oldName)
+                        if (!cols.contains(newName)) cols.add(newName)
+                        pChanged = true
+                    }
+                }
+                val emojis = cols.filter { it.isNotBlank() && it.none { c -> c in 'a'..'z' || c in 'A'..'Z' } }
+                if (emojis.isNotEmpty()) {
+                    emojis.forEach { em ->
+                        cols.remove(em)
+                        val b = iconToBoxMap[em] ?: targetFirstBox
+                        if (!cols.contains(b)) cols.add(b)
+                    }
+                    pChanged = true
+                }
+
+                if (pChanged) {
+                    photosRestored = true
+                    photo.copy(isFavorite = isFav, collections = cols.distinct())
+                } else photo
+            }
+
+            if (photosRestored) {
+                try {
+                    photoRepository.insertPhotos(workingPhotos)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            if (needsMigration) {
+                try {
+                    collectionEntities.forEach { collectionRepository.deleteCollection(it) }
+                    roomCollections.forEachIndexed { idx, name ->
+                        collectionRepository.insertCollection(
+                            com.android.snippets.data.CollectionEntity(
+                                name = name,
+                                icon = loadedIcons[name] ?: "",
+                                orderIndex = idx
+                            )
+                        )
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
 
             // 4. Sort and process photos
             val processedPhotos = workingPhotos.map { p ->
@@ -881,7 +1028,6 @@ class SnippetsViewModel @Inject constructor(
             }
             val locMap = com.android.snippets.ui.util.LocationUtils.buildLocationNameMap(processedPhotos)
             val uniqueLocs = com.android.snippets.ui.util.LocationUtils.buildUniqueLocations(processedPhotos)
-            val favSnippets = com.android.snippets.logic.SnippetManager.extractFavoritesUniqueSnippets(processedPhotos)
             val allSnippets = com.android.snippets.logic.SnippetManager.extractAllUniqueSnippets(
                 processedPhotos,
                 _uiState.value.snippetSortType,
@@ -902,16 +1048,21 @@ class SnippetsViewModel @Inject constructor(
                 saveSnippetFirstSeenTimes()
             }
 
+            cachedPhotos = processedPhotos
+            cachedSnippetFirstSeenTimes = mergedFirstSeen
+            cachedLocationNameMap = locMap
+            cachedUniqueLocations = uniqueLocs
+            cachedAllUniqueSnippets = allSnippets
+
             // 5. Update UI state with fully healed and stabilized data
             _uiState.update {
                 it.copy(
                     photos = processedPhotos,
-                    userCollections = roomCollections,
-                    collectionIcons = loadedIcons,
+                    userBoxes = roomCollections,
+                    boxIcons = loadedIcons,
                     snippetFirstSeenTimes = mergedFirstSeen,
                     locationNameMap = locMap,
                     allUniqueLocations = uniqueLocs,
-                    favoritesUniqueSnippets = favSnippets,
                     allUniqueSnippets = allSnippets
                 )
             }
@@ -971,7 +1122,7 @@ class SnippetsViewModel @Inject constructor(
                 displayMode = "Day",
                 collectionDisplayModesJson = "{}",
                 photoSortType = _uiState.value.photoSortType.name,
-                collectionPhotoSortTypesJson = json.encodeToString(_uiState.value.collectionPhotoSortTypes)
+                collectionPhotoSortTypesJson = json.encodeToString(_uiState.value.boxPhotoSortTypes)
             )
         }
     }
@@ -1035,17 +1186,18 @@ class SnippetsViewModel @Inject constructor(
             storageMutex.withLock {
                 try {
                     val currentCols = collectionRepository.getAllCollections()
-                    val userColSet = userCollections.toSet()
+                    val validBoxes = userBoxes.filter { it != "Box" && it != "Library" && it != "Box 1" && it != "Favorites" }
+                    val userColSet = validBoxes.toSet()
                     val deletedCols = currentCols.filter { it.name !in userColSet }
                     if (deletedCols.isNotEmpty()) {
                         deletedCols.forEach { collectionRepository.deleteCollection(it) }
                     }
                     collectionRepository.insertCollections(
-                        userCollections.mapIndexed { idx, name ->
+                        validBoxes.mapIndexed { idx, name ->
                             val existing = currentCols.find { it.name == name }
                             com.android.snippets.data.CollectionEntity(
                                 name = name,
-                                icon = collectionIcons[name] ?: existing?.icon,
+                                icon = boxIcons[name] ?: existing?.icon,
                                 orderIndex = idx,
                                 isPinned = existing?.isPinned ?: false
                             )
@@ -1084,6 +1236,7 @@ class SnippetsViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 var currentPhotosList = photos
+                val wasEmpty = currentPhotosList.isEmpty()
                 val newPhotosList = mutableListOf<Photo>()
                 var singleDetailToOpen: String? = null
 
@@ -1157,7 +1310,7 @@ class SnippetsViewModel @Inject constructor(
                     savePhotos()
 
                     if (uris.size == 1 && !targetLocation.isNullOrBlank() && singleDetailToOpen != null) {
-                        openDetail(singleDetailToOpen, tab = collection ?: "Library")
+                        openDetail(singleDetailToOpen, tab = collection ?: "Box")
                     } else if (newPhotosList.isNotEmpty() && uris.size > 1) {
                         showSnackbar("${newPhotosList.size} photos added")
                     }
@@ -1166,6 +1319,9 @@ class SnippetsViewModel @Inject constructor(
                 preloadPhotoImages(newPhotosList.take(8))
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     isAddingPhotos = false
+                    if (wasEmpty && newPhotosList.isNotEmpty() && !_uiState.value.hasRequestedTileService) {
+                        showRequestTileDialog = true
+                    }
                 }
 
                 if (uris.size == 1 && !targetLocation.isNullOrBlank() && immediateName == null &&
@@ -1191,46 +1347,18 @@ class SnippetsViewModel @Inject constructor(
         }
     }
 
-    fun addPhoto(
-        uri: Uri,
-        isFavorite: Boolean = false,
-        locationLink: String? = null,
-        locationName: String? = null,
-        collection: String? = null
-    ) {
-        addPhotos(
-            uris = listOf(uri),
-            isFavorite = isFavorite,
-            locationLink = locationLink,
-            locationName = locationName,
-            collection = collection
-        )
-    }
-
-    fun addPhotoToLibrary(uri: Uri, locationLink: String? = null, locationName: String? = null) {
-        addPhotos(uris = listOf(uri), locationLink = locationLink, locationName = locationName)
-    }
-
     fun addPhotosToLibrary(uris: List<Uri>, locationLink: String? = null, locationName: String? = null) {
         addPhotos(uris = uris, locationLink = locationLink, locationName = locationName)
     }
 
-    fun addPhotoToCollection(uri: Uri, collection: String, locationLink: String? = null, locationName: String? = null) {
-        addPhotos(uris = listOf(uri), collection = collection, locationLink = locationLink, locationName = locationName)
+    fun addPhotosToBox(uris: List<Uri>, box: String, locationLink: String? = null, locationName: String? = null) {
+        addPhotos(uris = uris, collection = box, locationLink = locationLink, locationName = locationName)
     }
 
-    fun addPhotosToCollection(uris: List<Uri>, collection: String, locationLink: String? = null, locationName: String? = null) {
-        addPhotos(uris = uris, collection = collection, locationLink = locationLink, locationName = locationName)
-    }
-
-
-
-
-
-    fun createCollection(collection: String, openAfterCreate: Boolean = true) {
-        val emoji = collection.trim()
-        if (emoji.isNotBlank() && userCollections.none { it.equals(emoji, ignoreCase = true) }) {
-            userCollections = userCollections + emoji
+    fun createBox(box: String, openAfterCreate: Boolean = true) {
+        val emoji = box.trim()
+        if (emoji.isNotBlank() && userBoxes.none { it.equals(emoji, ignoreCase = true) }) {
+            userBoxes = userBoxes + emoji
             saveCollections()
             if (openAfterCreate) {
                 libraryCurrentTab = emoji
@@ -1239,20 +1367,20 @@ class SnippetsViewModel @Inject constructor(
         }
     }
 
-    fun deleteCollection(collection: String) {
-        if (collection == "Library" || collection == "Favorites" || !userCollections.contains(collection)) return
+    fun deleteBox(box: String) {
+        if (box == "Box" || box == "Library" || box == "Box 1" || box == "Favorites" || !userBoxes.contains(box)) return
 
-        val result = com.android.snippets.logic.CollectionManager.deleteCollection(
-            userCollections = userCollections,
-            collectionIcons = collectionIcons,
+        val result = com.android.snippets.logic.BoxManager.deleteBox(
+            userBoxes = userBoxes,
+            boxIcons = boxIcons,
             photos = photos,
             selectedFilterSnippets = selectedFilterSnippets,
-            collection = collection
+            box = box
         )
 
-        userCollections = result.updatedCollections
-        collectionIcons = result.updatedIcons
-        _uiState.update { it.copy(collectionPhotoSortTypes = it.collectionPhotoSortTypes - collection) }
+        userBoxes = result.updatedBoxes
+        boxIcons = result.updatedIcons
+        _uiState.update { it.copy(boxPhotoSortTypes = it.boxPhotoSortTypes - box) }
         
         saveCollections()
 
@@ -1267,20 +1395,16 @@ class SnippetsViewModel @Inject constructor(
             saveFilterState()
         }
 
-        if (activeCollection == collection) {
-            navigateLibrary()
+        if (pendingBoxAssignment == box) {
+            pendingBoxAssignment = null
         }
-        if (pendingCollectionAssignment == collection) {
-            pendingCollectionAssignment = null
+        if (editingBoxEmoji == box) {
+            cancelEditingBoxEmoji()
         }
-        if (editingCollectionEmoji == collection) {
-            cancelEditingCollectionEmoji()
-        }
-        if (libraryCurrentTab == collection) {
-            libraryCurrentTab = "Library"
+        if (libraryCurrentTab == box) {
+            libraryCurrentTab = "Box"
         }
     }
-
 
     private fun reconcileMemoryNotifications() {
         MemoryManager.reconcileMemoryNotifications(getApplication(), photos)
@@ -1307,6 +1431,54 @@ class SnippetsViewModel @Inject constructor(
         hasPromptedNotificationPermission = true
         viewModelScope.launch {
             userPreferencesRepository.updateHasPromptedNotificationPermission(true)
+        }
+    }
+
+    fun dismissRequestTileDialog() {
+        showRequestTileDialog = false
+        markTileServiceRequested()
+    }
+
+    fun confirmRequestTileDialog(context: Context) {
+        showRequestTileDialog = false
+        markTileServiceRequested()
+        requestTileService(context)
+    }
+
+    fun markTileServiceRequested() {
+        viewModelScope.launch {
+            userPreferencesRepository.updateHasRequestedTileService(true)
+        }
+    }
+
+    fun requestTileService(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val statusBarManager = context.getSystemService(StatusBarManager::class.java)
+            val componentName = ComponentName(context, AddPhotoTileService::class.java)
+            val icon = Icon.createWithResource(context, R.drawable.ic_qs_add_photo)
+            val label = context.getString(R.string.tile_add_photos)
+            val executor = ContextCompat.getMainExecutor(context)
+            try {
+                statusBarManager?.requestAddTileService(
+                    componentName,
+                    label,
+                    icon,
+                    executor
+                ) { result ->
+                    when (result) {
+                        StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED -> {
+                            showSnackbar(context.getString(R.string.tile_added_success))
+                        }
+                        StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED -> {
+                            showSnackbar(context.getString(R.string.tile_already_added))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        } else {
+            showSnackbar(context.getString(R.string.tile_add_manual_instruction))
         }
     }
 
@@ -1482,10 +1654,10 @@ class SnippetsViewModel @Inject constructor(
     }
 
     fun clearSelection() {
-        val returnCollection = pendingCollectionAssignment
+        val returnCollection = pendingBoxAssignment
         selectedPhotoIds = emptySet()
-        pendingCollectionAssignment = null
-        pendingCollectionRemoval = null
+        pendingBoxAssignment = null
+        pendingBoxRemoval = null
         forceSelectionMode = false
         searchQuery = ""
         if (returnCollection != null) {
@@ -1505,15 +1677,15 @@ class SnippetsViewModel @Inject constructor(
         isBusy = false
     }
 
-    fun toggleSelectedInCollection(collection: String) {
+    fun toggleSelectedInBox(box: String) {
         isBusy = true
         val now = System.currentTimeMillis()
         photos = photos.map { photo ->
             if (selectedPhotoIds.contains(photo.id)) {
-                val updatedCollections = if (photo.collections.contains(collection)) {
-                    photo.collections - collection
+                val updatedCollections = if (photo.collections.contains(box)) {
+                    photo.collections - box
                 } else {
-                    photo.collections + collection
+                    photo.collections + box
                 }
                 photo.copy(
                     collections = updatedCollections,
@@ -1541,7 +1713,7 @@ class SnippetsViewModel @Inject constructor(
         savePhotos()
         
         if (targetState) {
-            showSnackbar(message = "$count to Favorites")
+            showSnackbar(message = if (count == 1) "Added to Box 1" else "$count added to Box 1")
         }
         clearSelection()
         isBusy = false
@@ -1666,13 +1838,6 @@ class SnippetsViewModel @Inject constructor(
         activePhotoId = null
     }
 
-    fun navigateBack() {
-        if (activePhotoId != null) {
-            activePhotoId = null
-        }
-    }
-
-
     fun getPhotosForPeriod(month: Int?, year: Int): List<Photo> =
         com.android.snippets.logic.RecapManager.getRecapPhotos(photos, month, year)
 
@@ -1780,26 +1945,9 @@ class SnippetsViewModel @Inject constructor(
         clearSelection()
     }
 
-    fun navigateFilter() {
-        showFilterSheet = true
-    }
-
-    fun closeFilter() {
-        showFilterSheet = false
-    }
-
-    val activePhoto: Photo?
-        get() = _uiState.value.activePhoto
-    
-    val filteredPhotos: List<Photo>
-        get() = _uiState.value.filteredPhotos
-
     fun containsEmoji(s: String): Boolean = SnippetStyleHelper.containsEmoji(s)
 
     fun containsEmoticon(s: String): Boolean = SnippetStyleHelper.containsEmoticon(s)
-
-    val favoritesUniqueSnippets: List<String>
-        get() = _uiState.value.favoritesUniqueSnippets
 
     val allUniqueSnippets: List<String>
         get() = _uiState.value.allUniqueSnippets
@@ -1812,16 +1960,16 @@ class SnippetsViewModel @Inject constructor(
 
     fun getPureSnippets(photo: Photo): List<String> {
         return photo.snippets.filterNot { snippet -> 
-            userCollections.any { it.equals(snippet, ignoreCase = true) } 
+            userBoxes.any { it.equals(snippet, ignoreCase = true) } 
         }
     }
 
-    fun getCollectionIcon(collection: String): Any =
-        com.android.snippets.logic.CollectionManager.getCollectionIcon(
-            collection = collection,
-            editingCollectionEmoji = editingCollectionEmoji,
+    fun getBoxIcon(box: String): Any =
+        com.android.snippets.logic.BoxManager.getBoxIcon(
+            box = box,
+            editingBoxEmoji = editingBoxEmoji,
             editingEmojiPreview = editingEmojiPreview,
-            collectionIcons = collectionIcons
+            boxIcons = boxIcons
         )
 
     fun getSnippetFirstSeenTime(name: String): Long? {
