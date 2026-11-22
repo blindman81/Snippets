@@ -3,7 +3,7 @@ package com.android.snippets.ui.components
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.PredictiveBackHandler
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.CapturedAnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.MutableTransitionState
@@ -85,16 +85,6 @@ fun Cookiestarslider(
 
     LaunchedEffect(Unit) {
         scrimAlpha.animateTo(1f, animationSpec = Motion.StandardFade)
-        if (rating > 0) {
-            for (i in 0 until rating) {
-                launch {
-                    cookiestarRotations[i].animateTo(
-                        targetValue = 360f,
-                        animationSpec = Motion.BouncySpring
-                    )
-                }
-            }
-        }
     }
 
     val closeAndConfirm: () -> Unit = {
@@ -137,7 +127,7 @@ fun Cookiestarslider(
     }
 
     fun spinCookiestar(cookiestarIndex: Int) {
-        if (cookiestarIndex in 1..5) {
+        if (!isDismissing && cookiestarIndex in 1..5) {
             coroutineScope.launch {
                 val anim = cookiestarRotations[cookiestarIndex - 1]
                 anim.animateTo(
@@ -148,19 +138,17 @@ fun Cookiestarslider(
         }
     }
 
-    fun setCookiestars(newRating: Int) {
+    fun updateRating(newRating: Int) {
         val target = newRating.coerceIn(0, 5)
         if (target != rating) {
             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-            val previousRating = rating
             rating = target
-            if (target > previousRating) {
-                for (i in (previousRating + 1)..target) {
-                    spinCookiestar(i)
-                }
-            } else if (target > 0) {
-                spinCookiestar(target)
-            }
+        }
+    }
+
+    fun handleDragStop() {
+        if (!isDismissing && rating in 1..5) {
+            spinCookiestar(rating)
         }
     }
 
@@ -171,12 +159,28 @@ fun Cookiestarslider(
             .zIndex(999f),
         contentAlignment = Alignment.Center
     ) {
-        // Subtle screen dim - soft dimming rather than a heavy dark overlay
+        val scrimHazeStyle = remember {
+            HazeStyle(
+                tint = HazeTint(Color.Black.copy(alpha = 0.20f)),
+                blurRadius = 24.dp,
+                noiseFactor = HazeDefaults.noiseFactor
+            )
+        }
+
+        val scrimModifier = if (hazeState != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Modifier
+                .background(Color.Black.copy(alpha = 0.16f))
+                .hazeEffect(state = hazeState, style = scrimHazeStyle)
+        } else {
+            Modifier.background(Color.Black.copy(alpha = 0.32f))
+        }
+
+        // Fullscreen scrim with Haze backdrop blur to blur background when cookiestar slider is invoked
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { this.alpha = scrimAlpha.value }
-                .background(Color.Black.copy(alpha = 0.16f))
+                .then(scrimModifier)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -184,7 +188,7 @@ fun Cookiestarslider(
                 )
         )
 
-        AnimatedVisibility(
+        CapturedAnimatedVisibility(
             visibleState = visibleState,
             enter = slideInVertically(
                 initialOffsetY = { it },
@@ -210,14 +214,20 @@ fun Cookiestarslider(
                     rating = rating,
                     cookiestarRotations = cookiestarRotations,
                     hazeState = hazeState,
-                    onRatingChange = { newRating -> setCookiestars(newRating) },
+                    onRatingChange = { newRating -> updateRating(newRating) },
+                    onDragStop = { handleDragStop() },
+                    onTapRating = { tappedRating ->
+                        updateRating(tappedRating)
+                        if (!isDismissing && tappedRating in 1..5) {
+                            spinCookiestar(tappedRating)
+                        }
+                    },
                     onCookiestarClick = { clickedIndex ->
                         if (rating == 1 && clickedIndex == 1) {
-                            setCookiestars(0)
+                            updateRating(0)
                         } else {
-                            if (rating != clickedIndex) {
-                                setCookiestars(clickedIndex)
-                            } else {
+                            updateRating(clickedIndex)
+                            if (!isDismissing) {
                                 spinCookiestar(clickedIndex)
                             }
                         }
@@ -240,6 +250,8 @@ private fun CookiestarRatingBarVertical(
     cookiestarRotations: List<Animatable<Float, AnimationVector1D>>,
     hazeState: HazeState? = LocalHazeState.current,
     onRatingChange: (Int) -> Unit,
+    onDragStop: () -> Unit,
+    onTapRating: (Int) -> Unit,
     onCookiestarClick: (Int) -> Unit
 ) {
     val handleThickness = 4.dp
@@ -284,11 +296,15 @@ private fun CookiestarRatingBarVertical(
             .height(barHeight)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
-                    onRatingChange(calculateRatingFromY(offset.y, size.height.toFloat()))
+                    onTapRating(calculateRatingFromY(offset.y, size.height.toFloat()))
                 }
             }
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
+                    onDragEnd = {
+                        onDragStop()
+                    },
+                    onDragCancel = {},
                     onVerticalDrag = { change, _ ->
                         change.consume()
                         onRatingChange(calculateRatingFromY(change.position.y, size.height.toFloat()))
