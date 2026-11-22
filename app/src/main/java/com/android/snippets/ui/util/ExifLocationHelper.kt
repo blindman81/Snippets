@@ -6,13 +6,9 @@ import android.location.Geocoder
 import android.os.Build
 import androidx.exifinterface.media.ExifInterface
 import com.android.snippets.model.Photo
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
 
 object ExifLocationHelper {
 
@@ -69,35 +65,6 @@ object ExifLocationHelper {
         return null
     }
 
-    suspend fun reverseGeocode(context: Context, latitude: Double, longitude: Double): String? = withContext(Dispatchers.IO) {
-        if (!Geocoder.isPresent()) return@withContext null
-        try {
-            val geocoder = Geocoder(context, Locale.getDefault())
-            val addresses: List<Address>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                suspendCancellableCoroutine { continuation ->
-                    geocoder.getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
-                        override fun onGeocode(addresses: MutableList<Address>) {
-                            if (continuation.isActive) {
-                                continuation.resume(addresses)
-                            }
-                        }
-                        override fun onError(errorMessage: String?) {
-                            if (continuation.isActive) {
-                                continuation.resume(emptyList())
-                            }
-                        }
-                    })
-                }
-            } else {
-                @Suppress("DEPRECATION")
-                geocoder.getFromLocation(latitude, longitude, 1)
-            }
-            formatAddress(addresses?.firstOrNull())
-        } catch (_: Exception) {
-            null
-        }
-    }
-
     fun reverseGeocodeSync(context: Context, latitude: Double, longitude: Double): String? {
         if (!Geocoder.isPresent()) return null
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
@@ -122,65 +89,6 @@ object ExifLocationHelper {
             } else {
                 @Suppress("DEPRECATION")
                 geocoder.getFromLocation(latitude, longitude, 1)
-            }
-            formatAddress(addresses?.firstOrNull())
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    suspend fun geocodeAddress(context: Context, addressName: String): Pair<Double, Double>? = withContext(Dispatchers.IO) {
-        if (!Geocoder.isPresent() || addressName.isBlank()) return@withContext null
-        try {
-            val geocoder = Geocoder(context, Locale.getDefault())
-            val addresses: List<Address>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                suspendCancellableCoroutine { continuation ->
-                    geocoder.getFromLocationName(addressName, 1, object : Geocoder.GeocodeListener {
-                        override fun onGeocode(addresses: MutableList<Address>) {
-                            if (continuation.isActive) {
-                                continuation.resume(addresses)
-                            }
-                        }
-                        override fun onError(errorMessage: String?) {
-                            if (continuation.isActive) {
-                                continuation.resume(emptyList())
-                            }
-                        }
-                    })
-                }
-            } else {
-                @Suppress("DEPRECATION")
-                geocoder.getFromLocationName(addressName, 1)
-            }
-            val first = addresses?.firstOrNull() ?: return@withContext null
-            Pair(first.latitude, first.longitude)
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    suspend fun resolvePlaceNameFromAddress(context: Context, addressName: String): String? = withContext(Dispatchers.IO) {
-        if (!Geocoder.isPresent() || addressName.isBlank()) return@withContext null
-        try {
-            val geocoder = Geocoder(context, Locale.getDefault())
-            val addresses: List<Address>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                suspendCancellableCoroutine { continuation ->
-                    geocoder.getFromLocationName(addressName, 1, object : Geocoder.GeocodeListener {
-                        override fun onGeocode(addresses: MutableList<Address>) {
-                            if (continuation.isActive) {
-                                continuation.resume(addresses)
-                            }
-                        }
-                        override fun onError(errorMessage: String?) {
-                            if (continuation.isActive) {
-                                continuation.resume(emptyList())
-                            }
-                        }
-                    })
-                }
-            } else {
-                @Suppress("DEPRECATION")
-                geocoder.getFromLocationName(addressName, 1)
             }
             formatAddress(addresses?.firstOrNull())
         } catch (_: Exception) {
