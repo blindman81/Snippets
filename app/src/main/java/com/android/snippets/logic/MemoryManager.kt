@@ -279,16 +279,10 @@ object MemoryManager {
         val nextCycle = getNextCycleStart(maxOf(now, getCurrentCycleStart(now) + TimeUnit.MINUTES.toMillis(5)))
         val delay = maxOf(0L, nextCycle - now)
 
-        // Cancel any legacy per-photo work requests to prevent arbitrary fire times
+        // Cancel legacy memory reminder jobs
         try {
             WorkManager.getInstance(context).cancelAllWorkByTag(MEMORY_REMINDER_PREFIX)
             WorkManager.getInstance(context).cancelUniqueWork("daily_reminder_work")
-            val allPhotos = MemoryWorker.loadAllPhotos(context)
-            for (p in allPhotos) {
-                val reminderName = memoryReminderName(p.id)
-                WorkManager.getInstance(context).cancelUniqueWork(reminderName)
-                WorkManager.getInstance(context).cancelAllWorkByTag(reminderName)
-            }
             WorkManager.getInstance(context).pruneWork()
         } catch (e: Exception) {
             e.printStackTrace()
