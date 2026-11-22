@@ -114,54 +114,6 @@ fun Cookiebutton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CookieButton(
-    onClick: () -> Unit,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    contentDescription: String? = null,
-    tooltip: String? = null,
-    isSelected: Boolean? = null,
-    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-    size: androidx.compose.ui.unit.Dp = 56.dp,
-    shape: androidx.compose.ui.graphics.Shape = CookieShape,
-    isSpinning: Boolean = true,
-    spinOnEntry: Boolean = false,
-    enabled: Boolean = true,
-    hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    enableTilt: Boolean = true,
-    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
-    holdScale: Float = 1.45f,
-    closeIcon: Any? = null,
-    isOpen: Boolean = false,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
-) = Cookiebutton(
-    onClick = onClick,
-    icon = icon,
-    modifier = modifier,
-    contentDescription = contentDescription,
-    tooltip = tooltip,
-    isSelected = isSelected,
-    containerColor = containerColor,
-    contentColor = contentColor,
-    size = size,
-    shape = shape,
-    isSpinning = isSpinning,
-    spinOnEntry = spinOnEntry,
-    enabled = enabled,
-    hapticOnHold = hapticOnHold,
-    iconSize = iconSize,
-    enableTilt = enableTilt,
-    badge = badge,
-    holdScale = holdScale,
-    closeIcon = closeIcon,
-    isOpen = isOpen,
-    isOnBlurredSurface = isOnBlurredSurface
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 fun Cookiebutton(
     onClick: () -> Unit,
     icon: Int,
@@ -218,54 +170,6 @@ fun Cookiebutton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CookieButton(
-    onClick: () -> Unit,
-    icon: Int,
-    modifier: Modifier = Modifier,
-    contentDescription: String? = null,
-    tooltip: String? = null,
-    isSelected: Boolean? = null,
-    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-    size: androidx.compose.ui.unit.Dp = 56.dp,
-    shape: androidx.compose.ui.graphics.Shape = CookieShape,
-    isSpinning: Boolean = true,
-    spinOnEntry: Boolean = false,
-    enabled: Boolean = true,
-    hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    enableTilt: Boolean = true,
-    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
-    holdScale: Float = 1.45f,
-    closeIcon: Any? = null,
-    isOpen: Boolean = false,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
-) = Cookiebutton(
-    onClick = onClick,
-    icon = icon,
-    modifier = modifier,
-    contentDescription = contentDescription,
-    tooltip = tooltip,
-    isSelected = isSelected,
-    containerColor = containerColor,
-    contentColor = contentColor,
-    size = size,
-    shape = shape,
-    isSpinning = isSpinning,
-    spinOnEntry = spinOnEntry,
-    enabled = enabled,
-    hapticOnHold = hapticOnHold,
-    iconSize = iconSize,
-    enableTilt = enableTilt,
-    badge = badge,
-    holdScale = holdScale,
-    closeIcon = closeIcon,
-    isOpen = isOpen,
-    isOnBlurredSurface = isOnBlurredSurface
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 fun Cookiebutton(
     onClick: () -> Unit,
     iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
@@ -311,52 +215,6 @@ fun Cookiebutton(
         isOnBlurredSurface = isOnBlurredSurface
     )
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CookieButton(
-    onClick: () -> Unit,
-    iconContent: @Composable (modifier: Modifier, tint: Color) -> Unit,
-    modifier: Modifier = Modifier,
-    tooltip: String? = null,
-    isSelected: Boolean? = null,
-    containerColor: Color = if (isSelected == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-    contentColor: Color = if (isSelected == true) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-    size: androidx.compose.ui.unit.Dp = 56.dp,
-    shape: androidx.compose.ui.graphics.Shape = CookieShape,
-    isSpinning: Boolean = true,
-    spinOnEntry: Boolean = false,
-    enabled: Boolean = true,
-    hapticOnHold: Boolean = true,
-    iconSize: androidx.compose.ui.unit.Dp = size * 0.55f,
-    enableTilt: Boolean = true,
-    badge: (@Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)? = null,
-    holdScale: Float = 1.45f,
-    closeIcon: Any? = null,
-    isOpen: Boolean = false,
-    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
-) = Cookiebutton(
-    onClick = onClick,
-    iconContent = iconContent,
-    modifier = modifier,
-    tooltip = tooltip,
-    isSelected = isSelected,
-    containerColor = containerColor,
-    contentColor = contentColor,
-    size = size,
-    shape = shape,
-    isSpinning = isSpinning,
-    spinOnEntry = spinOnEntry,
-    enabled = enabled,
-    hapticOnHold = hapticOnHold,
-    iconSize = iconSize,
-    enableTilt = enableTilt,
-    badge = badge,
-    holdScale = holdScale,
-    closeIcon = closeIcon,
-    isOpen = isOpen,
-    isOnBlurredSurface = isOnBlurredSurface
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -432,8 +290,12 @@ private fun CookiebuttonImpl(
     )
 
     val tiltAngle = com.android.snippets.ui.util.rememberCookieTilt(enabled = enableTilt && enabled && isPrimary)
+    var frozenTiltAngle by remember { mutableFloatStateOf(0f) }
+    val effectiveTilt = if (isHolding || isSettling) frozenTiltAngle else tiltAngle.value
 
-    val isMorphActive = (isHolding && !isHoldCompleted) || isSettling
+    // Keep the final morph frame alive after release. Clearing the completed flag in the
+    // press handler used to swap back to CookieShape while the hold scale was still settling.
+    val isMorphActive = (isHolding && !isHoldCompleted) || isSettling || isHoldCompleted
     val isMorphing = (isHoldMorphing && !isHoldCompleted) || isSettling
 
     val badgeAlpha by animateFloatAsState(
@@ -448,13 +310,13 @@ private fun CookiebuttonImpl(
     )
 
     val currentShape = if (isMorphActive) {
-        val safeIndex = if (isSettling && isHoldCompleted) {
+        val safeIndex = if (isHoldCompleted) {
             CookieHoldMorphs.size - 1
         } else {
             morphStepIndex
         }
-        val safeFraction = if (isSettling && isHoldCompleted) 1f else stepProgress.value
-        val totalRotation = if (isSettling) {
+        val safeFraction = if (isHoldCompleted) 1f else stepProgress.value
+        val totalRotation = if (isSettling || isHoldCompleted) {
             settleRotation.value
         } else {
             (morphStepIndex * 90f) + (stepProgress.value * 90f) + globalRotation.value
@@ -474,7 +336,7 @@ private fun CookiebuttonImpl(
     val scope = rememberCoroutineScope()
     var spinJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-    val isElevated = isMorphActive || isHolding || isTapped
+    val isElevated = isHolding || isSettling || isTapped
 
     val buttonContent: @Composable (Modifier) -> Unit = { btnModifier ->
         Box(
@@ -482,7 +344,7 @@ private fun CookiebuttonImpl(
                 .zIndex(if (isElevated) 10f else 0f)
                 .size(size)
                 .graphicsLayer {
-                    rotationZ = rotation.value + tiltAngle.value
+                    rotationZ = rotation.value + effectiveTilt
                     scaleX = animScaleX.value
                     scaleY = animScaleY.value
                     clip = false
@@ -491,6 +353,7 @@ private fun CookiebuttonImpl(
                     if (!enabled) return@pointerInput
                     detectTapGestures(
                         onPress = {
+                            frozenTiltAngle = tiltAngle.value
                             pressStartTime = System.currentTimeMillis()
                             isHolding = true
                             isHoldCompleted = false
@@ -498,7 +361,6 @@ private fun CookiebuttonImpl(
                                 awaitRelease()
                             } finally {
                                 isHolding = false
-                                isHoldCompleted = false
                             }
                         },
                         onLongPress = {
@@ -607,7 +469,7 @@ private fun CookiebuttonImpl(
             val iconModifier = Modifier
                 .size(iconSize)
                 .graphicsLayer { 
-                    rotationZ = -(rotation.value + tiltAngle.value)
+                    rotationZ = -(rotation.value + effectiveTilt)
                     scaleX = animIconScale.value
                     scaleY = animIconScale.value
                 }
