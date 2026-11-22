@@ -1,5 +1,10 @@
 <resources>
     <string name="app_name">Snippets</string>
-    <string name="tile_add_photo">Add Photo</string>
+    <string name="tile_add_photos">Add photos</string>
+    <string name="request_tile_title">Add Quick Settings tile?</string>
+    <string name="request_tile_description">Add the Snippets tile to your Quick Settings panel to quickly capture and add photos anytime.</string>
+    <string name="tile_added_success">Quick Settings tile added</string>
+    <string name="tile_already_added">Tile is already in Quick Settings</string>
+    <string name="tile_add_manual_instruction">Add the Snippets tile in your Quick Settings edit panel</string>
     <string name="mark_as_viewed">Mark as viewed</string>
 </resources>
