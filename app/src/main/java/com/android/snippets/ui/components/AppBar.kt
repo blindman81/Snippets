@@ -19,9 +19,12 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.theme.titleEmphasized
 import com.android.snippets.ui.util.Motion
 import com.android.snippets.viewmodel.SnippetsViewModel
@@ -143,8 +146,8 @@ fun AppBar(
                         val icon = if (titleIcon != null) {
                             titleIcon
                         } else if (viewModel != null && title != null) {
-                            if (viewModel.userCollections.any { it.equals(title, ignoreCase = true) }) {
-                                viewModel.getCollectionIcon(title)
+                            if (viewModel.userBoxes.any { it.equals(title, ignoreCase = true) }) {
+                                viewModel.getBoxIcon(title)
                             } else {
                                 null
                             }
@@ -167,12 +170,22 @@ fun AppBar(
                                     modifier = Modifier.size(36.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
+                            } else if (icon is Int) {
+                                Icon(
+                                    painter = painterResource(id = icon),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
                             }
                         }
 
                         Text(
                             text = title ?: "",
                             style = titleEmphasized,
+                            fontFamily = GoogleSansFlexRound,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -214,41 +227,5 @@ fun AppBar(
         }
     }
 }
-
-@Deprecated("Use AppBar instead", ReplaceWith("AppBar(viewModel, title, onNavigationClick, navigationIcon, isSpinning, isScrolled, showNavigationIcon, leftAlignTitle, titleIcon, forceTransparentBackground, showDividerOnScroll, scrolledColor, enableBlur, hazeState, actions)"))
-@Composable
-fun MainAppBar(
-    viewModel: SnippetsViewModel? = null,
-    title: String? = null,
-    onNavigationClick: () -> Unit,
-    navigationIcon: ImageVector = Icons.Rounded.Menu,
-    isSpinning: Boolean = true,
-    isScrolled: Boolean = false,
-    showNavigationIcon: Boolean = true,
-    leftAlignTitle: Boolean = true,
-    titleIcon: ImageVector? = null,
-    forceTransparentBackground: Boolean = false,
-    showDividerOnScroll: Boolean = true,
-    scrolledColor: Color = MaterialTheme.colorScheme.surfaceContainer,
-    enableBlur: Boolean = false,
-    hazeState: HazeState? = LocalHazeState.current,
-    actions: @Composable RowScope.() -> Unit = {}
-) = AppBar(
-    viewModel = viewModel,
-    title = title,
-    onNavigationClick = onNavigationClick,
-    navigationIcon = navigationIcon,
-    isSpinning = isSpinning,
-    isScrolled = isScrolled,
-    showNavigationIcon = showNavigationIcon,
-    leftAlignTitle = leftAlignTitle,
-    titleIcon = titleIcon,
-    forceTransparentBackground = forceTransparentBackground,
-    showDividerOnScroll = showDividerOnScroll,
-    scrolledColor = scrolledColor,
-    enableBlur = enableBlur,
-    hazeState = hazeState,
-    actions = actions
-)
 
 
