@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.snippets.data.preferences.UserPreferencesRepository
+import com.android.snippets.ui.theme.applyApplicationNightMode
 import com.android.snippets.logic.ExportBackupWorker
 import com.android.snippets.logic.RestoreBackupWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,7 +28,7 @@ class SettingsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository
 ) : AndroidViewModel(application) {
 
-    var themePreference by mutableStateOf(ThemePreference.SYSTEM)
+    var themePreference by mutableStateOf(userPreferencesRepository.cachedThemePreference ?: ThemePreference.SYSTEM)
         private set
     var useDynamicColors by mutableStateOf(true)
         private set
@@ -59,6 +60,8 @@ class SettingsViewModel @Inject constructor(
 
     fun updateThemePreference(pref: ThemePreference) {
         themePreference = pref
+        userPreferencesRepository.cachedThemePreference = pref
+        applyApplicationNightMode(getApplication(), pref)
         viewModelScope.launch {
             userPreferencesRepository.updateThemePreference(pref.name)
         }
