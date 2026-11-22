@@ -2,7 +2,6 @@ package com.android.snippets.ui
 
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -68,7 +67,6 @@ class OnboardingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         configurePredictiveBackTransition()
 
         setContent {
@@ -104,14 +102,6 @@ private enum class OnboardingPage {
 fun OnboardingScreen(
     onFinish: () -> Unit
 ) {
-    val view = LocalView.current
-    DisposableEffect(view) {
-        view.keepScreenOn = true
-        onDispose {
-            view.keepScreenOn = false
-        }
-    }
-
     var currentPage by remember { mutableStateOf(OnboardingPage.WELCOME) }
     // Sequential fade: outgoing page fades out completely (350ms) BEFORE incoming page fades in (400ms)
     // to prevent cookies from different pages overlapping on top of each other.
@@ -656,12 +646,12 @@ private fun ButtonGroupPage(
     var selectedIndex by remember { mutableIntStateOf(0) }
     var simulatedHeldIndex by remember { mutableIntStateOf(-1) }
 
-    val libraryIcon = ImageVector.vectorResource(R.drawable.ic_collections_bookmark_filled)
-    val items = remember(libraryIcon) {
+    val boxIcon = ImageVector.vectorResource(R.drawable.ic_box)
+    val items = remember(boxIcon) {
         listOf(
             cookieButtonItem(
-                icon = libraryIcon,
-                contentDescription = "Library"
+                icon = boxIcon,
+                contentDescription = "Box"
             ),
             cookieButtonItem(
                 icon = Icons.Rounded.Favorite,
@@ -833,7 +823,7 @@ private fun GoToLibraryPage(
                 onFinish()
             },
             icon = Icons.Rounded.ChevronRight,
-            contentDescription = "Go to Library",
+            contentDescription = "Go to Box",
             size = 136.dp,
             iconSize = 68.dp,
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -861,7 +851,7 @@ private fun GoToLibraryPage(
             ) { visible ->
                 if (visible) {
                     Text(
-                        text = "Go to Library.",
+                        text = "Go to Box.",
                         style = mediumTextStyle,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
