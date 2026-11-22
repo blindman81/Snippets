@@ -9,7 +9,9 @@ import com.android.snippets.data.backup.SnippetsBackupManager
 import com.android.snippets.data.toPhoto
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.model.Photo
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -212,16 +214,24 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
 
         return try {
-            val performed = performBackup(schedule.lowercase())
+            val performed = withTimeoutOrNull(10 * 60 * 1000L) {
+                performBackup(schedule.lowercase())
+            }
+            if (performed == null) {
+                Log.w(TAG, "Auto backup timed out.")
+                return if (runAttemptCount >= 3) Result.failure() else Result.retry()
+            }
             if (performed) {
                 Log.d(TAG, "Auto backup completed successfully.")
             } else {
                 Log.d(TAG, "Auto backup skipped: no new changes.")
             }
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Auto backup failed", e)
-            Result.retry()
+            if (runAttemptCount >= 3) Result.failure() else Result.retry()
         }
     }
 
