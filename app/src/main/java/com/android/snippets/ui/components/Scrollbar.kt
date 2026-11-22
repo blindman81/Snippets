@@ -102,9 +102,10 @@ fun Scrollbar(
         val layoutInfo = state.layoutInfo
         val visibleItems = layoutInfo.visibleItemsInfo
 
+        val maxBottomItem = visibleItems.maxByOrNull { it.offset.y + it.size.height }
         val isScrollable = state.canScrollForward || state.canScrollBackward ||
             totalItemsCount > visibleItems.size ||
-            (visibleItems.isNotEmpty() && (visibleItems.last().offset.y + visibleItems.last().size.height) > trackHeightPx)
+            (maxBottomItem != null && (maxBottomItem.offset.y + maxBottomItem.size.height) > trackHeightPx)
 
         if (!isScrollable) return@BoxWithConstraints
 
@@ -120,13 +121,34 @@ fun Scrollbar(
         val maxThumbOffset = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
 
         // When not dragging, compute thumb position from state
-        val firstItem = visibleItems.firstOrNull()
-        val firstItemIndex = firstItem?.index ?: state.firstVisibleItemIndex
-        val firstItemOffset = state.firstVisibleItemScrollOffset.toFloat()
-        val firstItemHeight = (firstItem?.size?.height?.toFloat() ?: avgItemHeight).coerceAtLeast(1f)
+        val contentStart = layoutInfo.viewportStartOffset + layoutInfo.beforeContentPadding
+        val contentEnd = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
 
-        val maxScrollIndex = (totalItemsCount - visibleItems.size).coerceAtLeast(1).toFloat()
-        val rawProgress = (firstItemIndex + (firstItemOffset / firstItemHeight)) / maxScrollIndex
+        val firstItem = visibleItems.firstOrNull { it.index == state.firstVisibleItemIndex }
+            ?: visibleItems.minByOrNull { it.index }
+        val lastItem = visibleItems.maxByOrNull { it.index }
+
+        val firstItemHeight = (firstItem?.size?.height?.toFloat() ?: avgItemHeight).coerceAtLeast(1f)
+        val firstItemOffset = if (firstItem != null) {
+            (contentStart - firstItem.offset.y).toFloat().coerceAtLeast(0f)
+        } else {
+            state.firstVisibleItemScrollOffset.toFloat().coerceAtLeast(0f)
+        }
+        val itemsBefore = (firstItem?.index ?: state.firstVisibleItemIndex).coerceAtLeast(0)
+        val startProgress = itemsBefore + (firstItemOffset / firstItemHeight)
+
+        val lastItemHeight = (lastItem?.size?.height?.toFloat() ?: avgItemHeight).coerceAtLeast(1f)
+        val lastItemBottom = if (lastItem != null) {
+            (lastItem.offset.y + lastItem.size.height).toFloat()
+        } else {
+            contentEnd.toFloat()
+        }
+        val lastItemOffset = (lastItemBottom - contentEnd).coerceAtLeast(0f)
+        val itemsAfter = ((totalItemsCount - 1) - (lastItem?.index ?: (totalItemsCount - 1))).coerceAtLeast(0)
+        val endProgress = itemsAfter + (lastItemOffset / lastItemHeight)
+
+        val totalProgress = startProgress + endProgress
+        val rawProgress = if (totalProgress > 0f) (startProgress / totalProgress) else 0f
         val scrollProgress = when {
             !state.canScrollBackward -> 0f
             !state.canScrollForward -> 1f
