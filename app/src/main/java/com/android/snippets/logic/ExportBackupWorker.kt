@@ -12,6 +12,9 @@ import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.data.repository.CollectionRepositoryImpl
 import com.android.snippets.data.repository.PhotoRepositoryImpl
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class ExportBackupWorker(
     context: Context,
@@ -23,38 +26,60 @@ class ExportBackupWorker(
             ?: return Result.failure()
 
         return try {
-            val database = SnippetsDatabase.getInstance(applicationContext)
-            val photos = PhotoRepositoryImpl(database.photoDao()).getAllPhotos()
-            val collections = CollectionRepositoryImpl(database.collectionDao()).getAllCollections()
-            val backupManager = SnippetsBackupManager(
-                database,
-                UserPreferencesRepository.getInstance(applicationContext)
-            )
+            val success = withTimeoutOrNull(5 * 60 * 1000L) {
+                val database = SnippetsDatabase.getInstance(applicationContext)
+                val photos = PhotoRepositoryImpl(database.photoDao()).getAllPhotos()
+                val collections = CollectionRepositoryImpl(database.collectionDao()).getAllCollections()
+                val backupManager = SnippetsBackupManager(
+                    database,
+                    UserPreferencesRepository.getInstance(applicationContext)
+                )
 
-            backupManager.exportBackup(
-                context = applicationContext,
-                uri = uri,
-                photos = photos,
-                userCollections = collections.map { it.name },
-                collectionIcons = collections.associate { it.name to (it.icon ?: "") },
-                snippetFirstSeenTimes = SnippetManager.rebuildSnippetFirstSeenTimes(photos)
-            )
-            Toast.makeText(
-                applicationContext,
-                "Backup file exported successfully!",
-                Toast.LENGTH_SHORT
-            ).show()
+                backupManager.exportBackup(
+                    context = applicationContext,
+                    uri = uri,
+                    photos = photos,
+                    userCollections = collections.map { it.name },
+                    collectionIcons = collections.associate { it.name to (it.icon ?: "") },
+                    snippetFirstSeenTimes = SnippetManager.rebuildSnippetFirstSeenTimes(photos)
+                )
+                true
+            } ?: false
+
+            if (!success) {
+                Log.w(TAG, "Backup export timed out")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        applicationContext,
+                        "Export timed out",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                releaseUriPermission(uri)
+                return Result.failure()
+            }
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    applicationContext,
+                    "Backup file exported successfully!",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
             releaseUriPermission(uri)
             Result.success()
         } catch (e: CancellationException) {
+            releaseUriPermission(uri)
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Backup export failed", e)
-            Toast.makeText(
-                applicationContext,
-                "Export failed: ${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    applicationContext,
+                    "Export failed: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
             releaseUriPermission(uri)
             Result.failure()
         }
