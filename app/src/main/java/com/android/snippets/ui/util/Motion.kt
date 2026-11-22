@@ -62,6 +62,11 @@ object Motion {
         stiffness = 120f
     )
 
+    val PhotoCollapseSpring = spring<IntSize>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = 120f
+    )
+
     // Dialog & Modal Spatial Transitions
     val DialogSlideEnter = spring<IntOffset>(
         dampingRatio = Spring.DampingRatioLowBouncy,
@@ -132,7 +137,7 @@ object Motion {
     )
 
     val PhotoCardExitFade = tween<Float>(
-        durationMillis = 350
+        durationMillis = 500
     )
 
     @OptIn(ExperimentalSharedTransitionApi::class)
