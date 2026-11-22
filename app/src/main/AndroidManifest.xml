@@ -36,6 +36,7 @@
             android:launchMode="singleTop"
             android:label="@string/app_name"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.App.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -72,6 +73,7 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.Snippets.Memory" />
 
         <activity
@@ -79,6 +81,31 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.MoreActivity"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.EditBoxActivity"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
+            android:name="com.android.snippets.ui.FilterActivity"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.Snippets" />
 
         <activity
@@ -86,6 +113,7 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.Snippets" />
 
         <activity
@@ -93,6 +121,7 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.Snippets" />
 
         <activity
@@ -100,6 +129,7 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.Snippets" />
 
         <activity
@@ -107,6 +137,7 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.Snippets" />
 
         <activity
@@ -114,6 +145,7 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.Snippets" />
 
         <activity
@@ -121,6 +153,7 @@
             android:enableOnBackInvokedCallback="true"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
             android:theme="@style/Theme.Snippets">
             <intent-filter>
                 <action android:name="android.intent.action.SEARCH" />
@@ -141,7 +174,7 @@
             android:name="com.android.snippets.service.AddPhotoTileService"
             android:exported="true"
             android:icon="@drawable/ic_qs_add_photo"
-            android:label="@string/tile_add_photo"
+            android:label="@string/tile_add_photos"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
