@@ -2,12 +2,9 @@ package com.android.snippets.viewmodel
 
 import com.android.snippets.logic.ParsedSearchQuery
 import com.android.snippets.logic.SearchQueryParser
-import com.android.snippets.logic.SnippetManager
 import com.android.snippets.model.Photo
 import com.android.snippets.model.PhotoSortType
 import com.android.snippets.model.SnippetSortType
-import com.android.snippets.model.ThemePreference
-import com.android.snippets.ui.util.LocationUtils
 import java.util.Calendar
 
 /**
@@ -17,9 +14,9 @@ import java.util.Calendar
 data class SnippetsUiState(
     val photos: List<Photo> = emptyList(),
     val isInitialLoading: Boolean = true,
-    val userCollections: List<String> = emptyList(),
-    val collectionIcons: Map<String, String> = emptyMap(),
-    val libraryCurrentTab: String = "Library",
+    val userBoxes: List<String> = emptyList(),
+    val boxIcons: Map<String, String> = emptyMap(),
+    val libraryCurrentTab: String = "Box",
     val activePhotoId: String? = null,
     val searchQuery: String = "",
     val selectedFilterSnippets: List<String> = emptyList(),
@@ -28,19 +25,17 @@ data class SnippetsUiState(
     val isBusy: Boolean = false,
     val isAddingPhotos: Boolean = false,
     val isCuratingMemories: Boolean = false,
-    val showFilterSheet: Boolean = false,
     val showBulkDeleteModal: Boolean = false,
-    val showBulkAddToCollectionDialog: Boolean = false,
+    val showRequestTileDialog: Boolean = false,
+    val showBulkAddToBoxDialog: Boolean = false,
     val showCreateDialog: Boolean = false,
-    val focusCreateCollection: Boolean = false,
-    val editingCollectionEmoji: String? = null,
+    val editingBoxEmoji: String? = null,
     val editingEmojiPreview: String? = null,
     val emojiKeyboardRequestCount: Long = 0L,
-    val activeCollection: String? = null,
-    val pendingCollectionAssignment: String? = null,
-    val pendingCollectionRemoval: String? = null,
+    val pendingBoxAssignment: String? = null,
+    val pendingBoxRemoval: String? = null,
     val photoSortType: PhotoSortType = PhotoSortType.DateNewest,
-    val collectionPhotoSortTypes: Map<String, PhotoSortType> = emptyMap(),
+    val boxPhotoSortTypes: Map<String, PhotoSortType> = emptyMap(),
     val snippetSortType: SnippetSortType = SnippetSortType.New,
     val isSortAscending: Boolean = true,
     val snackbarMessage: String? = null,
@@ -59,16 +54,17 @@ data class SnippetsUiState(
     val snippetFirstSeenTimes: Map<String, Long> = emptyMap(),
     val filteringCategory: String? = null,
     val hasPromptedNotificationPermission: Boolean = false,
+    val hasRequestedTileService: Boolean = false,
     val requestNotificationPermission: Boolean = false,
     val pendingFavoriteIntent: Boolean = false,
     val pendingAddPhotoIntentToken: Long = 0L,
     val locationNameMap: Map<String, String> = emptyMap(),
     val allUniqueLocations: List<String> = emptyList(),
-    val favoritesUniqueSnippets: List<String> = emptyList(),
     val allUniqueSnippets: List<String> = emptyList()
 ) {
+
     val isSelectionMode: Boolean
-        get() = forceSelectionMode || selectedPhotoIds.isNotEmpty() || pendingCollectionAssignment != null || pendingCollectionRemoval != null
+        get() = forceSelectionMode || selectedPhotoIds.isNotEmpty() || pendingBoxAssignment != null || pendingBoxRemoval != null
 
     val isSearching: Boolean
         get() = searchQuery.isNotBlank()
@@ -92,7 +88,7 @@ data class SnippetsUiState(
         get() = currentSearchSortType ?: photoSortType
 
     fun getEffectivePhotoSortTypeFor(tab: String): PhotoSortType {
-        return currentSearchSortType ?: if (tab == "Library") photoSortType else collectionPhotoSortTypes[tab] ?: PhotoSortType.DateNewest
+        return currentSearchSortType ?: if (tab == "Box" || tab == "Library") photoSortType else boxPhotoSortTypes[tab] ?: PhotoSortType.DateNewest
     }
 
     fun getFilteredPhotosForTab(tab: String): List<Photo> {
@@ -103,7 +99,8 @@ data class SnippetsUiState(
             parsed = parsed,
             selectedFilterSnippets = selectedFilterSnippets,
             locationNameMap = locationNameMap,
-            tab = tab
+            tab = tab,
+            boxIcons = boxIcons
         )
         val effectiveSort = getEffectivePhotoSortTypeFor(tab)
         return if (!hasSearchCriteria && selectedFilterSnippets.isEmpty() && effectiveSort == PhotoSortType.DateNewest) {
@@ -114,5 +111,5 @@ data class SnippetsUiState(
     }
 
     val filteredPhotos: List<Photo>
-        get() = getFilteredPhotosForTab("Library")
+        get() = getFilteredPhotosForTab("Box").ifEmpty { getFilteredPhotosForTab("Library") }
 }
