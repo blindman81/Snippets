@@ -8,9 +8,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -72,24 +70,29 @@ fun LibraryNavBar(
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val libraryFilled = ImageVector.vectorResource(R.drawable.ic_collections_bookmark_filled)
-            val libraryOutlined = ImageVector.vectorResource(R.drawable.ic_collections_bookmark_outlined)
+            val boxIcon = ImageVector.vectorResource(R.drawable.ic_box)
+            val boxFilledIcon = ImageVector.vectorResource(R.drawable.ic_box_filled)
             val cookieNavBarItems = remember(
                 allTabs,
                 activeTabTarget,
-                libraryFilled,
-                libraryOutlined,
-                viewModel.collectionIcons,
-                viewModel.editingCollectionEmoji,
+                boxIcon,
+                boxFilledIcon,
+                viewModel.boxIcons,
+                viewModel.editingBoxEmoji,
                 viewModel.editingEmojiPreview
             ) {
                 allTabs.mapIndexed { _, tabName ->
+                    val isSelected = tabName == activeTabTarget
                     val iconOrEmoji = when (tabName) {
-                        "Library" -> if (tabName == activeTabTarget) libraryFilled else libraryOutlined
-                        "Favorites" -> Icons.Rounded.Favorite
-                        else -> viewModel.getCollectionIcon(tabName)
+                        "Box", "Library" -> if (isSelected) boxFilledIcon else boxIcon
+                        "Box 1", "Favorites" -> viewModel.getBoxIcon("Box 1")
+                        else -> viewModel.getBoxIcon(tabName)
                     }
-                    val isSystem = tabName == "Library" || tabName == "Favorites"
+                    val isSystem = tabName == "Box" || tabName == "Library" || tabName == "Box 1" || tabName == "Favorites"
+                    val displayName = com.android.snippets.logic.BoxManager.getBoxDisplayName(
+                        box = tabName,
+                        userBoxes = viewModel.userBoxes
+                    )
                     val positionModifier = Modifier.onGloballyPositioned { coords ->
                         val left = coords.boundsInParent().left
                         val width = coords.size.width.toFloat()
@@ -98,24 +101,33 @@ fun LibraryNavBar(
                     }
 
                     cookieButtonItem(
-                        contentDescription = tabName,
-                        tooltip = if (isSystem) tabName else null,
+                        contentDescription = displayName,
+                        tooltip = displayName,
                         modifier = positionModifier,
                         icon = { iconModifier, tint ->
                             when (iconOrEmoji) {
                                 is androidx.compose.ui.graphics.vector.ImageVector -> Icon(
                                     iconOrEmoji,
-                                    contentDescription = tabName,
+                                    contentDescription = displayName,
                                     modifier = iconModifier.size(20.dp),
                                     tint = tint
                                 )
-                                is Int -> Icon(
-                                    painterResource(id = iconOrEmoji),
-                                    contentDescription = tabName,
-                                    modifier = iconModifier.size(20.dp),
-                                    tint = tint
-                                )
-                                is String -> if (iconOrEmoji.isNotEmpty()) {
+                                is Int -> {
+                                    val resId = if (isSelected && (iconOrEmoji == R.drawable.ic_box || iconOrEmoji == R.drawable.ic_box_filled)) {
+                                        R.drawable.ic_box_filled
+                                    } else if (!isSelected && iconOrEmoji == R.drawable.ic_box_filled) {
+                                        R.drawable.ic_box
+                                    } else {
+                                        iconOrEmoji
+                                    }
+                                    Icon(
+                                        painterResource(id = resId),
+                                        contentDescription = displayName,
+                                        modifier = iconModifier.size(20.dp),
+                                        tint = tint
+                                    )
+                                }
+                                is String -> if (iconOrEmoji.isNotEmpty() && iconOrEmoji.none { it in 'a'..'z' || it in 'A'..'Z' }) {
                                     Text(
                                         text = iconOrEmoji,
                                         fontSize = 16.sp,
@@ -123,15 +135,15 @@ fun LibraryNavBar(
                                     )
                                 } else {
                                     Icon(
-                                        Icons.Rounded.Add,
-                                        contentDescription = tabName,
+                                        if (isSelected) boxFilledIcon else boxIcon,
+                                        contentDescription = displayName,
                                         modifier = iconModifier.size(20.dp),
                                         tint = tint
                                     )
                                 }
                                 else -> Icon(
-                                    Icons.Rounded.Folder,
-                                    contentDescription = tabName,
+                                    if (isSelected) boxFilledIcon else boxIcon,
+                                    contentDescription = displayName,
                                     modifier = iconModifier.size(20.dp),
                                     tint = tint
                                 )
@@ -149,21 +161,12 @@ fun LibraryNavBar(
                     val tabName = allTabs.getOrNull(index) ?: return@selectTab
                     val pageIndex = pageTabs.indexOf(tabName)
                     if (pageIndex != -1) {
-                        val isCollection = tabName != "Library" && tabName != "Favorites"
-                        val isCollectionEmpty = isCollection && viewModel.photos.none { it.collections.contains(tabName) }
                         if (tabName == currentTab) {
                             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            if (isCollectionEmpty) {
-                                viewModel.startEditingCollectionEmoji(tabName)
-                            } else {
-                                onScrollCarouselToTop?.invoke()
-                            }
+                            onScrollCarouselToTop?.invoke()
                         } else {
                             scope.launch {
                                 pagerState.animateScrollToPage(pageIndex)
-                                if (isCollectionEmpty) {
-                                    viewModel.startEditingCollectionEmoji(tabName)
-                                }
                             }
                         }
                     }
