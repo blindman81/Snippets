@@ -10,10 +10,22 @@ import com.ln.android.snippets.R
 
 class AddPhotoTileService : TileService() {
 
+    override fun onTileAdded() {
+        super.onTileAdded()
+        updateTileState()
+    }
+
     override fun onStartListening() {
         super.onStartListening()
+        updateTileState()
+    }
+
+    private fun updateTileState() {
         qsTile?.let { tile ->
-            tile.label = getString(R.string.tile_add_photo)
+            tile.label = getString(R.string.tile_add_photos)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                tile.subtitle = getString(R.string.app_name)
+            }
             tile.state = Tile.STATE_INACTIVE
             tile.updateTile()
         }
