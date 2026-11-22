@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.*
 import com.android.snippets.viewmodel.SnippetsUiState
@@ -219,9 +220,9 @@ fun RecapScreen(
 
         LibraryModalsHost(
             viewModel = viewModel,
-            deletingCollection = null,
-            onDismissDeleteCollection = {},
-            onConfirmDeleteCollection = {},
+            deletingBox = null,
+            onDismissDeleteBox = {},
+            onConfirmDeleteBox = {},
             modalPhoto = modalPhoto,
             showAddModal = showAddModal,
             onCloseAddModal = { showAddModal = false },
@@ -234,17 +235,12 @@ fun RecapScreen(
             showLinkModal = showLinkModal,
             onCloseLinkModal = { showLinkModal = false },
             showNameModal = showNameModal,
-            onCloseNameModal = { showNameModal = false }
+            onCloseNameModal = { showNameModal = false },
+            modifier = Modifier.zIndex(999f),
+            hazeState = hazeState
         )
     }
 }
-
-@Deprecated("Use RecapScreen instead", ReplaceWith("RecapScreen(viewModel, onBack)"))
-@Composable
-fun MonthlyRecapScreen(
-    viewModel: SnippetsViewModel,
-    onBack: () -> Unit = {}
-) = RecapScreen(viewModel, onBack)
 
 @Composable
 private fun RecapCardList(
@@ -289,9 +285,9 @@ private fun RecapCardList(
                 isSelected = isSelected,
                 selectionMode = uiState.isSelectionMode,
                 selectedCount = selectedCount,
-                userCollections = uiState.userCollections,
+                userBoxes = uiState.userBoxes,
                 locationNameMap = uiState.locationNameMap,
-                collectionIcons = uiState.collectionIcons,
+                boxIcons = uiState.boxIcons,
                 showFavoriteIcon = true,
                 expandLocationIcon = settingsViewModel.expandLocationIcon,
                 expandLabelIcon = settingsViewModel.expandLabelIcon,
