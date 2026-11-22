@@ -1,7 +1,6 @@
 package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -12,7 +11,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +30,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,9 +38,11 @@ import androidx.compose.material.icons.automirrored.rounded.TextSnippet
 import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.TextSnippet
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Place
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -96,13 +95,16 @@ fun PhotoButtonGroup(
     unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isOutlined: Boolean = true,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
 
     val actualTrailingIcon = trailingIcon ?: if (expanded) trailingFilledIcon else trailingOutlinedIcon
+    val hasOutline = isOutlined || isOnBlurredSurface
 
     val effectiveMorph = remember(shape) {
         if (shape is RoundedPolygonShape) {
@@ -317,12 +319,38 @@ fun PhotoButtonGroup(
                             rotationZ = rotationLeading.value + wiggleLeading.value + tiltLeading
                         }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clip(shapeLeading)
-                            .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
-                    )
+                    if (hasOutline) {
+                        // Outline variant (bottom layer)
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeLeading)
+                                .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
+                                .border(
+                                    border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                    shape = shapeLeading
+                                )
+                        )
+                        // Primary layer (drawn OVER outline variant)
+                        if (leadingPrimaryAlpha > 0.001f) {
+                            val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .graphicsLayer { alpha = leadingPrimaryAlpha }
+                                    .border(1.dp, primaryBg, shapeLeading)
+                                    .clip(shapeLeading)
+                                    .background(primaryBg)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeLeading)
+                                .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
+                        )
+                    }
                 }
 
                 Icon(
@@ -438,12 +466,38 @@ fun PhotoButtonGroup(
                                 rotationZ = rotationTrailing.value + wiggleTrailing.value + tiltTrailing
                             }
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clip(shapeTrailing)
-                                .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
-                        )
+                        if (hasOutline) {
+                            // Outline variant (bottom layer)
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(shapeTrailing)
+                                    .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
+                                    .border(
+                                        border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                        shape = shapeTrailing
+                                    )
+                            )
+                            // Primary layer (drawn OVER outline variant)
+                            if (trailingPrimaryAlpha > 0.001f) {
+                                val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .graphicsLayer { alpha = trailingPrimaryAlpha }
+                                        .border(1.dp, primaryBg, shapeTrailing)
+                                        .clip(shapeTrailing)
+                                        .background(primaryBg)
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(shapeTrailing)
+                                    .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
+                            )
+                        }
                     }
 
                     Icon(
@@ -472,201 +526,6 @@ fun PhotoButtonGroup(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun SplitButton(
-    primaryIcon: ImageVector,
-    primaryText: String? = null,
-    contentDescription: String? = primaryText,
-    onPrimaryClick: () -> Unit,
-    dropdownContent: @Composable ColumnScope.(() -> Unit) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val view = LocalView.current
-
-    PredictiveBackHandler(enabled = expanded) { progress ->
-        try {
-            progress.collect { }
-            expanded = false
-        } catch (e: CancellationException) {
-            // cancelled
-        }
-    }
-
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        label = "arrowRotation"
-    )
-
-    val leadingShapes = SplitButtonDefaults.leadingButtonShapesFor(48.dp)
-    val trailingShapes = SplitButtonDefaults.trailingButtonShapesFor(48.dp)
-
-    Box(modifier = modifier) {
-        SplitButtonLayout(
-            leadingButton = {
-                SplitButtonDefaults.LeadingButton(
-                    onClick = {
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        onPrimaryClick()
-                    },
-                    shapes = leadingShapes
-                ) {
-                    Icon(
-                        imageVector = primaryIcon,
-                        contentDescription = contentDescription ?: primaryText,
-                        modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize)
-                    )
-                    if (!primaryText.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = primaryText)
-                    }
-                }
-            },
-            trailingButton = {
-                Box {
-                    SplitButtonDefaults.TrailingButton(
-                        checked = expanded,
-                        onCheckedChange = { isChecked ->
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            expanded = isChecked
-                        },
-                        shapes = trailingShapes
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = "More options",
-                            modifier = Modifier.rotate(arrowRotation)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        properties = PopupProperties(
-                            focusable = true,
-                            dismissOnBackPress = false,
-                            dismissOnClickOutside = true
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shadowElevation = 6.dp
-                    ) {
-                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            dropdownContent { expanded = false }
-                        }
-                    }
-                }
-            }
-        )
-    }
-}
-
-@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled)"))
-@Composable
-fun CookieSplitButton(
-    primaryIcon: ImageVector,
-    onMenuToggle: (() -> Unit)? = null,
-    onPrimaryClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    trailingIcon: ImageVector? = null,
-    trailingFilledIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_filled),
-    trailingOutlinedIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_outlined),
-    items: List<CookieButtonItem> = emptyList(),
-    primaryText: String? = null,
-    contentDescription: String? = primaryText,
-    isPrimaryActive: Boolean = false,
-    menuColumns: Int = 2,
-    buttonSize: Dp = 56.dp,
-    gap: Dp = 1.dp,
-    overlap: Dp = 4.dp,
-    shape: Shape = CookieShape,
-    selectedContainerColor: Color = MaterialTheme.colorScheme.primary,
-    selectedContentColor: Color = MaterialTheme.colorScheme.onPrimary,
-    unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
-    unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
-    isSpinning: Boolean = true,
-    enabled: Boolean = true
-) {
-    PhotoButtonGroup(
-        primaryIcon = primaryIcon,
-        onMenuToggle = onMenuToggle,
-        onPrimaryClick = onPrimaryClick,
-        modifier = modifier,
-        trailingIcon = trailingIcon,
-        trailingFilledIcon = trailingFilledIcon,
-        trailingOutlinedIcon = trailingOutlinedIcon,
-        items = items,
-        primaryText = primaryText,
-        contentDescription = contentDescription,
-        isPrimaryActive = isPrimaryActive,
-        menuColumns = menuColumns,
-        buttonSize = buttonSize,
-        gap = gap,
-        overlap = overlap,
-        shape = shape,
-        selectedContainerColor = selectedContainerColor,
-        selectedContentColor = selectedContentColor,
-        unselectedContainerColor = unselectedContainerColor,
-        unselectedContentColor = unselectedContentColor,
-        isSpinning = isSpinning,
-        enabled = enabled
-    )
-}
-
-@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(primaryIcon, onMenuToggle, onPrimaryClick, modifier, trailingIcon, trailingFilledIcon, trailingOutlinedIcon, items, primaryText, contentDescription, isPrimaryActive, menuColumns, buttonSize, gap, overlap, shape, selectedContainerColor, selectedContentColor, unselectedContainerColor, unselectedContentColor, isSpinning, enabled)"))
-@Composable
-fun PhotoCookieSplitButton(
-    primaryIcon: ImageVector,
-    onMenuToggle: (() -> Unit)? = null,
-    onPrimaryClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    trailingIcon: ImageVector? = null,
-    trailingFilledIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_filled),
-    trailingOutlinedIcon: ImageVector = ImageVector.vectorResource(R.drawable.ic_more_horiz_outlined),
-    items: List<CookieButtonItem> = emptyList(),
-    primaryText: String? = null,
-    contentDescription: String? = primaryText,
-    isPrimaryActive: Boolean = false,
-    menuColumns: Int = 2,
-    buttonSize: Dp = 56.dp,
-    gap: Dp = 1.dp,
-    overlap: Dp = 4.dp,
-    shape: Shape = CookieShape,
-    selectedContainerColor: Color = MaterialTheme.colorScheme.primary,
-    selectedContentColor: Color = MaterialTheme.colorScheme.onPrimary,
-    unselectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
-    unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
-    isSpinning: Boolean = true,
-    enabled: Boolean = true
-) {
-    PhotoButtonGroup(
-        primaryIcon = primaryIcon,
-        onMenuToggle = onMenuToggle,
-        onPrimaryClick = onPrimaryClick,
-        modifier = modifier,
-        trailingIcon = trailingIcon,
-        trailingFilledIcon = trailingFilledIcon,
-        trailingOutlinedIcon = trailingOutlinedIcon,
-        items = items,
-        primaryText = primaryText,
-        contentDescription = contentDescription,
-        isPrimaryActive = isPrimaryActive,
-        menuColumns = menuColumns,
-        buttonSize = buttonSize,
-        gap = gap,
-        overlap = overlap,
-        shape = shape,
-        selectedContainerColor = selectedContainerColor,
-        selectedContentColor = selectedContentColor,
-        unselectedContainerColor = unselectedContainerColor,
-        unselectedContentColor = unselectedContentColor,
-        isSpinning = isSpinning,
-        enabled = enabled
-    )
-}
-
 /**
  * Photo-specific overload of [PhotoButtonGroup].
  * Displays the primary Add Snippet action and the 8 photo actions (2 per row in 4 rows).
@@ -685,7 +544,9 @@ fun PhotoButtonGroup(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     isPrimaryActive: Boolean = false,
-    buttonSize: Dp = 56.dp
+    buttonSize: Dp = 56.dp,
+    isOutlined: Boolean = true,
+    isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
     val hasSnippets = photo.snippets.isNotEmpty()
@@ -693,6 +554,130 @@ fun PhotoButtonGroup(
     val hasName = !photo.name.isNullOrBlank()
     val hasLocation = !photo.locationLink.isNullOrBlank() || !photo.locationName.isNullOrBlank()
     val hasRating = photo.rating > 0
+
+    val downloadIcon = ImageVector.vectorResource(R.drawable.ic_download_symbol)
+    val shareIcon = Icons.Rounded.Share
+    val starOutlinedIcon = ImageVector.vectorResource(R.drawable.ic_kid_star_outlined)
+    val deleteIcon = Icons.Rounded.Delete
+    val iconSize = (buttonSize * 0.44f).coerceAtLeast(24.dp)
+
+    val items = remember(
+        hasSnippets,
+        isFavorite,
+        hasName,
+        hasLocation,
+        hasRating,
+        photo.rating,
+        photo.locationName,
+        iconSize,
+        downloadIcon,
+        shareIcon,
+        starOutlinedIcon,
+        deleteIcon,
+        onDownload,
+        onShare,
+        onToggleFavorite,
+        onNamePhotoClick,
+        onAddLinkClick,
+        onRate,
+        onSnippets,
+        onDelete
+    ) {
+        listOf(
+            cookieButtonItem(
+                icon = downloadIcon,
+                contentDescription = "Download",
+                tooltip = "Download",
+                iconSize = iconSize,
+                enabled = hasSnippets,
+                onClick = onDownload
+            ),
+            cookieButtonItem(
+                icon = shareIcon,
+                contentDescription = "Share",
+                tooltip = "Share",
+                iconSize = iconSize,
+                enabled = hasSnippets,
+                onClick = onShare
+            ),
+            cookieButtonItem(
+                icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                contentDescription = if (isFavorite) "Unfavorite" else "Favorite",
+                tooltip = if (isFavorite) "Unfavorite" else "Favorite",
+                isSelected = isFavorite,
+                iconSize = iconSize,
+                onClick = onToggleFavorite
+            ),
+            cookieButtonItem(
+                icon = if (hasName) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label,
+                contentDescription = if (hasName) "Rename photo" else "Name photo",
+                tooltip = if (hasName) "Rename photo" else "Name photo",
+                isSelected = hasName,
+                iconSize = iconSize,
+                onClick = onNamePhotoClick
+            ),
+            cookieButtonItem(
+                icon = if (hasLocation) Icons.Rounded.Place else Icons.Outlined.Place,
+                contentDescription = if (hasLocation) "Edit location" else "Link to a place",
+                tooltip = if (hasLocation) (photo.locationName?.takeIf { it.isNotBlank() } ?: "Edit location") else "Link to a place",
+                isSelected = hasLocation,
+                iconSize = iconSize,
+                onClick = onAddLinkClick
+            ),
+            cookieButtonItem(
+                icon = { mod: Modifier, tint: Color ->
+                    if (hasRating) {
+                        Box(
+                            modifier = mod.size(iconSize),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_star_rating),
+                                contentDescription = "Rating ${photo.rating}",
+                                tint = tint,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Text(
+                                text = photo.rating.toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                ),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.padding(top = 0.5.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = starOutlinedIcon,
+                            contentDescription = "Rate",
+                            modifier = mod.size(iconSize),
+                            tint = tint
+                        )
+                    }
+                },
+                tooltip = "Rate",
+                isSelected = hasRating,
+                onClick = onRate
+            ),
+            cookieButtonItem(
+                icon = if (hasSnippets) Icons.AutoMirrored.Rounded.TextSnippet else Icons.AutoMirrored.Outlined.TextSnippet,
+                contentDescription = "Snippets",
+                tooltip = "Snippets",
+                enabled = hasSnippets,
+                isSelected = hasSnippets,
+                iconSize = iconSize,
+                onClick = onSnippets
+            ),
+            cookieButtonItem(
+                icon = deleteIcon,
+                contentDescription = "Delete",
+                tooltip = "Delete",
+                iconSize = iconSize,
+                onClick = onDelete
+            )
+        )
+    }
 
     PhotoButtonGroup(
         primaryIcon = Icons.Rounded.Add,
@@ -705,152 +690,9 @@ fun PhotoButtonGroup(
         menuColumns = 2,
         buttonSize = buttonSize,
         modifier = modifier,
-        items = run {
-            val iconSize = (buttonSize * 0.44f).coerceAtLeast(24.dp)
-            listOf(
-                cookieButtonItem(
-                    icon = { mod, tint ->
-                        Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.ic_download_symbol),
-                            contentDescription = "Download",
-                            modifier = mod.size(iconSize),
-                            tint = tint
-                        )
-                    },
-                    tooltip = "Download",
-                    enabled = hasSnippets,
-                    onClick = onDownload
-                ),
-                cookieButtonItem(
-                    icon = { mod, tint ->
-                        Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.ic_share_outlined),
-                            contentDescription = "Share",
-                            modifier = mod.size(iconSize),
-                            tint = tint
-                        )
-                    },
-                    tooltip = "Share",
-                    enabled = hasSnippets,
-                    onClick = onShare
-                ),
-                cookieButtonItem(
-                    icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = if (isFavorite) "Unfavorite" else "Favorite",
-                    tooltip = if (isFavorite) "Unfavorite" else "Favorite",
-                    isSelected = isFavorite,
-                    iconSize = iconSize,
-                    onClick = onToggleFavorite
-                ),
-                cookieButtonItem(
-                    icon = if (hasName) Icons.AutoMirrored.Rounded.Label else Icons.AutoMirrored.Outlined.Label,
-                    contentDescription = if (hasName) "Rename photo" else "Name photo",
-                    tooltip = if (hasName) "Rename photo" else "Name photo",
-                    isSelected = hasName,
-                    iconSize = iconSize,
-                    onClick = onNamePhotoClick
-                ),
-                cookieButtonItem(
-                    icon = if (hasLocation) Icons.Rounded.Place else Icons.Outlined.Place,
-                    contentDescription = if (hasLocation) "Edit location" else "Link to a place",
-                    tooltip = if (hasLocation) (photo.locationName?.takeIf { it.isNotBlank() } ?: "Edit location") else "Link to a place",
-                    isSelected = hasLocation,
-                    iconSize = iconSize,
-                    onClick = onAddLinkClick
-                ),
-                cookieButtonItem(
-                    icon = { mod, tint ->
-                        if (hasRating) {
-                            Box(
-                                modifier = mod.size(iconSize),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_star_rating),
-                                    contentDescription = "Rating ${photo.rating}",
-                                    tint = tint,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                Text(
-                                    text = photo.rating.toString(),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.ExtraBold
-                                    ),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.padding(top = 0.5.dp)
-                                )
-                            }
-                        } else {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(R.drawable.ic_kid_star_outlined),
-                                contentDescription = "Rate",
-                                modifier = mod.size(iconSize),
-                                tint = tint
-                            )
-                        }
-                    },
-                    tooltip = "Rate",
-                    isSelected = hasRating,
-                    onClick = onRate
-                ),
-                cookieButtonItem(
-                    icon = if (hasSnippets) Icons.AutoMirrored.Rounded.TextSnippet else Icons.AutoMirrored.Outlined.TextSnippet,
-                    contentDescription = "Snippets",
-                    tooltip = "Snippets",
-                    enabled = hasSnippets,
-                    isSelected = hasSnippets,
-                    iconSize = iconSize,
-                    onClick = onSnippets
-                ),
-                cookieButtonItem(
-                    icon = { mod, tint ->
-                        Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.ic_delete_symbol),
-                            contentDescription = "Delete",
-                            modifier = mod.size(iconSize),
-                            tint = tint
-                        )
-                    },
-                    tooltip = "Delete",
-                    onClick = onDelete
-                )
-            )
-        }
-    )
-}
-
-@Deprecated("Use PhotoButtonGroup instead", ReplaceWith("PhotoButtonGroup(photo, onAdd, onDownload, onShare, onToggleFavorite, onNamePhotoClick, onAddLinkClick, onRate, onSnippets, onDelete, modifier, isPrimaryActive, buttonSize)"))
-@Composable
-fun PhotoCookieSplitButton(
-    photo: Photo,
-    onAdd: () -> Unit,
-    onDownload: () -> Unit,
-    onShare: () -> Unit,
-    onToggleFavorite: () -> Unit,
-    onNamePhotoClick: () -> Unit,
-    onAddLinkClick: () -> Unit,
-    onRate: () -> Unit,
-    onSnippets: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier,
-    isPrimaryActive: Boolean = false,
-    buttonSize: Dp = 56.dp
-) {
-    PhotoButtonGroup(
-        photo = photo,
-        onAdd = onAdd,
-        onDownload = onDownload,
-        onShare = onShare,
-        onToggleFavorite = onToggleFavorite,
-        onNamePhotoClick = onNamePhotoClick,
-        onAddLinkClick = onAddLinkClick,
-        onRate = onRate,
-        onSnippets = onSnippets,
-        onDelete = onDelete,
-        modifier = modifier,
-        isPrimaryActive = isPrimaryActive,
-        buttonSize = buttonSize
+        items = items,
+        isOutlined = isOutlined,
+        isOnBlurredSurface = isOnBlurredSurface
     )
 }
 
