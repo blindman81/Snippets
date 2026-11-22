@@ -10,6 +10,9 @@ import com.android.snippets.data.SnippetsDatabase
 import com.android.snippets.data.backup.SnippetsBackupManager
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class RestoreBackupWorker(
     context: Context,
@@ -21,21 +24,39 @@ class RestoreBackupWorker(
             ?: return Result.failure()
 
         return try {
-            val database = SnippetsDatabase.getInstance(applicationContext)
-            val preferences = UserPreferencesRepository.getInstance(applicationContext)
-            SnippetsBackupManager(database, preferences).importBackup(applicationContext, uri)
-            Toast.makeText(applicationContext, "Backup restored successfully!", Toast.LENGTH_SHORT).show()
+            val success = withTimeoutOrNull(5 * 60 * 1000L) {
+                val database = SnippetsDatabase.getInstance(applicationContext)
+                val preferences = UserPreferencesRepository.getInstance(applicationContext)
+                SnippetsBackupManager(database, preferences).importBackup(applicationContext, uri)
+                true
+            } ?: false
+
+            if (!success) {
+                Log.w(TAG, "Backup restore timed out")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(applicationContext, "Restore timed out", Toast.LENGTH_LONG).show()
+                }
+                releaseUriPermission(uri)
+                return Result.failure()
+            }
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(applicationContext, "Backup restored successfully!", Toast.LENGTH_SHORT).show()
+            }
             releaseUriPermission(uri)
             Result.success()
         } catch (e: CancellationException) {
+            releaseUriPermission(uri)
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Backup restore failed", e)
-            Toast.makeText(
-                applicationContext,
-                "Restore failed: ${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    applicationContext,
+                    "Restore failed: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
             releaseUriPermission(uri)
             Result.failure()
         }
