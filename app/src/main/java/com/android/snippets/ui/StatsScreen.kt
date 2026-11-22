@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.android.snippets.logic.SnippetManager
 import com.android.snippets.ui.components.AppBar
 import com.android.snippets.ui.shapes.CookieShape
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.viewmodel.StatsViewModel
 import com.ln.android.snippets.R
 import java.util.Calendar
@@ -40,7 +41,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
     val view = LocalView.current
     val backDispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val scrollState = rememberScrollState()
-    val isScrolled by remember { derivedStateOf { scrollState.value > 0 } }
+    val isScrolled by remember { computedStateOf { scrollState.value > 0 } }
 
     val photos = viewModel.photos
 
@@ -199,7 +200,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Text(
                             text = totalPhotos.toString(),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                     },
@@ -207,7 +208,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Icon(
                             imageVector = Icons.Rounded.Photo,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -226,7 +227,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Text(
                             text = uniqueSnippetsCount.toString(),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                     },
@@ -234,7 +235,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.TextSnippet,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -253,7 +254,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Text(
                             text = "$currentStreakDays d",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                     },
@@ -261,7 +262,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Icon(
                             imageVector = Icons.Rounded.Celebration,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -287,7 +288,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Text(
                             text = photosThisMonthCount.toString(),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                     },
@@ -295,7 +296,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Icon(
                             imageVector = Icons.Rounded.CalendarMonth,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(3.dp))
@@ -315,7 +316,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Text(
                             text = newSnippetsThisMonthCount.toString(),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                     },
@@ -323,7 +324,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Icon(
                             imageVector = Icons.Rounded.CalendarMonth,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(3.dp))
@@ -343,7 +344,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Text(
                             text = "$longestStreakDays d",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                     },
@@ -351,7 +352,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                         Icon(
                             imageVector = Icons.Rounded.Celebration,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(3.dp))
@@ -398,7 +399,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                                 Text(
                                     text = count.toString(),
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = if (r > 0 && count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     textAlign = TextAlign.Center
                                 )
                             },
@@ -452,7 +453,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                                     Text(
                                         text = count.toString(),
                                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center
                                     )
                                 },
@@ -460,7 +461,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                                     Icon(
                                         imageVector = Icons.Rounded.LocationOn,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
@@ -488,14 +489,19 @@ fun StatsScreen(viewModel: StatsViewModel) {
 }
 
 @Composable
-private fun SectionHeader(title: String) {
+private fun SectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface
+) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium.copy(
-            fontWeight = FontWeight.Bold
+            fontFamily = GoogleSansFlexRound,
+            fontWeight = FontWeight.SemiBold
         ),
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
+        color = color,
+        modifier = modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
     )
 }
 
@@ -513,7 +519,7 @@ private fun StarRatingBadge(
         Icon(
             painter = painterResource(id = R.drawable.ic_star_rating),
             contentDescription = null,
-            tint = if (isRated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            tint = if (isRated) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             modifier = Modifier.fillMaxSize()
         )
         Text(
@@ -522,7 +528,7 @@ private fun StarRatingBadge(
                 fontSize = 9.sp,
                 fontWeight = FontWeight.ExtraBold
             ),
-            color = if (isRated) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
             modifier = Modifier.padding(top = 0.5.dp)
         )
     }
