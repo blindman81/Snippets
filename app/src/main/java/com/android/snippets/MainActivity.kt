@@ -2,8 +2,12 @@ package com.android.snippets
 
 import androidx.activity.result.contract.ActivityResultContracts
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.os.Bundle
 import android.content.pm.PackageManager
+import android.view.View
+import android.view.animation.AnticipateInterpolator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.animation.doOnEnd
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.Box
@@ -153,7 +158,7 @@ class MainActivity : ComponentActivity() {
             ?: intent?.getStringExtra(android.app.SearchManager.QUERY)
         if (!query.isNullOrBlank()) {
             viewModel.searchQuery = query
-            viewModel.libraryCurrentTab = "Library"
+            viewModel.libraryCurrentTab = "Box"
             intent?.removeExtra("search_query")
             intent?.removeExtra(android.app.SearchManager.QUERY)
         }
@@ -178,7 +183,31 @@ class MainActivity : ComponentActivity() {
         configurePredictiveBackTransition()
         
         splashScreen.setOnExitAnimationListener { splashScreenView ->
-            splashScreenView.remove()
+            val iconFade = ObjectAnimator.ofFloat(
+                splashScreenView.iconView,
+                View.ALPHA,
+                1f,
+                0f
+            ).apply {
+                interpolator = AnticipateInterpolator()
+                duration = 200L
+            }
+
+            val viewFade = ObjectAnimator.ofFloat(
+                splashScreenView.view,
+                View.ALPHA,
+                1f,
+                0f
+            ).apply {
+                interpolator = AnticipateInterpolator()
+                duration = 200L
+            }
+
+            val animatorSet = AnimatorSet().apply {
+                playTogether(iconFade, viewFade)
+                doOnEnd { splashScreenView.remove() }
+            }
+            animatorSet.start()
         }
 
         if (savedInstanceState == null) {
@@ -262,7 +291,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                     if (urisToProcess.isNotEmpty()) {
                                         viewModel.addPhotosToLibrary(urisToProcess, locationLink = sharedLink, locationName = sharedName)
-                                        viewModel.libraryCurrentTab = "Library"
+                                        viewModel.libraryCurrentTab = "Box"
                                     }
                                     
                                     pendingShareToken = 0L
@@ -276,7 +305,7 @@ class MainActivity : ComponentActivity() {
                             val historyToken = pendingHistoryIntentToken
                             androidx.compose.runtime.LaunchedEffect(historyToken, uiState.isInitialLoading) {
                                 if (!uiState.isInitialLoading && historyToken != 0L) {
-                                    viewModel.libraryCurrentTab = "Library"
+                                    viewModel.libraryCurrentTab = "Box"
                                     pendingHistoryIntentToken = 0L
                                 }
                             }
@@ -342,7 +371,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
