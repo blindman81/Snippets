@@ -1,18 +1,21 @@
 package com.android.snippets.ui.theme
 
 import android.app.ActivityManager
+import android.app.UiModeManager
+import android.content.Context
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
+import com.android.snippets.model.ThemePreference
 
 private val LightColorScheme = lightColorScheme()
 private val DarkColorScheme = darkColorScheme()
@@ -60,7 +63,7 @@ fun SnippetsTheme(
         val activity = (view.context as? ComponentActivity) ?: (LocalContext.current as? ComponentActivity)
         if (activity != null && activity !is com.android.snippets.ui.MemoryActivity) {
             val surfaceContainerColor = sanitizedColorScheme.surfaceContainer
-            LaunchedEffect(darkTheme, surfaceContainerColor) {
+            SideEffect {
                 val window = activity.window
                 val insetsController = WindowCompat.getInsetsController(window, window.decorView)
                 insetsController.isAppearanceLightStatusBars = !darkTheme
@@ -122,5 +125,17 @@ fun getAppColorScheme(context: android.content.Context, isDark: Boolean = false)
         }
         isDark -> DarkColorScheme
         else -> LightColorScheme
+    }
+}
+
+fun applyApplicationNightMode(context: Context, themePreference: ThemePreference) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+        val targetMode = when (themePreference) {
+            ThemePreference.LIGHT -> UiModeManager.MODE_NIGHT_NO
+            ThemePreference.DARK -> UiModeManager.MODE_NIGHT_YES
+            ThemePreference.SYSTEM -> UiModeManager.MODE_NIGHT_AUTO
+        }
+        uiModeManager?.setApplicationNightMode(targetMode)
     }
 }
