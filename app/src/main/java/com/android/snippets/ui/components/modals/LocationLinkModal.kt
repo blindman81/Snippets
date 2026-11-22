@@ -2,6 +2,7 @@ package com.android.snippets.ui.components
 
 import android.content.Context
 import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -275,18 +276,20 @@ fun LocationLinkModal(
                 }
 
                 if (filteredSuggestions.isNotEmpty()) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    CompositionLocalProvider(
+                        LocalRippleConfiguration provides RippleConfiguration(color = MaterialTheme.colorScheme.primary)
                     ) {
-                        items(filteredSuggestions) { suggestion ->
-                            val displayName = remember(suggestion, resolvedNames[suggestion]) {
-                                resolvedNames[suggestion] ?: LocationUtils.extractPlaceNameFromLink(suggestion, context) ?: LocationUtils.cleanLocationName(suggestion)
-                            }
-                            CompositionLocalProvider(
-                                LocalRippleConfiguration provides RippleConfiguration(color = MaterialTheme.colorScheme.primary)
-                            ) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(filteredSuggestions, key = { it }) { suggestion ->
+                                val displayName = remember(suggestion, resolvedNames[suggestion]) {
+                                    resolvedNames[suggestion] ?: LocationUtils.extractPlaceNameFromLink(suggestion, context) ?: LocationUtils.cleanLocationName(suggestion)
+                                }
+                                val chipInteractionSource = remember { MutableInteractionSource() }
                                 SuggestionChip(
+                                    interactionSource = chipInteractionSource,
                                     onClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                         textValue = displayName
