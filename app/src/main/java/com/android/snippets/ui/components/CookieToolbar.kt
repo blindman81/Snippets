@@ -1,14 +1,25 @@
 package com.android.snippets.ui.components
 
 import android.view.HapticFeedbackConstants
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import com.android.snippets.ui.*
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,10 +29,21 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -37,14 +59,57 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.snippets.logic.PhotoSearchHelper
 import com.android.snippets.model.Photo
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.util.LocalTiltActive
 import com.android.snippets.ui.util.LocalTiltModalFocus
 import com.android.snippets.ui.util.Motion
 import com.android.snippets.viewmodel.SnippetsUiState
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.ln.android.snippets.R
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+@Composable
+private fun ToolbarCookieItem(
+    label: String,
+    icon: Any, // ImageVector or Int (@DrawableRes)
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isSelected: Boolean = false,
+    isSpinning: Boolean = true
+) {
+    when (icon) {
+        is ImageVector -> Cookiebutton(
+            onClick = onClick,
+            icon = icon,
+            contentDescription = label,
+            tooltip = label,
+            isSelected = isSelected,
+            isOnBlurredSurface = true,
+            isSpinning = isSpinning,
+            size = 48.dp,
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = modifier
+        )
+        is Int -> Cookiebutton(
+            onClick = onClick,
+            icon = icon,
+            contentDescription = label,
+            tooltip = label,
+            isSelected = isSelected,
+            isOnBlurredSurface = true,
+            isSpinning = isSpinning,
+            size = 48.dp,
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = modifier
+        )
+    }
+}
 
 @Composable
 fun SelectionToolbarContent(
@@ -55,13 +120,12 @@ fun SelectionToolbarContent(
     flatPhotosRaw: List<Photo> = emptyList(),
     currentTab: String = "",
     isSpinning: Boolean = true,
-    isScrolled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
     val context = LocalContext.current
 
-    val isAddOrRemovePhotos = uiState.pendingCollectionAssignment != null || uiState.pendingCollectionRemoval != null
+    val isAddOrRemovePhotos = uiState.pendingBoxAssignment != null || uiState.pendingBoxRemoval != null
 
     Row(
         modifier = modifier
@@ -70,19 +134,18 @@ fun SelectionToolbarContent(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Cookiebutton(
+        // Clear Selection
+        ToolbarCookieItem(
+            label = "Clear",
+            icon = Icons.Rounded.Close,
             onClick = {
                 view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                 viewModel.clearSelection()
             },
-            icon = Icons.Rounded.Close,
-            contentDescription = "Clear Selection",
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            size = 48.dp,
             isSpinning = isSpinning
         )
 
+        // Search Selection
         val isSearchActive = uiState.searchQuery.isNotEmpty()
         val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
             isSearchActive && flatPhotosRaw.any { photo ->
@@ -90,62 +153,47 @@ fun SelectionToolbarContent(
             }
         }
         val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
-        Cookiebutton(
-            onClick = {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                onSearchClick()
-            },
+        ToolbarCookieItem(
+            label = "Search",
             icon = searchIcon,
-            contentDescription = "Search",
             isSelected = isSearchActive,
-            containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-            size = 48.dp,
+            onClick = onSearchClick,
             isSpinning = isSpinning
         )
 
         if (isAddOrRemovePhotos) {
-            Cookiebutton(
+            ToolbarCookieItem(
+                label = "Confirm",
+                icon = Icons.Rounded.Check,
+                isSelected = true,
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    if (uiState.pendingCollectionAssignment != null) {
-                        viewModel.confirmCollectionAssignment()
-                    } else if (uiState.pendingCollectionRemoval != null) {
-                        viewModel.confirmCollectionRemoval()
+                    if (uiState.pendingBoxAssignment != null) {
+                        viewModel.confirmBoxAssignment()
+                    } else if (uiState.pendingBoxRemoval != null) {
+                        viewModel.confirmBoxRemoval()
                     }
                 },
-                icon = Icons.Rounded.Check,
-                contentDescription = "Confirm",
-                isSelected = true,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                size = 48.dp,
                 isSpinning = isSpinning
             )
         } else {
-            Cookiebutton(
+            ToolbarCookieItem(
+                label = "Share",
+                icon = Icons.Rounded.Share,
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     viewModel.shareSelectedPhotos(context)
                 },
-                icon = R.drawable.ic_share,
-                contentDescription = "Share Selection",
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                size = 48.dp,
                 isSpinning = isSpinning
             )
 
-            Cookiebutton(
+            ToolbarCookieItem(
+                label = "Delete",
+                icon = Icons.Rounded.Delete,
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                     onDeleteClick()
                 },
-                icon = R.drawable.ic_delete,
-                contentDescription = "Delete",
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                size = 48.dp,
                 isSpinning = isSpinning
             )
         }
@@ -162,12 +210,11 @@ fun ExpandedSearchContent(
 ) {
     val view = LocalView.current
     val focusManager = LocalFocusManager.current
-    val scope = rememberCoroutineScope()
 
     Row(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -186,7 +233,7 @@ fun ExpandedSearchContent(
         }
 
         LaunchedEffect(Unit) {
-            kotlinx.coroutines.delay(100L)
+            delay(100L)
             try {
                 searchFocusRequester.requestFocus()
             } catch (_: Exception) {}
@@ -203,18 +250,20 @@ fun ExpandedSearchContent(
             contentDescription = "Close Search",
             tooltip = "Close",
             isSpinning = isSpinning,
+            isOnBlurredSurface = true,
             size = 48.dp,
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
         )
 
-        // Text field
+        // Text field with placeholder
         BasicTextField(
             state = searchTextFieldState,
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(searchFocusRequester),
             textStyle = MaterialTheme.typography.bodyLarge.copy(
+                fontFamily = GoogleSansFlexRound,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 17.sp
@@ -227,6 +276,19 @@ fun ExpandedSearchContent(
             },
             decorator = { innerTextField ->
                 Box(contentAlignment = Alignment.CenterStart) {
+                    if (searchTextFieldState.text.isEmpty()) {
+                        Text(
+                            text = "Search",
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = GoogleSansFlexRound,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontFamily = GoogleSansFlexRound,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 17.sp
+                            )
+                        )
+                    }
                     innerTextField()
                 }
             }
@@ -248,6 +310,7 @@ fun ExpandedSearchContent(
                 contentDescription = "Clear",
                 tooltip = "Clear",
                 isSpinning = isSpinning,
+                isOnBlurredSurface = true,
                 size = 48.dp,
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -256,7 +319,6 @@ fun ExpandedSearchContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CookieToolbar(
     viewModel: SnippetsViewModel,
@@ -267,12 +329,10 @@ fun CookieToolbar(
     searchFocusRequester: FocusRequester,
     isScrolled: Boolean,
     isAnyPopupActive: Boolean,
-    isMenuOpen: Boolean = false,
-    isManageOpen: Boolean = false,
     isFilterOpen: Boolean = false,
-    onMenuClick: () -> Unit,
     onManageClick: () -> Unit,
     onFilterClick: () -> Unit,
+    onMoreClick: () -> Unit,
     onBulkDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -283,7 +343,8 @@ fun CookieToolbar(
 
     CompositionLocalProvider(
         LocalTiltActive provides true,
-        LocalTiltModalFocus provides true
+        LocalTiltModalFocus provides true,
+        LocalIsOnBlurredSurface provides true
     ) {
         Column(
             modifier = modifier
@@ -333,8 +394,7 @@ fun CookieToolbar(
                             onSearchClick = { onSearchOpenChange(true) },
                             flatPhotosRaw = flatPhotosRaw,
                             currentTab = currentTab,
-                            isSpinning = !isAnyPopupActive,
-                            isScrolled = isScrolled
+                            isSpinning = !isAnyPopupActive
                         )
                     } else if (searchMode == 1) {
                         ExpandedSearchContent(
@@ -344,14 +404,14 @@ fun CookieToolbar(
                                 onSearchOpenChange(false)
                                 focusManager.clearFocus()
                                 scope.launch {
-                                    kotlinx.coroutines.delay(200L)
+                                    delay(200L)
                                     viewModel.searchQuery = ""
                                 }
                             },
                             isSpinning = true
                         )
                     } else {
-                        // Normal Mode
+                        // Normal Mode: Manage, Search, Filter and More with text labels
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -359,20 +419,15 @@ fun CookieToolbar(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Menu
-                            Cookiebutton(
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    onMenuClick()
-                                },
-                                icon = Icons.Rounded.Menu,
-                                closeIcon = Icons.Rounded.Close,
-                                isOpen = isMenuOpen,
-                                contentDescription = if (isMenuOpen) "Close Menu" else "Menu",
-                                size = 48.dp
+                            // 1. Edit box
+                            ToolbarCookieItem(
+                                label = "Edit box",
+                                icon = R.drawable.ic_box_edit,
+                                isSpinning = !isAnyPopupActive,
+                                onClick = onManageClick
                             )
 
-                            // Search
+                            // 2. Search
                             val isSearchActive = uiState.searchQuery.isNotEmpty()
                             val hasMatchingPhotos = remember(isSearchActive, flatPhotosRaw, currentTab) {
                                 isSearchActive && flatPhotosRaw.any { photo ->
@@ -380,48 +435,30 @@ fun CookieToolbar(
                                 }
                             }
                             val searchIcon = if (hasMatchingPhotos) ImageVector.vectorResource(R.drawable.ic_search_success) else Icons.Rounded.Search
-                            Cookiebutton(
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    onSearchOpenChange(true)
-                                },
+                            ToolbarCookieItem(
+                                label = "Search",
                                 icon = searchIcon,
-                                contentDescription = "Search",
                                 isSelected = isSearchActive,
                                 isSpinning = !isAnyPopupActive,
-                                size = 48.dp,
-                                containerColor = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = if (isSearchActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                                onClick = { onSearchOpenChange(true) }
                             )
 
-                            // Manage (Middle)
-                            Cookiebutton(
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    onManageClick()
-                                },
-                                icon = R.drawable.ic_folder_managed,
-                                closeIcon = Icons.Rounded.Close,
-                                isOpen = isManageOpen,
-                                contentDescription = if (isManageOpen) "Close Manage" else "Manage",
-                                size = 48.dp
-                            )
-
-                            // Filters
+                            // 3. Snippets
                             val hasFilterSnippets = uiState.selectedFilterSnippets.isNotEmpty()
-                            val isFilterHighlighted = isFilterOpen || hasFilterSnippets
-                            val filterContentDescription = if (isFilterOpen) "Close Filters" else "Filters"
-                            Cookiebutton(
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    onFilterClick()
-                                },
-                                icon = Icons.Rounded.FilterList,
-                                closeIcon = Icons.Rounded.Close,
-                                isOpen = isFilterOpen,
-                                isSelected = isFilterHighlighted,
-                                contentDescription = filterContentDescription,
-                                size = 48.dp
+                            ToolbarCookieItem(
+                                label = "Snippets",
+                                icon = Icons.AutoMirrored.Filled.TextSnippet,
+                                isSelected = isFilterOpen || hasFilterSnippets,
+                                isSpinning = !isAnyPopupActive,
+                                onClick = onFilterClick
+                            )
+
+                            // 4. More
+                            ToolbarCookieItem(
+                                label = "More",
+                                icon = R.drawable.ic_more_horiz_filled,
+                                isSpinning = !isAnyPopupActive,
+                                onClick = onMoreClick
                             )
                         }
                     }
