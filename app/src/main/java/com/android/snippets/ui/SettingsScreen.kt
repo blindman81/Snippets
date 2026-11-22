@@ -37,7 +37,6 @@ import androidx.compose.material.icons.rounded.Info
 
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Collections
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.rounded.LightMode
@@ -53,7 +52,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.animateFloatAsState
-import com.android.snippets.ui.theme.GoogleSansFlexWide
 import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.components.LoadingIndicator
 import androidx.compose.material.icons.automirrored.rounded.Sort
@@ -169,7 +167,7 @@ private fun SettingItemPill(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontFamily = GoogleSansFlexRound
                     ),
                     maxLines = 1,
@@ -183,7 +181,7 @@ private fun SettingItemPill(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontFamily = GoogleSansFlexRound,
                         lineHeight = 14.sp
                     ),
@@ -196,7 +194,7 @@ private fun SettingItemPill(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontFamily = GoogleSansFlexRound
                     ),
                     maxLines = 1,
@@ -303,24 +301,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Interface Section Header
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ShapedSectionHeader(icon = ImageVector.vectorResource(R.drawable.ic_mobile_section))
-                        Text(
-                            text = "Interface",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
                     val androidIcon = ImageVector.vectorResource(R.drawable.ic_android_logo)
                     val themeItems = remember(viewModel.themePreference, androidIcon) {
                         listOf(
@@ -392,28 +372,10 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
                     SettingsRow(items = expandItems)
 
-                    Spacer(modifier = Modifier.height(28.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    // Actions Section Header
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ShapedSectionHeader(icon = ImageVector.vectorResource(R.drawable.ic_more_section))
-                        Text(
-                            text = "Actions",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val isDailyBackupOn = viewModel.autoBackupSchedule != "Disabled"
-                    val dailyBackupIcon = if (isDailyBackupOn) {
+                    val isAutoBackupOn = viewModel.autoBackupSchedule != "Disabled"
+                    val autoBackupIcon = if (isAutoBackupOn) {
                         ImageVector.vectorResource(R.drawable.ic_backup_filled)
                     } else {
                         ImageVector.vectorResource(R.drawable.ic_backup_outlined)
@@ -421,7 +383,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
                     val exportIcon = ImageVector.vectorResource(R.drawable.ic_file_export)
                     val restoreIcon = ImageVector.vectorResource(R.drawable.ic_settings_backup_restore)
-                    val actionItems = remember(isDailyBackupOn, dailyBackupIcon, exportIcon, restoreIcon) {
+                    val moreItems = remember(isAutoBackupOn, autoBackupIcon, exportIcon, restoreIcon) {
                         listOf(
                             SettingItemData(
                                 title = "Export",
@@ -436,17 +398,17 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                                 onClick = { restoreLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*")) }
                             ),
                             SettingItemData(
-                                title = "Daily backup",
-                                icon = dailyBackupIcon,
-                                isSelected = isDailyBackupOn,
+                                title = "Auto backup",
+                                icon = autoBackupIcon,
+                                isSelected = isAutoBackupOn,
                                 onClick = {
-                                    val nextSchedule = if (isDailyBackupOn) "Disabled" else "Daily"
+                                    val nextSchedule = if (isAutoBackupOn) "Disabled" else "Daily"
                                     viewModel.updateAutoBackupSchedule(nextSchedule)
                                     if (nextSchedule == "Daily") {
                                         val currentTime = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date())
                                         Toast.makeText(
                                             context,
-                                            "Daily backup occurs at $currentTime",
+                                            "Auto backup occurs at $currentTime",
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
@@ -455,7 +417,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         )
                     }
 
-                    SettingsRow(items = actionItems)
+                    SettingsRow(items = moreItems)
 
                     Spacer(modifier = Modifier.height(36.dp))
                 }
@@ -534,16 +496,11 @@ private fun ButtonGroupScope.themeToggleableItem(
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                 Text(
                     text = label,
-                    style = if (checked) {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
-                            fontSize = 11.sp
-                        )
-                    } else {
-                        MaterialTheme.typography.labelLarge.copy(
-                            fontSize = 11.sp
-                        )
-                    },
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = GoogleSansFlexRound,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp
+                    ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -555,16 +512,11 @@ private fun ButtonGroupScope.themeToggleableItem(
                 text = {
                     Text(
                         text = label,
-                        style = if (checked) {
-                            MaterialTheme.typography.labelLarge.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexWide,
-                                fontSize = 11.sp
-                            )
-                        } else {
-                            MaterialTheme.typography.labelLarge.copy(
-                                fontSize = 11.sp
-                            )
-                        },
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = GoogleSansFlexRound,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
