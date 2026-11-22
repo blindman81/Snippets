@@ -9,8 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material.icons.rounded.HeartBroken
+import androidx.compose.material.icons.outlined.FilterListOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -90,25 +89,46 @@ fun PremiumEmptyState(
 }
 
 @Composable
-fun EmptyLibraryState() {
+fun EmptyLibraryState(
+    modifier: Modifier = Modifier
+) {
     PremiumEmptyState(
-        icon = ImageVector.vectorResource(R.drawable.ic_empty_library)
+        modifier = modifier,
+        icon = ImageVector.vectorResource(R.drawable.ic_box_add)
     )
 }
 
 @Composable
-fun EmptyFavoritesState() {
+fun EmptyBox1State(
+    modifier: Modifier = Modifier
+) {
     PremiumEmptyState(
-        icon = Icons.Rounded.HeartBroken
+        modifier = modifier,
+        icon = ImageVector.vectorResource(R.drawable.ic_box_add)
     )
 }
 
 @Composable
-fun EmptyCollectionState(
-    icon: ImageVector = Icons.Outlined.FolderOpen,
+fun EmptyBoxState(
+    modifier: Modifier = Modifier,
+    icon: ImageVector = ImageVector.vectorResource(R.drawable.ic_box_add),
     onClick: (() -> Unit)? = null
 ) {
     PremiumEmptyState(
+        modifier = modifier,
+        icon = icon,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun EmptyFilterState(
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Outlined.FilterListOff,
+    onClick: (() -> Unit)? = null
+) {
+    PremiumEmptyState(
+        modifier = modifier,
         icon = icon,
         onClick = onClick
     )
