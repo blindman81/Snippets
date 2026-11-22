@@ -457,7 +457,12 @@ object MediaSaver {
             val total = snippets.size
             val scalingFactor = com.android.snippets.ui.util.DistributionMath.getCloudScalingFactor(total)
             
-            val typeface = getCustomTypeface(context, "'wght' 700, 'ROND' 100") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            val typeface = getCustomTypeface(context, "'wght' 600, 'ROND' 100")
+                ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    Typeface.create(Typeface.DEFAULT, 600, false)
+                } else {
+                    Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
             val letterSpacingVal = 0f
 
             val baseFontSize = when (personality) {
@@ -468,6 +473,9 @@ object MediaSaver {
             var size = (baseFontSize * scalingFactor) * scaleFactor
             
             textPaint.typeface = typeface
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                textPaint.fontVariationSettings = "'wght' 600, 'ROND' 100"
+            }
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 textPaint.letterSpacing = letterSpacingVal
             }
@@ -538,6 +546,9 @@ object MediaSaver {
                 textPaint.color = getSnippetTextColorInt(context, isDark)
                 textPaint.textSize = pill.textSize * fitScale
                 textPaint.typeface = pill.typeface
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    textPaint.fontVariationSettings = "'wght' 600, 'ROND' 100"
+                }
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                     textPaint.letterSpacing = pill.spacing
                 }
@@ -560,7 +571,7 @@ object MediaSaver {
 
                 val currentBounds = Rect()
                 textPaint.getTextBounds(pill.text, 0, pill.text.length, currentBounds)
-                val textY = y - currentBounds.exactCenterY()
+                val textY = y - currentBounds.exactCenterY() + textPaint.textSize * 0.06f
                 canvas.drawText(pill.text, x, textY, textPaint)
                 canvas.restore()
                 
