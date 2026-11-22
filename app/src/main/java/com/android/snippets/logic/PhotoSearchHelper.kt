@@ -15,15 +15,20 @@ object PhotoSearchHelper {
     private val yearDateFormat = ThreadLocal.withInitial { SimpleDateFormat("yyyy", Locale.getDefault()) }
     private val dayOfWeekFormat = ThreadLocal.withInitial { SimpleDateFormat("EEEE", Locale.getDefault()) }
 
-    fun matchesTab(photo: Photo, tab: String): Boolean = when (tab) {
-        "Library" -> true
-        "Favorites" -> photo.isFavorite
-        else -> photo.collections.contains(tab)
+    fun matchesTab(photo: Photo, tab: String, boxIcons: Map<String, String> = emptyMap()): Boolean = when (tab) {
+        "Box", "Library" -> true
+        "Box 1", "Favorites" -> photo.isFavorite || (photo.collections.contains("Box 1") && photo.isFavorite) || photo.collections.contains("Favorites")
+        else -> {
+            val emoji = boxIcons[tab]?.takeIf { it.isNotBlank() }
+            photo.collections.contains(tab) ||
+                (emoji != null && photo.collections.contains(emoji)) ||
+                (tab == "Box 2" && photo.collections.contains("Box 1") && !photo.isFavorite)
+        }
     }
 
-    fun filterPhotosByTab(photos: List<Photo>, tab: String): List<Photo> {
-        if (tab == "Library") return photos
-        return photos.filter { matchesTab(it, tab) }
+    fun filterPhotosByTab(photos: List<Photo>, tab: String, boxIcons: Map<String, String> = emptyMap()): List<Photo> {
+        if (tab == "Box" || tab == "Library") return photos
+        return photos.filter { matchesTab(it, tab, boxIcons) }
     }
 
     fun filterPhotos(
@@ -31,10 +36,11 @@ object PhotoSearchHelper {
         parsed: ParsedSearchQuery,
         selectedFilterSnippets: List<String>,
         locationNameMap: Map<String, String> = emptyMap(),
-        tab: String? = null
+        tab: String? = null,
+        boxIcons: Map<String, String> = emptyMap()
     ): List<Photo> {
-        val baseList = if (tab != null && tab != "Library") {
-            photos.filter { matchesTab(it, tab) }
+        val baseList = if (tab != null && tab != "Box" && tab != "Library") {
+            photos.filter { matchesTab(it, tab, boxIcons) }
         } else {
             photos
         }
