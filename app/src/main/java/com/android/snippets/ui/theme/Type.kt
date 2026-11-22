@@ -8,6 +8,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
 import com.ln.android.snippets.R
 
@@ -20,28 +21,31 @@ fun roundness(value: Float): FontVariation.Setting {
     return FontVariation.Setting("ROND", value)
 }
 
+val baseVariation = FontVariation.Settings(roundness(100f))
+val wideBaseVariation = FontVariation.Settings(FontVariation.width(151f), roundness(100f))
+
 val GoogleSans = FontFamily(
-    Font(R.font.google_sans_flex, weight = FontWeight.Thin, variationSettings = FontVariation.Settings(FontVariation.weight(100), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Light, variationSettings = FontVariation.Settings(FontVariation.weight(300), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Black, variationSettings = FontVariation.Settings(FontVariation.weight(900), roundness(100f)))
+    Font(R.font.google_sans_flex, weight = FontWeight.Thin, variationSettings = baseVariation.merge(FontVariation.weight(100))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Light, variationSettings = baseVariation.merge(FontVariation.weight(300))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Normal, variationSettings = baseVariation.merge(FontVariation.weight(400))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Medium, variationSettings = baseVariation.merge(FontVariation.weight(500))),
+    Font(R.font.google_sans_flex, weight = FontWeight.SemiBold, variationSettings = baseVariation.merge(FontVariation.weight(600))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Bold, variationSettings = baseVariation.merge(FontVariation.weight(700))),
+    Font(R.font.google_sans_flex, weight = FontWeight.ExtraBold, variationSettings = baseVariation.merge(FontVariation.weight(800))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Black, variationSettings = baseVariation.merge(FontVariation.weight(900)))
 )
 
 val GoogleSansFlexRound = GoogleSans
 
 val GoogleSansFlexWide = FontFamily(
-    Font(R.font.google_sans_flex, weight = FontWeight.Thin, variationSettings = FontVariation.Settings(FontVariation.weight(100), FontVariation.width(151f), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Light, variationSettings = FontVariation.Settings(FontVariation.weight(300), FontVariation.width(151f), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400), FontVariation.width(151f), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500), FontVariation.width(151f), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600), FontVariation.width(151f), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700), FontVariation.width(151f), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800), FontVariation.width(151f), roundness(100f))),
-    Font(R.font.google_sans_flex, weight = FontWeight.Black, variationSettings = FontVariation.Settings(FontVariation.weight(900), FontVariation.width(151f), roundness(100f)))
+    Font(R.font.google_sans_flex, weight = FontWeight.Thin, variationSettings = wideBaseVariation.merge(FontVariation.weight(100))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Light, variationSettings = wideBaseVariation.merge(FontVariation.weight(300))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Normal, variationSettings = wideBaseVariation.merge(FontVariation.weight(400))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Medium, variationSettings = wideBaseVariation.merge(FontVariation.weight(500))),
+    Font(R.font.google_sans_flex, weight = FontWeight.SemiBold, variationSettings = wideBaseVariation.merge(FontVariation.weight(600))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Bold, variationSettings = wideBaseVariation.merge(FontVariation.weight(700))),
+    Font(R.font.google_sans_flex, weight = FontWeight.ExtraBold, variationSettings = wideBaseVariation.merge(FontVariation.weight(800))),
+    Font(R.font.google_sans_flex, weight = FontWeight.Black, variationSettings = wideBaseVariation.merge(FontVariation.weight(900)))
 )
 
 val Typography = Typography(
@@ -113,21 +117,24 @@ val Typography = Typography(
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
+        letterSpacing = 0.5.sp,
+        lineHeightStyle = LineHeightStyle.Default.copy(mode = LineHeightStyle.Mode.PerLine)
     ),
     bodyMedium = TextStyle(
         fontFamily = GoogleSans,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.25.sp
+        letterSpacing = 0.25.sp,
+        lineHeightStyle = LineHeightStyle.Default.copy(mode = LineHeightStyle.Mode.PerLine)
     ),
     bodySmall = TextStyle(
         fontFamily = GoogleSans,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
+        letterSpacing = 0.4.sp,
+        lineHeightStyle = LineHeightStyle.Default.copy(mode = LineHeightStyle.Mode.PerLine)
     ),
     labelLarge = TextStyle(
         fontFamily = GoogleSans,
@@ -156,5 +163,5 @@ val titleEmphasized = Typography.titleLarge.copy(
     fontFamily = GoogleSans,
     fontSize = 32.sp,
     lineHeight = 40.sp,
-    fontWeight = FontWeight.Bold
+    fontWeight = FontWeight.SemiBold
 )
