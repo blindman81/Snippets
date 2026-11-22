@@ -2,13 +2,14 @@ package com.android.snippets.ui.components
 
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import com.android.snippets.logic.PhotoSearchHelper
 import com.android.snippets.ui.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -68,38 +69,40 @@ fun LibraryPhotoPager(
             .then(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     Modifier
-                        .hazeSource(state = hazeState)
+                        .hazeSource(state = hazeState, zIndex = 0f)
                         .background(MaterialTheme.colorScheme.surfaceContainer)
                 } else Modifier
             ),
         pageSpacing = 16.dp
     ) { page ->
-        val tabForPage = pageTabs.getOrNull(page) ?: "Library"
-        val tabSortType = if (tabForPage == "Library") uiState.photoSortType else uiState.collectionPhotoSortTypes[tabForPage] ?: PhotoSortType.DateNewest
-        val pageFilteredPhotos = remember(flatPhotosRaw, tabForPage, tabSortType) {
-            val filtered = if (tabForPage == "Library") {
+        val tabForPage = pageTabs.getOrNull(page) ?: "Box"
+        val isBoxTab = tabForPage == "Box" || tabForPage == "Library"
+        val tabSortType = if (isBoxTab) uiState.photoSortType else uiState.boxPhotoSortTypes[tabForPage] ?: PhotoSortType.DateNewest
+        val pageFilteredPhotos = remember(flatPhotosRaw, tabForPage, tabSortType, uiState.boxIcons) {
+            val filtered = if (isBoxTab) {
                 flatPhotosRaw
             } else {
                 flatPhotosRaw.filter { photo ->
-                    when (tabForPage) {
-                        "Favorites" -> photo.isFavorite
-                        else -> photo.collections.contains(tabForPage)
-                    }
+                    PhotoSearchHelper.matchesTab(photo, tabForPage, uiState.boxIcons)
                 }
             }
             val effectiveRawSort = uiState.currentSearchSortType ?: uiState.photoSortType
-            if (tabForPage == "Library" && tabSortType == effectiveRawSort) {
+            if (isBoxTab && tabSortType == effectiveRawSort) {
                 filtered
             } else {
                 viewModel.sortPhotos(filtered, tabSortType)
             }
         }
 
-        val pageHasMemories = remember(memoryViewModel.historyMemories, tabForPage) {
-            tabForPage == "Library" && memoryViewModel.historyMemories.isNotEmpty()
+        val pageHasMemories = remember(memoryViewModel.historyMemories, tabForPage, uiState.searchQuery) {
+            isBoxTab && memoryViewModel.historyMemories.isNotEmpty() && uiState.searchQuery.isEmpty()
         }
         val effectiveTopPadding = if (statusBarTop > 0.dp) {
-            if (pageHasMemories) statusBarTop + 176.dp else statusBarTop + 72.dp
+            if (pageHasMemories) {
+                statusBarTop + 176.dp + 8.dp
+            } else {
+                statusBarTop + 72.dp + 8.dp
+            }
         } else {
             topGridPadding
         }
@@ -112,11 +115,11 @@ fun LibraryPhotoPager(
                 contentAlignment = Alignment.Center
             ) {
                 when (tabForPage) {
-                    "Favorites" -> EmptyFavoritesState()
-                    "Library" -> EmptyLibraryState()
+                    "Box 1", "Favorites" -> EmptyBox1State()
+                    "Box", "Library" -> EmptyLibraryState()
                     else -> {
                         if (!uiState.isSearching) {
-                            EmptyCollectionState(icon = Icons.Outlined.FolderOpen)
+                            EmptyBoxState()
                         }
                     }
                 }
@@ -124,7 +127,7 @@ fun LibraryPhotoPager(
         } else {
             val pageListState = listStates[tabForPage] ?: listStates.getOrPut(tabForPage) { LazyStaggeredGridState() }
 
-            LaunchedEffect(viewModel.selectedFilterSnippets) {
+            LaunchedEffect(viewModel.selectedFilterSnippets, uiState.searchQuery) {
                 pageListState.scrollToItem(0)
             }
 
@@ -132,6 +135,7 @@ fun LibraryPhotoPager(
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(1),
                     state = pageListState,
+                    cacheWindow = LazyLayoutCacheWindow(ahead = 320.dp, behind = 160.dp, isNonScrollCachingEnabled = true),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         start = 0.dp,
@@ -159,10 +163,10 @@ fun LibraryPhotoPager(
                             isSelected = isSelected,
                             selectionMode = uiState.isSelectionMode,
                             selectedCount = selectedCount,
-                            userCollections = uiState.userCollections,
+                            userBoxes = uiState.userBoxes,
                             locationNameMap = uiState.locationNameMap,
-                            collectionIcons = uiState.collectionIcons,
-                            showFavoriteIcon = tabForPage != "Favorites",
+                            boxIcons = uiState.boxIcons,
+                            showFavoriteIcon = tabForPage != "Box 1" && tabForPage != "Favorites",
                             tab = tabForPage,
                             isMostSnippets = isMost,
                             isLeastSnippets = isLeast,
