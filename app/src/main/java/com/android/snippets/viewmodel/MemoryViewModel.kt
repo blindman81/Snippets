@@ -28,7 +28,7 @@ class MemoryViewModel @Inject constructor(
     var photos by mutableStateOf<List<Photo>>(emptyList())
         private set
 
-    var themePreference by mutableStateOf(ThemePreference.SYSTEM)
+    var themePreference by mutableStateOf(userPreferencesRepository.cachedThemePreference ?: ThemePreference.SYSTEM)
         private set
 
     var useDynamicColors by mutableStateOf(true)
