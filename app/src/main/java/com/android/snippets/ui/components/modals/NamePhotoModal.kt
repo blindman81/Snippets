@@ -4,6 +4,13 @@ import android.content.Context
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -14,10 +21,12 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.android.snippets.ui.theme.GoogleSansFlexRound
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NamePhotoModal(
     initialName: String?,
@@ -28,14 +37,15 @@ fun NamePhotoModal(
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
-    var nameValue by remember { mutableStateOf(initialName ?: "") }
+    val nameState = rememberTextFieldState(initialName ?: "")
 
     BlurredAlertDialog(
         onDismissRequest = onDismiss,
         moveUpOnKeyboardOverlap = true,
         onConfirm = {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-            onSave(nameValue.trim().takeIf { it.isNotBlank() })
+            val trimmed = nameState.text.toString().trim()
+            onSave(trimmed.takeIf { it.isNotBlank() })
         },
         title = {
             Text(
@@ -51,16 +61,18 @@ fun NamePhotoModal(
         text = {
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = nameValue,
-                    onValueChange = {
-                        if (it.length <= 25) {
-                            nameValue = it
-                        }
-                    },
+                    state = nameState,
+                    inputTransformation = InputTransformation.maxLength(25),
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     textStyle = LocalTextStyle.current.copy(fontFamily = GoogleSansFlexRound),
                     label = { Text("Photo name", fontFamily = GoogleSansFlexRound) },
                     placeholder = { Text("Photo name", fontFamily = GoogleSansFlexRound) },
-                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    onKeyboardAction = {
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        val trimmed = nameState.text.toString().trim()
+                        onSave(trimmed.takeIf { it.isNotBlank() })
+                    },
                     leadingIcon = {
                         IconButton(onClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -72,19 +84,21 @@ fun NamePhotoModal(
                                         sysClipboard?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
                                     }
                                 if (!textToPaste.isNullOrBlank()) {
-                                    nameValue = textToPaste.trim().replace("\n", " ").replace("\r", "").take(25)
+                                    nameState.setTextAndPlaceCursorAtEnd(
+                                        textToPaste.trim().replace("\n", " ").replace("\r", "").take(25)
+                                    )
                                 }
                             }
                         }) {
                             Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste")
                         }
                     },
-                    trailingIcon = if (nameValue.isNotEmpty()) {
+                    trailingIcon = if (nameState.text.isNotEmpty()) {
                         {
                             IconButton(
                                 onClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                    nameValue = ""
+                                    nameState.clearText()
                                 },
                                 modifier = Modifier.size(28.dp)
                             ) {
@@ -96,13 +110,13 @@ fun NamePhotoModal(
                     shape = RoundedCornerShape(12.dp)
                 )
                 Text(
-                    text = "${nameValue.length}/25",
+                    text = "${nameState.text.length}/25",
                     style = MaterialTheme.typography.labelSmall.copy(fontFamily = GoogleSansFlexRound),
                     fontFamily = GoogleSansFlexRound,
-                    color = if (nameValue.length >= 25) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (nameState.text.length >= 25) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = if (nameValue.isNotEmpty()) 36.dp else 12.dp)
+                        .padding(end = if (nameState.text.isNotEmpty()) 36.dp else 12.dp)
                 )
             }
         }
