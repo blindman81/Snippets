@@ -1,6 +1,6 @@
 package com.android.snippets.ui
 
-import android.os.Build
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.theme.getSnippetTextStyle
 
 import android.view.HapticFeedbackConstants
@@ -10,13 +10,16 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlexBox
+import androidx.compose.foundation.layout.FlexWrap
+import androidx.compose.foundation.layout.FlexJustifyContent
+import androidx.compose.foundation.layout.FlexAlignItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +46,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.PhotoButtonGroup
+import com.android.snippets.ui.components.SnippetContainerList
 import com.android.snippets.ui.theme.rememberSnippetBackgroundColor
 import com.android.snippets.ui.theme.rememberSnippetTextColor
 import com.android.snippets.ui.util.LocationUtils
@@ -67,9 +71,9 @@ fun PhotoCard(
     isSelected: Boolean = false,
     selectionMode: Boolean = false,
     selectedCount: Int = 0,
-    userCollections: List<String> = emptyList(),
+    userBoxes: List<String> = emptyList(),
     locationNameMap: Map<String, String> = emptyMap(),
-    collectionIcons: Map<String, String> = emptyMap(),
+    boxIcons: Map<String, String> = emptyMap(),
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -120,7 +124,12 @@ fun PhotoCard(
 
     var imageRatio by remember(photo.id, photo.aspectRatio) { mutableStateOf(photo.aspectRatio) }
 
-    val photoShape = RoundedCornerShape(16.dp)
+    val photoShape = RoundedCornerShape(
+        topStart = 16.dp,
+        topEnd = 16.dp,
+        bottomEnd = 4.dp,
+        bottomStart = 4.dp
+    )
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -164,14 +173,31 @@ fun PhotoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(Motion.PhotoExpandSpring)
+                .animateContentSize(
+                    if (isExpanded) Motion.PhotoExpandSpring else Motion.PhotoCollapseSpring
+                )
         ) {
             if (!hasPhoto) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp)
-                        .height(240.dp),
+                        .height(240.dp)
+                        .clip(finalShape)
+                        .combinedClickable(
+                            interactionSource = interactionSource,
+                            indication = ripple(color = MaterialTheme.colorScheme.primary),
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                onClick()
+                            },
+                            onLongClick = {
+                                onLongClick?.let {
+                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    it.invoke()
+                                }
+                            }
+                        ),
                     shape = finalShape,
                     color = blockColor
                 ) {
@@ -189,13 +215,19 @@ fun PhotoCard(
                                 modifier = Modifier.size(36.dp)
                             )
                         } else {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.Center,
-                                verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.fillMaxWidth()
+                            FlexBox(
+                                modifier = Modifier.fillMaxWidth(),
+                                config = {
+                                    wrap(FlexWrap.Wrap)
+                                    justifyContent(FlexJustifyContent.Center)
+                                    alignItems(FlexAlignItems.Center)
+                                    gap(4.dp)
+                                    maxItemsInEachLine(4)
+                                }
                             ) {
                                 photo.snippets.forEach { snippet ->
                                     val snippetColor = rememberSnippetBackgroundColor()
+                                    val snippetInteractionSource = remember { MutableInteractionSource() }
 
                                     Surface(
                                         shape = CircleShape,
@@ -204,6 +236,21 @@ fun PhotoCard(
                                         modifier = Modifier
                                             .wrapContentWidth()
                                             .padding(4.dp)
+                                            .clip(CircleShape)
+                                            .combinedClickable(
+                                                interactionSource = snippetInteractionSource,
+                                                indication = ripple(color = MaterialTheme.colorScheme.primary),
+                                                onClick = {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                    onClick()
+                                                },
+                                                onLongClick = {
+                                                    onLongClick?.let {
+                                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                        it.invoke()
+                                                    }
+                                                }
+                                            )
                                     ) {
                                         Box(
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -213,7 +260,10 @@ fun PhotoCard(
                                                 text = snippet,
                                                 style = getSnippetTextStyle(
                                                     com.android.snippets.model.SnippetStyle.Default,
-                                                    MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                                    MaterialTheme.typography.titleMedium.copy(
+                                                        fontFamily = GoogleSansFlexRound,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    ),
                                                     isCloud = true
                                                 ),
                                                 color = if (isSelected) MaterialTheme.colorScheme.primary else rememberSnippetTextColor(),
@@ -299,14 +349,33 @@ fun PhotoCard(
                                     modifier = Modifier.align(Alignment.Center)
                                 )
 
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(photoShape)
+                                        .combinedClickable(
+                                            interactionSource = interactionSource,
+                                            indication = ripple(color = MaterialTheme.colorScheme.primary),
+                                            onClick = {
+                                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                                                onClick()
+                                            },
+                                            onLongClick = {
+                                                onLongClick?.let {
+                                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                    it.invoke()
+                                                }
+                                            }
+                                        )
+                                )
+
                             val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                             val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
 
-                            val showCollectionBadges = tab == "Library" || tab == "Favorites"
-                            val effectiveUserCollections = userCollections
-                            val validCollections = remember(photo.collections, effectiveUserCollections, showCollectionBadges) {
+                            val showCollectionBadges = tab == "Box" || tab == "Library" || tab == "Box 1" || tab == "Favorites"
+                            val validCollections = remember(photo.collections, userBoxes, showCollectionBadges) {
                                 if (showCollectionBadges) {
-                                    photo.collections.filter { effectiveUserCollections.isEmpty() || it in effectiveUserCollections }
+                                    photo.collections.filter { userBoxes.isEmpty() || it in userBoxes }
                                 } else {
                                     emptyList()
                                 }
@@ -369,11 +438,11 @@ fun PhotoCard(
                                     }
 
                                     validCollections.forEach { col ->
-                                        val iconOrEmoji = com.android.snippets.logic.CollectionManager.getCollectionIcon(
-                                            collection = col,
-                                            editingCollectionEmoji = null,
+                                        val iconOrEmoji = com.android.snippets.logic.BoxManager.getBoxIcon(
+                                            box = col,
+                                            editingBoxEmoji = null,
                                             editingEmojiPreview = null,
-                                            collectionIcons = collectionIcons
+                                            boxIcons = boxIcons
                                         )
                                         Surface(
                                             modifier = Modifier.size(28.dp),
@@ -411,7 +480,7 @@ fun PhotoCard(
                                                     }
                                                     else -> {
                                                         Icon(
-                                                            imageVector = Icons.Rounded.Folder,
+                                                            painter = painterResource(id = R.drawable.ic_box),
                                                             contentDescription = col,
                                                             tint = iconColor,
                                                             modifier = Modifier.size(16.dp)
@@ -448,7 +517,7 @@ fun PhotoCard(
                             }
 
                             androidx.compose.animation.AnimatedVisibility(
-                                visible = isExpanded,
+                                visible = isExpanded && !isSelected,
                                 enter = fadeIn(animationSpec = Motion.PhotoCardFade) + scaleIn(initialScale = 0.85f, animationSpec = Motion.PhotoCardFade),
                                 exit = fadeOut(animationSpec = Motion.PhotoCardExitFade) + scaleOut(targetScale = 0.85f, animationSpec = Motion.PhotoCardExitFade),
                                 modifier = Modifier
@@ -508,62 +577,14 @@ fun PhotoCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
-                if (photo.snippets.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .wrapContentWidth()
-                            .padding(start = 16.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_text_snippet_off),
-                            contentDescription = "No snippets",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                } else {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.Start),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .graphicsLayer { clip = false }
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        photo.snippets.forEach { snippet ->
-                            val snippetColor = rememberSnippetBackgroundColor()
-
-                            Surface(
-                                shape = CircleShape,
-                                color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor,
-                                border = null,
-                                modifier = Modifier.wrapContentWidth()
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    Text(
-                                        text = snippet,
-                                        style = getSnippetTextStyle(
-                                            com.android.snippets.model.SnippetStyle.Default,
-                                            MaterialTheme.typography.labelLarge,
-                                            isCloud = true
-                                        ),
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else rememberSnippetTextColor(),
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Clip
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                SnippetContainerList(
+                    snippets = photo.snippets,
+                    isSelected = isSelected,
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
             }
         }
     }
