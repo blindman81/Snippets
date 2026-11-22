@@ -5,8 +5,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TextSnippet
 import androidx.compose.material.icons.rounded.Clear
@@ -20,8 +25,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.snippets.model.Photo
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.viewmodel.SnippetsViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddSnippetsModal(
     photo: Photo,
@@ -30,15 +37,16 @@ fun AddSnippetsModal(
     viewModel: SnippetsViewModel
 ) {
     val view = LocalView.current
-    var text by remember { mutableStateOf("") }
+    val textState = rememberTextFieldState()
 
-    val filteredSuggestions = remember(text, viewModel.allUniqueSnippets, photo.snippets) {
+    val currentText = textState.text.toString()
+    val filteredSuggestions = remember(currentText, viewModel.allUniqueSnippets, photo.snippets) {
         val existing = photo.snippets.toSet()
-        if (text.isBlank()) {
+        if (currentText.isBlank()) {
             viewModel.allUniqueSnippets.filter { it !in existing }
         } else {
             viewModel.allUniqueSnippets.filter {
-                it !in existing && it.contains(text, ignoreCase = true) && !it.equals(text, ignoreCase = true)
+                it !in existing && it.contains(currentText, ignoreCase = true) && !it.equals(currentText, ignoreCase = true)
             }
         }
     }
@@ -47,9 +55,10 @@ fun AddSnippetsModal(
         onDismissRequest = onClose,
         moveUpOnKeyboardOverlap = true,
         onConfirm = {
-            if (text.isNotBlank()) {
+            val trimmed = textState.text.toString().trim()
+            if (trimmed.isNotBlank()) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                onAdd(text.trim())
+                onAdd(trimmed)
                 onClose()
             }
         },
@@ -58,8 +67,10 @@ fun AddSnippetsModal(
                 text = "Add a Snippet",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.SemiBold,
+                    fontFamily = GoogleSansFlexRound,
                     color = MaterialTheme.colorScheme.onSurface
-                )
+                ),
+                fontFamily = GoogleSansFlexRound
             )
         },
         text = {
@@ -69,20 +80,16 @@ fun AddSnippetsModal(
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
-                        value = text,
-                        onValueChange = {
-                            if (it.length <= 15) {
-                                text = it
-                            }
-                        },
+                        state = textState,
+                        inputTransformation = InputTransformation.maxLength(15),
                         placeholder = { Text("Enter snippet") },
-                        singleLine = true,
-                        trailingIcon = if (text.isNotEmpty()) {
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                        trailingIcon = if (textState.text.isNotEmpty()) {
                             {
                                 IconButton(
                                     onClick = {
                                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                        text = ""
+                                        textState.clearText()
                                     },
                                     modifier = Modifier.size(24.dp)
                                 ) {
@@ -95,21 +102,22 @@ fun AddSnippetsModal(
                             }
                         } else null,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = {
-                            if (text.isNotBlank()) {
+                        onKeyboardAction = {
+                            val trimmed = textState.text.toString().trim()
+                            if (trimmed.isNotBlank()) {
                                 view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                onAdd(text.trim())
+                                onAdd(trimmed)
                                 onClose()
                             }
-                        }),
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
 
                     Text(
-                        text = "${text.length}/15",
+                        text = "${textState.text.length}/15",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                        color = if (text.length >= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        color = if (textState.text.length >= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(top = 6.dp, end = 12.dp)
@@ -125,12 +133,15 @@ fun AddSnippetsModal(
                             SuggestionChip(
                                 onClick = {
                                     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                    text = suggestion
+                                    textState.setTextAndPlaceCursorAtEnd(suggestion)
                                 },
                                 label = {
                                     Text(
                                         text = suggestion,
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound,
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
