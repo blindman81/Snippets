@@ -38,7 +38,7 @@ fun DeleteConfirmationModal(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = if (count > 1) "Deleting these photos also deletes the snippets you created for them." else "Deleting this photo also deletes the snippets you created for this photo.",
+                    text = if (count > 1) "Snippets written for these photos will also be deleted." else "Snippets written for this photo will also be deleted.",
                     style = MaterialTheme.typography.bodyLarge.copy(fontFamily = GoogleSansFlexRound),
                     fontFamily = GoogleSansFlexRound,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
