@@ -5,7 +5,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import com.android.snippets.data.preferences.UserPreferencesRepository
+import com.android.snippets.model.ThemePreference
+import com.android.snippets.ui.theme.applyApplicationNightMode
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -16,13 +22,29 @@ import coil3.imageLoader
 import coil3.memory.MemoryCache
 import coil3.request.allowHardware
 import coil3.request.crossfade
-import coil3.util.DebugLogger
 
 @HiltAndroidApp
 class SnippetsApplication : Application(), SingletonImageLoader.Factory {
+    @Inject
+    lateinit var userPreferencesRepository: UserPreferencesRepository
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        initThemePreference()
+    }
+
+    private fun initThemePreference() {
+        val storedPref = runBlocking {
+            userPreferencesRepository.themePreferenceFlow.first()
+        }
+        val themePref = when (storedPref.uppercase()) {
+            "LIGHT" -> ThemePreference.LIGHT
+            "DARK" -> ThemePreference.DARK
+            else -> ThemePreference.SYSTEM
+        }
+        userPreferencesRepository.cachedThemePreference = themePref
+        applyApplicationNightMode(this, themePref)
     }
 
     @Suppress("DEPRECATION")
