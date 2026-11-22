@@ -301,18 +301,6 @@ object SnippetManager {
         )
     }
 
-    fun extractFavoritesUniqueSnippets(photos: List<Photo>): List<String> {
-        val set = LinkedHashSet<String>()
-        for (i in photos.indices) {
-            val p = photos[i]
-            if (p.isFavorite) {
-                val snips = p.snippets
-                for (j in snips.indices) set.add(snips[j])
-            }
-        }
-        return set.toList()
-    }
-
     fun extractAllUniqueSnippets(
         photos: List<Photo>,
         snippetSortType: com.android.snippets.viewmodel.SnippetSortType,
