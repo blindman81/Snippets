@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -124,6 +125,7 @@ fun MemoriesCarousel(
     ) {
         LazyRow(
             state = lazyListState,
+            cacheWindow = LazyLayoutCacheWindow(ahead = 160.dp, behind = 80.dp, isNonScrollCachingEnabled = true),
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { clip = false },
