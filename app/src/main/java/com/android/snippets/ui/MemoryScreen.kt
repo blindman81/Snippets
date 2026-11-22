@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.blur.BlurRadiusSpec
+import androidx.compose.ui.graphics.blur.BlurStop
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +38,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -263,15 +265,19 @@ fun MemoryScreen(
                     }
                     .then(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            Modifier.blur(
-                                BlurRadiusSpec.verticalGradient(
-                                    startRadius = 4.dp,
-                                    endRadius = 24.dp
-                                ),
-                                edgeTreatment = BlurredEdgeTreatment.Rectangle
-                            )
+                            Modifier.blur {
+                                blurRadiusSpec = BlurRadiusSpec.linearGradient(
+                                    start = DpOffset.Zero,
+                                    end = DpOffset(0.dp, size.height),
+                                    stops = listOf(
+                                        BlurStop(fraction = 0f, radius = 4.dp),
+                                        BlurStop(fraction = 1f, radius = 24.dp)
+                                    )
+                                )
+                                edgeTreatment = BlurredEdgeTreatment.Unbounded
+                            }
                         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            Modifier.blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Rectangle)
+                            Modifier.blur(32.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                         } else {
                             Modifier
                         }
@@ -750,7 +756,7 @@ fun FloatingSnippet(
     val baseStyle = when(personality) {
         0, 1 -> MaterialTheme.typography.headlineMedium.copy(fontSize = (24 * finalScaling).sp, fontWeight = FontWeight.Bold)
         2, 3 -> MaterialTheme.typography.titleLarge.copy(fontSize = (18 * finalScaling).sp, fontWeight = FontWeight.Bold)
-        else -> MaterialTheme.typography.labelLarge.copy(fontSize = (14 * finalScaling).sp, fontWeight = FontWeight.Normal)
+        else -> MaterialTheme.typography.labelLarge.copy(fontSize = (14 * finalScaling).sp, fontWeight = FontWeight.Bold)
     }
     val textStyle = com.android.snippets.ui.theme.getSnippetTextStyle(
         base = baseStyle,
@@ -792,18 +798,20 @@ fun FloatingSnippet(
                 ),
                 color = rememberSnippetTextColor(),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.padding(
-                    horizontal = (when (personality) {
-                        0, 1 -> 24
-                        2, 3 -> 18
-                        else -> 12
-                    } * finalScaling.coerceAtMost(1.5f)).dp,
-                    vertical = (when (personality) {
-                        0, 1 -> 12
-                        2, 3 -> 9
-                        else -> 6
-                    } * finalScaling.coerceAtMost(1.5f)).dp
-                )
+                modifier = Modifier
+                    .offset(y = 1.dp)
+                    .padding(
+                        horizontal = (when (personality) {
+                            0, 1 -> 24
+                            2, 3 -> 18
+                            else -> 12
+                        } * finalScaling.coerceAtMost(1.5f)).dp,
+                        vertical = (when (personality) {
+                            0, 1 -> 12
+                            2, 3 -> 9
+                            else -> 6
+                        } * finalScaling.coerceAtMost(1.5f)).dp
+                    )
             )
         }
     }
