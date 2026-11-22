@@ -5,19 +5,20 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlexBox
+import androidx.compose.foundation.layout.FlexWrap
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.outlined.FilterListOff
+import com.android.snippets.ui.EmptyFilterState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,7 @@ import com.android.snippets.ui.theme.getSnippetTextStyle
 fun FilterSnippetContent(   
     viewModel: SnippetsViewModel,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
     showDisplay: Boolean = false,
     showSort: Boolean = true,
     scrollState: androidx.compose.foundation.ScrollState? = null,
@@ -43,25 +45,58 @@ fun FilterSnippetContent(
     val view = LocalView.current
     val internalScrollState = rememberScrollState()
     val effectiveScrollState = scrollState ?: internalScrollState
-    val allSnippets = remember(uiState.photos, uiState.filteringCategory) {
+
+    val photosInTab = remember(uiState.photos, uiState.filteringCategory) {
         val cat = uiState.filteringCategory ?: "Library"
         PhotoSearchHelper.filterPhotosByTab(uiState.photos, cat)
-            .flatMap { it.snippets }
-            .distinct()
     }
 
-    val snippetCreationDates = remember(uiState.photos, uiState.snippetFirstSeenTimes) {
-        val map = mutableMapOf<String, Long>()
-        uiState.photos.flatMap { it.snippets }.distinct().forEach { snippet ->
-            val time = viewModel.getSnippetFirstSeenTime(snippet)
-            if (time != null && time > 0L) {
-                map[snippet] = time
-            } else {
-                val earliestPhotoTime = uiState.photos.filter { it.snippets.contains(snippet) }.minOfOrNull {
-                    if (it.snippetsAddedTime > 0L) it.snippetsAddedTime else it.date
+    val allSnippets = remember(photosInTab) {
+        val set = LinkedHashSet<String>()
+        for (photo in photosInTab) {
+            set.addAll(photo.snippets)
+        }
+        set.toList()
+    }
+
+    val snippetPhotoCounts = remember(photosInTab, allSnippets) {
+        val counts = HashMap<String, Int>(allSnippets.size)
+        for (s in allSnippets) {
+            counts[s] = 0
+        }
+        val canonicalMap = allSnippets.associateBy { it.lowercase() }
+        for (photo in photosInTab) {
+            val seenInPhoto = HashSet<String>()
+            for (s in photo.snippets) {
+                val canon = canonicalMap[s.lowercase()] ?: s
+                if (seenInPhoto.add(canon)) {
+                    counts[canon] = (counts[canon] ?: 0) + 1
                 }
-                if (earliestPhotoTime != null) {
-                    map[snippet] = earliestPhotoTime
+            }
+        }
+        counts
+    }
+
+    val snippetCreationDates = remember(uiState.photos, uiState.snippetFirstSeenTimes, allSnippets) {
+        val map = HashMap<String, Long>(allSnippets.size)
+        for (s in allSnippets) {
+            val time = uiState.snippetFirstSeenTimes[s]
+            if (time != null && time > 0L) {
+                map[s] = time
+            }
+        }
+        val missing = allSnippets.filter { !map.containsKey(it) }
+        if (missing.isNotEmpty()) {
+            val missingSet = missing.toSet()
+            for (photo in uiState.photos) {
+                val photoTime = if (photo.snippetsAddedTime > 0L) photo.snippetsAddedTime else photo.date
+                for (s in photo.snippets) {
+                    if (missingSet.contains(s)) {
+                        val current = map[s]
+                        if (current == null || photoTime < current) {
+                            map[s] = photoTime
+                        }
+                    }
                 }
             }
         }
@@ -70,8 +105,16 @@ fun FilterSnippetContent(
 
     val monthFormat = remember { java.text.SimpleDateFormat("MMM, yyyy", java.util.Locale.getDefault()) }
 
-    val filteredSnippets = remember(allSnippets, uiState.snippetSortType) {
+    val azSnippets = remember(allSnippets) {
+        allSnippets.filter { snippet ->
+            val firstLetter = snippet.firstOrNull { it.isLetter() }?.uppercaseChar()
+            firstLetter != null || (!viewModel.containsEmoji(snippet) && snippet.any { it.isDigit() })
+        }
+    }
+
+    val filteredSnippets = remember(allSnippets, uiState.snippetSortType, azSnippets) {
         when (uiState.snippetSortType) {
+            SnippetSortType.AZ -> azSnippets
             SnippetSortType.Emoji -> allSnippets.filter { viewModel.containsEmoji(it) }
             SnippetSortType.Emoticons -> allSnippets.filter { viewModel.containsEmoticon(it) }
             else -> allSnippets
@@ -87,93 +130,132 @@ fun FilterSnippetContent(
         }
     }
 
-    val sortedKeys = remember(grouped, isOld, monthFormat) {
-        if (isOld) {
-            grouped.keys.sortedBy { monthFormat.parse(it)?.time ?: 0L }
-        } else {
-            grouped.keys.sortedByDescending { monthFormat.parse(it)?.time ?: 0L }
+    val groupTimestamps = remember(grouped, snippetCreationDates) {
+        grouped.mapValues { (_, snips) ->
+            snips.minOfOrNull { snippetCreationDates[it] ?: 0L } ?: 0L
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(effectiveScrollState)
-            .padding(horizontal = 24.dp, vertical = 8.dp)
-    ) {
-        if (allSnippets.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 180.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.FilterListOff,
-                    contentDescription = null,
-                    modifier = Modifier.size(72.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else if (uiState.snippetSortType == SnippetSortType.AZ) {
-            val groupedByChar = remember(allSnippets) {
-                allSnippets.groupBy { it.firstOrNull()?.uppercaseChar() ?: '#' }
-            }
-            val sortedChars = remember(groupedByChar) {
-                groupedByChar.keys.sorted()
-            }
-
-            sortedChars.forEachIndexed { index, char ->
-                Text(
-                    text = char.toString(),
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
-                    ),
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = if (index == 0) 4.dp else 16.dp, bottom = 8.dp)
-                )
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val snippetsInChar = groupedByChar[char]?.sortedWith(String.CASE_INSENSITIVE_ORDER)
-                    snippetsInChar?.forEach { snippet ->
-                        val isSelected = uiState.selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
-                        SnippetFilterChip(viewModel, snippet, isSelected, view)
-                    }
-                }
-            }
+    val sortedKeys = remember(grouped, isOld, groupTimestamps) {
+        if (isOld) {
+            grouped.keys.sortedBy { groupTimestamps[it] ?: 0L }
         } else {
-            sortedKeys.forEachIndexed { index, key ->
-                Text(
-                    text = key,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound
-                    ),
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = if (index == 0) 4.dp else 16.dp, bottom = 8.dp)
-                )
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val snippetsInGroup = if (isOld) {
-                        grouped[key]?.sortedBy { snippetCreationDates[it] ?: 0L }
-                    } else {
-                        grouped[key]?.sortedByDescending { snippetCreationDates[it] ?: 0L }
-                    }
-                    snippetsInGroup?.forEach { snippet ->
-                        val isSelected = uiState.selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
-                        SnippetFilterChip(viewModel, snippet, isSelected, view)
-                    }
-                }
+            grouped.keys.sortedByDescending { groupTimestamps[it] ?: 0L }
+        }
+    }
+
+    val sortedGroupedSnippets = remember(grouped, isOld, snippetCreationDates) {
+        grouped.mapValues { (_, list) ->
+            if (isOld) {
+                list.sortedBy { snippetCreationDates[it] ?: 0L }
+            } else {
+                list.sortedByDescending { snippetCreationDates[it] ?: 0L }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    val isContentLoading = uiState.isInitialLoading && uiState.photos.isEmpty()
+    val isListEmpty = filteredSnippets.isEmpty()
+
+    if (isContentLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .heightIn(min = 180.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(36.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 3.dp
+            )
+        }
+    } else if (isListEmpty) {
+        EmptyFilterState(modifier = modifier)
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .verticalScroll(effectiveScrollState)
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+        ) {
+            if (uiState.snippetSortType == SnippetSortType.AZ) {
+                val snippetComparator = remember {
+                    Comparator<String> { a, b ->
+                        val cleanA = a.dropWhile { !it.isLetter() }
+                        val cleanB = b.dropWhile { !it.isLetter() }
+                        val res = cleanA.compareTo(cleanB, ignoreCase = true)
+                        if (res != 0) res else a.compareTo(b, ignoreCase = true)
+                    }
+                }
+                val groupedByChar = remember(azSnippets, snippetComparator) {
+                    azSnippets.groupBy { snippet ->
+                        snippet.firstOrNull { it.isLetter() }?.uppercaseChar() ?: '#'
+                    }.mapValues { (_, list) -> list.sortedWith(snippetComparator) }
+                }
+                val sortedChars = remember(groupedByChar) {
+                    groupedByChar.keys.sortedWith { a, b ->
+                        if (a == '#') 1 else if (b == '#') -1 else a.compareTo(b)
+                    }
+                }
+
+                sortedChars.forEachIndexed { index, char ->
+                    Text(
+                        text = char.toString(),
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = if (index == 0) 4.dp else 16.dp, bottom = 8.dp)
+                    )
+                    FlexBox(
+                        modifier = Modifier.fillMaxWidth(),
+                        config = {
+                            wrap(FlexWrap.Wrap)
+                            gap(12.dp)
+                            maxItemsInEachLine(4)
+                        }
+                    ) {
+                        val snippetsInChar = groupedByChar[char]
+                        snippetsInChar?.forEach { snippet ->
+                            val isSelected = uiState.selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
+                            val count = snippetPhotoCounts[snippet] ?: 0
+                            SnippetFilterChip(viewModel, snippet, isSelected, count, view)
+                        }
+                    }
+                }
+            } else {
+                sortedKeys.forEachIndexed { index, key ->
+                    Text(
+                        text = key,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = if (index == 0) 4.dp else 16.dp, bottom = 8.dp)
+                    )
+                    FlexBox(
+                        modifier = Modifier.fillMaxWidth(),
+                        config = {
+                            wrap(FlexWrap.Wrap)
+                            gap(12.dp)
+                            maxItemsInEachLine(4)
+                        }
+                    ) {
+                        val snippetsInGroup = sortedGroupedSnippets[key]
+                        snippetsInGroup?.forEach { snippet ->
+                            val isSelected = uiState.selectedFilterSnippets.any { it.equals(snippet, ignoreCase = true) }
+                            val count = snippetPhotoCounts[snippet] ?: 0
+                            SnippetFilterChip(viewModel, snippet, isSelected, count, view)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.navigationBarsPadding())
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }
 
@@ -182,6 +264,7 @@ private fun SnippetFilterChip(
     viewModel: SnippetsViewModel,
     snippet: String,
     isSelected: Boolean,
+    count: Int,
     view: android.view.View
 ) {
     FilterChip(
@@ -191,26 +274,49 @@ private fun SnippetFilterChip(
             viewModel.toggleFilterSnippet(snippet)
         },
         label = {
-            Text(
-                text = snippet,
-                style = getSnippetTextStyle(
-                    SnippetStyle.Default,
-                    MaterialTheme.typography.bodyMedium.copy(
-                        fontFamily = if (isSelected) com.android.snippets.ui.theme.GoogleSansFlexWide else com.android.snippets.ui.theme.GoogleSansFlexRound,
-                        fontWeight = FontWeight.Bold
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = "Selected",
+                        modifier = Modifier.size(FilterChipDefaults.IconSize),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                Text(
+                    text = snippet,
+                    style = getSnippetTextStyle(
+                        SnippetStyle.Default,
+                        MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     )
                 )
-            )
-        },
-        leadingIcon = if (isSelected) {
-            {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = "Selected",
-                    modifier = Modifier.size(FilterChipDefaults.IconSize)
-                )
+                if (isSelected && count > 0) {
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.22f))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = count.toString(),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
             }
-        } else null,
+        },
+        leadingIcon = null,
         shape = RoundedCornerShape(8.dp),
         colors = FilterChipDefaults.filterChipColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
