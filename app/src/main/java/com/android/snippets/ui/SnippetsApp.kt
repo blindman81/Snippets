@@ -18,9 +18,11 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.android.snippets.ui.components.BusyOverlay
 import com.android.snippets.ui.components.DeleteConfirmationModal
+import com.android.snippets.ui.components.modals.RequestTileServiceModal
 import com.android.snippets.ui.components.LocalHazeState
 import com.android.snippets.ui.components.SnippetsSnackbarEffect
 import com.android.snippets.ui.components.SnippetsSnackbarHost
@@ -32,25 +34,25 @@ import dev.chrisbanes.haze.hazeSource
 @Composable
 fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var pendingCollectionForPicker by remember { mutableStateOf<String?>(null) }
+    var pendingBoxForPicker by remember { mutableStateOf<String?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            val pendingColl = pendingCollectionForPicker
-            if (pendingColl != null && pendingColl != "Library" && pendingColl != "Favorites") {
-                viewModel.addPhotosToCollection(uris, pendingColl)
+            val pendingBox = pendingBoxForPicker
+            if (pendingBox != null && pendingBox != "Box" && pendingBox != "Library" && pendingBox != "Box 1" && pendingBox != "Favorites") {
+                viewModel.addPhotosToBox(uris, pendingBox)
             } else {
-                viewModel.addPhotos(uris, isFavorite = uiState.pendingFavoriteIntent)
+                viewModel.addPhotos(uris, isFavorite = uiState.pendingFavoriteIntent || pendingBox == "Box 1" || pendingBox == "Favorites")
             }
-            pendingCollectionForPicker = null
+            pendingBoxForPicker = null
         }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val showLoadingOverlay = uiState.isInitialLoading || uiState.isAddingPhotos || uiState.isBusy || uiState.isCuratingMemories
-    val isOverlayShowing = uiState.showBulkDeleteModal || uiState.showFilterSheet || showLoadingOverlay
+    val isOverlayShowing = uiState.showBulkDeleteModal || uiState.showRequestTileDialog || showLoadingOverlay
 
     SnippetsSnackbarEffect(
         viewModel = viewModel,
@@ -88,13 +90,13 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                     windowSizeClass = windowSizeClass,
                     onAddPhotos = { tab ->
                         when (tab) {
-                            "Library" -> {
+                            "Box", "Library" -> {
                                 viewModel.pendingFavoriteIntent = false
-                                pendingCollectionForPicker = null
+                                pendingBoxForPicker = null
                                 photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                             }
-                            "Favorites" -> viewModel.startCollectionAssignment("Favorites")
-                            else -> viewModel.startCollectionAssignment(tab)
+                            "Box 1", "Favorites" -> viewModel.startBoxAssignment("Box 1")
+                            else -> viewModel.startBoxAssignment(tab)
                         }
                     }
                 )
@@ -115,6 +117,14 @@ fun SnippetsApp(viewModel: SnippetsViewModel, windowSizeClass: WindowSizeClass) 
                             viewModel.showBulkDeleteModal = false
                             viewModel.deleteSelectedPhotos(unpublish = false)
                         }
+                    )
+                }
+
+                if (uiState.showRequestTileDialog) {
+                    val context = LocalContext.current
+                    RequestTileServiceModal(
+                        onDismiss = { viewModel.dismissRequestTileDialog() },
+                        onConfirm = { viewModel.confirmRequestTileDialog(context) }
                     )
                 }
             }
