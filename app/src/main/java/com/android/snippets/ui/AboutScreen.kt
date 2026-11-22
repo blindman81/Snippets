@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.snippets.ui.components.*
+import com.android.snippets.ui.theme.GoogleSansFlexRound
 import com.android.snippets.ui.util.fadingEdge
 import com.ln.android.snippets.R
 import dev.chrisbanes.haze.hazeSource
@@ -38,13 +39,28 @@ fun AboutScreen() {
     val hazeState = LocalHazeState.current ?: rememberHazeState()
     var showLicenses by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
-    val isScrolled by remember { derivedStateOf<Boolean> { scrollState.value > 0 } }
+    val isScrolled by remember { derivedStateOf { scrollState.value > 0 } }
     
     val nestedScrollConnection = remember {
         object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
-            override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
-                return androidx.compose.ui.geometry.Offset.Zero
-            }
+            override fun onPreScroll(
+                available: androidx.compose.ui.geometry.Offset,
+                source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
+            ): androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero
+
+            override fun onPostScroll(
+                consumed: androidx.compose.ui.geometry.Offset,
+                available: androidx.compose.ui.geometry.Offset,
+                source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
+            ): androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero
+
+            override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity =
+                androidx.compose.ui.unit.Velocity.Zero
+
+            override suspend fun onPostFling(
+                consumed: androidx.compose.ui.unit.Velocity,
+                available: androidx.compose.ui.unit.Velocity
+            ): androidx.compose.ui.unit.Velocity = androidx.compose.ui.unit.Velocity.Zero
         }
     }
 
@@ -101,33 +117,37 @@ fun AboutScreen() {
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = "UI and UX ideas",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold
+                                text = "UI and UX design ideas",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = GoogleSansFlexRound
                                 ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
                             )
                             Text(
                                 text = "Lakshmi Narayana",
                                 style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = GoogleSansFlexRound
                                 ),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center
                             )
+                            Text(
+                                text = "Code by Agentic tools.",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = GoogleSansFlexRound
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.widthIn(max = 280.dp)
+                            )
                         }
-
-                        Text(
-                            text = "Code by Agentic tools.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.widthIn(max = 280.dp)
-                        )
 
                         Cookiebutton(
                             onClick = {
@@ -184,8 +204,10 @@ fun LicenseDialog(onDismiss: () -> Unit) {
         title = {
             Text(
                 "Open source licenses",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = GoogleSansFlexRound,
+                    fontWeight = FontWeight.SemiBold
+                ),
                 color = MaterialTheme.colorScheme.onSurface
             )
         },
@@ -264,18 +286,26 @@ private fun LicenseItem(name: String, license: String, copyright: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = name,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontFamily = GoogleSansFlexRound,
+                fontWeight = FontWeight.SemiBold
+            ),
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = license,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = GoogleSansFlexRound,
+                fontWeight = FontWeight.SemiBold
+            ),
             color = MaterialTheme.colorScheme.primary
         )
         Text(
             text = copyright,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = GoogleSansFlexRound,
+                fontWeight = FontWeight.SemiBold
+            ),
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
         )
     }
