@@ -1,6 +1,7 @@
 package com.android.snippets.logic
 
 import android.Manifest
+import com.android.snippets.model.ThemePreference
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager

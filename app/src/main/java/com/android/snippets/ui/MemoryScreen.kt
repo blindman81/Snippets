@@ -1,6 +1,7 @@
 package com.android.snippets.ui
 
 import android.content.Intent
+import com.android.snippets.model.ThemePreference
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
@@ -98,9 +99,9 @@ fun MemoryScreen(
     }
 
     val isDarkTheme = when (viewModel.themePreference) {
-        com.android.snippets.viewmodel.ThemePreference.LIGHT -> false
-        com.android.snippets.viewmodel.ThemePreference.DARK -> true
-        com.android.snippets.viewmodel.ThemePreference.SYSTEM -> isSystemInDarkTheme()
+        ThemePreference.LIGHT -> false
+        ThemePreference.DARK -> true
+        ThemePreference.SYSTEM -> isSystemInDarkTheme()
     }
 
     LaunchedEffect(isDarkTheme) {

@@ -66,7 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalView
 import android.view.HapticFeedbackConstants
 import com.android.snippets.viewmodel.SettingsViewModel
-import com.android.snippets.viewmodel.ThemePreference
+import com.android.snippets.model.ThemePreference
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring

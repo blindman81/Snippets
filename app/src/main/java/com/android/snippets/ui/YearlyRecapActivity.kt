@@ -22,7 +22,7 @@ import com.android.snippets.ui.theme.SnippetsTheme
 import com.android.snippets.ui.theme.configurePredictiveBackTransition
 import com.android.snippets.viewmodel.SnippetsViewModel
 import com.android.snippets.viewmodel.SettingsViewModel
-import com.android.snippets.viewmodel.ThemePreference
+import com.android.snippets.model.ThemePreference
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

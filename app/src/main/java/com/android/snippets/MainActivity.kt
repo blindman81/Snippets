@@ -1,6 +1,7 @@
 package com.android.snippets
 
 import androidx.activity.result.contract.ActivityResultContracts
+import com.android.snippets.model.ThemePreference
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
@@ -222,9 +223,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val isDarkTheme = when (settingsViewModel.themePreference) {
-                com.android.snippets.viewmodel.ThemePreference.LIGHT -> false
-                com.android.snippets.viewmodel.ThemePreference.DARK -> true
-                com.android.snippets.viewmodel.ThemePreference.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+                ThemePreference.LIGHT -> false
+                ThemePreference.DARK -> true
+                ThemePreference.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
             }
             
             SnippetsTheme(

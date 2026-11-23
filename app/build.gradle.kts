@@ -16,8 +16,8 @@ android {
         applicationId = "com.ln.android.snippets"
         minSdk = 24
         targetSdk = 35
-        versionCode = 34
-        versionName = "7.0"
+        versionCode = 35
+        versionName = "7.1"
     }
 
     buildTypes {

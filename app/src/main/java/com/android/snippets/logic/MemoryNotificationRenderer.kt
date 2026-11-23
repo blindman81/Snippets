@@ -1,6 +1,7 @@
 package com.android.snippets.logic
 
 import android.content.Context
+import com.android.snippets.model.ThemePreference
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color

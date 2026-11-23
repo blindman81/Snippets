@@ -11,7 +11,6 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.android.snippets.model.ThemePreference
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -57,7 +56,6 @@ data class UserPreferences(
     val snippetFirstSeenJson: String = "{}",
     val memoryPostedNotificationIds: Set<String> = emptySet(),
     val hasPromptedNotificationPermission: Boolean = false,
-    val hasRequestedTileService: Boolean = false,
     val lastSeenAppVersionCode: Int = 0
 )
 
@@ -66,9 +64,6 @@ data class UserPreferences(
  * Migrates existing data from SharedPreferences ("snippets_prefs") automatically.
  */
 class UserPreferencesRepository(private val context: Context) {
-
-    @Volatile
-    var cachedThemePreference: ThemePreference? = null
 
     val dataStore: DataStore<Preferences> = context.dataStore
 
@@ -98,7 +93,6 @@ class UserPreferencesRepository(private val context: Context) {
         val SNIPPET_FIRST_SEEN_JSON = stringPreferencesKey("snippet_first_seen_json")
         val MEMORY_POSTED_IDS = stringSetPreferencesKey("posted_ids")
         val HAS_PROMPTED_NOTIFICATION_PERMISSION = booleanPreferencesKey("has_prompted_notification_permission")
-        val HAS_REQUESTED_TILE_SERVICE = booleanPreferencesKey("has_requested_tile_service")
         val LAST_SEEN_APP_VERSION_CODE = intPreferencesKey("last_seen_app_version_code")
     }
 
@@ -189,7 +183,6 @@ class UserPreferencesRepository(private val context: Context) {
             snippetFirstSeenJson = preferences[PreferencesKeys.SNIPPET_FIRST_SEEN_JSON] ?: "{}",
             memoryPostedNotificationIds = preferences[PreferencesKeys.MEMORY_POSTED_IDS] ?: emptySet(),
             hasPromptedNotificationPermission = preferences[PreferencesKeys.HAS_PROMPTED_NOTIFICATION_PERMISSION] ?: false,
-            hasRequestedTileService = preferences[PreferencesKeys.HAS_REQUESTED_TILE_SERVICE] ?: false,
             lastSeenAppVersionCode = preferences[PreferencesKeys.LAST_SEEN_APP_VERSION_CODE] ?: 0
         )
     }
@@ -325,12 +318,6 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateHasPromptedNotificationPermission(prompted: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.HAS_PROMPTED_NOTIFICATION_PERMISSION] = prompted
-        }
-    }
-
-    suspend fun updateHasRequestedTileService(requested: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.HAS_REQUESTED_TILE_SERVICE] = requested
         }
     }
 
