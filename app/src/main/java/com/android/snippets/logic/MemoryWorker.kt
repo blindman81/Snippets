@@ -307,13 +307,9 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         if (canPostNotifications(applicationContext) && !isInMemoryScreen) {
             val curated = MemoryManager.getCuratedMemories(finalPhotos, now).take(MemoryManager.MEMORIES_PER_CYCLE)
             val unviewed = curated.filter { !it.isViewed }
-            for ((index, photo) in unviewed.withIndex()) {
+            for (photo in unviewed) {
                 clearPostedNotificationState(applicationContext, photo.id)
-                postNotification(
-                    photo.id,
-                    TYPE_NEW,
-                    showBigPictureWhenCollapsed = index == 0
-                )
+                postNotification(photo.id, TYPE_NEW)
             }
             RecapManager.checkAndPostRecapNotification(applicationContext, finalPhotos)
         }
@@ -322,11 +318,7 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         return Result.success()
     }
 
-    private suspend fun postNotification(
-        photoId: String,
-        notificationType: String,
-        showBigPictureWhenCollapsed: Boolean = false
-    ) {
+    private suspend fun postNotification(photoId: String, notificationType: String) {
         val notificationManager =
             applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val pendingIntent = PendingIntent.getActivity(
@@ -398,10 +390,6 @@ class MemoryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 .bigPicture(memoryCardBitmap)
                 .bigLargeIcon(rawBitmap)
                 .setBigContentTitle(title)
-
-            if (showBigPictureWhenCollapsed) {
-                bigPictureStyle.showBigPictureWhenCollapsed(true)
-            }
 
             if (!text.isNullOrBlank()) {
                 bigPictureStyle.setSummaryText(text)
