@@ -2,6 +2,13 @@ package com.android.snippets.ui.components
 
 import android.view.View
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -275,16 +283,44 @@ private fun SnippetFilterChip(
         },
         label = {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = "Selected",
-                        modifier = Modifier.size(FilterChipDefaults.IconSize),
-                        tint = MaterialTheme.colorScheme.onPrimary
+                AnimatedVisibility(
+                    visible = isSelected,
+                    enter = expandHorizontally(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        expandFrom = Alignment.Start
+                    ) + fadeIn(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
+                    exit = shrinkHorizontally(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        shrinkTowards = Alignment.Start
+                    ) + fadeOut(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
                     )
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = "Selected",
+                            modifier = Modifier.size(FilterChipDefaults.IconSize),
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                 }
                 Text(
                     text = snippet,
@@ -296,22 +332,51 @@ private fun SnippetFilterChip(
                         )
                     )
                 )
-                if (isSelected && count > 0) {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.22f))
-                            .padding(horizontal = 6.dp, vertical = 1.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = count.toString(),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.onPrimary
+                AnimatedVisibility(
+                    visible = isSelected && count > 0,
+                    enter = expandHorizontally(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        expandFrom = Alignment.Start
+                    ) + fadeIn(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
                         )
+                    ),
+                    exit = shrinkHorizontally(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        shrinkTowards = Alignment.Start
+                    ) + fadeOut(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.22f))
+                                .padding(horizontal = 6.dp, vertical = 1.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = count.toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = com.android.snippets.ui.theme.GoogleSansFlexRound,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             }
@@ -326,6 +391,11 @@ private fun SnippetFilterChip(
             selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
             selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
         ),
-        border = null
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = isSelected,
+            borderColor = MaterialTheme.colorScheme.outlineVariant,
+            selectedBorderColor = Color.Transparent
+        )
     )
 }
