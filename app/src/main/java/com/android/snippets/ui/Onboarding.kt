@@ -12,12 +12,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Cookie
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -575,11 +577,32 @@ private fun CookiebuttonPage(
                     scaleX = animScaleX.value
                     scaleY = animScaleY.value
                     clip = false
-                }
-                .clip(currentShape)
-                .background(animatedContainerColor),
+                },
             contentAlignment = Alignment.Center
         ) {
+            // Outline variant (bottom layer)
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(currentShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .border(
+                        border = ButtonDefaults.outlinedButtonBorder(enabled = true),
+                        shape = currentShape
+                    )
+            )
+            // Primary layer (drawn OVER outline variant)
+            if (primaryAlpha > 0.001f) {
+                val primaryBg = MaterialTheme.colorScheme.primary
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer { alpha = primaryAlpha }
+                        .border(1.dp, primaryBg, currentShape)
+                        .clip(currentShape)
+                        .background(primaryBg)
+                )
+            }
             Icon(
                 imageVector = Icons.Rounded.Cookie,
                 contentDescription = null,
