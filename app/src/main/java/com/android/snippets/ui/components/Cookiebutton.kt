@@ -79,6 +79,7 @@ fun Cookiebutton(
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
     isOpen: Boolean = false,
+    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     CookiebuttonImpl(
@@ -108,6 +109,7 @@ fun Cookiebutton(
         holdScale = holdScale,
         closeIcon = closeIcon,
         isOpen = isOpen,
+        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface
     )
 }
@@ -135,6 +137,7 @@ fun Cookiebutton(
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
     isOpen: Boolean = false,
+    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     CookiebuttonImpl(
@@ -164,6 +167,7 @@ fun Cookiebutton(
         holdScale = holdScale,
         closeIcon = closeIcon,
         isOpen = isOpen,
+        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface
     )
 }
@@ -190,6 +194,7 @@ fun Cookiebutton(
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
     isOpen: Boolean = false,
+    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     CookiebuttonImpl(
@@ -212,6 +217,7 @@ fun Cookiebutton(
         holdScale = holdScale,
         closeIcon = closeIcon,
         isOpen = isOpen,
+        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface
     )
 }
@@ -238,9 +244,11 @@ private fun CookiebuttonImpl(
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
     isOpen: Boolean = false,
+    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
+    val hasOutline = isOutlined || isOnBlurredSurface
     var isHoldMorphing by remember { mutableStateOf(false) }
     var isHolding by remember { mutableStateOf(false) }
     var isHoldCompleted by remember { mutableStateOf(false) }
@@ -434,7 +442,7 @@ private fun CookiebuttonImpl(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (isOnBlurredSurface) {
+            if (hasOutline) {
                 // Outline variant (bottom layer)
                 Box(
                     modifier = Modifier
