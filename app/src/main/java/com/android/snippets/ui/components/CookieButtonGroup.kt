@@ -196,6 +196,7 @@ fun CookieButtonGroup(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
+    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     onItemClick: ((Int) -> Unit)? = null,
@@ -635,7 +636,8 @@ fun CookieButtonGroup(
                             rotationZ = rotations[index].value + wiggleRotations[index].value + tiltAngle
                         }
                 ) {
-                    if (isOnBlurredSurface) {
+                    val hasOutline = isOutlined || isOnBlurredSurface
+                    if (hasOutline) {
                         val currentProgress = morphProgresses[index].value
                         val itemShape = if (currentProgress > 0.001f) {
                             MorphShape(effectiveMorph, currentProgress)
@@ -796,6 +798,7 @@ fun CookieButtonGroup(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
+    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     onItemClick: ((Int) -> Unit)? = null,
@@ -828,6 +831,7 @@ fun CookieButtonGroup(
         isSpinning = isSpinning,
         enableWiggle = enableWiggle,
         wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
+        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
         onItemClick = onItemClick
@@ -854,6 +858,7 @@ fun CookieNavBar(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
+    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     onItemClick: ((Int) -> Unit)? = null
@@ -873,6 +878,7 @@ fun CookieNavBar(
     isSpinning = isSpinning,
     enableWiggle = enableWiggle,
     wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
+    isOutlined = isOutlined,
     isOnBlurredSurface = isOnBlurredSurface,
     enableTilt = enableTilt,
     onItemClick = onItemClick
