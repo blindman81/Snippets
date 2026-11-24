@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.FlexBox
 import androidx.compose.foundation.layout.FlexWrap
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
@@ -119,8 +119,8 @@ fun SnippetsModal(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Close,
-                                            contentDescription = "Remove $snippet",
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "Delete $snippet",
                                             tint = textColor,
                                             modifier = Modifier.size(16.dp)
                                         )
