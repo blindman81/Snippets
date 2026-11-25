@@ -62,7 +62,7 @@ fun SnippetsScreen(
                 isSpinning = true,
                 isScrolled = isScrolled,
                 leftAlignTitle = true,
-                showDividerOnScroll = false,
+                showDividerOnScroll = true,
                 scrolledColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 actions = {
                     CookieButtonGroup(
