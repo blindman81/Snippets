@@ -96,7 +96,6 @@ fun PhotoButtonGroup(
     unselectedContentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     isSpinning: Boolean = true,
     enabled: Boolean = true,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
@@ -104,7 +103,6 @@ fun PhotoButtonGroup(
     var expanded by remember { mutableStateOf(false) }
 
     val actualTrailingIcon = trailingIcon ?: if (expanded) trailingFilledIcon else trailingOutlinedIcon
-    val hasOutline = isOutlined || isOnBlurredSurface
 
     val effectiveMorph = remember(shape) {
         if (shape is RoundedPolygonShape) {
@@ -169,11 +167,6 @@ fun PhotoButtonGroup(
         label = "split_leading_primary_alpha"
     )
 
-    val animatedLeadingContainerColor by animateColorAsState(
-        targetValue = if (isLeadingPrimary) selectedContainerColor else unselectedContainerColor,
-        animationSpec = tween(durationMillis = 200),
-        label = "split_leading_container"
-    )
     val animatedLeadingContentColor by animateColorAsState(
         targetValue = if (isLeadingPrimary || isLeadingCallerPrimary) selectedContentColor else unselectedContentColor,
         animationSpec = tween(durationMillis = 200),
@@ -186,12 +179,6 @@ fun PhotoButtonGroup(
         targetValue = if (isTrailingPrimary || isTrailingCallerPrimary) 1f else 0f,
         animationSpec = tween(durationMillis = 200),
         label = "split_trailing_primary_alpha"
-    )
-
-    val animatedTrailingContainerColor by animateColorAsState(
-        targetValue = if (isTrailingPrimary) selectedContainerColor else unselectedContainerColor,
-        animationSpec = tween(durationMillis = 200),
-        label = "split_trailing_container"
     )
     val animatedTrailingContentColor by animateColorAsState(
         targetValue = if (isTrailingPrimary || isTrailingCallerPrimary) selectedContentColor else unselectedContentColor,
@@ -319,36 +306,27 @@ fun PhotoButtonGroup(
                             rotationZ = rotationLeading.value + wiggleLeading.value + tiltLeading
                         }
                 ) {
-                    if (hasOutline) {
-                        // Outline variant (bottom layer)
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clip(shapeLeading)
-                                .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
-                                .border(
-                                    border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
-                                    shape = shapeLeading
-                                )
-                        )
-                        // Primary layer (drawn OVER outline variant)
-                        if (leadingPrimaryAlpha > 0.001f) {
-                            val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .graphicsLayer { alpha = leadingPrimaryAlpha }
-                                    .border(1.dp, primaryBg, shapeLeading)
-                                    .clip(shapeLeading)
-                                    .background(primaryBg)
+                    // Outline variant (bottom layer)
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(shapeLeading)
+                            .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
+                            .border(
+                                border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                shape = shapeLeading
                             )
-                        }
-                    } else {
+                    )
+                    // Primary layer (drawn OVER outline variant)
+                    if (leadingPrimaryAlpha > 0.001f) {
+                        val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
+                                .graphicsLayer { alpha = leadingPrimaryAlpha }
+                                .border(1.dp, primaryBg, shapeLeading)
                                 .clip(shapeLeading)
-                                .background(if (enabled) animatedLeadingContainerColor else animatedLeadingContainerColor.copy(alpha = 0.38f))
+                                .background(primaryBg)
                         )
                     }
                 }
@@ -466,36 +444,27 @@ fun PhotoButtonGroup(
                                 rotationZ = rotationTrailing.value + wiggleTrailing.value + tiltTrailing
                             }
                     ) {
-                        if (hasOutline) {
-                            // Outline variant (bottom layer)
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .clip(shapeTrailing)
-                                    .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
-                                    .border(
-                                        border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
-                                        shape = shapeTrailing
-                                    )
-                            )
-                            // Primary layer (drawn OVER outline variant)
-                            if (trailingPrimaryAlpha > 0.001f) {
-                                val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .graphicsLayer { alpha = trailingPrimaryAlpha }
-                                        .border(1.dp, primaryBg, shapeTrailing)
-                                        .clip(shapeTrailing)
-                                        .background(primaryBg)
+                        // Outline variant (bottom layer)
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(shapeTrailing)
+                                .background(if (enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
+                                .border(
+                                    border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                                    shape = shapeTrailing
                                 )
-                            }
-                        } else {
+                        )
+                        // Primary layer (drawn OVER outline variant)
+                        if (trailingPrimaryAlpha > 0.001f) {
+                            val primaryBg = if (enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
                             Box(
                                 modifier = Modifier
                                     .matchParentSize()
+                                    .graphicsLayer { alpha = trailingPrimaryAlpha }
+                                    .border(1.dp, primaryBg, shapeTrailing)
                                     .clip(shapeTrailing)
-                                    .background(if (enabled) animatedTrailingContainerColor else animatedTrailingContainerColor.copy(alpha = 0.38f))
+                                    .background(primaryBg)
                             )
                         }
                     }
@@ -545,7 +514,6 @@ fun PhotoButtonGroup(
     modifier: Modifier = Modifier,
     isPrimaryActive: Boolean = false,
     buttonSize: Dp = 56.dp,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
@@ -691,7 +659,6 @@ fun PhotoButtonGroup(
         buttonSize = buttonSize,
         modifier = modifier,
         items = items,
-        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface
     )
 }
