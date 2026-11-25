@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -18,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.snippets.logic.SnippetManager
 import com.android.snippets.ui.components.AppBar
@@ -242,7 +240,6 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             count = insightItems.size,
                             label = label,
                             icon = value,
-                            iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             consumeIconClick = true,
                             onClick = {}
                         )
@@ -262,7 +259,6 @@ fun StatsScreen(viewModel: StatsViewModel) {
                             count = ratingList.size,
                             label = label,
                             icon = count.toString(),
-                            iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             consumeIconClick = true,
                             trailingContent = {
                                 Icon(
@@ -282,21 +278,7 @@ fun StatsScreen(viewModel: StatsViewModel) {
                     )
 
                     if (topLocations.isEmpty()) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = "No location data available",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontFamily = GoogleSansFlexRound
-                                ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(24.dp),
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                        EmptyLocationState()
                     } else {
                         topLocations.forEachIndexed { index, (name, count) ->
                             ExpressiveSegmentedListItem(
@@ -304,7 +286,6 @@ fun StatsScreen(viewModel: StatsViewModel) {
                                 count = topLocations.size,
                                 label = name,
                                 icon = count.toString(),
-                                iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 consumeIconClick = true,
                                 trailingContent = {
                                     Icon(
