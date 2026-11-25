@@ -79,7 +79,6 @@ fun Cookiebutton(
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
     isOpen: Boolean = false,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     CookiebuttonImpl(
@@ -109,7 +108,6 @@ fun Cookiebutton(
         holdScale = holdScale,
         closeIcon = closeIcon,
         isOpen = isOpen,
-        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface
     )
 }
@@ -137,7 +135,6 @@ fun Cookiebutton(
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
     isOpen: Boolean = false,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     CookiebuttonImpl(
@@ -167,7 +164,6 @@ fun Cookiebutton(
         holdScale = holdScale,
         closeIcon = closeIcon,
         isOpen = isOpen,
-        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface
     )
 }
@@ -194,7 +190,6 @@ fun Cookiebutton(
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
     isOpen: Boolean = false,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     CookiebuttonImpl(
@@ -217,7 +212,6 @@ fun Cookiebutton(
         holdScale = holdScale,
         closeIcon = closeIcon,
         isOpen = isOpen,
-        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface
     )
 }
@@ -244,11 +238,9 @@ private fun CookiebuttonImpl(
     holdScale: Float = 1.45f,
     closeIcon: Any? = null,
     isOpen: Boolean = false,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current
 ) {
     val view = LocalView.current
-    val hasOutline = isOutlined || isOnBlurredSurface
     var isHoldMorphing by remember { mutableStateOf(false) }
     var isHolding by remember { mutableStateOf(false) }
     var isHoldCompleted by remember { mutableStateOf(false) }
@@ -286,11 +278,6 @@ private fun CookiebuttonImpl(
         label = "cookie_button_primary_alpha"
     )
 
-    val animatedContainerColor = lerp(
-        containerColor,
-        MaterialTheme.colorScheme.primary,
-        primaryAlpha
-    )
     val animatedContentColor = lerp(
         contentColor,
         MaterialTheme.colorScheme.onPrimary,
@@ -442,36 +429,27 @@ private fun CookiebuttonImpl(
                 },
             contentAlignment = Alignment.Center
         ) {
-            if (hasOutline) {
-                // Outline variant (bottom layer)
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clip(currentShape)
-                        .background(if (enabled) containerColor else containerColor.copy(alpha = 0.38f))
-                        .border(
-                            border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
-                            shape = currentShape
-                        )
-                )
-                // Primary layer (drawn OVER outline variant)
-                if (primaryAlpha > 0.001f) {
-                    val primaryBg = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .graphicsLayer { alpha = primaryAlpha }
-                            .border(1.dp, primaryBg, currentShape)
-                            .clip(currentShape)
-                            .background(primaryBg)
+            // Outline variant (bottom layer)
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(currentShape)
+                    .background(if (enabled) containerColor else containerColor.copy(alpha = 0.38f))
+                    .border(
+                        border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
+                        shape = currentShape
                     )
-                }
-            } else {
+            )
+            // Primary layer (drawn OVER outline variant)
+            if (primaryAlpha > 0.001f) {
+                val primaryBg = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
+                        .graphicsLayer { alpha = primaryAlpha }
+                        .border(1.dp, primaryBg, currentShape)
                         .clip(currentShape)
-                        .background(if (enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+                        .background(primaryBg)
                 )
             }
             val iconModifier = Modifier
