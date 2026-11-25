@@ -14,12 +14,12 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.os.Build
+import androidx.compose.ui.graphics.toArgb
 import androidx.graphics.shapes.toPath
 import com.android.snippets.data.preferences.UserPreferencesRepository
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.shapes.CookiePolygon
-import com.android.snippets.ui.theme.getSnippetBackgroundColorInt
-import com.android.snippets.ui.theme.getSnippetTextColorInt
+import com.android.snippets.ui.theme.getAppColorScheme
 import com.android.snippets.ui.util.LocationUtils
 import com.ln.android.snippets.R
 import kotlinx.coroutines.flow.first
@@ -312,8 +312,9 @@ object MemoryNotificationRenderer {
                 val chipSpacing = 14f
                 val maxChipW = rightAreaWidth
 
-                val textColor = getSnippetTextColorInt(context, isDark = isDark)
-                val bgColor = getSnippetBackgroundColorInt(context, isDark = isDark)
+                val colorScheme = getAppColorScheme(context, isDark)
+                val textColor = colorScheme.primary.toArgb()
+                val bgColor = colorScheme.surface.toArgb()
 
                 val textPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = textColor

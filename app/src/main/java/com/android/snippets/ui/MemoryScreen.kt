@@ -748,7 +748,7 @@ fun FloatingSnippet(
         isCloud = true
     )
 
-    val snippetColor = rememberSnippetBackgroundColor()
+    val snippetColor = MaterialTheme.colorScheme.surface
     val rotation = (stableRandom.nextFloat() * 16 - 8)
 
     val hazeStyle = remember(snippetColor) {
@@ -781,7 +781,7 @@ fun FloatingSnippet(
                 style = textStyle.copy(
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 ),
-                color = rememberSnippetTextColor(),
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .offset(y = 1.dp)

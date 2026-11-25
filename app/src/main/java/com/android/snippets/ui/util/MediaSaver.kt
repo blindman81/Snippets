@@ -24,8 +24,6 @@ import kotlinx.coroutines.Dispatchers
 import com.android.snippets.ui.shapes.CookiePolygon
 import com.android.snippets.ui.shapes.AppShape
 import com.android.snippets.ui.theme.getAppColorScheme
-import com.android.snippets.ui.theme.getSnippetBackgroundColorInt
-import com.android.snippets.ui.theme.getSnippetTextColorInt
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -447,7 +445,7 @@ object MediaSaver {
         
         snippets.forEachIndexed { index, text ->
             val trimmedText = text.trim()
-            val colorInt = getSnippetBackgroundColorInt(context, isDark)
+            val colorInt = colorScheme.surface.toArgb()
             val stableRandom = Random(trimmedText.hashCode().toLong())
             val personality = stableRandom.nextInt(0, 5)
             val isFilled = true
@@ -543,7 +541,7 @@ object MediaSaver {
                 
                 canvas.save()
                 canvas.rotate(pill.rot, x, y)
-                textPaint.color = getSnippetTextColorInt(context, isDark)
+                textPaint.color = colorScheme.primary.toArgb()
                 textPaint.textSize = pill.textSize * fitScale
                 textPaint.typeface = pill.typeface
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -563,7 +561,7 @@ object MediaSaver {
                     offset(x - (scaledW / 2f), y - (scaledH / 2f))
                 }
                 
-                // Pill container (matching MemoryScreen primaryContainer)
+                // Pill container (matching MemoryScreen surface)
                 pillPaint.style = Paint.Style.FILL
                 pillPaint.color = pill.color
                 pillPaint.alpha = 255
