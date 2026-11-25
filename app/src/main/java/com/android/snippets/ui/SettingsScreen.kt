@@ -172,7 +172,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                             count = themeItems.size,
                             label = name,
                             icon = icon,
-                            iconContainerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                            iconContainerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
                             iconColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                             selected = isSelected,
                             onClick = {
@@ -193,7 +193,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                             count = expandItems.size,
                             label = label,
                             icon = icon,
-                            iconContainerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                            iconContainerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
                             iconColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                             selected = isSelected,
                             onClick = {
@@ -218,7 +218,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         count = 3,
                         label = "Export",
                         icon = exportIcon,
-                        iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        iconContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                         iconColor = MaterialTheme.colorScheme.onSurface,
                         trailingContent = {
                             Icon(
@@ -238,7 +238,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         count = 3,
                         label = "Restore",
                         icon = restoreIcon,
-                        iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        iconContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                         iconColor = MaterialTheme.colorScheme.onSurface,
                         trailingContent = {
                             Icon(
@@ -259,7 +259,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         label = "Auto backup",
                         subtext = viewModel.autoBackupSchedule,
                         icon = autoBackupIcon,
-                        iconContainerColor = if (isAutoBackupOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                        iconContainerColor = if (isAutoBackupOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
                         iconColor = if (isAutoBackupOn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                         selected = isAutoBackupOn,
                         onClick = {
