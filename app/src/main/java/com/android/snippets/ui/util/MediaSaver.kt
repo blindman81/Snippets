@@ -170,7 +170,7 @@ object MediaSaver {
         val height = 2560
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val colorScheme = getAppColorScheme(context, isDark)
+        val colorScheme = getAppColorScheme(context, isDark = false)
         
         val photoBitmap = runCoil(context, photo.uri)
 
