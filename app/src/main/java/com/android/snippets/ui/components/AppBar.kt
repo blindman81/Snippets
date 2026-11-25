@@ -48,6 +48,7 @@ fun AppBar(
     forceTransparentBackground: Boolean = false,
     showDividerOnScroll: Boolean = true,
     scrolledColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    dividerColor: Color = MaterialTheme.colorScheme.outlineVariant,
     enableBlur: Boolean = false,
     hazeState: HazeState? = LocalHazeState.current,
     actions: @Composable RowScope.() -> Unit = {}
@@ -220,7 +221,7 @@ fun AppBar(
                 HorizontalDivider(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     thickness = 0.5.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    color = dividerColor
                 )
             }
         }
