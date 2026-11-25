@@ -117,6 +117,14 @@
             android:theme="@style/Theme.Snippets" />
 
         <activity
+            android:name="com.android.snippets.ui.LicenseAgreementActivity"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="uiMode"
+            android:theme="@style/Theme.Snippets" />
+
+        <activity
             android:name="com.android.snippets.ui.StatsActivity"
             android:enableOnBackInvokedCallback="true"
             android:exported="false"
