@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterListOff
+import androidx.compose.material.icons.outlined.LocationOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.android.snippets.ui.shapes.CookieShape
 import com.ln.android.snippets.R
@@ -27,18 +30,45 @@ import com.ln.android.snippets.R
 fun PremiumEmptyState(
     modifier: Modifier = Modifier,
     icon: ImageVector,
+    cookieSize: Dp = 170.dp,
+    iconSize: Dp = 72.dp,
+    fillContainer: Boolean = true,
     onClick: (() -> Unit)? = null
 ) {
     val view = LocalView.current
-    Column(
-        modifier = modifier
+    val containerColor = MaterialTheme.colorScheme.tertiaryContainer
+    val borderStroke = BorderStroke(2.dp, containerColor.copy(alpha = 0.5f))
+    val iconContent: @Composable () -> Unit = {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(iconSize),
+                tint = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+        }
+    }
+
+    val containerModifier = if (fillContainer) {
+        modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(32.dp)
+    } else {
+        modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp)
+    }
+
+    Column(
+        modifier = containerModifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Box(
-            modifier = Modifier.size(170.dp),
+            modifier = Modifier.size(cookieSize),
             contentAlignment = Alignment.Center
         ) {
             if (onClick != null) {
@@ -47,42 +77,20 @@ fun PremiumEmptyState(
                         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                         onClick()
                     },
-                    modifier = Modifier.size(170.dp),
+                    modifier = Modifier.size(cookieSize),
                     shape = CookieShape,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(72.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
+                    color = containerColor,
+                    border = borderStroke,
+                    content = iconContent
+                )
             } else {
                 Surface(
-                    modifier = Modifier.size(170.dp),
+                    modifier = Modifier.size(cookieSize),
                     shape = CookieShape,
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(72.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
+                    color = containerColor,
+                    border = borderStroke,
+                    content = iconContent
+                )
             }
         }
     }
@@ -130,6 +138,20 @@ fun EmptyFilterState(
     PremiumEmptyState(
         modifier = modifier,
         icon = icon,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun EmptyLocationState(
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Outlined.LocationOff,
+    onClick: (() -> Unit)? = null
+) {
+    PremiumEmptyState(
+        modifier = modifier,
+        icon = icon,
+        fillContainer = false,
         onClick = onClick
     )
 }
