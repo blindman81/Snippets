@@ -3,12 +3,11 @@ package com.android.snippets.ui.components
 import android.view.View
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -299,18 +298,7 @@ private fun SnippetFilterChip(
                             stiffness = Spring.StiffnessMediumLow
                         )
                     ),
-                    exit = shrinkHorizontally(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
-                        shrinkTowards = Alignment.Start
-                    ) + fadeOut(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        )
-                    )
+                    exit = ExitTransition.None
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -346,18 +334,7 @@ private fun SnippetFilterChip(
                             stiffness = Spring.StiffnessMediumLow
                         )
                     ),
-                    exit = shrinkHorizontally(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
-                        shrinkTowards = Alignment.Start
-                    ) + fadeOut(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        )
-                    )
+                    exit = ExitTransition.None
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(modifier = Modifier.width(6.dp))
