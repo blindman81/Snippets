@@ -231,7 +231,7 @@ fun PhotoCard(
 
                                     Surface(
                                         shape = CircleShape,
-                                        color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.88f) else snippetColor,
+                                        color = if (isSelected) MaterialTheme.colorScheme.surfaceContainer else snippetColor,
                                         border = null,
                                         modifier = Modifier
                                             .wrapContentWidth()
