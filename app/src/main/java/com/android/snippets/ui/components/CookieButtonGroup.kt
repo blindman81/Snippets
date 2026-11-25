@@ -196,7 +196,6 @@ fun CookieButtonGroup(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     onItemClick: ((Int) -> Unit)? = null,
@@ -521,11 +520,6 @@ fun CookieButtonGroup(
             label = "cookie_group_primary_alpha_$index"
         )
 
-        val animatedContainerColor by animateColorAsState(
-            targetValue = if (isSelected || isHeld) selectedContainerColor else unselectedContainerColor,
-            animationSpec = tween(durationMillis = 200),
-            label = "cookie_container_color_$index"
-        )
         val animatedContentColor by animateColorAsState(
             targetValue = if (isSelected || isHeld || isCallerPrimary) selectedContentColor else unselectedContentColor,
             animationSpec = tween(durationMillis = 200),
@@ -636,58 +630,39 @@ fun CookieButtonGroup(
                             rotationZ = rotations[index].value + wiggleRotations[index].value + tiltAngle
                         }
                 ) {
-                    val hasOutline = isOutlined || isOnBlurredSurface
-                    if (hasOutline) {
-                        val currentProgress = morphProgresses[index].value
-                        val itemShape = if (currentProgress > 0.001f) {
-                            MorphShape(effectiveMorph, currentProgress)
-                        } else {
-                            shape
-                        }
-                        // Outline variant (bottom layer)
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .graphicsLayer {
-                                    val progress = morphProgresses[index].value
-                                    this.shape = if (progress > 0.001f) {
-                                        MorphShape(effectiveMorph, progress)
-                                    } else {
-                                        shape
-                                    }
-                                    this.clip = true
-                                }
-                                .background(if (item.enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
-                                .border(
-                                    border = ButtonDefaults.outlinedButtonBorder(enabled = item.enabled),
-                                    shape = itemShape
-                                )
-                        )
-                        // Primary layer (drawn OVER outline variant)
-                        if (primaryAlpha > 0.001f) {
-                            val primaryBg = if (item.enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .graphicsLayer {
-                                        alpha = primaryAlpha
-                                        val progress = morphProgresses[index].value
-                                        this.shape = if (progress > 0.001f) {
-                                            MorphShape(effectiveMorph, progress)
-                                        } else {
-                                            shape
-                                        }
-                                        this.clip = true
-                                    }
-                                    .border(1.dp, primaryBg, itemShape)
-                                    .background(primaryBg)
-                            )
-                        }
+                    val currentProgress = morphProgresses[index].value
+                    val itemShape = if (currentProgress > 0.001f) {
+                        MorphShape(effectiveMorph, currentProgress)
                     } else {
+                        shape
+                    }
+                    // Outline variant (bottom layer)
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer {
+                                val progress = morphProgresses[index].value
+                                this.shape = if (progress > 0.001f) {
+                                    MorphShape(effectiveMorph, progress)
+                                } else {
+                                    shape
+                                }
+                                this.clip = true
+                            }
+                            .background(if (item.enabled) unselectedContainerColor else unselectedContainerColor.copy(alpha = 0.38f))
+                            .border(
+                                border = ButtonDefaults.outlinedButtonBorder(enabled = item.enabled),
+                                shape = itemShape
+                            )
+                    )
+                    // Primary layer (drawn OVER outline variant)
+                    if (primaryAlpha > 0.001f) {
+                        val primaryBg = if (item.enabled) selectedContainerColor else selectedContainerColor.copy(alpha = 0.38f)
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
                                 .graphicsLayer {
+                                    alpha = primaryAlpha
                                     val progress = morphProgresses[index].value
                                     this.shape = if (progress > 0.001f) {
                                         MorphShape(effectiveMorph, progress)
@@ -696,7 +671,8 @@ fun CookieButtonGroup(
                                     }
                                     this.clip = true
                                 }
-                                .background(if (item.enabled) animatedContainerColor else animatedContainerColor.copy(alpha = 0.38f))
+                                .border(1.dp, primaryBg, itemShape)
+                                .background(primaryBg)
                         )
                     }
                 }
@@ -798,7 +774,6 @@ fun CookieButtonGroup(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     onItemClick: ((Int) -> Unit)? = null,
@@ -831,7 +806,6 @@ fun CookieButtonGroup(
         isSpinning = isSpinning,
         enableWiggle = enableWiggle,
         wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
-        isOutlined = isOutlined,
         isOnBlurredSurface = isOnBlurredSurface,
         enableTilt = enableTilt,
         onItemClick = onItemClick
@@ -858,7 +832,6 @@ fun CookieNavBar(
     isSpinning: Boolean = true,
     enableWiggle: Boolean = true,
     wiggleNeighborOnToggleOn: Boolean = false,
-    isOutlined: Boolean = true,
     isOnBlurredSurface: Boolean = LocalIsOnBlurredSurface.current,
     enableTilt: Boolean = true,
     onItemClick: ((Int) -> Unit)? = null
@@ -878,7 +851,6 @@ fun CookieNavBar(
     isSpinning = isSpinning,
     enableWiggle = enableWiggle,
     wiggleNeighborOnToggleOn = wiggleNeighborOnToggleOn,
-    isOutlined = isOutlined,
     isOnBlurredSurface = isOnBlurredSurface,
     enableTilt = enableTilt,
     onItemClick = onItemClick
