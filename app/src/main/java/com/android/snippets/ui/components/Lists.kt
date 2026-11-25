@@ -44,7 +44,7 @@ import com.android.snippets.ui.theme.GoogleSansFlexRound
 /**
  * Material 3 Expressive Segmented List Item.
  * Features a 9-sided cookie surface container for leading icons and smoothly morphs all corners to 16dp when tapped or held.
- * Default containerColor is surface.
+ * Default containerColor is surfaceBright.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -58,9 +58,9 @@ fun ExpressiveSegmentedListItem(
     subtext: String? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     leadingContent: (@Composable () -> Unit)? = null,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
-    iconContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    iconColor: Color = MaterialTheme.colorScheme.onSurface,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
+    iconContainerColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
+    iconColor: Color = MaterialTheme.colorScheme.onTertiaryContainer,
     selected: Boolean = false,
     selectedContainerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     selectedContentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
