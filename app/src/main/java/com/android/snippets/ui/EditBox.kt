@@ -9,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Remove
@@ -25,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.android.snippets.logic.BoxManager
 import com.android.snippets.ui.components.AppBar
 import com.android.snippets.ui.components.ExpressiveSegmentedListItem
+import com.ln.android.snippets.R
 
 private data class EditBoxActionData(
     val id: String,
@@ -68,7 +68,7 @@ fun EditBoxScreen(
                 id = EditBoxActivity.ACTION_ADD_PHOTOS,
                 label = "Add photos",
                 subtext = addSubtext,
-                icon = Icons.Outlined.AddPhotoAlternate,
+                icon = R.drawable.ic_qs_add_photo,
                 onClick = { onAction(EditBoxActivity.ACTION_ADD_PHOTOS) }
             ),
             if (!isLibrary) EditBoxActionData(
