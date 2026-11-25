@@ -45,3 +45,44 @@ class AboutActivity : ComponentActivity() {
         }
     }
 }
+
+@AndroidEntryPoint
+class LicenseAgreementActivity : ComponentActivity() {
+    private val viewModel: SettingsViewModel by viewModels()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+        configurePredictiveBackTransition()
+
+        val libraryName = intent?.getStringExtra(EXTRA_LIBRARY_NAME).orEmpty()
+        val licenseName = intent?.getStringExtra(EXTRA_LICENSE_NAME).orEmpty()
+
+        setContent {
+            val isDarkTheme = when (viewModel.themePreference) {
+                ThemePreference.LIGHT -> false
+                ThemePreference.DARK -> true
+                ThemePreference.SYSTEM -> isSystemInDarkTheme()
+            }
+
+            SnippetsTheme(
+                darkTheme = isDarkTheme
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.surfaceContainer
+                ) {
+                    LicenseAgreementScreen(
+                        libraryName = libraryName,
+                        licenseName = licenseName
+                    )
+                }
+            }
+        }
+    }
+
+    companion object {
+        const val EXTRA_LIBRARY_NAME = "extra_library_name"
+        const val EXTRA_LICENSE_NAME = "extra_license_name"
+    }
+}
