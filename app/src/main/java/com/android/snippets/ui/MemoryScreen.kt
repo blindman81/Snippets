@@ -444,7 +444,7 @@ fun MemoryScreen(
                 val locationText = com.android.snippets.ui.util.LocationUtils.getLocationFromExif(context, photo)
                 val photoName = photo.name?.takeIf { it.isNotBlank() }
 
-                // Left: Label icon and Photo name (2dp gap from calendar pill)
+                // Left: Label icon and Photo name (4dp gap from calendar pill)
                 Box(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterEnd
@@ -461,7 +461,7 @@ fun MemoryScreen(
                             color = Color.White.copy(alpha = 0.25f),
                             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
                             modifier = Modifier
-                                .padding(end = 2.dp)
+                                .padding(end = 4.dp)
                                 .heightIn(min = 24.dp)
                         ) {
                             Row(
@@ -522,7 +522,7 @@ fun MemoryScreen(
                     }
                 }
 
-                // Right: Location on icon to show location (2dp gap from calendar pill)
+                // Right: Location on icon to show location (4dp gap from calendar pill)
                 Box(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterStart
@@ -539,7 +539,7 @@ fun MemoryScreen(
                             color = Color.White.copy(alpha = 0.25f),
                             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
                             modifier = Modifier
-                                .padding(start = 2.dp)
+                                .padding(start = 4.dp)
                                 .heightIn(min = 24.dp)
                         ) {
                             Row(
@@ -584,9 +584,6 @@ private fun WrappingPillText(
     modifier: Modifier = Modifier,
     onLineCountChange: (Int) -> Unit = {}
 ) {
-    var textWidthDp by remember(text) { mutableStateOf<androidx.compose.ui.unit.Dp?>(null) }
-    val density = LocalDensity.current
-
     Text(
         text = text,
         style = style,
@@ -597,21 +594,8 @@ private fun WrappingPillText(
             if (layoutResult.lineCount > 0) {
                 onLineCountChange(layoutResult.lineCount)
             }
-            val maxLineWidth = (0 until layoutResult.lineCount).maxOfOrNull { line ->
-                layoutResult.getLineRight(line) - layoutResult.getLineLeft(line)
-            } ?: 0f
-            if (maxLineWidth > 0f) {
-                val calculatedDp = with(density) { (ceil(maxLineWidth).toInt() + 1).toDp() }
-                if (textWidthDp != calculatedDp) {
-                    textWidthDp = calculatedDp
-                }
-            }
         },
-        modifier = if (textWidthDp != null) {
-            modifier.width(textWidthDp!!)
-        } else {
-            modifier
-        }
+        modifier = modifier
     )
 }
 
@@ -769,7 +753,7 @@ fun FloatingSnippet(
 
     val hazeStyle = remember(snippetColor) {
         dev.chrisbanes.haze.HazeStyle(
-            tint = dev.chrisbanes.haze.HazeTint(snippetColor.copy(alpha = 0.50f)),
+            tint = dev.chrisbanes.haze.HazeTint(snippetColor),
             blurRadius = 24.dp,
             noiseFactor = dev.chrisbanes.haze.HazeDefaults.noiseFactor
         )
@@ -790,7 +774,7 @@ fun FloatingSnippet(
                         )
                     } else Modifier
                 )
-                .background(snippetColor.copy(alpha = 0.50f))
+                .background(snippetColor)
         ) {
             Text(
                 text = text,
