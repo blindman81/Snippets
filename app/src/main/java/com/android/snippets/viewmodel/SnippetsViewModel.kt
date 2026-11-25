@@ -710,7 +710,7 @@ class SnippetsViewModel @Inject constructor(
 
                 var needsPhotoUpdate = false
                 val healedPhotos = roomPhotos.map { rp ->
-                    val cols = (rp.collections ?: emptyList()).toMutableList()
+                    val cols = rp.collections.toMutableList()
                     var changed = false
                     var isFav = rp.isFavorite
                     if (cols.contains("Favorites")) {
@@ -754,10 +754,10 @@ class SnippetsViewModel @Inject constructor(
                     val currentMap = current.associateBy { it.id }
                     val isIdentical = activePhotos.all { rp ->
                         val p = currentMap[rp.id]
-                        p != null && p.date == rp.date && p.snippets == (rp.snippets ?: emptyList<String>()) &&
+                        p != null && p.date == rp.date && p.snippets == rp.snippets &&
                                 p.isFavorite == rp.isFavorite && p.rating == rp.rating &&
                                 p.name == rp.name && p.locationName == rp.locationName &&
-                                p.collections == (rp.collections ?: emptyList<String>()) &&
+                                p.collections == rp.collections &&
                                 p.isViewed == rp.isViewed && p.lastViewedTime == rp.lastViewedTime &&
                                 p.surfacedTime == rp.surfacedTime &&
                                 p.widthPx == rp.widthPx && p.heightPx == rp.heightPx &&
@@ -776,14 +776,14 @@ class SnippetsViewModel @Inject constructor(
                         id = p.id,
                         uriString = p.uriString,
                         date = p.date,
-                        snippets = p.snippets ?: emptyList(),
+                        snippets = p.snippets,
                         isViewed = p.isViewed,
                         lastViewedTime = p.lastViewedTime,
-                        snippetsAddedTime = if (p.snippetsAddedTime != 0L) p.snippetsAddedTime else (if ((p.snippets ?: emptyList()).isNotEmpty()) p.date else 0L),
+                        snippetsAddedTime = if (p.snippetsAddedTime != 0L) p.snippetsAddedTime else (if (p.snippets.isNotEmpty()) p.date else 0L),
                         surfacedTime = p.surfacedTime,
                         isFavorite = p.isFavorite,
                         isLibraryUpload = p.isLibraryUpload,
-                        collections = p.collections ?: emptyList(),
+                        collections = p.collections,
                         widthPx = widthPx,
                         heightPx = heightPx,
                         isPublic = p.isPublic,
