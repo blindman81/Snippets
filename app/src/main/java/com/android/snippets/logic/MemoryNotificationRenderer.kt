@@ -312,7 +312,7 @@ object MemoryNotificationRenderer {
                 val chipSpacing = 14f
                 val maxChipW = rightAreaWidth
 
-                val colorScheme = getAppColorScheme(context, isDark)
+                val colorScheme = getAppColorScheme(context, isDark = false)
                 val textColor = colorScheme.primary.toArgb()
                 val bgColor = colorScheme.surface.toArgb()
 
