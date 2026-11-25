@@ -343,7 +343,7 @@ object MediaSaver {
         datePaint.textAlign = Paint.Align.LEFT
         canvas.drawText(dateString, calIconX + calIconSize + calItemSpacing, dateTextY, datePaint)
 
-        // --- Left: Label icon and Photo name (2dp gap from calendar pill) ---
+        // --- Left: Label icon and Photo name (4dp gap from calendar pill) ---
         if (!photoName.isNullOrBlank()) {
             val namePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
@@ -354,7 +354,7 @@ object MediaSaver {
             val labelIconSize = 28f
             val itemSpacing = 10f
             val horizontalPadding = 20f
-            val gapFromCalendar = 2f * (width / 360f) // 2dp in px
+            val gapFromCalendar = 4f * (width / 360f) // 4dp in px
 
             val pillRight = centerPillRect.left - gapFromCalendar
             val maxLeftPillWidth = (pillRight - paddingX).coerceAtLeast(10f)
@@ -384,7 +384,7 @@ object MediaSaver {
             canvas.drawText(ellipsizedName, iconX + labelIconSize + itemSpacing, textY, namePaint)
         }
 
-        // --- Right: Location on icon to show location (2dp gap from calendar pill) ---
+        // --- Right: Location on icon to show location (4dp gap from calendar pill) ---
         if (!locationText.isNullOrBlank()) {
             val locTextPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.WHITE
@@ -395,7 +395,7 @@ object MediaSaver {
             val locIconSize = 28f
             val itemSpacing = 10f
             val horizontalPadding = 20f
-            val gapFromCalendar = 2f * (width / 360f) // 2dp in px
+            val gapFromCalendar = 4f * (width / 360f) // 4dp in px
 
             val locPillLeft = centerPillRect.right + gapFromCalendar
             val maxRightPillWidth = (width - paddingX - locPillLeft).coerceAtLeast(10f)
@@ -563,10 +563,10 @@ object MediaSaver {
                     offset(x - (scaledW / 2f), y - (scaledH / 2f))
                 }
                 
-                // Frosted haze blur in pill container (matching MemoryScreen primaryContainer)
+                // Pill container (matching MemoryScreen primaryContainer)
                 pillPaint.style = Paint.Style.FILL
                 pillPaint.color = pill.color
-                pillPaint.alpha = if (blurredBackground != null) (255 * 0.70f).toInt() else 255
+                pillPaint.alpha = 255
                 canvas.drawPath(pillPath, pillPaint)
 
                 val currentBounds = Rect()
