@@ -630,6 +630,14 @@ fun LibraryScreen(
                                     )
 
                                 }
+
+                                if (isCurrentTabScrolled) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.align(Alignment.BottomCenter),
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                }
                             }
 
                             // 4. Floating Cookie Toolbar
