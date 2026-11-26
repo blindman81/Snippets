@@ -421,9 +421,9 @@ fun CookieToolbar(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 1. Edit box
+                            // 1. Edit Box
                             ToolbarCookieItem(
-                                label = "Edit box",
+                                label = "Edit Box",
                                 icon = R.drawable.ic_box_edit,
                                 isSpinning = !isAnyPopupActive,
                                 onClick = onManageClick
