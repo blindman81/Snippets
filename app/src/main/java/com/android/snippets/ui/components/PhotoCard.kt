@@ -369,8 +369,8 @@ fun PhotoCard(
                                         )
                                 )
 
-                            val iconColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                            val iconContainerColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.secondaryContainer
+                            val iconColor = MaterialTheme.colorScheme.onSurface
+                            val iconContainerColor = MaterialTheme.colorScheme.surfaceBright
 
                             val showCollectionBadges = tab == "Box" || tab == "Library" || tab == "Box 1" || tab == "Favorites"
                             val validCollections = remember(photo.collections, userBoxes, showCollectionBadges) {
