@@ -498,11 +498,22 @@ fun LibraryScreen(
                             ) settledPage else targetPage
                             val activeTabTarget = pageTabs.getOrNull(selectionPage) ?: "Box"
                             val targetTab = pageTabs.getOrNull(targetPage) ?: "Box"
+                            val targetTabX = tabPositions[targetTab]
+                            val targetTabW = tabWidths[targetTab]
 
-                            LaunchedEffect(targetTab) {
+                            LaunchedEffect(
+                                targetTab,
+                                targetTabX,
+                                targetTabW,
+                                tabRowScrollState.viewportSize,
+                                tabRowScrollState.maxValue
+                            ) {
                                 if (uiState.pendingBoxAssignment != null) return@LaunchedEffect
-                                val tabX = tabPositions[targetTab] ?: return@LaunchedEffect
-                                val tabW = tabWidths[targetTab] ?: return@LaunchedEffect
+                                val tabX = targetTabX ?: return@LaunchedEffect
+                                val tabW = targetTabW ?: return@LaunchedEffect
+                                if (tabRowScrollState.viewportSize <= 0 || tabRowScrollState.maxValue == Int.MAX_VALUE) {
+                                    return@LaunchedEffect
+                                }
                                 val rowW = tabRowScrollState.maxValue + 0f
                                 val target = (tabX - (tabRowScrollState.viewportSize / 2f) + (tabW / 2f))
                                     .coerceIn(0f, rowW)
