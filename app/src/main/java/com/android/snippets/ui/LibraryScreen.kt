@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlin.math.abs
 import kotlin.coroutines.cancellation.CancellationException
+import com.android.snippets.logic.BoxManager
 import com.android.snippets.model.Photo
 import com.android.snippets.ui.components.*
 import com.android.snippets.ui.util.Motion
@@ -85,6 +86,9 @@ fun LibraryScreen(
 
     val emojiFocusRequester = remember { FocusRequester() }
     val emojiTextFieldState = rememberTextFieldState()
+    var lastHandledEmojiKeyboardRequestCount by remember {
+        mutableLongStateOf(uiState.emojiKeyboardRequestCount)
+    }
 
     var isSearchOpen by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
@@ -183,6 +187,7 @@ fun LibraryScreen(
         try {
             progress.collect { }
             keyboardController?.hide()
+            focusManager.clearFocus(force = true)
             viewModel.cancelEditingBoxEmoji()
         } catch (_: CancellationException) {}
     }
@@ -190,10 +195,12 @@ fun LibraryScreen(
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP && viewModel.editingBoxEmoji != null) {
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
                 keyboardController?.hide()
                 focusManager.clearFocus(force = true)
-                viewModel.cancelEditingBoxEmoji()
+                if (viewModel.editingBoxEmoji != null) {
+                    viewModel.cancelEditingBoxEmoji()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -264,6 +271,8 @@ fun LibraryScreen(
     // Instant tactile haptic feedback on page boundary switch (without mutating ViewModel state)
     LaunchedEffect(currentTab) {
         if (viewModel.editingBoxEmoji != null && viewModel.editingBoxEmoji != currentTab) {
+            keyboardController?.hide()
+            focusManager.clearFocus(force = true)
             viewModel.cancelEditingBoxEmoji()
         }
         if (isFirstTabLoad) {
@@ -307,14 +316,20 @@ fun LibraryScreen(
         }
     }
 
-    LaunchedEffect(viewModel.editingBoxEmoji, uiState.emojiKeyboardRequestCount) {
-        val editingCol = viewModel.editingBoxEmoji
-        if (editingCol != null && uiState.emojiKeyboardRequestCount > 0L) {
-            emojiTextFieldState.clearText()
-            focusManager.clearFocus(force = true)
-            delay(50)
-            emojiFocusRequester.requestFocus()
-            keyboardController?.show()
+    LaunchedEffect(uiState.emojiKeyboardRequestCount) {
+        val requestCount = uiState.emojiKeyboardRequestCount
+        if (requestCount > lastHandledEmojiKeyboardRequestCount) {
+            lastHandledEmojiKeyboardRequestCount = requestCount
+            val editingCol = viewModel.editingBoxEmoji
+            if (editingCol != null) {
+                emojiTextFieldState.clearText()
+                focusManager.clearFocus(force = true)
+                delay(50)
+                if (viewModel.editingBoxEmoji == editingCol) {
+                    emojiFocusRequester.requestFocus()
+                    keyboardController?.show()
+                }
+            }
         }
     }
 
@@ -327,6 +342,7 @@ fun LibraryScreen(
                     viewModel.updateEditingEmojiPreview(editingCol, emoji)
                     delay(150)
                     keyboardController?.hide()
+                    focusManager.clearFocus(force = true)
                     viewModel.finalizeBoxEmoji(editingCol, emoji)
                 }
             }
@@ -654,6 +670,10 @@ fun LibraryScreen(
                                     val activeTab = pageTabs.getOrNull(pagerState.currentPage) ?: "Box"
                                     val intent = Intent(context, EditBoxActivity::class.java).apply {
                                         putExtra(EditBoxActivity.EXTRA_BOX, activeTab)
+                                        putExtra(
+                                            EditBoxActivity.EXTRA_HAS_EMOJI,
+                                            BoxManager.hasBoxEmoji(activeTab, uiState.boxIcons)
+                                        )
                                         putStringArrayListExtra(
                                             EditBoxActivity.EXTRA_USER_BOXES,
                                             ArrayList(viewModel.userBoxes)
@@ -757,9 +777,11 @@ fun LibraryScreen(
                                     val emoji = emojiTextFieldState.text.toString().trim()
                                     if (editingCol != null && emoji.isNotEmpty()) {
                                         keyboardController?.hide()
+                                        focusManager.clearFocus(force = true)
                                         viewModel.finalizeBoxEmoji(editingCol, emoji)
                                     } else {
                                         keyboardController?.hide()
+                                        focusManager.clearFocus(force = true)
                                         viewModel.cancelEditingBoxEmoji()
                                     }
                                 }
