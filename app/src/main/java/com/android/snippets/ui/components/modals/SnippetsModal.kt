@@ -32,12 +32,21 @@ fun SnippetsModal(
     onClose: () -> Unit,
     viewModel: SnippetsViewModel
 ) {
-    var localSnippets by remember(photo.snippets) { mutableStateOf(photo.snippets) }
+    var localSnippets by remember(photo.id, photo.snippets) { mutableStateOf(photo.snippets) }
+    var pendingRemovals by remember(photo.id, photo.snippets) { mutableStateOf<List<String>>(emptyList()) }
     val view = LocalView.current
 
     BlurredAlertDialog(
         onDismissRequest = onClose,
-        onConfirm = onClose,
+        onConfirm = {
+            if (pendingRemovals.isNotEmpty()) {
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                pendingRemovals.forEach { snippet ->
+                    onRemove(snippet)
+                }
+            }
+            onClose()
+        },
         title = {
             Text(
                 text = "Snippets",
@@ -92,8 +101,8 @@ fun SnippetsModal(
                                         indication = ripple(color = MaterialTheme.colorScheme.primary),
                                         onClick = {
                                             view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                                            onRemove(snippet)
                                             localSnippets = localSnippets - snippet
+                                            pendingRemovals = pendingRemovals + snippet
                                         }
                                     )
                             ) {
