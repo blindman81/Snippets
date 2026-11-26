@@ -2,7 +2,6 @@ package com.android.snippets.ui
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -99,25 +98,14 @@ fun ExpandableCardPillIcon(
     val view = LocalView.current
     var isExpanded by remember(key, defaultExpanded) { mutableStateOf(defaultExpanded) }
 
-    val effectiveContainerColor by animateColorAsState(
-        targetValue = if (isExpanded) MaterialTheme.colorScheme.primary else containerColor,
-        animationSpec = tween(durationMillis = 150),
-        label = "pillContainerColor"
-    )
-    val effectiveContentColor by animateColorAsState(
-        targetValue = if (isExpanded) MaterialTheme.colorScheme.onPrimary else iconColor,
-        animationSpec = tween(durationMillis = 150),
-        label = "pillContentColor"
-    )
-
     val displayText = remember(text, maxChars) {
         if (maxChars > 0 && text.length > maxChars) text.take(maxChars) else text
     }
 
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = effectiveContainerColor,
-        contentColor = effectiveContentColor,
+        color = containerColor,
+        contentColor = iconColor,
         modifier = modifier
             .padding(8.dp)
             .height(28.dp)
@@ -142,7 +130,7 @@ fun ExpandableCardPillIcon(
                     Icon(
                         imageVector = icon,
                         contentDescription = contentDescription,
-                        tint = effectiveContentColor,
+                        tint = iconColor,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -169,7 +157,7 @@ fun ExpandableCardPillIcon(
                     Text(
                         text = displayText,
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
-                        color = effectiveContentColor,
+                        color = iconColor,
                         maxLines = 1,
                         softWrap = false,
                         overflow = TextOverflow.Clip,
