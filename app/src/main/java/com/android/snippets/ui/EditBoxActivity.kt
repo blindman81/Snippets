@@ -33,6 +33,7 @@ class EditBoxActivity : ComponentActivity() {
         val userBoxes = intent.getStringArrayListExtra(EXTRA_USER_BOXES)
             ?: intent.getStringArrayListExtra(EXTRA_USER_COLLECTIONS)
             ?: emptyList<String>()
+        val hasEmoji = intent.getBooleanExtra(EXTRA_HAS_EMOJI, true)
 
         setContent {
             val isDarkTheme = when (settingsViewModel.themePreference) {
@@ -49,6 +50,7 @@ class EditBoxActivity : ComponentActivity() {
                     EditBoxScreen(
                         box = box,
                         userBoxes = userBoxes,
+                        hasEmoji = hasEmoji,
                         onNavigateBack = { finish() },
                         onAction = { action ->
                             val data = Intent().apply {
@@ -70,6 +72,7 @@ class EditBoxActivity : ComponentActivity() {
         const val EXTRA_COLLECTION = EXTRA_BOX
         const val EXTRA_USER_BOXES = "extra_user_boxes"
         const val EXTRA_USER_COLLECTIONS = EXTRA_USER_BOXES
+        const val EXTRA_HAS_EMOJI = "extra_has_emoji"
         const val EXTRA_ACTION = "extra_action"
         const val ACTION_ADD_PHOTOS = "action_add_photos"
         const val ACTION_REMOVE_PHOTOS = "action_remove_photos"
