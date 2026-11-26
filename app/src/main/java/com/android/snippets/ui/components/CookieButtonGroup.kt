@@ -543,7 +543,7 @@ fun CookieButtonGroup(
 
             Box(
                 modifier = Modifier
-                    .then(item.modifier)
+                    .then(if (item.tooltip == null) item.modifier else Modifier)
                     .width(cookieWidth)
                     .height(cookieHeight)
                     .zIndex(if (isHeld || morphProgresses[index].value > 0.001f || pressScales[index].value < 0.99f) 1f else 0f)
@@ -697,7 +697,8 @@ fun CookieButtonGroup(
                         Text(item.tooltip)
                     }
                 },
-                state = rememberTooltipState()
+                state = rememberTooltipState(),
+                modifier = item.modifier
             ) {
                 cookieContent()
             }
