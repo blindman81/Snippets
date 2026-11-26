@@ -199,6 +199,12 @@ object BoxManager {
         }
     }
 
+    fun hasBoxEmoji(box: String, boxIcons: Map<String, String>): Boolean {
+        if (box == "Box 1" || box == "Favorites") return true
+        val iconName = boxIcons[box] ?: return false
+        return iconName.isNotBlank() && iconName.none { it in 'a'..'z' || it in 'A'..'Z' }
+    }
+
     fun getBoxIcon(
         box: String,
         editingBoxEmoji: String?,
