@@ -36,7 +36,7 @@ fun PremiumEmptyState(
     onClick: (() -> Unit)? = null
 ) {
     val view = LocalView.current
-    val containerColor = MaterialTheme.colorScheme.tertiaryContainer
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val borderStroke = BorderStroke(2.dp, containerColor.copy(alpha = 0.5f))
     val iconContent: @Composable () -> Unit = {
         Box(
@@ -47,7 +47,7 @@ fun PremiumEmptyState(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(iconSize),
-                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
