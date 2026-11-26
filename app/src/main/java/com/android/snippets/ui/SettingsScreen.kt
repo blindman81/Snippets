@@ -216,6 +216,29 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     ExpressiveSegmentedListItem(
                         index = 0,
                         count = 3,
+                        label = "Auto backup",
+                        subtext = viewModel.autoBackupSchedule,
+                        icon = autoBackupIcon,
+                        iconContainerColor = if (isAutoBackupOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
+                        iconColor = if (isAutoBackupOn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        selected = isAutoBackupOn,
+                        onClick = {
+                            val nextSchedule = if (isAutoBackupOn) "Disabled" else "Daily"
+                            viewModel.updateAutoBackupSchedule(nextSchedule)
+                            if (nextSchedule == "Daily") {
+                                val currentTime = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date())
+                                Toast.makeText(
+                                    context,
+                                    "Auto backup occurs at $currentTime",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    )
+
+                    ExpressiveSegmentedListItem(
+                        index = 1,
+                        count = 3,
                         label = "Export",
                         icon = exportIcon,
                         iconContainerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -234,7 +257,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     )
 
                     ExpressiveSegmentedListItem(
-                        index = 1,
+                        index = 2,
                         count = 3,
                         label = "Restore",
                         icon = restoreIcon,
@@ -250,29 +273,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         },
                         onClick = {
                             restoreLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "*/*"))
-                        }
-                    )
-
-                    ExpressiveSegmentedListItem(
-                        index = 2,
-                        count = 3,
-                        label = "Auto backup",
-                        subtext = viewModel.autoBackupSchedule,
-                        icon = autoBackupIcon,
-                        iconContainerColor = if (isAutoBackupOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
-                        iconColor = if (isAutoBackupOn) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                        selected = isAutoBackupOn,
-                        onClick = {
-                            val nextSchedule = if (isAutoBackupOn) "Disabled" else "Daily"
-                            viewModel.updateAutoBackupSchedule(nextSchedule)
-                            if (nextSchedule == "Daily") {
-                                val currentTime = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date())
-                                Toast.makeText(
-                                    context,
-                                    "Auto backup occurs at $currentTime",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
                         }
                     )
                 }
