@@ -100,7 +100,7 @@ fun EditBoxScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             AppBar(
-                title = "Edit box",
+                title = "Edit Box",
                 onNavigationClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
                     onNavigateBack()
