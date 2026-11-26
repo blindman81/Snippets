@@ -38,6 +38,7 @@ private data class EditBoxActionData(
 fun EditBoxScreen(
     box: String,
     userBoxes: List<String> = emptyList(),
+    hasEmoji: Boolean = true,
     onNavigateBack: () -> Unit,
     onAction: (String) -> Unit
 ) {
@@ -52,7 +53,7 @@ fun EditBoxScreen(
         BoxManager.getBoxDisplayName(box, userBoxes)
     }
 
-    val actions = remember(box, boxDisplayName, isLibrary, isBox1) {
+    val actions = remember(box, boxDisplayName, isLibrary, isBox1, hasEmoji) {
         val addSubtext = when {
             isLibrary -> "To Box"
             isBox1 -> "To Box 1"
@@ -80,9 +81,9 @@ fun EditBoxScreen(
             ) else null,
             if (!isLibrary && !isBox1) EditBoxActionData(
                 id = EditBoxActivity.ACTION_EDIT_EMOJI,
-                label = "Edit emoji",
-                subtext = "Of $boxDisplayName",
-                icon = Icons.Outlined.Edit,
+                label = if (hasEmoji) "Edit emoji" else "Add emoji",
+                subtext = if (hasEmoji) "Of $boxDisplayName" else "To $boxDisplayName",
+                icon = if (hasEmoji) Icons.Outlined.Edit else R.drawable.ic_add_reaction,
                 onClick = { onAction(EditBoxActivity.ACTION_EDIT_EMOJI) }
             ) else null,
             if (!isLibrary && !isBox1) EditBoxActionData(
