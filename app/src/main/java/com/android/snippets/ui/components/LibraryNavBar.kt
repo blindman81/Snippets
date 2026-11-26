@@ -15,13 +15,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.vectorResource
@@ -49,6 +52,30 @@ fun LibraryNavBar(
 ) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
+    val layoutDirection = LocalLayoutDirection.current
+    val scrollContentCoordsRef = remember { arrayOfNulls<LayoutCoordinates>(1) }
+    val itemCoordsMap = remember { mutableMapOf<String, LayoutCoordinates>() }
+
+    fun updateTabMetrics(tabName: String, itemCoords: LayoutCoordinates) {
+        val containerCoords = scrollContentCoordsRef[0] ?: return
+        if (!containerCoords.isAttached || !itemCoords.isAttached) return
+        val localLeft = containerCoords.localPositionOf(itemCoords, Offset.Zero).x
+        val width = itemCoords.size.width.toFloat()
+        val x = if (layoutDirection == LayoutDirection.Rtl) {
+            containerCoords.size.width.toFloat() - (localLeft + width)
+        } else {
+            localLeft
+        }
+        if (tabPositions[tabName] != x) tabPositions[tabName] = x
+        if (tabWidths[tabName] != width) tabWidths[tabName] = width
+    }
+
+    LaunchedEffect(allTabs) {
+        val validTabs = allTabs.toSet()
+        itemCoordsMap.keys.retainAll(validTabs)
+        tabPositions.keys.retainAll(validTabs)
+        tabWidths.keys.retainAll(validTabs)
+    }
 
     Box(
         modifier = modifier
@@ -66,6 +93,12 @@ fun LibraryNavBar(
                 .fillMaxWidth()
                 .horizontalScroll(tabRowScrollState)
                 .graphicsLayer { clip = false }
+                .onGloballyPositioned { coords ->
+                    scrollContentCoordsRef[0] = coords
+                    itemCoordsMap.forEach { (tabName, itemCoords) ->
+                        updateTabMetrics(tabName, itemCoords)
+                    }
+                }
                 .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
@@ -94,10 +127,8 @@ fun LibraryNavBar(
                         userBoxes = viewModel.userBoxes
                     )
                     val positionModifier = Modifier.onGloballyPositioned { coords ->
-                        val left = coords.boundsInParent().left
-                        val width = coords.size.width.toFloat()
-                        if (tabPositions[tabName] != left) tabPositions[tabName] = left
-                        if (tabWidths[tabName] != width) tabWidths[tabName] = width
+                        itemCoordsMap[tabName] = coords
+                        updateTabMetrics(tabName, coords)
                     }
 
                     cookieButtonItem(
